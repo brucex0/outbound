@@ -295,9 +295,10 @@ struct ActiveTrainingPlanDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                     Text(activePlan.localizedTitle)
                         .font(.system(.title2, design: .rounded).weight(.bold))
+                    TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
                     Text(activePlan.subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -319,9 +320,6 @@ struct ActiveTrainingPlanDetailView: View {
                 }
 
                 if let goal = activePlan.raceGoal { RaceGoalCard(goal: goal, roadmap: activePlan.roadmap) }
-
-                TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
-
                 VStack(alignment: .leading, spacing: 10) {
                     Text("This week")
                         .font(.headline)
@@ -458,37 +456,46 @@ private struct TrainingPlanManagementActions: View {
     @State private var confirmsEndPlan = false
 
     var body: some View {
-        VStack(spacing: OutboundSpacing.compact) {
-            if let onChangePlan {
-                Button(action: onChangePlan) {
-                    Label("Change plan", systemImage: "arrow.triangle.2.circlepath")
-                        .frame(maxWidth: .infinity)
-                }
-                .accessibilityIdentifier("plan.details.change")
-            }
-            if onEndPlan != nil {
-                Button(role: .destructive) {
-                    confirmsEndPlan = true
-                    Task {
-                        await analyticsManager?.track(.init(.featureExposed, properties: [
-                            .feature: .string("plan_end_confirmation"),
-                        ]))
-                    }
-                } label: {
-                    Label("End plan", systemImage: "calendar.badge.minus")
-                        .frame(maxWidth: .infinity)
-                }
-                .tint(.red)
-                .accessibilityIdentifier("plan.details.end")
-            }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: OutboundSpacing.section) { actionButtons }
+            VStack(alignment: .leading, spacing: 0) { actionButtons }
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
         .confirmationDialog(String(localized: "plan.details.end_title", defaultValue: "End this plan?"), isPresented: $confirmsEndPlan, titleVisibility: .visible) {
             Button("End plan", role: .destructive) { onEndPlan?() }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text(String(localized: "plan.details.end_message", defaultValue: "This will remove the active plan and its upcoming workouts. Your saved activities will stay."))
+        }
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        if let onChangePlan {
+            Button(action: onChangePlan) {
+                Text("Change plan")
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .accessibilityIdentifier("plan.details.change")
+        }
+        if onEndPlan != nil {
+            Button(role: .destructive) {
+                confirmsEndPlan = true
+                Task {
+                    await analyticsManager?.track(.init(.featureExposed, properties: [
+                        .feature: .string("plan_end_confirmation"),
+                    ]))
+                }
+            } label: {
+                Text("End plan")
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.red)
+            .accessibilityIdentifier("plan.details.end")
         }
     }
 }
@@ -504,9 +511,10 @@ struct ActiveTrainingPlanPendingDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                     Text(activePlan.localizedTitle)
                         .font(.system(.title2, design: .rounded).weight(.bold))
+                    TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
                     Text(activePlan.subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -521,9 +529,6 @@ struct ActiveTrainingPlanPendingDetailView: View {
                 }
 
                 if let goal = activePlan.raceGoal { RaceGoalCard(goal: goal, roadmap: activePlan.roadmap) }
-
-                TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
-
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Plan details are loading")
                         .font(.headline)
