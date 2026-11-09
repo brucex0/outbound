@@ -10,6 +10,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -258,6 +259,7 @@ fun TodayRoute(
         onChangePlan = { viewModel.openPlanPicker("plan_details_change") },
         onEndPlan = viewModel::endPlan,
         onPlanDetailsOpened = viewModel::trackPlanDetailsOpened,
+        onDailyRecommendationDetailsOpened = viewModel::trackDailyRecommendationDetailsOpened,
         onEndPlanConfirmation = viewModel::trackEndPlanConfirmation,
         onSelectPlan = viewModel::selectPlanRecommendation,
         onUsePlan = { recommendation, replacing -> viewModel.confirmPlanRecommendation(recommendation, replacing) },
@@ -279,7 +281,6 @@ fun TodayRoute(
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
         onCardDisplayChanged = viewModel::trackCardDisplayChanged,
-        onWorkoutDetailsOpened = viewModel::trackPlannedWorkoutDetailsOpened,
         onWeatherDetailsOpened = viewModel::trackWeatherDetailsOpened,
         onWeatherAttributionOpened = viewModel::trackWeatherAttributionOpened,
         onRacePlanApplied = viewModel::trackRacePlanApplied,
@@ -327,6 +328,7 @@ fun TodayScreen(
     onChangePlan: () -> Unit = {},
     onEndPlan: () -> Unit = {},
     onPlanDetailsOpened: (Int, String) -> Unit = { _, _ -> },
+    onDailyRecommendationDetailsOpened: (String) -> Unit = {},
     onEndPlanConfirmation: () -> Unit = {},
     onUpdateRaceGoal: suspend (String, com.plainstride.outbound.core.network.RaceGoalUpdateRequest) -> Boolean = { _, _ -> false },
     onRaceGoalOpened: () -> Unit = {},
@@ -354,7 +356,6 @@ fun TodayScreen(
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
     onCardDisplayChanged: (Boolean) -> Unit = {},
-    onWorkoutDetailsOpened: () -> Unit = {},
     onWeatherDetailsOpened: () -> Unit = {},
     onWeatherAttributionOpened: () -> Unit = {},
     onRacePlanApplied: (TodayRacePlan) -> Unit = {},
@@ -372,25 +373,37 @@ fun TodayScreen(
 ) {
     var showsPlanDetails by rememberSaveable { mutableStateOf(false) }
     var resolvesPlanSetup by rememberSaveable { mutableStateOf(false) }
+    var detailsActivePlanId by rememberSaveable { mutableStateOf<String?>(null) }
     val planning = state.planningSnapshot
     val activePlan = planning?.plan
-    val confirmedNoPlan = state.hasConfirmedNoPlan
+    val dailyRecommendation = state.currentRecommendationSnapshot
+    val confirmedNoPlan = state.hasConfirmedNoPlan && dailyRecommendation == null
     val hasPlanDetails = !confirmedNoPlan
     fun openPlanDetails(entrySource: String) {
-        onPlanDetailsOpened(planning?.planWeekSnapshot()?.targetSessions ?: 0, entrySource)
-        resolvesPlanSetup = activePlan == null
+        if (activePlan == null && dailyRecommendation != null) onDailyRecommendationDetailsOpened(entrySource)
+        else onPlanDetailsOpened(planning?.planWeekSnapshot()?.targetSessions ?: 0, entrySource)
+        resolvesPlanSetup = activePlan == null && dailyRecommendation == null
+        detailsActivePlanId = activePlan?.id
         showsPlanDetails = true
-        if (activePlan == null) onRefresh()
+        if (activePlan == null && dailyRecommendation == null) onRefresh()
     }
-    LaunchedEffect(showsPlanDetails, activePlan?.id, confirmedNoPlan) {
-        if (activePlan != null) resolvesPlanSetup = false
+    LaunchedEffect(showsPlanDetails, activePlan?.id, dailyRecommendation?.primary?.id, confirmedNoPlan) {
+        if (showsPlanDetails && detailsActivePlanId != null && planning != null && activePlan == null) {
+            // A successful End plan must dismiss its page even if a standalone recommendation arrives.
+            showsPlanDetails = false
+            resolvesPlanSetup = false
+            detailsActivePlanId = null
+        }
+        if (activePlan != null || dailyRecommendation != null) {
+            resolvesPlanSetup = false
+            if (showsPlanDetails) detailsActivePlanId = activePlan?.id
+        }
         if (showsPlanDetails && confirmedNoPlan) {
             showsPlanDetails = false
             if (resolvesPlanSetup) onSetUpPlan()
             resolvesPlanSetup = false
         }
     }
-    var showsDetail by rememberSaveable { mutableStateOf(false) }
     var showsChange by rememberSaveable { mutableStateOf(false) }
     var showsWeather by rememberSaveable { mutableStateOf(false) }
     var showsRacePlanner by rememberSaveable { mutableStateOf(false) }
@@ -489,12 +502,12 @@ fun TodayScreen(
         }
     }
     LaunchedEffect(initialWorkoutId, suggestion?.id, suggestion?.plannedWorkoutId) {
-        if (initialWorkoutId != null && (suggestion?.id == initialWorkoutId || suggestion?.plannedWorkoutId == initialWorkoutId)) showsDetail = true
+        if (initialWorkoutId != null && (suggestion?.id == initialWorkoutId || suggestion?.plannedWorkoutId == initialWorkoutId)) openPlanDetails("today_planned_card")
     }
 
     // Keep the map in the upper region, matching iOS Today; the dock owns the separate lower region.
     Column(modifier.fillMaxSize().padding(bottom = PrimaryBottomToolbarClearance)) {
-        Box(Modifier.fillMaxWidth().weight(1f)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             PlainstrideRouteMap(
                 points = selectedRoute?.let { if (it.reverse) it.points.reversed() else it.points }.orEmpty(),
                 modifier = Modifier.fillMaxSize(),
@@ -537,7 +550,14 @@ fun TodayScreen(
                     }
                 }
             }
-            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).onSizeChanged { mapOverlayBottomPadding = with(density) { it.height.toDp() } }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .heightIn(max = maxHeight * .65f)
+                    .onSizeChanged { mapOverlayBottomPadding = with(density) { it.height.toDp() } }
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 selectedRoute?.let { route ->
                     SelectedRouteCard(
                         route = route,
@@ -545,10 +565,6 @@ fun TodayScreen(
                         onRemove = onRemoveRoute,
                         onDirectionChanged = onRouteDirectionChanged,
                     )
-                }
-                val planningState = (state.planning as? CachedResource.Available)?.value
-                if (activityChoice == TodayActivityChoice.PLANNED && planningState?.goal?.type == "eventPreparation") {
-                    RaceGoalCard(planningState, unitSystem, onRaceGoalOpened, onUpdateRaceGoal)
                 }
                 when {
                     groupActivityContent != null -> groupActivityContent()
@@ -565,7 +581,7 @@ fun TodayScreen(
                             displayPreferences.edit().putBoolean("planned_workout_minimized", cardMinimized).apply()
                             onCardDisplayChanged(cardMinimized)
                         },
-                        onOpen = { onWorkoutDetailsOpened(); showsDetail = true },
+                        onOpen = { openPlanDetails("today_planned_card") },
                         onChange = { onWorkoutChangeOpened(); showsChange = true },
                         onOpenPlan = if (hasPlanDetails) ({ openPlanDetails("today_planned_card_plan") }) else null,
                     )
@@ -644,7 +660,7 @@ fun TodayScreen(
                     onLaunchConfigurationChanged("companion", if (enabled) "on" else "off")
                 },
                 onReturnToSession = onReturnToSession,
-                onOpenDetails = { onWorkoutDetailsOpened(); showsDetail = true },
+                onOpenDetails = { openPlanDetails("today_planned_card") },
                 shoes = shoes,
                 selectedShoeId = selectedShoeId,
                 onSelectShoe = onSelectShoe,
@@ -669,10 +685,22 @@ fun TodayScreen(
             onEndPlan = onEndPlan,
             onEndConfirmation = onEndPlanConfirmation,
             onRefresh = onRefresh,
+            onChangeWorkout = suggestion?.let { { showsPlanDetails = false; onWorkoutChangeOpened(); showsChange = true } },
         )
     }
 
-    if (showsPlanDetails && activePlan == null && !confirmedNoPlan) {
+    if (showsPlanDetails && activePlan == null && dailyRecommendation != null) {
+        DailyRecommendationDetailsSheet(
+            recommendation = dailyRecommendation,
+            stale = state.isStale || state.suggestion is CachedResource.Failed,
+            busy = state.mutationInFlight,
+            onDismiss = { showsPlanDetails = false },
+            onChangeWorkout = { showsPlanDetails = false; onWorkoutChangeOpened(); showsChange = true },
+            onSetUpPlan = { showsPlanDetails = false; onSetUpPlan() },
+        )
+    }
+
+    if (showsPlanDetails && activePlan == null && dailyRecommendation == null && !confirmedNoPlan) {
         PlanDetailsSyncingSheet(onDismiss = { showsPlanDetails = false }, onRefresh = onRefresh)
     }
 
@@ -688,13 +716,9 @@ fun TodayScreen(
         )
     }
 
-    if (showsDetail && suggestion != null) WorkoutDetailSheet(
-        suggestion,
-        onDismiss = { showsDetail = false },
-        onChangeWorkout = { showsDetail = false; showsChange = true },
-    )
-    if (showsChange && suggestion != null) ChangeWorkoutSheet(
-        original = suggestion,
+    val changeSuggestion = suggestion ?: dailyRecommendation?.primary
+    if (showsChange && changeSuggestion != null) ChangeWorkoutSheet(
+        original = changeSuggestion,
         pending = state.pendingAdjustment,
         busy = state.mutationInFlight,
         onDismiss = { showsChange = false },
@@ -1337,51 +1361,6 @@ private fun TodaySkeleton() {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             repeat(3) { index -> Spacer(Modifier.fillMaxWidth(if (index == 1) .72f else 1f).height(if (index == 0) 24.dp else 18.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) }
         }
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun WorkoutDetailSheet(suggestion: ActivitySuggestion, onDismiss: () -> Unit, onChangeWorkout: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.today_details), Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_done)) }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(suggestion.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.today_minutes, suggestion.durationMinutes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            WorkoutDetailPhasePreview(suggestion.steps)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(R.string.today_purpose), style = MaterialTheme.typography.titleMedium)
-                Text(suggestion.why, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            OutlinedButton(onClick = onChangeWorkout, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text(stringResource(R.string.today_change_workout))
-            }
-            Spacer(Modifier.height(20.dp))
-        }
-    }
-}
-
-@Composable
-private fun WorkoutDetailPhasePreview(steps: List<String>) {
-    if (steps.isEmpty()) return
-    val phases = steps.take(3).map { step ->
-        val match = Regex("^\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(?:min|mins|minute|minutes)\\s+(.+?)\\s*$", RegexOption.IGNORE_CASE).matchEntire(step)
-        if (match == null) null to step else "${match.groupValues[1]}m" to match.groupValues[2]
-    }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        phases.forEachIndexed { index, phase ->
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                phase.first?.let { Text(it, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
-                Text(phase.second, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            if (index < phases.lastIndex) Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (steps.size > 3) Text("+${steps.size - 3}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

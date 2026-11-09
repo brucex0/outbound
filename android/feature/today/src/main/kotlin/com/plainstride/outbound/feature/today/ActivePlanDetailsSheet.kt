@@ -7,14 +7,16 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -29,10 +31,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.ActivitySuggestionEnvelope
 import com.plainstride.outbound.core.model.PlannedWorkout
 import com.plainstride.outbound.core.model.PlanningState
@@ -61,6 +66,7 @@ internal fun ActivePlanDetailsSheet(
     onEndPlan: () -> Unit,
     onEndConfirmation: () -> Unit,
     onRefresh: () -> Unit,
+    onChangeWorkout: (() -> Unit)? = null,
 ) {
     val plan = planning.plan ?: return
     val week = planning.planWeekSnapshot()
@@ -72,136 +78,99 @@ internal fun ActivePlanDetailsSheet(
             it.validForDate == today.toString()
     }
     var confirmsEnd by rememberSaveable(plan.id) { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Row(Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.plan_details_title), Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.today_done)) }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(planTitle(planning), Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(
-                        onClick = onChangePlan,
-                        enabled = !busy,
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 0.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                    ) { Text(stringResource(R.string.plan_details_change)) }
-                    TextButton(
-                        onClick = { confirmsEnd = true; onEndConfirmation() },
-                        enabled = !busy,
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 0.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    ) { Text(stringResource(R.string.plan_details_end)) }
+    PlanDetailsSheet(onDismiss = onDismiss) {
+        PlanDetailsHeading(
+            title = planTitle(planning),
+            subtitle = planning.currentVersion?.summary,
+            actions = {
+                PlanDetailsAction(stringResource(R.string.plan_details_change), !busy, onClick = onChangePlan)
+                PlanDetailsAction(stringResource(R.string.plan_details_end), !busy, destructive = true) {
+                    confirmsEnd = true
+                    onEndConfirmation()
                 }
-                planning.currentVersion?.summary?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            },
+        )
+        if (stale) Text(stringResource(R.string.plan_details_cached), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
+        if (week != null) {
+            val stats = listOfNotNull(
+                stringResource(R.string.plan_details_length) to (week.totalWeeks?.let { stringResource(R.string.plan_details_week_count, it) } ?: stringResource(R.string.plan_details_length_unspecified)),
+                (stringResource(R.string.plan_details_current_week) to (week.totalWeeks?.let { stringResource(R.string.plan_details_week_of, week.currentWeek, it) } ?: week.currentWeek.toString())),
+                stringResource(R.string.plan_details_sessions) to week.targetSessions.toString(),
+                stringResource(R.string.plan_details_time) to stringResource(R.string.today_minutes, week.targetMinutes),
+            )
+            PlanDetailsStats(stats)
+            planning.goal?.daysPerWeekTarget?.takeIf { it != week.targetSessions }?.let {
+                Text(stringResource(R.string.plan_details_preferred, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (stale) Text(stringResource(R.string.plan_details_cached), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
-            if (week != null) {
-                val stats = listOfNotNull(
-                    stringResource(R.string.plan_details_length) to (week.totalWeeks?.let { stringResource(R.string.plan_details_week_count, it) } ?: stringResource(R.string.plan_details_length_unspecified)),
-                    (stringResource(R.string.plan_details_current_week) to (week.totalWeeks?.let { stringResource(R.string.plan_details_week_of, week.currentWeek, it) } ?: week.currentWeek.toString())),
-                    stringResource(R.string.plan_details_sessions) to week.targetSessions.toString(),
-                    stringResource(R.string.plan_details_time) to stringResource(R.string.today_minutes, week.targetMinutes),
+        }
+        if (planning.goal?.type == "eventPreparation") RaceGoalCard(planning, units, onRaceGoalOpened, onUpdateRaceGoal)
+        if (week == null) {
+            Text(stringResource(R.string.plan_details_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onRefresh, enabled = !busy) { Text(stringResource(R.string.today_retry)) }
+        } else {
+            PlanSectionCard(title = stringResource(R.string.plan_details_this_week)) {
+                Text(stringResource(phaseLabel(plan.currentPhase)), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(R.string.plan_details_progress, week.completedSessions, week.targetSessions, week.completedMinutes, week.targetMinutes),
+                    style = MaterialTheme.typography.bodyMedium,
                 )
-                androidx.compose.foundation.layout.FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    maxItemsInEachRow = 2,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    stats.forEach { (label, value) ->
-                        Card(Modifier.weight(1f)) {
-                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(value, style = MaterialTheme.typography.titleMedium)
-                            }
-                        }
-                    }
-                }
-                planning.goal?.daysPerWeekTarget?.takeIf { it != week.targetSessions }?.let {
-                    Text(stringResource(R.string.plan_details_preferred, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LinearProgressIndicator(progress = { week.progress }, modifier = Modifier.fillMaxWidth())
+                planning.latestAdjustment?.message?.takeIf { it.isNotBlank() }?.let {
+                    Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            if (planning.goal?.type == "eventPreparation") RaceGoalCard(planning, units, onRaceGoalOpened, onUpdateRaceGoal)
-            if (week == null) {
-                Text(stringResource(R.string.plan_details_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = onRefresh, enabled = !busy) { Text(stringResource(R.string.today_retry)) }
-            } else {
-                PlanSectionCard(title = stringResource(R.string.plan_details_this_week)) {
-                    Text(stringResource(phaseLabel(plan.currentPhase)), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        stringResource(R.string.plan_details_progress, week.completedSessions, week.targetSessions, week.completedMinutes, week.targetMinutes),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    LinearProgressIndicator(progress = { week.progress }, modifier = Modifier.fillMaxWidth())
-                    planning.latestAdjustment?.message?.takeIf { it.isNotBlank() }?.let {
-                        Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                PlanSectionCard(title = stringResource(R.string.plan_details_today)) {
-                    when {
-                        todaySuggestion?.primary != null -> {
-                            val envelope = todaySuggestion
-                            val primary = envelope.primary!!
-                            Text(primary.title, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                stringResource(R.string.plan_details_recommendation_detail, primary.durationMinutes, primary.effortLabel),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                            Text(envelope.guideLine, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(primary.why, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (envelope.relationship == "adjustedFromPlan") {
-                                planning.latestAdjustment?.message?.takeIf { it.isNotBlank() }?.let {
-                                    Text(it, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
-                                }
+            PlanSectionCard(title = stringResource(R.string.plan_details_today)) {
+                when {
+                    todaySuggestion?.primary != null -> {
+                        val envelope = todaySuggestion
+                        val primary = envelope.primary!!
+                        RecommendationDetails(primary, envelope.guideLine)
+                        if (envelope.relationship == "adjustedFromPlan") {
+                            planning.latestAdjustment?.message?.takeIf { it.isNotBlank() }?.let {
+                                Text(it, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
                             }
-                            primary.steps.take(4).forEach { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                         }
-                        todayWorkout != null -> {
-                            Text(todayWorkout.title, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                stringResource(R.string.plan_details_recommendation_detail, ceil(todayWorkout.durationSeconds / 60.0).toInt(), stringResource(stimulusLabel(todayWorkout.stimulus))),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                            workoutDescription(todayWorkout)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        primary.steps.forEach { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+                        onChangeWorkout?.let { change ->
+                            PlanDetailsAction(stringResource(R.string.today_change_workout), !busy, onClick = change)
                         }
-                        else -> Text(stringResource(R.string.plan_details_no_session), style = MaterialTheme.typography.titleMedium)
                     }
+                    todayWorkout != null -> {
+                        Text(todayWorkout.title, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.plan_details_recommendation_detail, ceil(todayWorkout.durationSeconds / 60.0).toInt(), stringResource(stimulusLabel(todayWorkout.stimulus))),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        workoutDescription(todayWorkout)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                    else -> Text(stringResource(R.string.plan_details_no_session), style = MaterialTheme.typography.titleMedium)
                 }
-                PlanSectionCard(title = stringResource(R.string.plan_details_schedule)) {
-                    if (week.workouts.isEmpty()) Text(stringResource(R.string.plan_details_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    week.workouts.forEach { workout ->
-                        Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(
-                                    "${workout.scheduledDate.localizedPlanDate()} · ${workout.title}",
-                                    Modifier.weight(1f),
-                                    style = MaterialTheme.typography.titleSmall,
-                                )
-                                if (workout.prescription?.get("optional")?.toString() == "true") {
-                                    Text(stringResource(R.string.today_race_goal_optional), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
+            }
+            PlanSectionCard(title = stringResource(R.string.plan_details_schedule)) {
+                if (week.workouts.isEmpty()) Text(stringResource(R.string.plan_details_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                week.workouts.forEach { workout ->
+                    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                stringResource(R.string.plan_details_workout_detail, ceil(workout.durationSeconds / 60.0).toInt(), stringResource(stimulusLabel(workout.stimulus))),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelMedium,
+                                "${workout.scheduledDate.localizedPlanDate()} · ${workout.title}",
+                                Modifier.weight(1f),
+                                style = MaterialTheme.typography.titleSmall,
                             )
-                            Text(stringResource(statusLabel(workout.status)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                            workoutDescription(workout)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+                            if (workout.prescription?.get("optional")?.toString() == "true") {
+                                Text(stringResource(R.string.today_race_goal_optional), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
+                        Text(
+                            stringResource(R.string.plan_details_workout_detail, ceil(workout.durationSeconds / 60.0).toInt(), stringResource(stimulusLabel(workout.stimulus))),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        Text(stringResource(statusLabel(workout.status)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        workoutDescription(workout)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                     }
                 }
             }
-            Spacer(Modifier.height(20.dp))
         }
     }
     if (confirmsEnd) AlertDialog(
@@ -215,6 +184,134 @@ internal fun ActivePlanDetailsSheet(
         },
         dismissButton = { TextButton(onClick = { confirmsEnd = false }) { Text(stringResource(R.string.today_cancel)) } },
     )
+}
+
+@Composable
+internal fun DailyRecommendationDetailsSheet(
+    recommendation: ActivitySuggestionEnvelope,
+    stale: Boolean,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onChangeWorkout: () -> Unit,
+    onSetUpPlan: () -> Unit,
+) {
+    val workout = recommendation.primary ?: return
+    PlanDetailsSheet(onDismiss = onDismiss) {
+        PlanDetailsHeading(
+            title = workout.title,
+            subtitle = stringResource(R.string.plan_details_today),
+            actions = {
+                PlanDetailsAction(stringResource(R.string.today_change_workout), !busy, onClick = onChangeWorkout)
+                PlanDetailsAction(stringResource(R.string.plan_details_set_up_training_plan), !busy, onClick = onSetUpPlan)
+            },
+        )
+        if (stale) Text(
+            stringResource(R.string.plan_details_recommendation_cached),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.tertiary,
+        )
+        PlanDetailsStats(listOf(
+            stringResource(R.string.plan_details_duration) to stringResource(R.string.today_minutes, workout.durationMinutes),
+            stringResource(R.string.plan_details_effort) to workout.effortLabel,
+        ))
+        PlanSectionCard(title = stringResource(R.string.plan_details_today)) {
+            RecommendationDetails(workout, recommendation.guideLine)
+        }
+        if (workout.steps.isNotEmpty()) PlanSectionCard(title = stringResource(R.string.today_phases)) {
+            workout.steps.forEachIndexed { index, step ->
+                Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.plan_details_step, index + 1), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(step, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+/** Shared hierarchy for active plans and the daily recommendation, matching the iOS plan page. */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun PlanDetailsSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.94f)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.today_done)) }
+            }
+            Text(
+                stringResource(R.string.plan_details_title),
+                Modifier.padding(horizontal = 16.dp).semantics { heading() },
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlanDetailsHeading(title: String, subtitle: String?, actions: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) { actions() }
+        subtitle?.takeIf { it.isNotBlank() }?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun PlanDetailsAction(label: String, enabled: Boolean, destructive: Boolean = false, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.heightIn(min = 48.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 0.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary),
+    ) { Text(label) }
+}
+
+@Composable
+private fun PlanDetailsStats(stats: List<Pair<String, String>>) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        maxItemsInEachRow = 2,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        stats.forEach { (label, value) ->
+            Card(
+                Modifier.weight(1f),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecommendationDetails(workout: ActivitySuggestion, guideLine: String) {
+    Text(workout.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+    Text(
+        stringResource(R.string.plan_details_recommendation_detail, workout.durationMinutes, workout.effortLabel),
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.labelLarge,
+    )
+    if (guideLine.isNotBlank()) Text(guideLine, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (workout.why.isNotBlank() && workout.why != guideLine) Text(workout.why, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 private val TERMINAL_WORKOUT_STATUSES = setOf("completed", "skipped", "missed", "cancelled", "canceled")
@@ -234,7 +331,11 @@ private fun planTitle(planning: PlanningState): String = planning.goal?.targetEv
 
 @Composable
 private fun PlanSectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+    ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
             content()

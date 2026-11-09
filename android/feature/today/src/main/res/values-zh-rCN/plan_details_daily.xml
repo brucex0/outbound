@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_details_duration">时长</string>
+    <string name="plan_details_effort">强度</string>
+    <string name="plan_details_set_up_training_plan">设置训练计划</string>
+    <string name="plan_details_recommendation_cached">已保存的推荐 · 联网后可更新</string>
+    <string name="plan_details_step">第 %1$d 阶段</string>
+</resources>

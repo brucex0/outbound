@@ -74,6 +74,17 @@ data class TodayUiState(
             is CachedResource.Failed -> planning.cachedValue
             CachedResource.Loading -> null
         }
+    val currentRecommendationSnapshot: ActivitySuggestionEnvelope?
+        get() {
+            val snapshot = when (suggestion) {
+                is CachedResource.Available -> suggestion.value
+                is CachedResource.Failed -> suggestion.cachedValue
+                CachedResource.Loading -> null
+            } ?: return null
+            return snapshot.takeIf {
+                it.primary != null && it.validForDate == java.time.LocalDate.now().toString()
+            }
+        }
     val hasConfirmedNoPlan: Boolean
         get() {
             val snapshot = planning as? CachedResource.Available ?: return false
@@ -197,6 +208,11 @@ class TodayViewModel @Inject constructor(
             in 4..7 -> "4_7"
             else -> "8_plus"
         },
+    )))
+
+    fun trackDailyRecommendationDetailsOpened(entrySource: String) = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
+        AnalyticsProperty.SourceType to "daily_recommendation_details",
+        AnalyticsProperty.EntrySource to entrySource,
     )))
 
     fun trackEndPlanConfirmation() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(

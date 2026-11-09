@@ -129,7 +129,8 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - The workout row contains Planned, Run, Walk, Hike, and Bike, with supported manual sports defined in one extensible collection.
 - Planned retains the recommendation's assigned sport and the existing Today card and Up Next implementation as its peer content layer.
 - Planned easy and recovery runs may be replaced by one continuous calorie target only when private weight and reliable learned pace are available; quality, long, and race workouts retain their phases.
-- Tapping Planned only restores the prescribed workout; tapping its card body opens workout details rather than the standalone catalog.
+- On Android, tapping Planned restores the prescribed workout and opens the shared Plan Details presentation; the card body and Details/Plan actions open the same page. An active training plan takes priority; otherwise a current daily recommendation supplies its actual details, with Change workout and a separate Set up a training plan action. iOS retains its prescribed-workout selection and plan-management entries.
+- Android keeps the event race goal and roadmap inside Plan Details. Today’s map overlay contains the workout card, with the bottom content capped at 65% of the map height and scrollable for expanded cards, selected routes and larger text; it must not be replaced or pushed away by the complete race-goal editor.
 - The planned card exposes visible Plan and Change plan footer actions; Current Focus in Me remains a secondary plan-details entry, and More plans remains available in recommendations.
 - Tapping Calories without a saved weight prompts for a private weight value, saves it to the training profile, and resumes the calorie-goal choice; canceling leaves the current goal unchanged.
 - Completing an activity removes its Today completion summary while keeping the planned card available as `Up next`.

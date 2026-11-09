@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_details_duration">Duración</string>
+    <string name="plan_details_effort">Esfuerzo</string>
+    <string name="plan_details_set_up_training_plan">Configurar un plan de entrenamiento</string>
+    <string name="plan_details_recommendation_cached">Recomendación guardada · conéctate para actualizarla</string>
+    <string name="plan_details_step">Fase %1$d</string>
+</resources>
