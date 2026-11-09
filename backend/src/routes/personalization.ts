@@ -9,6 +9,7 @@ import {
   runnerProfileInputSchema,
   trainingProfileInputSchema,
   workoutFeedbackRequestSchema,
+  workoutAdjustmentPreviewRequestSchema,
 } from "../services/personalization/contracts.js";
 import {
   decideAdjustment,
@@ -16,6 +17,8 @@ import {
   submitReadinessCheckIn,
   submitWorkoutFeedback,
   upsertRunnerProfile,
+  previewWorkoutAdjustment,
+  WorkoutAdjustmentError,
 } from "../services/personalization/personalizationService.js";
 import type { AppEnv } from "../types/hono.js";
 import { z } from "zod";
@@ -84,6 +87,18 @@ router.post("/readiness", zValidator("json", readinessCheckInRequestSchema), asy
   return c.json(await submitReadinessCheckIn(user.id, c.req.valid("json")));
 });
 
+router.post("/adjustments/preview", zValidator("json", workoutAdjustmentPreviewRequestSchema), async (c) => {
+  const user = await requireUser(c);
+  if (user instanceof Response) return user;
+  try {
+    return c.json(await previewWorkoutAdjustment(user.id, c.req.valid("json")));
+  } catch (error) {
+    const status = error instanceof WorkoutAdjustmentError ? error.status : 503;
+    console.warn(`[personalization] operation=preview_workout_adjustment status=${status} category=${error instanceof Error ? error.name : "unknown"}`);
+    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.message : "Unable to preview an alternative." }, status);
+  }
+});
+
 router.post(
   "/cycle-signal",
   zValidator("json", z.object({
@@ -115,7 +130,9 @@ router.post("/adjustments/:id/decision", zValidator("json", adjustmentDecisionSc
   try {
     return c.json(await decideAdjustment(user.id, c.req.param("id"), c.req.valid("json").decision));
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : "Unable to decide adjustment." }, 404);
+    const status = error instanceof WorkoutAdjustmentError ? error.status : 404;
+    console.warn(`[personalization] operation=decide_adjustment status=${status} category=${error instanceof Error ? error.name : "unknown"}`);
+    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.message : "Unable to decide adjustment." }, status);
   }
 });
 

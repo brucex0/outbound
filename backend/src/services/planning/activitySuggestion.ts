@@ -15,6 +15,7 @@ import type {
   TrainingStimulus,
 } from "./types.js";
 import type { Prisma } from "@prisma/client";
+import { applyDailyWorkoutAdjustment } from "../personalization/workoutAdjustmentPolicy.js";
 
 const ALGORITHM_VERSION = "activity-suggestion-v1";
 
@@ -54,6 +55,16 @@ export async function buildActivitySuggestion(
   now: Date = new Date()
 ): Promise<ActivitySuggestionResponse> {
   const prisma = getPrismaClient();
+  const baseline = await buildBaseActivitySuggestion(userId, planningStatus, now, prisma);
+  return applyDailyWorkoutAdjustment(prisma, userId, baseline);
+}
+
+export async function buildBaseActivitySuggestion(
+  userId: string,
+  planningStatus: PlanningStatus = "stable",
+  now: Date = new Date(),
+  prisma: Prisma.TransactionClient = getPrismaClient(),
+): Promise<ActivitySuggestionResponse> {
   const todayStart = startOfDay(now);
   const tomorrowStart = addDays(todayStart, 1);
   const [plan, activities, readiness] = await Promise.all([
@@ -466,6 +477,18 @@ function archetypeSuggestion(id: string, why: string): ActivitySuggestion {
     why,
     plannedWorkoutId: null,
     archetypeId: id,
+  };
+}
+
+/** Reviewed recovery archetypes keep a one-off alternative easy without inventing a training plan. */
+export function dailyConstraintAlternative(primary: ActivitySuggestion, choice: "tired" | "sore" | "shortOnTime"): ActivitySuggestion {
+  const alternative = archetypeSuggestion(primary.modality === "bike" ? "recovery-spin-25" : "recovery-walk-20", primary.why);
+  if (choice !== "shortOnTime" && alternative.durationMinutes < primary.durationMinutes) return alternative;
+  const minutes = Math.max(5, Math.floor(primary.durationMinutes * .7 / 5) * 5);
+  const movement = primary.modality === "bike" ? "easy spin" : "relaxed walk";
+  return {
+    ...alternative, id: `${alternative.id}-${minutes}`, title: `${minutes} min ${primary.modality === "bike" ? "recovery spin" : "recovery walk"}`,
+    durationMinutes: minutes, steps: [`${minutes} min ${movement}`],
   };
 }
 

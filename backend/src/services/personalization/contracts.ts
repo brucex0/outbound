@@ -78,6 +78,15 @@ export const personalizationSnapshotSchema = z.object({
 export type PersonalizationSnapshot = z.infer<typeof personalizationSnapshotSchema>;
 
 export const readinessChoiceSchema = z.enum(["good", "tired", "sore", "shortOnTime"]);
+
+export const workoutAdjustmentPreviewRequestSchema = z.object({
+  workoutId: z.string().min(1),
+  suggestionId: z.string().min(1),
+  validForDate: z.string().date(),
+  choice: readinessChoiceSchema,
+  note: z.string().max(160).nullable().optional(),
+});
+export type WorkoutAdjustmentPreviewRequest = z.infer<typeof workoutAdjustmentPreviewRequestSchema>;
 export const readinessCheckInRequestSchema = z.object({
   idempotencyKey: z.string().min(1),
   workoutId: z.string().min(1),

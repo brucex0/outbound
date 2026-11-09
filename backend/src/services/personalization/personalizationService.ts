@@ -6,8 +6,12 @@ import type {
   ReadinessCheckInRequest,
   RunnerProfileInput,
   WorkoutFeedbackRequest,
+  WorkoutAdjustmentPreviewRequest,
 } from "./contracts.js";
 import { calibrationWorkouts } from "./calibrationTemplates.js";
+import { buildBaseActivitySuggestion, dailyConstraintAlternative } from "../planning/activitySuggestion.js";
+import { applyDailyWorkoutAdjustment, latestReadinessId, suggestionFingerprint, workoutPreviewPolicy, WorkoutAdjustmentError, type DailyPreviewChange } from "./workoutAdjustmentPolicy.js";
+export { WorkoutAdjustmentError } from "./workoutAdjustmentPolicy.js";
 import {
   recordFeedbackEvidence,
   recordProfileEvidence,
@@ -16,6 +20,87 @@ import {
 
 const contractVersion = 1 as const;
 const policyVersion = "personalization-v1";
+
+type PreviewChange = AdjustmentProposal["changes"][number] & {
+  kind: "planned";
+  planVersionId: string;
+  beforeDurationSeconds: number;
+  afterDurationSeconds: number;
+  date: string;
+};
+
+/** A workout-change preview is not a readiness check-in or a health/safety observation. */
+export async function previewWorkoutAdjustment(userId: string, input: WorkoutAdjustmentPreviewRequest) {
+  const prisma = getPrismaClient();
+  const baseline = await buildBaseActivitySuggestion(userId);
+  const current = await applyDailyWorkoutAdjustment(prisma, userId, baseline);
+  const primary = current.primary;
+  if (!primary || primary.id !== input.suggestionId || (primary.plannedWorkoutId ?? primary.id) !== input.workoutId || current.validForDate !== input.validForDate) {
+    throw new WorkoutAdjustmentError(409, "The recommendation changed. Refresh before choosing an alternative.");
+  }
+  if (baseline.decision.safetyFlags.length > 0) {
+    throw new WorkoutAdjustmentError(409, "Current safety guidance takes priority. Refresh before choosing an alternative.");
+  }
+  if (!primary.id.startsWith("planned-")) {
+    if (input.choice === "good") return { adjustment: null };
+    const alternative = { ...dailyConstraintAlternative(primary, input.choice), plannedWorkoutId: primary.plannedWorkoutId };
+    const option = readinessAlternative(input.choice, { title: primary.title, durationSeconds: primary.durationMinutes * 60 });
+    const change: DailyPreviewChange = {
+      kind: "daily", workoutId: primary.id, beforeTitle: primary.title, afterTitle: alternative.title,
+      date: baseline.validForDate, baselineFingerprint: suggestionFingerprint(baseline),
+      readinessId: await latestReadinessId(prisma, userId), afterSuggestion: alternative,
+    };
+    const proposal = await prisma.personalizationAdjustment.create({ data: {
+      userId, reasonCode: option.reasonCode, explanation: option.explanation,
+      requiresConfirmation: true, changes: [change] as unknown as Prisma.InputJsonValue, policyVersion: workoutPreviewPolicy,
+    } });
+    return { adjustment: adjustmentRecordToDTO(proposal) };
+  }
+  const workout = await currentPreviewWorkout(prisma, userId, input.workoutId, baseline.validForDate);
+  if (input.choice === "good") return { adjustment: null };
+  const option = readinessAlternative(input.choice, workout);
+  const shortRuns = (workout.planVersion.plan.goal.constraints as Record<string, unknown>).shortRunSessions;
+  if (workout.modality === "run" && shortRuns !== true && shortRuns !== "true") {
+    option.minutes = Math.max(20, option.minutes);
+    option.afterTitle = `${workout.title.replace(/ · \d+ min$/, "")} · ${option.minutes} min`;
+    if (option.minutes * 60 >= workout.durationSeconds) throw new WorkoutAdjustmentError(409, "This workout is already at its shortest supported duration.");
+  }
+  const change: PreviewChange = {
+    kind: "planned",
+    date: baseline.validForDate,
+    workoutId: workout.id,
+    beforeTitle: workout.title,
+    afterTitle: option.afterTitle,
+    planVersionId: workout.planVersionId,
+    beforeDurationSeconds: workout.durationSeconds,
+    afterDurationSeconds: option.minutes * 60,
+  };
+  const proposal = await prisma.personalizationAdjustment.create({ data: {
+    userId, reasonCode: option.reasonCode, explanation: option.explanation,
+    requiresConfirmation: true, changes: [change], policyVersion: workoutPreviewPolicy,
+  } });
+  return { adjustment: adjustmentRecordToDTO(proposal) };
+}
+
+async function currentPreviewWorkout(prisma: Prisma.TransactionClient, userId: string, workoutId: string, date: string) {
+  const today = new Date(`${date}T00:00:00Z`);
+  const tomorrow = new Date(today.getTime() + 86_400_000);
+  const workout = await prisma.plannedWorkout.findFirst({
+    where: {
+      id: workoutId, userId, status: "planned", scheduledDate: { gte: today, lt: tomorrow },
+      planVersion: { plan: { userId, status: "active" } },
+    },
+    include: {
+      blocks: { include: { steps: true } },
+      planVersion: { include: { plan: { include: { goal: true, versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { id: true } } } } } },
+    },
+  });
+  if (!workout) throw new WorkoutAdjustmentError(404, "The selected workout is no longer available.");
+  if (workout.planVersion.plan.versions[0]?.id !== workout.planVersionId) {
+    throw new WorkoutAdjustmentError(409, "The plan changed. Refresh before changing this workout.");
+  }
+  return workout;
+}
 
 export async function getPersonalizationSnapshot(userId: string): Promise<PersonalizationSnapshot> {
   const prisma = getPrismaClient();
@@ -136,6 +221,42 @@ export async function decideAdjustment(userId: string, adjustmentId: string, dec
   if (!adjustment) throw new Error("Adjustment not found.");
   if (adjustment.status !== "proposed") return adjustmentRecordToDTO(adjustment);
 
+  if (adjustment.policyVersion === workoutPreviewPolicy) {
+    return prisma.$transaction(async (tx) => {
+      const current = await tx.personalizationAdjustment.findFirst({ where: { id: adjustmentId, userId } });
+      if (!current) throw new WorkoutAdjustmentError(404, "Adjustment not found.");
+      if (current.status !== "proposed") return adjustmentRecordToDTO(current);
+      if (decision === "accept") {
+        for (const change of current.changes as unknown as (PreviewChange | DailyPreviewChange)[]) {
+          if (change.kind === "daily") {
+            const baseline = await buildBaseActivitySuggestion(userId, "stable", new Date(), tx);
+            const currentSuggestion = await applyDailyWorkoutAdjustment(tx, userId, baseline);
+            if (change.date !== baseline.validForDate || change.baselineFingerprint !== suggestionFingerprint(baseline)
+              || baseline.decision.safetyFlags.length > 0 || currentSuggestion.primary?.id !== change.workoutId || change.readinessId !== await latestReadinessId(tx, userId)) {
+              throw new WorkoutAdjustmentError(409, "The recommendation changed. Request a new alternative.");
+            }
+            continue;
+          }
+          const baseline = await buildBaseActivitySuggestion(userId, "stable", new Date(), tx);
+          if (change.date !== baseline.validForDate || baseline.primary?.plannedWorkoutId !== change.workoutId || baseline.decision.safetyFlags.length > 0) {
+            throw new WorkoutAdjustmentError(409, "The recommendation changed. Request a new alternative.");
+          }
+          const workout = await currentPreviewWorkout(tx, userId, change.workoutId, baseline.validForDate);
+          if (workout.planVersionId !== change.planVersionId || workout.title !== change.beforeTitle || workout.durationSeconds !== change.beforeDurationSeconds) {
+            throw new WorkoutAdjustmentError(409, "The workout changed. Request a new alternative.");
+          }
+          const shortRuns = (workout.planVersion.plan.goal.constraints as Record<string, unknown>).shortRunSessions;
+          await resizeWorkout(tx, workout, change.afterTitle, change.afterDurationSeconds, workout.modality === "run" && shortRuns !== true && shortRuns !== "true" ? 900 : 0);
+        }
+      }
+      const updated = await tx.personalizationAdjustment.update({
+        where: { id: current.id },
+        data: { status: decision === "accept" ? "applied" : "rejected", decidedAt: new Date() },
+      });
+      return adjustmentRecordToDTO(updated);
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   const changes = adjustment.changes as unknown as AdjustmentProposal["changes"];
   if (decision === "accept") {
     for (const change of changes) {
@@ -159,20 +280,36 @@ async function resizePlannedWorkout(userId: string, workoutId: string, title: st
     include: { blocks: { include: { steps: true } } },
   });
   if (!workout || workout.durationSeconds <= 0) return;
-  const ratio = durationSeconds / workout.durationSeconds;
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction((tx) => resizeWorkout(tx, workout, title, durationSeconds));
+}
+
+async function resizeWorkout(
+  tx: Prisma.TransactionClient,
+  workout: { id: string; durationSeconds: number; blocks: Array<{ id: string; blockType: string; durationSeconds: number | null; steps: Array<{ id: string; durationSeconds: number | null }> }> },
+  title: string,
+  durationSeconds: number,
+  minimumMainSeconds = 0,
+) {
+    const ratio = durationSeconds / workout.durationSeconds;
+    const mainSeconds = workout.blocks.filter((block) => block.blockType === "main").reduce((sum, block) => sum + (block.durationSeconds ?? 0), 0);
+    const nextMainSeconds = mainSeconds > 0 ? Math.max(Math.min(minimumMainSeconds, mainSeconds), Math.round(mainSeconds * ratio)) : 0;
+    const supportingSeconds = workout.durationSeconds - mainSeconds;
+    if (nextMainSeconds >= durationSeconds && supportingSeconds > 0) throw new WorkoutAdjustmentError(409, "The alternative is too short for this workout.");
     for (const block of workout.blocks) {
+      const blockRatio = minimumMainSeconds > 0 && mainSeconds > 0
+        ? block.blockType === "main" ? nextMainSeconds / mainSeconds : supportingSeconds > 0 ? (durationSeconds - nextMainSeconds) / supportingSeconds : ratio
+        : ratio;
       if (block.durationSeconds != null) {
         await tx.workoutBlock.update({
           where: { id: block.id },
-          data: { durationSeconds: Math.max(1, Math.round(block.durationSeconds * ratio)) },
+          data: { durationSeconds: Math.max(1, Math.round(block.durationSeconds * blockRatio)) },
         });
       }
       for (const step of block.steps) {
         if (step.durationSeconds != null) {
           await tx.workoutStep.update({
             where: { id: step.id },
-            data: { durationSeconds: Math.max(1, Math.round(step.durationSeconds * ratio)) },
+            data: { durationSeconds: Math.max(1, Math.round(step.durationSeconds * blockRatio)) },
           });
         }
       }
@@ -181,7 +318,6 @@ async function resizePlannedWorkout(userId: string, workoutId: string, title: st
       where: { id: workout.id },
       data: { title, durationSeconds },
     });
-  });
 }
 
 async function ensureCalibration(userId: string, start = false) {
@@ -268,9 +404,15 @@ async function createReadinessAdjustment(userId: string, input: ReadinessCheckIn
   if (input.choice === "good") return null;
   const workout = await nextPlannedWorkout(userId, input.workoutId);
   if (!workout) return null;
-  const reasonCode = input.choice === "shortOnTime" ? "timeConstraint" : input.choice === "sore" ? "soreness" : "fatigue";
+  const option = readinessAlternative(input.choice, workout);
+  return createAdjustment(userId, option.reasonCode, option.explanation, workout.id, workout.title, option.afterTitle);
+}
+
+function readinessAlternative(choice: ReadinessCheckInRequest["choice"], workout: { title: string; durationSeconds: number }) {
+  const reasonCode = choice === "shortOnTime" ? "timeConstraint" : choice === "sore" ? "soreness" : "fatigue";
   const minutes = Math.max(15, Math.round(workout.durationSeconds / 60 * 0.7 / 5) * 5);
-  return createAdjustment(userId, reasonCode, input.choice === "sore" ? "Soreness can make the planned load a poor fit today. A shorter easy option protects continuity without asking you to push through pain." : `Your ${input.choice === "tired" ? "fatigue" : "available time"} makes a shorter easy option a better fit today.`, workout.id, workout.title, `${workout.title.replace(/ · \d+ min$/, "")} · ${minutes} min`);
+  const explanation = choice === "sore" ? "Soreness can make the planned load a poor fit today. A shorter easy option protects continuity without asking you to push through pain." : `Your ${choice === "tired" ? "fatigue" : "available time"} makes a shorter easy option a better fit today.`;
+  return { reasonCode: reasonCode as AdjustmentProposal["reasonCode"], minutes, explanation, afterTitle: `${workout.title.replace(/ · \d+ min$/, "")} · ${minutes} min` };
 }
 
 async function createFeedbackAdjustment(userId: string, input: WorkoutFeedbackRequest) {
@@ -325,7 +467,8 @@ async function persistModelVersion(userId: string, reason: string) {
 }
 
 function adjustmentRecordToDTO(record: { id: string; reasonCode: string; explanation: string; requiresConfirmation: boolean; changes: Prisma.JsonValue }): AdjustmentProposal {
-  return { id: record.id, reasonCode: record.reasonCode as AdjustmentProposal["reasonCode"], explanation: record.explanation, requiresConfirmation: record.requiresConfirmation, changes: record.changes as unknown as AdjustmentProposal["changes"] };
+  const changes = (record.changes as unknown as AdjustmentProposal["changes"]).map(({ workoutId, beforeTitle, afterTitle }) => ({ workoutId, beforeTitle, afterTitle }));
+  return { id: record.id, reasonCode: record.reasonCode as AdjustmentProposal["reasonCode"], explanation: record.explanation, requiresConfirmation: record.requiresConfirmation, changes };
 }
 
 function profileData(input: RunnerProfileInput) {
