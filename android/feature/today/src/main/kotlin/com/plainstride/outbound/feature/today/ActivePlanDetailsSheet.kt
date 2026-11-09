@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,6 +35,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -233,11 +239,18 @@ internal fun DailyRecommendationDetailsSheet(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun PlanDetailsSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val density = LocalDensity.current
+    val windowHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val bottomInset = with(density) { maxOf(WindowInsets.ime.getBottom(this), WindowInsets.navigationBars.getBottom(this)).toDp() }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
+        // Keep the sheet's measured height fixed while its animated offset changes. Measuring
+        // against the moving sheet can feed its offset back into the sheet anchor calculation.
         Column(Modifier.fillMaxWidth().fillMaxHeight(.94f)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
@@ -250,7 +263,13 @@ private fun PlanDetailsSheet(onDismiss: () -> Unit, content: @Composable ColumnS
                 fontWeight = FontWeight.Bold,
             )
             Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp),
+                Modifier.weight(1f).layout { measurable, constraints ->
+                    val offset = try { sheetState.requireOffset() } catch (_: IllegalStateException) { 0f }
+                    val available = (windowHeight - bottomInset - 48.dp).roundToPx() - offset.toInt()
+                    val height = available.coerceIn(0, constraints.maxHeight)
+                    val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+                    layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+                }.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 content = content,
             )
