@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_week_total_distance">Distancia total</string>
+    <string name="me_week_run_goal">Objetivo semanal de carrera</string>
+    <string name="me_week_run_progress">%1$d de %2$d</string>
+    <string name="me_week_run_goal_unavailable">Objetivo de carrera no disponible</string>
+    <string name="me_week_no_run_goal">No hay un objetivo semanal de carrera.</string>
+    <string name="me_week_all_runs_count">Las carreras cuentan a partir de 5 min o 500 m.</string>
+    <string name="me_week_goal_reached">Objetivo semanal de carrera cumplido.</string>
+    <string name="me_week_runs_remaining">Pendientes esta semana: %d</string>
+    <string name="me_week_statistics_unavailable">Conéctate para cargar las estadísticas de esta semana.</string>
+    <string name="me_week_distance_value_km">%s km</string>
+    <string name="me_week_distance_value_mi">%s mi</string>
+    <string name="me_week_above_goal">Por encima del objetivo semanal: %d</string>
+    <string name="me_week_runs_logged">Carreras registradas: %d</string>
+    <string name="me_week_schedule_ahead">%d por delante de tu horario habitual</string>
+    <string name="me_week_schedule_on_track">Al día con tu horario habitual</string>
+    <string name="me_week_schedule_remaining">Faltan %d para cumplir tu horario habitual hasta hoy</string>
+</resources>

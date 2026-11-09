@@ -168,7 +168,8 @@ fun MeRoute(
     milestones: List<MeMilestone> = emptyList(),
     accountWeeklyMinutes: Int = 0,
     accountWeeklyDistanceMeters: Double = 0.0,
-    accountWeeklyActivityCount: Int = 0,
+    weeklyRunGoal: com.plainstride.outbound.core.model.WeeklyRunGoal? = null,
+    onRefreshStatistics: () -> Unit = {},
     statisticsAvailable: Boolean = false,
     statisticsCached: Boolean = false,
     onMyQrCode: () -> Unit = {},
@@ -193,12 +194,18 @@ fun MeRoute(
     }
     var page by rememberSaveable { mutableStateOf(MePage.Overview) }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
+    LaunchedEffect(page) {
+        if (page == MePage.Overview) {
+            onRefreshStatistics()
+            viewModel.trackWeeklyRunGoal()
+        }
+    }
     LaunchedEffect(settingsRequest) { if (settingsRequest > 0) page = MePage.Settings }
     when (page) {
         MePage.Overview -> MeOverview(
-            state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh,
+            state, onSettings = { page = MePage.Settings }, onRefresh = { viewModel.refresh(); onRefreshStatistics() },
             connections, insights, personalMilestones,
-            accountWeeklyMinutes, accountWeeklyDistanceMeters, accountWeeklyActivityCount, statisticsAvailable, statisticsCached,
+            accountWeeklyMinutes, accountWeeklyDistanceMeters, weeklyRunGoal, statisticsAvailable, statisticsCached,
             onMyQrCode = onMyQrCode,
             onConnections = { onMeDestination("connections"); onConnections() },
             onConnectionProfile = { onMeDestination("connection_profile"); onConnectionProfile(it) },
@@ -245,7 +252,7 @@ private fun MeOverview(
     milestones: List<PersonalMilestone>,
     accountWeeklyMinutes: Int,
     accountWeeklyDistanceMeters: Double,
-    accountWeeklyActivityCount: Int,
+    weeklyRunGoal: com.plainstride.outbound.core.model.WeeklyRunGoal?,
     statisticsAvailable: Boolean,
     statisticsCached: Boolean,
     onMyQrCode: () -> Unit,
@@ -355,17 +362,45 @@ private fun MeOverview(
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         if (!statisticsAvailable) {
-                            Text(stringResource(R.string.statistics_unavailable))
+                            Text(stringResource(R.string.me_week_statistics_unavailable))
                         } else {
                         if (statisticsCached) Text(stringResource(R.string.statistics_cached), style = MaterialTheme.typography.bodySmall)
-                        LinearProgressIndicator(
-                            progress = { (state.summary?.consistencyPercent ?: if (accountWeeklyActivityCount > 0) (accountWeeklyActivityCount * 34).coerceAtMost(100) else 0).coerceIn(0, 100) / 100f },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            SummaryStat(accountWeeklyMinutes.toString(), stringResource(R.string.minutes))
-                            SummaryStat(formatWeeklyDistance(state, accountWeeklyDistanceMeters), stringResource(if (state.preferences.measurement == MeasurementSystem.Metric) R.string.kilometers else R.string.miles))
-                            SummaryStat("${state.summary?.consistencyPercent ?: (accountWeeklyActivityCount * 34).coerceAtMost(100)}%", stringResource(R.string.consistency))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            SummaryStat(accountWeeklyMinutes.toString(), stringResource(R.string.minutes), Modifier.weight(1f))
+                            SummaryStat(stringResource(if (state.preferences.measurement == MeasurementSystem.Metric) R.string.me_week_distance_value_km else R.string.me_week_distance_value_mi, formatWeeklyDistance(state, accountWeeklyDistanceMeters)), stringResource(R.string.me_week_total_distance), Modifier.weight(1f))
+                            state.summary?.consistencyPercent?.let { percent ->
+                                SummaryStat("$percent%", stringResource(R.string.consistency), Modifier.weight(1f))
+                            }
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.me_week_run_goal), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                                weeklyRunGoal?.let { progress ->
+                                    val goalTarget = progress.targetRuns
+                                    Text(if (goalTarget != null) stringResource(R.string.me_week_run_progress, progress.completedRuns, goalTarget)
+                                         else stringResource(R.string.me_week_runs_logged, progress.completedRuns), style = MaterialTheme.typography.titleSmall)
+                                }
+                            }
+                            val target = weeklyRunGoal?.targetRuns
+                            if (weeklyRunGoal != null && target != null && target > 0) {
+                                LinearProgressIndicator(
+                                    progress = { (weeklyRunGoal.completedRuns.toFloat() / target).coerceIn(0f, 1f) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                val scheduled = weeklyRunGoal.scheduledRunsByToday
+                                val detail = when {
+                                    statisticsCached -> stringResource(R.string.me_week_all_runs_count)
+                                    weeklyRunGoal.completedRuns > target -> stringResource(R.string.me_week_above_goal, weeklyRunGoal.completedRuns - target)
+                                    weeklyRunGoal.completedRuns == target -> stringResource(R.string.me_week_goal_reached)
+                                    scheduled != null && weeklyRunGoal.completedRuns > scheduled -> stringResource(R.string.me_week_schedule_ahead, weeklyRunGoal.completedRuns - scheduled)
+                                    scheduled != null && weeklyRunGoal.completedRuns == scheduled -> stringResource(R.string.me_week_schedule_on_track)
+                                    scheduled != null -> stringResource(R.string.me_week_schedule_remaining, scheduled - weeklyRunGoal.completedRuns)
+                                    else -> stringResource(R.string.me_week_runs_remaining, target - weeklyRunGoal.completedRuns)
+                                }
+                                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } else {
+                                Text(stringResource(if (weeklyRunGoal == null) R.string.me_week_run_goal_unavailable else R.string.me_week_no_run_goal), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                         }
                     }
@@ -534,7 +569,7 @@ private fun formatWeeklyDistance(state: SettingsUiState, localMeters: Double): S
     else "%.1f".format(meters / 1_609.344)
 }
 
-@Composable private fun SummaryStat(value: String, label: String) = Column(horizontalAlignment = Alignment.CenterHorizontally) {
+@Composable private fun SummaryStat(value: String, label: String, modifier: Modifier = Modifier) = Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
     Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }

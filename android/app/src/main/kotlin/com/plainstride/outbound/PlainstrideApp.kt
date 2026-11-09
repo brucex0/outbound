@@ -888,8 +888,11 @@ private fun SignedInApp(
                             }.distinctBy(MeMilestone::id),
                             accountWeeklyMinutes = (integration.progress.accountWeek?.durationSeconds ?: 0) / 60,
                             accountWeeklyDistanceMeters = integration.progress.accountWeek?.distanceMeters ?: 0.0,
-                            accountWeeklyActivityCount = integration.progress.accountWeek?.activityCount ?: 0,
-                            statisticsAvailable = integration.progress.isAvailable,
+                            weeklyRunGoal = integration.weeklyRunGoal,
+                            statisticsAvailable = integration.progress.isAvailable
+                                && integration.statisticsWeekStart?.let { !java.time.Instant.now().isBefore(it) } == true
+                                && integration.statisticsWeekEnd?.let { java.time.Instant.now().isBefore(it) } == true,
+                            onRefreshStatistics = integrationViewModel::refreshStatistics,
                             statisticsCached = integration.progress.isCached,
                             onMyQrCode = { navController.navigate(MY_QR_ROUTE) { launchSingleTop = true } },
                             onConnections = {

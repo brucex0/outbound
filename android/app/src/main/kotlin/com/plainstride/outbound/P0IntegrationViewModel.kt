@@ -53,6 +53,9 @@ data class P0IntegrationState(
     val notificationAccountId: String? = null,
     val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList())),
     val completedToday: Boolean = false,
+    val weeklyRunGoal: com.plainstride.outbound.core.model.WeeklyRunGoal? = null,
+    val statisticsWeekStart: Instant? = null,
+    val statisticsWeekEnd: Instant? = null,
     val coachingReferencePace: Double? = null,
     val defaultGearId: String? = null,
     val gearShoes: List<GearItem> = emptyList(),
@@ -114,7 +117,7 @@ data class P0IntegrationState(
         this.accountId = accountId
         this.locale = locale
         serverStatistics = null
-        mutable.update { it.copy(progress = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList()))) }
+        mutable.update { it.copy(progress = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList())), weeklyRunGoal = null, statisticsWeekStart = null, statisticsWeekEnd = null) }
         pendingObservation?.cancel()
         pendingObservation = viewModelScope.launch { activities.observePendingSyncCount(accountId).collect { pending -> mutable.update { it.copy(progress = it.progress.copy(pendingChanges = pending, isCached = it.progress.isCached || pending > 0)) } } }
         statisticsObservation?.cancel()
@@ -125,8 +128,15 @@ data class P0IntegrationState(
                     val zone = java.time.ZoneId.of(payload.getValue("timeZone").jsonPrimitive.content)
                     val all = payload.getValue("all").jsonObject.progressSnapshot(zone)
                     val sports = payload.getValue("sports").jsonObject.mapValues { it.value.jsonObject.progressSnapshot(zone) }
+                    val weeklyRunGoal = payload["weeklyRunGoal"]?.jsonObject?.let { goal ->
+                        com.plainstride.outbound.core.model.WeeklyRunGoal(
+                            completedRuns = goal.getValue("completedRuns").jsonPrimitive.content.toInt(),
+                            targetRuns = goal["targetRuns"]?.jsonPrimitive?.intOrNull,
+                            scheduledRunsByToday = goal["scheduledRunsByToday"]?.jsonPrimitive?.intOrNull,
+                        )
+                    }
                     serverStatistics = payload
-                    mutable.update { state -> state.copy(coachingReferencePace = payload["coachingReferencePace"]?.jsonPrimitive?.doubleOrNull, progress = state.progress.copy(stats = all, bySport = sports, isAvailable = true, isCached = state.progress.pendingChanges > 0 || java.time.Duration.between(Instant.parse(payload.getValue("computedAt").jsonPrimitive.content), Instant.now()).seconds > 60, accountWeek = payload.getValue("currentWeek").jsonObject.statisticsTotals())) }
+                    mutable.update { state -> state.copy(weeklyRunGoal = weeklyRunGoal, statisticsWeekStart = Instant.parse(payload.getValue("weekStart").jsonPrimitive.content), statisticsWeekEnd = Instant.parse(payload.getValue("weekEnd").jsonPrimitive.content), coachingReferencePace = payload["coachingReferencePace"]?.jsonPrimitive?.doubleOrNull, progress = state.progress.copy(stats = all, bySport = sports, isAvailable = true, isCached = state.progress.pendingChanges > 0 || java.time.Duration.between(Instant.parse(payload.getValue("computedAt").jsonPrimitive.content), Instant.now()).seconds > 60, accountWeek = payload.getValue("currentWeek").jsonObject.statisticsTotals())) }
                     refreshGearState()
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e

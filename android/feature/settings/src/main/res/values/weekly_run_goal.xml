@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_week_total_distance">Total distance</string>
+    <string name="me_week_run_goal">Weekly run goal</string>
+    <string name="me_week_run_progress">%1$d of %2$d</string>
+    <string name="me_week_run_goal_unavailable">Run goal unavailable</string>
+    <string name="me_week_no_run_goal">No weekly run goal set.</string>
+    <string name="me_week_all_runs_count">Runs count once they reach 5 min or 500 m.</string>
+    <string name="me_week_goal_reached">Weekly run goal reached.</string>
+    <string name="me_week_runs_remaining">Remaining this week: %d</string>
+    <string name="me_week_statistics_unavailable">Connect to load statistics for this week.</string>
+    <string name="me_week_distance_value_km">%s km</string>
+    <string name="me_week_distance_value_mi">%s mi</string>
+    <string name="me_week_above_goal">Above weekly run goal: %d</string>
+    <string name="me_week_runs_logged">Runs logged: %d</string>
+    <string name="me_week_schedule_ahead">%d ahead of your usual schedule</string>
+    <string name="me_week_schedule_on_track">On your usual schedule</string>
+    <string name="me_week_schedule_remaining">%d more to match your usual schedule by today</string>
+</resources>

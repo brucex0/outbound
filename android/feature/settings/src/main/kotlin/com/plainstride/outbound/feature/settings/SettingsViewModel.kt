@@ -127,6 +127,10 @@ class SettingsViewModel @Inject constructor(
         AnalyticsEvent("onboarding_replay_requested", mapOf(AnalyticsProperty.Source to "settings"))
     )
 
+    fun trackWeeklyRunGoal() = analytics.record(
+        AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "me_weekly_run_goal"))
+    )
+
     fun trackMeDestination(destination: String) = analytics.record(
         AnalyticsEvent("me_destination_opened", mapOf(AnalyticsProperty.Destination to destination, AnalyticsProperty.EntrySource to "me"))
     )

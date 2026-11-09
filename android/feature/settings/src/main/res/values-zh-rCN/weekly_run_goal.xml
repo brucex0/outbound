@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="me_week_total_distance">总距离</string>
+    <string name="me_week_run_goal">每周跑步目标</string>
+    <string name="me_week_run_progress">%1$d / %2$d</string>
+    <string name="me_week_run_goal_unavailable">跑步目标暂不可用</string>
+    <string name="me_week_no_run_goal">尚未设置每周跑步目标。</string>
+    <string name="me_week_all_runs_count">跑步达到 5 分钟或 500 米即可计入。</string>
+    <string name="me_week_goal_reached">已完成每周跑步目标。</string>
+    <string name="me_week_runs_remaining">本周还需：%d 次</string>
+    <string name="me_week_statistics_unavailable">请联网加载本周统计。</string>
+    <string name="me_week_distance_value_km">%s 公里</string>
+    <string name="me_week_distance_value_mi">%s 英里</string>
+    <string name="me_week_above_goal">超出每周跑步目标：%d 次</string>
+    <string name="me_week_runs_logged">已跑：%d 次</string>
+    <string name="me_week_schedule_ahead">比常用安排多跑 %d 次</string>
+    <string name="me_week_schedule_on_track">与常用安排一致</string>
+    <string name="me_week_schedule_remaining">截至今天还需跑 %d 次以跟上常用安排</string>
+</resources>
