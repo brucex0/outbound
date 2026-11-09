@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_details_adaptive_consistency">自适应基础训练计划</string>
+    <string name="plan_details_adaptive_comeback">自适应回归计划</string>
+    <string name="plan_details_adaptive_5k">自适应 5K 计划</string>
+    <string name="plan_details_adaptive_10k">自适应 10K 计划</string>
+    <string name="plan_details_adaptive_10mile">自适应 10 英里计划</string>
+    <string name="plan_details_adaptive_half">自适应半程马拉松计划</string>
+    <string name="plan_details_adaptive_marathon">自适应马拉松计划</string>
+</resources>

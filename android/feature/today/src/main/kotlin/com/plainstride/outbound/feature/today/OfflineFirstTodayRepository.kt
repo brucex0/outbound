@@ -132,6 +132,8 @@ class OfflineFirstTodayRepository @Inject constructor(
     }
     override suspend fun updateRunnerProfile(accountId: String, localeTag: String, request: RunnerProfileRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.updateProfile(it, request) } }
     override suspend fun submitReadiness(accountId: String, localeTag: String, request: ReadinessCheckInRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.submitReadiness(it, request) } }
+    override suspend fun previewWorkoutAdjustment(request: com.plainstride.outbound.core.network.WorkoutAdjustmentPreviewRequest) =
+        authenticated { apiCall { api.previewWorkoutAdjustment(it, request) } }.map { it.adjustment }
     override suspend fun decideAdjustment(accountId: String, localeTag: String, adjustmentId: String, accept: Boolean): Result<Unit> =
         authenticated { authorization ->
             apiCall {

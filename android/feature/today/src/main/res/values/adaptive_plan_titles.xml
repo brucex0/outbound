@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_details_adaptive_consistency">Adaptive base builder</string>
+    <string name="plan_details_adaptive_comeback">Adaptive comeback plan</string>
+    <string name="plan_details_adaptive_5k">Adaptive 5K plan</string>
+    <string name="plan_details_adaptive_10k">Adaptive 10K plan</string>
+    <string name="plan_details_adaptive_10mile">Adaptive 10 mile plan</string>
+    <string name="plan_details_adaptive_half">Adaptive half marathon plan</string>
+    <string name="plan_details_adaptive_marathon">Adaptive marathon plan</string>
+</resources>

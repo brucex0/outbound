@@ -21,6 +21,7 @@ import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.ActivitySuggestionEnvelope
+import com.plainstride.outbound.core.model.isCurrent
 import com.plainstride.outbound.core.model.AdjustmentProposal
 import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.core.model.PersonalizationSnapshot
@@ -53,7 +54,7 @@ data class WorkoutLaunchIntent(
 enum class TodayConstraint(val wireValue: String) {
     LowEnergy("tired"),
     Soreness("sore"),
-    LimitedTime("short_on_time"),
+    LimitedTime("shortOnTime"),
     FeelingGood("good"),
 }
 
@@ -67,6 +68,8 @@ data class TodayUiState(
     val refreshError: TodayDataError? = null,
     val activeSession: Boolean = false,
     val completedToday: Boolean = false,
+    val workoutAdjustment: AdjustmentProposal? = null,
+    val adjustmentDecisionVersion: Int = 0,
 ) {
     val planningSnapshot: PlanningState?
         get() = when (planning) {
@@ -82,7 +85,7 @@ data class TodayUiState(
                 CachedResource.Loading -> null
             } ?: return null
             return snapshot.takeIf {
-                it.primary != null && it.validForDate == java.time.LocalDate.now().toString()
+                it.primary != null && it.isCurrent()
             }
         }
     val hasConfirmedNoPlan: Boolean
@@ -94,14 +97,14 @@ data class TodayUiState(
                 CachedResource.Loading -> null
             }
             val hasCurrentPlanSuggestion = planSuggestion?.planContext != null &&
-                planSuggestion.validForDate == java.time.LocalDate.now().toString()
+                planSuggestion.isCurrent()
             return snapshot.value.plan == null && !snapshot.isStale && !refreshing &&
                 refreshError == null && !hasCurrentPlanSuggestion
         }
     val primarySuggestion: ActivitySuggestion?
         get() = (suggestion as? CachedResource.Available)?.value?.primary
     val pendingAdjustment: AdjustmentProposal?
-        get() = (personalization as? CachedResource.Available)?.value?.pendingAdjustment
+        get() = workoutAdjustment
     val isStale: Boolean
         get() = (suggestion as? CachedResource.Available)?.isStale == true
     val suggestionUpdatedAtEpochMs: Long?
@@ -149,6 +152,8 @@ class TodayViewModel @Inject constructor(
     val weather = mutableWeather
     private val mutablePlanPicker = MutableStateFlow(PlanPickerUiState())
     val planPicker = mutablePlanPicker
+    private val previewAdjustment = MutableStateFlow<AdjustmentProposal?>(null)
+    private val adjustmentDecisionVersion = MutableStateFlow(0)
 
     val raceHistory = accountScope.flatMapLatest { activities.observeAll(it.first) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -162,6 +167,8 @@ class TodayViewModel @Inject constructor(
     ) { planning, suggestion, personalization, catalog, meta ->
         val plannedCompletion = (planning as? CachedResource.Available)?.value?.today?.status == "completed"
         TodayUiState(planning, suggestion, personalization, catalog, meta.refreshing, meta.mutating, meta.error, meta.session.first, plannedCompletion)
+    }.combine(combine(previewAdjustment, adjustmentDecisionVersion) { proposal, version -> proposal to version }) { snapshot, preview ->
+        snapshot.copy(workoutAdjustment = preview.first, adjustmentDecisionVersion = preview.second)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 
     init { refreshWeather() }
@@ -169,6 +176,8 @@ class TodayViewModel @Inject constructor(
     fun configure(accountId: String, localeTag: String) {
         if (accountScope.value == accountId to localeTag) return
         accountScope.value = accountId to localeTag
+        previewAdjustment.value = null
+        adjustmentDecisionVersion.value = 0
         refresh()
     }
 
@@ -310,34 +319,67 @@ class TodayViewModel @Inject constructor(
 
     fun submitConstraint(constraint: TodayConstraint, workoutId: String, note: String?) {
         if (mutationInFlight.value) return
+        val scope = accountScope.value
+        val envelope = state.value.currentRecommendationSnapshot
+        val original = envelope?.primary
+        if (original == null || (original.plannedWorkoutId ?: original.id) != workoutId) {
+            android.util.Log.w("PlainstridePlanning", "Workout adjustment preview unavailable category=stale_selection")
+            messages.tryEmit(TodayMessage.CouldNotAdjust)
+            return
+        }
         viewModelScope.launch {
             mutationInFlight.value = true
-            analytics.record(AnalyticsEvent("today_adjustment_selected", mapOf(AnalyticsProperty.Result to constraint.wireValue)))
-            val (accountId, localeTag) = accountScope.value
-            val result = repository.submitReadiness(
-                accountId,
-                localeTag,
-                ReadinessCheckInRequest(UUID.randomUUID().toString(), workoutId, Instant.now().toString(), constraint.wireValue, note?.take(160)),
-            )
-            mutationInFlight.value = false
-            if (result.isFailure) messages.emit(TodayMessage.CouldNotAdjust)
+            previewAdjustment.value = null
+            val analyticsChoice = if (constraint == TodayConstraint.LimitedTime) "short_on_time" else constraint.wireValue
+            analytics.record(AnalyticsEvent("today_adjustment_selected", mapOf(AnalyticsProperty.Result to analyticsChoice, AnalyticsProperty.SourceType to "workout_preview")))
+            try {
+                val result = repository.previewWorkoutAdjustment(com.plainstride.outbound.core.network.WorkoutAdjustmentPreviewRequest(
+                    workoutId, original.id, envelope.validForDate, constraint.wireValue, note?.take(160),
+                ))
+                if (accountScope.value != scope) return@launch
+                result.fold(
+                    onSuccess = { previewAdjustment.value = it; if (it == null) messages.emit(TodayMessage.OriginalKept) },
+                    onFailure = { error -> reportWorkoutAdjustmentFailure("preview", error) },
+                )
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                if (accountScope.value == scope) reportWorkoutAdjustmentFailure("preview", error)
+            } finally {
+                mutationInFlight.value = false
+            }
         }
     }
 
     fun decideAdjustment(adjustmentId: String, accept: Boolean) {
         if (mutationInFlight.value) return
+        val scope = accountScope.value
         viewModelScope.launch {
             mutationInFlight.value = true
-            val (accountId, localeTag) = accountScope.value
-            val result = repository.decideAdjustment(accountId, localeTag, adjustmentId, accept)
-            mutationInFlight.value = false
-            if (result.isSuccess) {
-                analytics.record(AnalyticsEvent("today_adjustment_decided", mapOf(AnalyticsProperty.Result to if (accept) "accepted" else "kept_original")))
-                messages.emit(if (accept) TodayMessage.AdjustmentApplied else TodayMessage.OriginalKept)
-            } else {
-                messages.emit(TodayMessage.CouldNotAdjust)
+            try {
+                val result = repository.decideAdjustment(scope.first, scope.second, adjustmentId, accept)
+                if (accountScope.value != scope) return@launch
+                if (result.isSuccess) {
+                    previewAdjustment.value = null
+                    adjustmentDecisionVersion.value += 1
+                    analytics.record(AnalyticsEvent("today_adjustment_decided", mapOf(AnalyticsProperty.Result to if (accept) "accepted" else "kept_original", AnalyticsProperty.SourceType to "workout_preview")))
+                    messages.emit(if (accept) TodayMessage.AdjustmentApplied else TodayMessage.OriginalKept)
+                } else {
+                    reportWorkoutAdjustmentFailure("decision", result.exceptionOrNull() ?: IllegalStateException())
+                }
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                if (accountScope.value == scope) reportWorkoutAdjustmentFailure("decision", error)
+            } finally {
+                mutationInFlight.value = false
             }
         }
+    }
+
+    private suspend fun reportWorkoutAdjustmentFailure(operation: String, error: Throwable) {
+        if (error is kotlinx.coroutines.CancellationException) throw error
+        val category = (error as? TodayRepositoryException)?.dataError?.javaClass?.simpleName ?: error.javaClass.simpleName
+        android.util.Log.w("PlainstridePlanning", "Workout adjustment $operation failed category=$category")
+        messages.emit(TodayMessage.CouldNotAdjust)
     }
 
     suspend fun updateRaceGoal(goalId: String, request: com.plainstride.outbound.core.network.RaceGoalUpdateRequest): Boolean {
@@ -368,12 +410,17 @@ class TodayViewModel @Inject constructor(
         ),
     )
 
-    fun trackWorkoutChangeOpened() = analytics.record(
+    fun trackWorkoutChangeOpened() {
+        previewAdjustment.value = null
+        analytics.record(
         AnalyticsEvent("planning_surface_opened", mapOf(
             AnalyticsProperty.SourceType to "workout_change",
             AnalyticsProperty.EntrySource to "today_planned_card_change",
         )),
-    )
+        )
+    }
+
+    fun clearWorkoutPreview() { previewAdjustment.value = null }
 
     fun trackPlannedWorkoutDetailsOpened() = analytics.record(
         AnalyticsEvent("planning_surface_opened", mapOf(

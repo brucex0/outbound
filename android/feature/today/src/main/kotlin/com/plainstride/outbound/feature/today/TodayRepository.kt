@@ -50,6 +50,7 @@ interface TodayRepository {
     suspend fun clearPlan(accountId: String, localeTag: String): Result<PlanningState>
     suspend fun updateRunnerProfile(accountId: String, localeTag: String, request: RunnerProfileRequest): Result<PersonalizationSnapshot>
     suspend fun submitReadiness(accountId: String, localeTag: String, request: ReadinessCheckInRequest): Result<PersonalizationSnapshot>
+    suspend fun previewWorkoutAdjustment(request: com.plainstride.outbound.core.network.WorkoutAdjustmentPreviewRequest): Result<com.plainstride.outbound.core.model.AdjustmentProposal?>
     suspend fun decideAdjustment(accountId: String, localeTag: String, adjustmentId: String, accept: Boolean): Result<Unit>
     suspend fun submitFeedback(accountId: String, localeTag: String, request: WorkoutFeedbackRequest): Result<PersonalizationSnapshot>
     suspend fun trainingProfile(): Result<TrainingProfile>

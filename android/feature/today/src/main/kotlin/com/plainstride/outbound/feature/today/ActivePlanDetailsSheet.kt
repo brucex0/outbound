@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import com.plainstride.outbound.core.model.ActivitySuggestion
+import com.plainstride.outbound.core.model.isCurrent
 import com.plainstride.outbound.core.model.ActivitySuggestionEnvelope
 import com.plainstride.outbound.core.model.PlannedWorkout
 import com.plainstride.outbound.core.model.PlanningState
@@ -70,12 +71,12 @@ internal fun ActivePlanDetailsSheet(
 ) {
     val plan = planning.plan ?: return
     val week = planning.planWeekSnapshot()
-    val today = LocalDate.now()
+    val today = LocalDate.now(java.time.ZoneOffset.UTC)
     val todayWorkout = week?.workouts?.firstOrNull { it.isFor(today) && it.status !in TERMINAL_WORKOUT_STATUSES }
     val todaySuggestion = suggestion?.takeIf {
         !suggestionStale &&
             it.planContext?.planId == plan.id &&
-            it.validForDate == today.toString()
+            it.isCurrent()
     }
     var confirmsEnd by rememberSaveable(plan.id) { mutableStateOf(false) }
     PlanDetailsSheet(onDismiss = onDismiss) {
@@ -319,15 +320,41 @@ private val TERMINAL_WORKOUT_STATUSES = setOf("completed", "skipped", "missed", 
 private fun PlannedWorkout.isFor(date: LocalDate): Boolean = planningLogicalDate(scheduledDate) == date
 
 @Composable
-private fun planTitle(planning: PlanningState): String = planning.goal?.targetEventName?.takeIf { it.isNotBlank() }
-    ?: stringResource(when (planning.goal?.type) {
-        "endurance" -> R.string.plan_details_goal_endurance
-        "speed" -> R.string.plan_details_goal_speed
-        "weightLoss" -> R.string.plan_details_goal_weight
-        "healthEnergy" -> R.string.plan_details_goal_health
-        "eventPreparation" -> R.string.plan_details_goal_event
-        else -> R.string.plan_details_active_plan
+private fun planTitle(planning: PlanningState): String {
+    val type = planning.goal?.type.orEmpty().lowercase(Locale.ROOT)
+    val distance = planning.goal?.targetDistanceMeters
+    val focus = when (type) {
+        "consistency" -> "consistency"
+        "comeback" -> "comeback"
+        "fivek" -> "5k"
+        "tenk" -> "10k"
+        "tenmile" -> "10mile"
+        "halfmarathon" -> "half"
+        "marathon" -> "marathon"
+        else -> when {
+            distance != null && distance >= 40_000 -> "marathon"
+            distance != null && distance >= 20_000 -> "half"
+            distance != null && distance >= 15_000 -> "10mile"
+            distance != null && distance >= 9_000 -> "10k"
+            distance != null && distance >= 4_000 -> "5k"
+            "comeback" in type -> "comeback"
+            "marathon" in type && "half" !in type -> "marathon"
+            "half" in type -> "half"
+            "10k" in type -> "10k"
+            "5k" in type -> "5k"
+            else -> "consistency"
+        }
+    }
+    return stringResource(when (focus) {
+        "comeback" -> R.string.plan_details_adaptive_comeback
+        "5k" -> R.string.plan_details_adaptive_5k
+        "10k" -> R.string.plan_details_adaptive_10k
+        "10mile" -> R.string.plan_details_adaptive_10mile
+        "half" -> R.string.plan_details_adaptive_half
+        "marathon" -> R.string.plan_details_adaptive_marathon
+        else -> R.string.plan_details_adaptive_consistency
     })
+}
 
 @Composable
 private fun PlanSectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {

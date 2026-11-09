@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_details_adaptive_consistency">Plan de base adaptativo</string>
+    <string name="plan_details_adaptive_comeback">Plan de regreso adaptativo</string>
+    <string name="plan_details_adaptive_5k">Plan adaptativo de 5K</string>
+    <string name="plan_details_adaptive_10k">Plan adaptativo de 10K</string>
+    <string name="plan_details_adaptive_10mile">Plan adaptativo de 10 millas</string>
+    <string name="plan_details_adaptive_half">Plan adaptativo de media maratón</string>
+    <string name="plan_details_adaptive_marathon">Plan adaptativo de maratón</string>
+</resources>

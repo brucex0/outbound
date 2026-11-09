@@ -10,4 +10,7 @@ android {
     defaultConfig { minSdk = 26 }
 }
 
-dependencies { implementation(libs.kotlinx.serialization.json) }
+dependencies {
+    implementation(libs.kotlinx.serialization.json)
+    testImplementation("junit:junit:4.13.2")
+}

@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +34,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Badge
@@ -96,9 +98,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -254,6 +256,7 @@ fun TodayRoute(
         onUpdateRaceGoal = viewModel::updateRaceGoal,
         onRaceGoalOpened = viewModel::trackRaceGoalOpened,
         onWorkoutChangeOpened = viewModel::trackWorkoutChangeOpened,
+        onClearWorkoutPreview = viewModel::clearWorkoutPreview,
         onDismissPlanPicker = viewModel::closePlanPicker,
         onRetryPlanPicker = { viewModel.openPlanPicker() },
         onChangePlan = { viewModel.openPlanPicker("plan_details_change") },
@@ -333,6 +336,7 @@ fun TodayScreen(
     onUpdateRaceGoal: suspend (String, com.plainstride.outbound.core.network.RaceGoalUpdateRequest) -> Boolean = { _, _ -> false },
     onRaceGoalOpened: () -> Unit = {},
     onWorkoutChangeOpened: () -> Unit = {},
+    onClearWorkoutPreview: () -> Unit = {},
     onDismissPlanPicker: () -> Unit = {},
     onRetryPlanPicker: () -> Unit = {},
     onSelectPlan: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit = {},
@@ -405,6 +409,9 @@ fun TodayScreen(
         }
     }
     var showsChange by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.adjustmentDecisionVersion) {
+        if (state.adjustmentDecisionVersion > 0) showsChange = false
+    }
     var showsWeather by rememberSaveable { mutableStateOf(false) }
     var showsRacePlanner by rememberSaveable { mutableStateOf(false) }
     var racePlan by rememberSaveable(saver = androidx.compose.runtime.saveable.listSaver<androidx.compose.runtime.MutableState<TodayRacePlan?>, Any>(
@@ -723,7 +730,8 @@ fun TodayScreen(
         busy = state.mutationInFlight,
         onDismiss = { showsChange = false },
         onSubmit = onSubmitConstraint,
-        onDecision = { id, accept -> onDecideAdjustment(id, accept); showsChange = false },
+        onDecision = onDecideAdjustment,
+        onSelectionChanged = onClearWorkoutPreview,
     )
     if (showsWeather && weather != null) {
         val uriHandler = LocalUriHandler.current
@@ -1373,25 +1381,31 @@ private fun ChangeWorkoutSheet(
     onDismiss: () -> Unit,
     onSubmit: (TodayConstraint, String, String?) -> Unit,
     onDecision: (String, Boolean) -> Unit,
+    onSelectionChanged: () -> Unit,
 ) {
-    var selected by rememberSaveable { mutableStateOf<TodayConstraint?>(null) }
+    var selectedConstraint by rememberSaveable { mutableStateOf<TodayConstraint?>(null) }
     var note by rememberSaveable { mutableStateOf("") }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stringResource(R.string.today_change_title), Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.today_change_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
             TodayConstraint.entries.forEach { choice ->
                 OutlinedButton(
-                    onClick = { selected = choice },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    onClick = { selectedConstraint = choice; onSelectionChanged() },
+                    enabled = !busy,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (selectedConstraint == choice) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                        contentColor = if (selectedConstraint == choice) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+                    ),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { selected = selectedConstraint == choice },
                 ) { Text(stringResource(choice.labelResource())) }
             }
-            OutlinedTextField(note, { note = it.take(160) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.today_optional_note)) }, maxLines = 3)
+            OutlinedTextField(note, { note = it.take(160) }, Modifier.fillMaxWidth(), enabled = !busy, label = { Text(stringResource(R.string.today_optional_note)) }, maxLines = 3)
             if (pending == null) {
-                Button(onClick = { selected?.let { onSubmit(it, original.plannedWorkoutId ?: original.id, note.ifBlank { null }) } }, enabled = selected != null && !busy, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { selectedConstraint?.let { onSubmit(it, original.plannedWorkoutId ?: original.id, note.ifBlank { null }) } }, enabled = selectedConstraint != null && !busy, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.today_show_alternative))
                 }
-                TextButton(onClick = onDismiss, Modifier.fillMaxWidth()) { Text(stringResource(R.string.today_keep_original)) }
+                TextButton(onClick = onDismiss, Modifier.fillMaxWidth(), enabled = !busy) { Text(stringResource(R.string.today_keep_original)) }
             } else {
                 HorizontalDivider()
                 Text(stringResource(R.string.today_recommendation), style = MaterialTheme.typography.titleMedium)
