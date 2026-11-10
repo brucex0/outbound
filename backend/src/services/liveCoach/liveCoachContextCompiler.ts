@@ -90,7 +90,10 @@ export async function compileLiveCoachContext(
   if (input.workoutId && !workout && !input.clientWorkout) {
     throw new AIProviderError("not_eligible", "The selected workout is unavailable for this runner.");
   }
-  const workoutExecution = resolveWorkoutExecution(input.workoutRef);
+  const prescription = workout?.prescription as Record<string, unknown> | undefined;
+  const catalogReference = typeof prescription?.catalogWorkoutId === "string" && typeof prescription.catalogVersion === "number"
+    ? { source: "standalone_catalog" as const, id: prescription.catalogWorkoutId, version: prescription.catalogVersion } : undefined;
+  const workoutExecution = resolveWorkoutExecution(catalogReference ?? input.workoutRef);
 
   const sevenDayActivities = activities.filter((activity) => activity.startedAt >= sevenDaysAgo);
   const olderBaselineActivities = activities.filter((activity) => activity.startedAt < sevenDaysAgo);

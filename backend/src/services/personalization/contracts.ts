@@ -89,7 +89,10 @@ export const workoutAdjustmentPreviewRequestSchema = z.object({
 export type WorkoutAdjustmentPreviewRequest = z.infer<typeof workoutAdjustmentPreviewRequestSchema>;
 export const workoutAdjustmentApplyRequestSchema = workoutAdjustmentPreviewRequestSchema.extend({
   idempotencyKey: z.string().uuid(),
-  minutes: z.union([z.literal(10), z.literal(15), z.literal(20)]),
+  minutes: z.number().int().min(5).max(360),
+  action: z.enum(["easy", "shorter", "rest", "catalog"]).optional(),
+  catalogWorkoutId: z.string().min(1).optional(),
+  catalogVersion: z.number().int().positive().optional(),
 });
 export type WorkoutAdjustmentApplyRequest = z.infer<typeof workoutAdjustmentApplyRequestSchema>;
 export const readinessCheckInRequestSchema = z.object({

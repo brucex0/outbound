@@ -402,6 +402,7 @@ function plannedWorkoutSuggestion(
     modality: toModality(workout.modality),
     stimulus: toStimulus(workout.stimulus),
     durationMinutes: Math.max(1, Math.round(workout.durationSeconds / 60)),
+    durationSeconds: workout.durationSeconds,
     distanceMeters: workout.distanceMeters,
     targetCalories: workout.targetCalories,
     effortLabel: effortLabelFor(workout.stimulus),

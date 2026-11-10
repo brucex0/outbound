@@ -309,6 +309,9 @@ export interface ActivitySuggestion {
   startLabel: string;
   plannedWorkoutId?: string | null;
   archetypeId?: string | null;
+  catalogWorkout?: import("../../data/standaloneWorkouts.js").StandaloneWorkoutCatalogItem;
+  catalogVersion?: number;
+  durationSeconds?: number;
   optional: boolean;
 }
 

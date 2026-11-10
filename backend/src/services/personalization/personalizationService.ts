@@ -1,3 +1,5 @@
+import { standaloneWorkoutCatalog } from "../../data/standaloneWorkouts.js";
+import type { ActivitySuggestion, TrainingStimulus } from "../planning/types.js";
 import { createHash } from "node:crypto";
 import { refreshGeneratedPlanInTransaction } from "../planning/planRefresh.js";
 import { lockPlanningUser, isOptionalWorkout } from "../planning/persistence.js";
@@ -101,37 +103,63 @@ export async function applyWorkoutAdjustment(userId: string, input: WorkoutAdjus
       || current.validForDate !== input.validForDate || baseline.decision.safetyFlags.length > 0) {
       throw new WorkoutAdjustmentError(409, "The recommendation changed. Refresh before applying a change.");
     }
-    if (input.choice === "good") throw new WorkoutAdjustmentError(409, "Choose a workout change first.");
-    const rest = input.choice === "sore";
-    const minutes = input.choice === "shortOnTime" ? input.minutes : 15;
+    if (input.choice === "good" && input.action !== "catalog") throw new WorkoutAdjustmentError(409, "Choose a workout change first.");
+    // Missing action uses the existing caller's reason-specific default.
+    const action = input.action ?? (input.choice === "sore" ? "rest" : input.choice === "shortOnTime" ? "shorter" : "easy");
+    if (input.choice === "sore" && action !== "rest") throw new WorkoutAdjustmentError(409, "Choose rest for soreness.");
+    const rest = action === "rest";
+    const catalog = action === "catalog" ? standaloneWorkoutCatalog.workouts.find((item) => item.id === input.catalogWorkoutId) : undefined;
+    if (action === "catalog" && (!catalog || input.catalogVersion !== standaloneWorkoutCatalog.version || catalog.sport !== primary.modality)) {
+      throw new WorkoutAdjustmentError(409, "The workout catalog changed. Refresh before choosing a workout.");
+    }
+    const plannedWorkout = primary.plannedWorkoutId ? await currentPreviewWorkout(tx, userId, primary.plannedWorkoutId, baseline.validForDate) : null;
+    const originalSeconds = plannedWorkout?.durationSeconds ?? primary.durationSeconds ?? primary.durationMinutes * 60;
+    const minutes = !input.action && input.choice === "tired" ? 15 : input.minutes;
+    if (action === "shorter" && minutes * 60 >= originalSeconds) {
+      throw new WorkoutAdjustmentError(409, "Choose a duration shorter than the current workout.");
+    }
+    if (input.action && action === "easy" && minutes * 60 > originalSeconds) {
+      throw new WorkoutAdjustmentError(409, "An easier workout cannot extend the current session.");
+    }
+    const durationSeconds = catalog ? catalog.targetDistanceMeters ? Math.round(catalog.targetDistanceMeters / 1000 * 420) : catalog.steps.reduce((sum, step) => sum + step.durationSeconds, 0) : minutes * 60;
     const movement = primary.modality === "bike" ? "ride" : primary.modality;
-    const title = rest ? "Rest today" : `${minutes} min easy ${movement}`;
-    const explanation = rest ? "Rest today. Return to activity when comfortable." : "Keep the effort easy and stop at the selected time.";
-    if (primary.plannedWorkoutId) {
-      const workout = await currentPreviewWorkout(tx, userId, primary.plannedWorkoutId, baseline.validForDate);
+    const title = rest ? "Rest today" : catalog?.title ?? `${minutes} min easy ${movement}`;
+    const explanation = rest ? "Rest today. Return to activity when comfortable." : catalog?.guideLine ?? "Keep the effort easy and stop at the selected time.";
+    const stimulus: TrainingStimulus = catalog ? ({ speed: "speed", tempo: "threshold", fartlek: "speed", hill: "speed", guided_distance: "longEndurance" } as Record<string, TrainingStimulus>)[catalog.category] ?? "easyAerobic" : "recovery";
+    const effortLabel = catalog ? `RPE ${Math.min(...catalog.guideInstructions.segments.map((segment) => segment.effort.rpeMin), 10)}–${Math.max(...catalog.guideInstructions.segments.map((segment) => segment.effort.rpeMax), 1)}` : "Very easy";
+    if (plannedWorkout) {
+      const workout = plannedWorkout;
       if (rest) {
         await tx.plannedWorkout.update({ where: { id: workout.id }, data: { status: "skipped" } });
       } else {
-        // This replaces the hard prescription, including repeats and distance/calorie targets.
-        // A one-off explicit 10/15 minute choice is not a change to the plan's weekly short-run preference.
         await tx.workoutBlock.deleteMany({ where: { plannedWorkoutId: workout.id } });
         await tx.plannedWorkout.update({ where: { id: workout.id }, data: {
-          title, durationSeconds: minutes * 60, distanceMeters: null, targetCalories: null,
-          stimulus: "recovery", intensityModel: "rpe", intensityTarget: { min: 1, max: 2 }, isKeyWorkout: false,
-          prescription: { optional: isOptionalWorkout(workout), source: "explicitWorkoutChange", allowShortSession: true },
-          blocks: { create: { sortOrder: 0, blockType: "main", modality: workout.modality, stimulus: "recovery", durationSeconds: minutes * 60,
-            steps: { create: { sortOrder: 0, kind: "recovery", label: title, durationSeconds: minutes * 60, target: { rpe: [1, 2] } } } } },
+          title, modality: catalog?.sport ?? workout.modality, durationSeconds, distanceMeters: catalog?.targetDistanceMeters ?? null, targetCalories: null,
+          stimulus, intensityModel: "rpe", intensityTarget: catalog ? {} : { min: 1, max: 2 }, isKeyWorkout: false,
+          prescription: { optional: isOptionalWorkout(workout), source: "explicitWorkoutChange", allowShortSession: true,
+            ...(catalog ? { catalogWorkoutId: catalog.id, catalogVersion: standaloneWorkoutCatalog.version } : {}) },
+          blocks: { create: catalog ? catalog.steps.map((step, sortOrder) => ({
+            sortOrder, blockType: step.coachingTarget?.phase ?? "main", modality: catalog.sport, stimulus,
+            durationSeconds: step.durationSeconds,
+            steps: { create: { sortOrder: 0, kind: step.coachingTarget?.phase ?? "easy", label: step.label,
+              durationSeconds: step.durationSeconds, detail: step.detail, target: (step.coachingTarget ?? {}) as Prisma.InputJsonValue } },
+          })) : [{ sortOrder: 0, blockType: "main", modality: workout.modality, stimulus, durationSeconds,
+            steps: { create: { sortOrder: 0, kind: "recovery", label: title, durationSeconds, target: { rpe: [1, 2] } } } }] },
         } });
       }
     }
     const nextBaseline = await buildBaseActivitySuggestion(userId, "stable", new Date(), tx);
-    const afterSuggestion = { ...primary, id: primary.plannedWorkoutId ? primary.id : `changed-${input.idempotencyKey}`,
-      title, durationMinutes: minutes, distanceMeters: null, targetCalories: null, stimulus: "recovery" as const,
-      intensityModel: "rpe" as const, intensityTarget: { min: 1, max: 2 }, effortLabel: "Very easy",
-      steps: [title], why: explanation, allowShortSession: true, runWalk: false, archetypeId: null };
+    const afterSuggestion: ActivitySuggestion = { ...primary, id: primary.plannedWorkoutId ? primary.id : `changed-${input.idempotencyKey}`,
+      title, durationMinutes: Math.ceil(durationSeconds / 60), durationSeconds, distanceMeters: catalog?.targetDistanceMeters ?? null, targetCalories: null, stimulus,
+      intensityModel: "rpe", intensityTarget: catalog ? {} : { min: 1, max: 2 }, effortLabel,
+      startLabel: catalog?.startLabel ?? primary.startLabel,
+      steps: catalog ? catalog.steps.map((step) => step.label) : [title], why: explanation, allowShortSession: true,
+      runWalk: catalog?.category === "walk_run", archetypeId: null,
+      // Persist the authoritative structure, so refetch/cache/relaunch use the selected guide.
+      catalogWorkout: catalog, catalogVersion: catalog ? standaloneWorkoutCatalog.version : undefined };
     await tx.personalizationAdjustment.create({ data: {
       id, userId, status: "applied", requiresConfirmation: false, decidedAt: new Date(), policyVersion: workoutApplyPolicy,
-      reasonCode: rest ? "soreness" : input.choice === "shortOnTime" ? "timeConstraint" : "fatigue", explanation,
+      reasonCode: input.choice === "sore" ? "soreness" : input.choice === "shortOnTime" ? "timeConstraint" : "fatigue", explanation,
       changes: [{ kind: "daily", rest, note: input.note?.trim() || null, workoutId: primary.id, beforeTitle: primary.title, afterTitle: title,
         date: baseline.validForDate, baselineFingerprint: rest ? restFingerprint(nextBaseline) : suggestionFingerprint(nextBaseline), readinessId: await latestReadinessId(tx, userId), afterSuggestion }] as unknown as Prisma.InputJsonValue,
     } });
