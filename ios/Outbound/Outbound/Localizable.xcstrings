@@ -372,19 +372,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not confirm the change. Refresh and try again."
+            "value": "Could not save. Your changes are kept. Try again, or reopen Change workout to refresh."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo confirmar el cambio. Actualiza e inténtalo de nuevo."
+            "value": "No se pudo guardar. Tus cambios se conservan. Inténtalo de nuevo o vuelve a abrir Cambiar entrenamiento para actualizar."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法确认调整结果。请刷新后重试。"
+            "value": "未能保存，已保留你的修改。请重试，或重新打开“更改训练”以刷新。"
           }
         }
       }

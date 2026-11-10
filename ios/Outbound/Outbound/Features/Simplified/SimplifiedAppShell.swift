@@ -1001,6 +1001,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsSocialInbox = false
     @State private var presentedAdjustmentID: String?
     @State private var isApplyingWorkoutChange = false
+    @State private var pendingWorkoutChangeBaseline: ActivitySuggestionResponse?
     @State private var pendingWorkoutChange: WorkoutEditApplyRequestDTO?
     @State private var workoutChangeToast: ProfileToast?
 
@@ -1172,20 +1173,52 @@ private struct SimplifiedTodayView: View {
 
     @MainActor private func applyWorkoutChange(_ selection: TodayWorkoutChangeSelection) async -> Bool {
         guard !isApplyingWorkoutChange else { return false }
-        guard let envelope = selection.baseline, let primary = envelope.primary,
-              let context = envelope.editContext, envelope.isValid() else {
-            return false
-        }
-        var request = WorkoutEditApplyRequestDTO(
-            idempotencyKey: pendingWorkoutChange?.idempotencyKey ?? UUID().uuidString,
-            plannedWorkoutId: primary.plannedWorkoutId, suggestionId: primary.id,
-            validForDate: envelope.validForDate, baseRevision: context.baseRevision,
-            reason: selection.reason, change: selection.change
-        )
-        if pendingWorkoutChange != request { request.idempotencyKey = UUID().uuidString }
-        pendingWorkoutChange = request
+        guard var envelope = selection.baseline, envelope.primary != nil else { return false }
         isApplyingWorkoutChange = true
         defer { isApplyingWorkoutChange = false }
+        // Retry an already-submitted command verbatim after an ambiguous response.
+        // Re-fetching first could observe our own successful edit and reject its old baseline.
+        let retry: WorkoutEditApplyRequestDTO? = pendingWorkoutChange.flatMap { pending in
+            pendingWorkoutChangeBaseline == selection.baseline
+                && pending.plannedWorkoutId == envelope.primary?.plannedWorkoutId
+                && pending.suggestionId == envelope.primary?.id
+                && pending.validForDate == envelope.validForDate
+                && pending.reason == selection.reason && pending.change == selection.change ? pending : nil
+        }
+        if retry == nil && (envelope.editContext == nil || !envelope.isValid()) {
+            do {
+                let refreshed = try await trainingPlanStore.refreshWorkoutEditSuggestion()
+                // A local draft cannot be attached to a changed slot, day or prescription.
+                // Keep the frozen sheet intact; the next opening uses the refreshed state.
+                guard refreshed.isValid(), refreshed.editContext != nil,
+                      refreshed.validForDate == envelope.validForDate,
+                      refreshed.primary == envelope.primary,
+                      refreshed.planVersionId == envelope.planVersionId,
+                      refreshed.planContext == envelope.planContext,
+                      refreshed.activityWatermark == envelope.activityWatermark,
+                      refreshed.decision == envelope.decision else {
+                    ActivityDiagnosticLog.notice(.sync, "operation=refresh_workout_edit_baseline result=unavailable_or_changed")
+                    await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("failed"), .sourceType: .string("workout_change")]))
+                    return false
+                }
+                envelope = refreshed
+            } catch is CancellationError { return false }
+            catch {
+                ActivityDiagnosticLog.error(.sync, "operation=refresh_workout_edit_baseline error=\(ActivityDiagnosticLog.errorCategory(error))")
+                await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("failed"), .sourceType: .string("workout_change")]))
+                return false
+            }
+        }
+        guard let primary = envelope.primary else { return false }
+        guard let revision = retry?.baseRevision ?? envelope.editContext?.baseRevision else { return false }
+        let request = WorkoutEditApplyRequestDTO(
+            idempotencyKey: retry?.idempotencyKey ?? UUID().uuidString,
+            plannedWorkoutId: primary.plannedWorkoutId, suggestionId: primary.id,
+            validForDate: envelope.validForDate, baseRevision: revision,
+            reason: selection.reason, change: selection.change
+        )
+        pendingWorkoutChange = request
+        pendingWorkoutChangeBaseline = selection.baseline
         await analyticsManager?.track(.init(.todayAdjustmentSelected, properties: [
             .result: .string(selection.change.operation), .sourceType: .string("workout_change")
         ]))
@@ -1194,6 +1227,7 @@ private struct SimplifiedTodayView: View {
             await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("saved"), .sourceType: .string("workout_change")]))
             customizedRunIntent = nil
             pendingWorkoutChange = nil
+            pendingWorkoutChangeBaseline = nil
             workoutChangePresentation = nil
             let confirmation = String(localized: "today.change.applied", defaultValue: "Workout change applied")
             workoutChangeToast = ProfileToast(text: confirmation, style: .success)
@@ -1680,8 +1714,15 @@ private struct SimplifiedTodayView: View {
         guard workoutChangePresentation == nil else { return }
         // Item-driven presentation freezes identity and content before the first sheet frame.
         // A background refresh must never attach an existing draft to a new slot/revision.
+        var baseline = trainingPlanStore.activitySuggestion
+#if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData"),
+           ProcessInfo.processInfo.arguments.contains("-OutboundWorkoutEditMissingContextUITest") {
+            baseline?.editContext = nil
+        }
+#endif
         workoutChangePresentation = TodayWorkoutEditPresentation(
-            baseline: trainingPlanStore.activitySuggestion,
+            baseline: baseline,
             displayedOverride: customizedRunIntent ?? currentCalibrationWorkout?.sessionIntent
         )
     }

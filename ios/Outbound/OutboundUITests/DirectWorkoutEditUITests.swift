@@ -85,6 +85,69 @@ final class DirectWorkoutEditUITests: XCTestCase {
     }
 
     @MainActor
+    func testMissingCapabilitiesKeepLocalDraftEditable() async throws {
+        try await control("reset")
+        let app = launchFixtureApp(extraArguments: ["-OutboundAPIBaseURL", base + "/v1", "-OutboundWorkoutEditMissingContextUITest", "-measurement_unit_system_v1", "metric"])
+        let change = app.buttons["todayDirectEdit"]
+        XCTAssertTrue(change.waitForExistence(timeout: 30))
+        change.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let target = app.textFields["todayEditTarget"]
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        XCTAssertTrue(target.isEnabled)
+        XCTAssertTrue(app.buttons["todayEditGoal"].isEnabled)
+        XCTAssertTrue(app.buttons["todayEditEffort"].isEnabled)
+        XCTAssertTrue(app.buttons["todayEditChooseWorkout"].isEnabled)
+        XCTAssertTrue(app.buttons["todayEditSkip"].isEnabled)
+        app.buttons["todayEditGoal"].tap(); app.buttons["Distance"].tap()
+        target.tap(); target.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "4")
+        app.buttons["Done"].firstMatch.tap()
+        app.buttons["todayEditEffort"].tap(); app.buttons.matching(identifier: "Steady").allElementsBoundByIndex.last!.tap()
+        app.buttons["todayEditReason"].tap(); app.buttons["Other"].tap()
+        XCTAssertEqual(target.value as? String, "4")
+        capture("25-local-draft-without-capabilities")
+        // Goal drafting is local; the existing multi-phase fixture only authorizes time saves.
+        app.buttons["todayEditGoal"].tap(); app.buttons["Time"].tap()
+        target.tap(); target.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "25:30")
+        app.buttons["Done"].firstMatch.tap()
+        app.buttons["todayEditChooseWorkout"].tap()
+        let workout = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Easy 30")).firstMatch
+        reveal(workout, in: app); workout.tap()
+        let use = app.buttons["todayEditUseWorkout"]
+        reveal(use, in: app)
+        try await control("fail-next")
+        use.tap()
+        XCTAssertTrue(app.staticTexts["todayEditUseFailure"].waitForExistence(timeout: 10))
+        XCTAssertTrue(use.isEnabled)
+        capture("26-local-picker-selection-retained-after-failure")
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Close"].tap()
+        XCTAssertEqual(target.value as? String, "25:30")
+        XCTAssertTrue(app.buttons["todayEditEffort"].label.contains("Steady"))
+        try await control("drop-response-next")
+        app.buttons["todayChangeApply"].tap()
+        XCTAssertTrue(app.staticTexts["todayEditFailure"].waitForExistence(timeout: 10))
+        XCTAssertEqual(target.value as? String, "25:30")
+        XCTAssertTrue(target.isEnabled)
+        capture("27-local-draft-retained-after-apply-failure")
+        app.buttons["todayChangeApply"].tap()
+        XCTAssertTrue(target.waitForNonExistence(timeout: 15))
+        capture("28-local-draft-retry-saved")
+        change.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        target.tap(); target.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "5")
+        app.buttons["Done"].firstMatch.tap()
+        _ = try await fixtureJSON("/__fixture/reset", body: ["duration": 1800])
+        app.buttons["todayChangeApply"].tap()
+        XCTAssertTrue(app.staticTexts["todayEditFailure"].waitForExistence(timeout: 10))
+        XCTAssertEqual(target.value as? String, "5", "Changed canonical slot must not retarget this draft")
+        capture("29-changed-baseline-retains-local-draft")
+        app.buttons["Cancel"].tap()
+        change.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        XCTAssertEqual(target.value as? String, "30", "Next opening uses the refreshed canonical workout")
+    }
+
+    @MainActor
     func testNarrowLargestSpanishDark() async throws {
         try await control("reset")
         let app = launchFixtureApp(extraArguments: [

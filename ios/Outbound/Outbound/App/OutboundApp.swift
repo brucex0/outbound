@@ -1157,6 +1157,18 @@ final class TrainingPlanStore: ObservableObject {
         applyServerState(state, now: now)
     }
 
+    func refreshWorkoutEditSuggestion(now: Date = Date()) async throws -> ActivitySuggestionResponse {
+        refreshTask?.cancel()
+        let suggestion = try await api.fetchActivitySuggestion()
+        try Task.checkCancellation()
+        if suggestion.isValid(now: now) {
+            activitySuggestion = suggestion
+            todaySuggestion = suggestion.todayTrainingSuggestion()
+            persistState()
+        }
+        return suggestion
+    }
+
     func refetchAfterWorkoutMutation(now: Date = Date()) async throws {
         refreshTask?.cancel()
         let state = try await api.fetchTrainingPlanState(readiness: lastReadiness)

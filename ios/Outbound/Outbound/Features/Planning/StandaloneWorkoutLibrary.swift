@@ -264,7 +264,7 @@ private struct StandaloneWorkoutUseView: View {
                     Task {
                         failed = !(await onUse(workout)); busy = false
                         if failed { UIAccessibility.post(notification: .announcement,
-                            argument: String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again.")) }
+                            argument: String(localized: "today.change.failed", defaultValue: "Could not save. Your changes are kept. Try again, or reopen Change workout to refresh.")) }
                     }
                 }.disabled(busy).accessibilityIdentifier("todayEditUseWorkout")
                 if busy { ProgressView(String(localized: "today.edit.saving", defaultValue: "Saving…")).accessibilityIdentifier("todayEditUseSaving") }
@@ -277,7 +277,7 @@ private struct StandaloneWorkoutUseView: View {
         .interactiveDismissDisabled(busy)
         .overlay(alignment: .top) {
             if failed {
-                Text(String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again."))
+                Text(String(localized: "today.change.failed", defaultValue: "Could not save. Your changes are kept. Try again, or reopen Change workout to refresh."))
                     .font(.body).padding(OutboundSpacing.standard)
                     .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: OutboundRadius.card))
                     .padding(OutboundSpacing.screen).allowsHitTesting(false).accessibilityIdentifier("todayEditUseFailure")

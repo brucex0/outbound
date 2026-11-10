@@ -55,25 +55,31 @@ struct TodayChangeSheet: View {
     }
     private var currentDistance: Double? { displayedOverride != nil ? displayedOverride?.targetDistanceMeters : original?.distanceMeters }
     private var currentEffortLabel: String { displayedOverride?.detail ?? BuiltinWorkoutText.localized(original?.effortLabel ?? "Easy") }
-    private var canEditTarget: Bool { displayedOverride == nil && context?.canEditTarget == true }
-    private var canEditEffort: Bool { displayedOverride == nil && context?.canEditEffort == true }
+    private var canEditTarget: Bool { displayedOverride == nil && (context?.canEditTarget ?? true) }
+    private var canEditEffort: Bool { displayedOverride == nil && (context?.canEditEffort ?? true) }
+    // Local draft bounds are input guardrails, not server authorization.
+    private var minimumDuration: Int { context?.minimumDurationSeconds ?? 300 }
+    private var maximumDuration: Int { context?.maximumDurationSeconds ?? 21_600 }
+    private var minimumDistance: Double { context?.minimumDistanceMeters ?? 100 }
+    private var maximumDistance: Double { context?.maximumDistanceMeters ?? 50_000 }
+    private var effortPresetIDs: [String] { context.map { $0.effortPresets.map(\.id) } ?? ["veryEasy", "easy", "steady"] }
     private var distanceScale: Double { measurementPreferences.unitSystem == .imperial ? 1609.344 : 1000 }
     private var distanceUnit: String { measurementPreferences.unitSystem == .imperial ? "mi" : "km" }
     private var optionalReason: String? { reason == "none" ? nil : reason }
     private var parsedTarget: WorkoutEditApplyRequestDTO.Target? {
         if goalKind == "distance" {
-            guard let number = Double(targetText.replacingOccurrences(of: ",", with: ".")), let context else { return nil }
+            guard let number = Double(targetText.replacingOccurrences(of: ",", with: ".")) else { return nil }
             let meters = number * distanceScale
-            guard meters >= context.minimumDistanceMeters && meters <= context.maximumDistanceMeters else { return nil }
+            guard meters >= minimumDistance && meters <= maximumDistance else { return nil }
             return .init(kind: "distance", meters: meters)
         }
         let parts = targetText.split(separator: ":", omittingEmptySubsequences: false)
         guard let minutes = Int(parts.first ?? ""), parts.count <= 2 else { return nil }
         let remainder = parts.count == 2 ? Int(parts[1]) : 0
-        guard let remainder, (0...59).contains(remainder), let context,
-              minutes >= 0, minutes <= context.maximumDurationSeconds / 60 else { return nil }
+        guard let remainder, (0...59).contains(remainder),
+              minutes >= 0, minutes <= maximumDuration / 60 else { return nil }
         let value = minutes * 60 + remainder
-        guard value >= context.minimumDurationSeconds && value <= context.maximumDurationSeconds else { return nil }
+        guard value >= minimumDuration && value <= maximumDuration else { return nil }
         return .init(kind: "time", seconds: value)
     }
     private var changedTarget: WorkoutEditApplyRequestDTO.Target? {
@@ -83,7 +89,7 @@ struct TodayChangeSheet: View {
         return parsedTarget
     }
     private var changedEffort: String? { effortPreset == "unchanged" || effortPreset == context?.currentEffortPreset ? nil : effortPreset }
-    private var canApply: Bool { displayedOverride == nil && context != nil && (!context!.canEditTarget || parsedTarget != nil) && (changedTarget != nil || changedEffort != nil) }
+    private var canApply: Bool { displayedOverride == nil && (!canEditTarget || parsedTarget != nil) && (changedTarget != nil || changedEffort != nil) }
 
     private var footerLayout: AnyLayout {
         dynamicTypeSize.isAccessibilitySize
@@ -113,7 +119,7 @@ struct TodayChangeSheet: View {
                             Button(String(localized: "today.change.choose", defaultValue: "Choose another workout")) {
                                 editingTarget = false; showsCatalog = true
                             }.frame(minHeight: 44).accessibilityIdentifier("todayEditChooseWorkout")
-                                .disabled(context == nil || original.flatMap { SportType(rawValue: $0.modality) } == nil || (displayedOverride != nil && displayedOverride?.sport.rawValue != original?.modality))
+                                .disabled(original.flatMap { SportType(rawValue: $0.modality) } == nil || (displayedOverride != nil && displayedOverride?.sport.rawValue != original?.modality))
                             reasonControl
                         } else {
                             Text(String(localized: "today.edit.unavailable", defaultValue: "Refresh Today to edit the current workout."))
@@ -136,7 +142,7 @@ struct TodayChangeSheet: View {
                     } else {
                         Button(role: .destructive) { confirmsSkip = true } label: {
                             Text(String(localized: "today.edit.skip", defaultValue: "Skip today"))
-                        }.frame(minHeight: 44).disabled(displayedOverride != nil || context == nil).accessibilityIdentifier("todayEditSkip")
+                        }.frame(minHeight: 44).disabled(displayedOverride != nil).accessibilityIdentifier("todayEditSkip")
                     }
                     if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
                     if busy { ProgressView().accessibilityLabel(String(localized: "today.edit.saving", defaultValue: "Saving…")) }
@@ -164,7 +170,7 @@ struct TodayChangeSheet: View {
             .disabled(busy || submitting)
             .overlay(alignment: .top) {
                 if failed {
-                    Text(String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again."))
+                    Text(String(localized: "today.change.failed", defaultValue: "Could not save. Your changes are kept. Try again, or reopen Change workout to refresh."))
                         .font(.body).padding(OutboundSpacing.standard)
                         .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: OutboundRadius.card))
                         .padding(OutboundSpacing.screen).accessibilityIdentifier("todayEditFailure")
@@ -242,13 +248,12 @@ struct TodayChangeSheet: View {
         }
     }
     private var targetRangeHint: String {
-        guard let context else { return "" }
         if goalKind == "time" {
             return String(format: String(localized: "today.edit.time_range", defaultValue: "Enter %@–%@ min. You can also use minutes:seconds."),
-                String(context.minimumDurationSeconds / 60), String(context.maximumDurationSeconds / 60))
+                String(minimumDuration / 60), String(maximumDuration / 60))
         }
-        let lower = ceil(context.minimumDistanceMeters / distanceScale * 100) / 100
-        let upper = floor(context.maximumDistanceMeters / distanceScale * 100) / 100
+        let lower = ceil(minimumDistance / distanceScale * 100) / 100
+        let upper = floor(maximumDistance / distanceScale * 100) / 100
         return String(format: String(localized: "today.edit.distance_range", defaultValue: "Enter %@–%@ %@."),
             String(format: "%.2f", locale: .autoupdatingCurrent, lower), String(format: "%.2f", locale: .autoupdatingCurrent, upper), distanceUnit)
     }
@@ -259,7 +264,7 @@ struct TodayChangeSheet: View {
         } label: {
             Label(goalKind == "time" ? String(localized: "today.edit.time", defaultValue: "Time") : String(localized: "today.edit.distance", defaultValue: "Distance"), systemImage: "chevron.down")
                 .font(.body).frame(minHeight: 44).fixedSize(horizontal: false, vertical: true)
-        }.disabled(displayedOverride != nil || context?.canConvertGoal != true).accessibilityIdentifier("todayEditGoal")
+        }.disabled(displayedOverride != nil || !(context?.canConvertGoal ?? true)).accessibilityIdentifier("todayEditGoal")
     }
     private var targetField: some View {
         let layout = dynamicTypeSize.isAccessibilitySize
@@ -284,8 +289,8 @@ struct TodayChangeSheet: View {
             Text(String(localized: "today.edit.effort", defaultValue: "Effort")).font(.headline)
             Menu {
                 Button(currentEffortLabel) { effortPreset = "unchanged" }
-                ForEach(context?.effortPresets ?? [], id: \.id) { item in
-                    Button(effortTitle(item.id)) { effortPreset = item.id }
+                ForEach(effortPresetIDs, id: \.self) { id in
+                    Button(effortTitle(id)) { effortPreset = id }
                 }
             } label: {
                 Label(effortPreset == "unchanged" ? currentEffortLabel : effortTitle(effortPreset), systemImage: "chevron.down")
@@ -341,7 +346,7 @@ struct TodayChangeSheet: View {
         Task {
             failed = !(await onApply(selection)); submitting = false
             if failed { UIAccessibility.post(notification: .announcement,
-                argument: String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again.")) }
+                argument: String(localized: "today.change.failed", defaultValue: "Could not save. Your changes are kept. Try again, or reopen Change workout to refresh.")) }
         }
     }
     private func recommendation(_ proposal: AdjustmentProposalDTO) -> some View {
