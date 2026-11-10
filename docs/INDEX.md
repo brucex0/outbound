@@ -24,6 +24,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Any iOS or Android UI change | `docs/design-system.md` — design contracts, review checklist, automated checks |
 | Activity launch dock and live recording UX | `docs/activity-launch-live-ux.md` |
 | Onboarding and plan setup | `docs/new-user-onboarding.md` |
+| Direct iOS workout editing, Apply/audit contract, durable session linkage | `docs/workout-edits.md` |
 | Guidance plans and adaptation | `docs/guidance-plans.md`, `docs/adaptive-planning-engine.md` |
 | Live coaching operations and audio | `docs/live-coach-operations.md` |
 | Stretch catalog, editor, generation | `docs/stretch-routines.md` |

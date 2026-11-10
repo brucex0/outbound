@@ -499,12 +499,9 @@ final class APIClient {
         try await post("/personalization/readiness", body: request)
     }
 
-    func applyWorkoutAdjustment(_ request: WorkoutAdjustmentApplyRequestDTO, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
-        let _: WorkoutAdjustmentApplyResponseDTO = try await post("/personalization/adjustments/apply", body: request)
-        let state: PlanningAPIStateResponse = try await get("/planning/state")
-        // A successful mutation must not silently fall back to yesterday's/local recommendation.
-        let suggestion = try await fetchActivitySuggestion()
-        return state.trainingPlanState(readiness: readiness, activitySuggestion: suggestion)
+    func applyWorkoutEdit(_ request: WorkoutEditApplyRequestDTO, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        let response: WorkoutEditApplyResponseDTO = try await post("/planning/workout-edits/apply", body: request)
+        return response.state.trainingPlanState(readiness: readiness, activitySuggestion: response.activitySuggestion)
     }
 
     func submitWorkoutFeedback(_ request: WorkoutFeedbackRequestDTO) async throws -> PersonalizationMutationResponseDTO {
@@ -1933,6 +1930,8 @@ struct ActivitySuggestionResponse: Codable, Equatable {
     let planContext: ActivitySuggestionPlanContext?
     let activityWatermark: ActivitySuggestionWatermark
     let decision: ActivitySuggestionDecision
+    var editContext: WorkoutEditContextDTO? = nil
+    var workoutEditOperation: String? = nil
 }
 
 struct PlanRecommendationsResponse: Codable, Equatable {
@@ -1944,6 +1943,8 @@ struct PlanRecommendationsResponse: Codable, Equatable {
 }
 
 struct PlannedWorkoutCompletionRequest: Encodable {
+    var workoutEditId: String? = nil
+    var workoutRevision: String? = nil
     let activityId: String?
     let completedAt: Date
     let durationSeconds: Int
@@ -1977,8 +1978,11 @@ struct ActivitySuggestionPayload: Codable, Equatable, Identifiable {
     let plannedWorkoutId: String?
     let archetypeId: String?
     var catalogWorkout: StandaloneWorkout? = nil
+    var effectiveWorkout: StandaloneWorkout? = nil
     var catalogVersion: Int? = nil
     var durationSeconds: Int? = nil
+    var workoutEditId: String? = nil
+    var workoutRevision: String? = nil
     let optional: Bool
 }
 
@@ -1999,7 +2003,7 @@ extension ActivitySuggestionResponse {
     var shouldSupersedeCalibration: Bool {
         if status == "restRecommended" { return true }
         guard primary != nil else { return false }
-        return primary?.id.hasPrefix("changed-") == true || primary?.catalogWorkout != nil
+        return primary?.workoutEditId != nil || primary?.id.hasPrefix("changed-") == true || primary?.catalogWorkout != nil
             || ["optionalRecovery", "adjustedFromPlan"].contains(relationship)
     }
 
@@ -2032,7 +2036,7 @@ extension ActivitySuggestionResponse {
 extension ActivitySuggestionPayload {
     func todayTrainingSuggestion(guideLine: String) -> TodayTrainingSuggestion? {
         guard let sport = SportType.apiSport(from: modality) else { return nil }
-        let catalog = catalogWorkout.map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) }
+        let catalog = (effectiveWorkout ?? catalogWorkout).map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) }
         let catalogEfforts = catalog?.guideInstructions.segments.map(\.effort)
         let displayEffort = catalogEfforts.map { efforts in
             String(format: String(localized: "today.change.rpe_range", defaultValue: "RPE %1$d–%2$d"), locale: .autoupdatingCurrent, efforts.map(\.rpeMin).min() ?? 1, efforts.map(\.rpeMax).max() ?? 2)
@@ -2123,9 +2127,11 @@ extension ActivitySuggestionPayload {
             targetCalories: targetCalories,
             estimatedDistanceMeters: targetCalories == nil ? nil : distanceMeters,
             estimatedDurationSeconds: targetCalories == nil ? nil : durationSeconds,
-            allowsCalorieGoal: modality == "run" && ["easyAerobic", "recovery"].contains(stimulus),
+            allowsCalorieGoal: workoutEditId == nil && modality == "run" && ["easyAerobic", "recovery"].contains(stimulus),
             plannedWorkoutID: plannedWorkoutId,
-            catalogWorkout: catalog
+            catalogWorkout: catalogWorkout.map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) },
+            effectiveWorkout: effectiveWorkout.map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) },
+            workoutEditID: workoutEditId, workoutRevision: workoutRevision
         )
 
         return TodayTrainingSuggestion(
@@ -2779,3 +2785,10 @@ private struct ImportIdentityResponse: Decodable { let externalIDs: [String]; le
 
 struct CachedActivityVersion: Encodable { let id: String; let updatedAt: Date? }
 private struct CachedActivityVersions: Encodable { let records: [CachedActivityVersion] }
+
+private struct WorkoutEditApplyResponseDTO: Decodable {
+    let receipt: Receipt
+    let state: PlanningAPIStateResponse
+    let activitySuggestion: ActivitySuggestionResponse
+    struct Receipt: Decodable { let plannedWorkoutId: String?; let workoutEditId: String; let revision: String }
+}

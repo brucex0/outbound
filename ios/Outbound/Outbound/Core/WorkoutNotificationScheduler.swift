@@ -283,6 +283,16 @@ final class WorkoutNotificationScheduler: ObservableObject {
         return reminder
     }
 
+#if DEBUG && targetEnvironment(simulator)
+    // Synthetic UI verification enters the same pending-reminder resolver as a notification tap.
+    func queueWorkoutEditFixtureReminder(workoutID: String, stale: Bool) {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData") else { return }
+        pendingReminder = ScheduledWorkoutReminder(id: "synthetic-reminder", workoutID: workoutID,
+            date: stale ? Date().addingTimeInterval(-172800) : Date(), title: "Stale cached title",
+            durationSeconds: 999, sport: .run, source: "fixture")
+    }
+#endif
+
     func consumePendingReminder() {
         pendingReminder = nil
     }

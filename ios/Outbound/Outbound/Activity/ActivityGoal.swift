@@ -189,7 +189,8 @@ extension SessionIntent {
                 workoutReference: workoutReference,
                 workoutCues: usesCalories ? [] : workoutCues,
                 raceIntent: usesCalories ? nil : raceIntent,
-                activityEvent: activityEvent
+                activityEvent: activityEvent,
+                startedFromWorkoutReminder: startedFromWorkoutReminder
             )
         }
         return SessionIntent(
@@ -213,7 +214,8 @@ extension SessionIntent {
             workoutReference: workoutReference,
             workoutCues: usesCalories ? [] : workoutCues,
             raceIntent: usesCalories ? nil : raceIntent,
-            activityEvent: activityEvent
+            activityEvent: activityEvent,
+            startedFromWorkoutReminder: startedFromWorkoutReminder
         )
     }
 
@@ -241,7 +243,8 @@ extension SessionIntent {
             workoutReference: base.workoutReference,
             workoutCues: [],
             raceIntent: nil,
-            activityEvent: base.activityEvent
+            activityEvent: base.activityEvent,
+            startedFromWorkoutReminder: base.startedFromWorkoutReminder
         )
     }
 

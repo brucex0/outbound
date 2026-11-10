@@ -49,7 +49,8 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
     // remain untouched, and the persisted response stays in its original language.
     func withCatalogVersion(_ version: Int) -> StandaloneWorkout {
         func text(_ value: String) -> String {
-            NSLocalizedString(value, tableName: "CuratedWorkouts", bundle: .main, value: value, comment: "Curated workout copy")
+            let curated = NSLocalizedString(value, tableName: "CuratedWorkouts", bundle: .main, value: value, comment: "Curated workout copy")
+            return curated == value ? BuiltinWorkoutText.localized(value) : curated
         }
         return StandaloneWorkout(
             id: id, title: text(title), subtitle: text(subtitle),
@@ -132,7 +133,9 @@ struct StandaloneWorkoutPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.outboundTheme) private var theme
     @StateObject private var store = StandaloneWorkoutStore()
+    @State private var isSavingSelection = false
     let sport: SportType
+    var onUse: ((StandaloneWorkout) async -> Bool)? = nil
     let onSelect: (StandaloneWorkout) -> Void
 
     private var workouts: [StandaloneWorkout] {
@@ -173,7 +176,15 @@ struct StandaloneWorkoutPickerView: View {
                         }
                     } else {
                         ForEach(workouts) { workout in
-                            workoutButton(workout)
+                            if let onUse {
+                                NavigationLink {
+                                    StandaloneWorkoutUseView(workout: workout, onUse: { selected in
+                                        isSavingSelection = true
+                                        defer { isSavingSelection = false }
+                                        return await onUse(selected)
+                                    })
+                                } label: { workoutCard(workout) }.buttonStyle(.plain)
+                            } else { workoutButton(workout) }
                         }
                     }
                 }
@@ -185,17 +196,23 @@ struct StandaloneWorkoutPickerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Close") { dismiss() }.disabled(isSavingSelection)
                 }
             }
         }
+        .interactiveDismissDisabled(isSavingSelection)
         .task { await store.refresh() }
     }
 
     private func workoutButton(_ workout: StandaloneWorkout) -> some View {
         Button {
             onSelect(workout)
-        } label: {
+        } label: { workoutCard(workout) }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens this workout setup")
+    }
+
+    private func workoutCard(_ workout: StandaloneWorkout) -> some View {
             OutboundCard {
                 HStack(spacing: OutboundSpacing.standard) {
                     Image(systemName: workout.systemImage)
@@ -217,8 +234,58 @@ struct StandaloneWorkoutPickerView: View {
                         .font(.caption.weight(.bold)).foregroundStyle(.tertiary)
                 }
             }
+    }
+}
+
+private struct StandaloneWorkoutUseView: View {
+    let workout: StandaloneWorkout
+    let onUse: (StandaloneWorkout) async -> Bool
+    @State private var busy = false
+    @State private var failed = false
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                Text(workout.title).font(.title2.weight(.semibold))
+                Text(workout.subtitle).font(.body)
+                if let distance = workout.targetDistanceMeters {
+                    Text(String(localized: "today.change.estimate_basis", defaultValue: "Time is an estimate at 7 min/km. The workout ends at the selected distance.")).font(.subheadline).foregroundStyle(.secondary)
+                    Text(Measurement(value: distance / 1000, unit: UnitLength.kilometers), format: .measurement(width: .abbreviated)).font(.headline)
+                }
+                Text(workout.detail).font(.body).foregroundStyle(.secondary)
+                ForEach(workout.steps) { step in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(step.label).font(.headline)
+                        if step.durationSeconds > 0 { Text(Duration.seconds(step.durationSeconds), format: .time(pattern: .minuteSecond)).font(.body.monospacedDigit()) }
+                        if let detail = step.detail { Text(detail).font(.body).foregroundStyle(.secondary) }
+                    }
+                }
+                OutboundPrimaryButton(title: String(localized: "today.edit.use", defaultValue: "Use workout"), systemImage: "checkmark", expands: false) {
+                    guard !busy else { return }; failed = false; busy = true
+                    Task {
+                        failed = !(await onUse(workout)); busy = false
+                        if failed { UIAccessibility.post(notification: .announcement,
+                            argument: String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again.")) }
+                    }
+                }.disabled(busy).accessibilityIdentifier("todayEditUseWorkout")
+                if busy { ProgressView(String(localized: "today.edit.saving", defaultValue: "Saving…")).accessibilityIdentifier("todayEditUseSaving") }
+            }.padding(OutboundSpacing.screen).frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens this workout setup")
+        .background(OutboundPalette.background)
+        .navigationTitle(String(localized: "today.change.workout_details", defaultValue: "Workout details"))
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(busy)
+        .interactiveDismissDisabled(busy)
+        .overlay(alignment: .top) {
+            if failed {
+                Text(String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again."))
+                    .font(.body).padding(OutboundSpacing.standard)
+                    .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: OutboundRadius.card))
+                    .padding(OutboundSpacing.screen).allowsHitTesting(false).accessibilityIdentifier("todayEditUseFailure")
+            }
+        }
+        .task(id: failed) {
+            guard failed else { return }; try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }; failed = false
+        }
     }
 }

@@ -987,7 +987,7 @@ private struct SimplifiedTodayView: View {
     let onStartRun: (SessionIntent?) -> Void
     @EnvironmentObject private var launchLocationManager: LocationManager
     @State private var showsStretch = false
-    @State private var showsChangeSheet = false
+    @State private var workoutChangePresentation: TodayWorkoutEditPresentation?
     @State private var showsPlannedWorkoutDetails = false
     @State private var companionTodayMessage: String?
     @State private var companionWeatherFetchDate: Date?
@@ -1001,7 +1001,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsSocialInbox = false
     @State private var presentedAdjustmentID: String?
     @State private var isApplyingWorkoutChange = false
-    @State private var pendingWorkoutChange: WorkoutAdjustmentApplyRequestDTO?
+    @State private var pendingWorkoutChange: WorkoutEditApplyRequestDTO?
     @State private var workoutChangeToast: ProfileToast?
 
     var body: some View {
@@ -1148,13 +1148,13 @@ private struct SimplifiedTodayView: View {
             guard !Task.isCancelled else { return }
             workoutChangeToast = nil
         }
-        .sheet(isPresented: $showsChangeSheet) {
+        .sheet(item: $workoutChangePresentation) { presentation in
             TodayChangeSheet(
-                original: trainingPlanStore.activitySuggestion?.primary,
-                displayedOverride: customizedRunIntent ?? currentCalibrationWorkout?.sessionIntent,
+                baseline: presentation.baseline,
+                displayedOverride: presentation.displayedOverride,
                 pendingAdjustment: personalizationStore.snapshot.pendingAdjustment,
                 busy: isApplyingWorkoutChange,
-                onApply: { selection in applyWorkoutChange(selection) },
+                onApply: { selection in await applyWorkoutChange(selection) },
                 onDecision: { accept in
                     Task {
                         await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [
@@ -1164,56 +1164,49 @@ private struct SimplifiedTodayView: View {
                         await personalizationStore.decideAdjustment(accept: accept)
                         try? await trainingPlanStore.refetchAfterWorkoutMutation()
                     }
-                    showsChangeSheet = false
+                    workoutChangePresentation = nil
                 }
             )
         }
     }
 
-    private func applyWorkoutChange(_ selection: TodayWorkoutChangeSelection) {
-        guard !isApplyingWorkoutChange else { return }
-        showsChangeSheet = false
-        guard let envelope = trainingPlanStore.activitySuggestion, let primary = envelope.primary,
-              envelope.isValid() else {
-            workoutChangeToast = ProfileToast(text: String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again."), style: .error)
-            return
+    @MainActor private func applyWorkoutChange(_ selection: TodayWorkoutChangeSelection) async -> Bool {
+        guard !isApplyingWorkoutChange else { return false }
+        guard let envelope = selection.baseline, let primary = envelope.primary,
+              let context = envelope.editContext, envelope.isValid() else {
+            return false
         }
-        let candidate = WorkoutAdjustmentApplyRequestDTO(
+        var request = WorkoutEditApplyRequestDTO(
             idempotencyKey: pendingWorkoutChange?.idempotencyKey ?? UUID().uuidString,
-            workoutId: primary.plannedWorkoutId ?? primary.id, suggestionId: primary.id,
-            validForDate: envelope.validForDate, choice: selection.reason, minutes: selection.minutes,
-            note: nil, action: selection.action, catalogWorkoutId: selection.catalog?.id, catalogVersion: selection.catalog?.catalogVersion
+            plannedWorkoutId: primary.plannedWorkoutId, suggestionId: primary.id,
+            validForDate: envelope.validForDate, baseRevision: context.baseRevision,
+            reason: selection.reason, change: selection.change
         )
-        let request = candidate == pendingWorkoutChange ? candidate : WorkoutAdjustmentApplyRequestDTO(
-            idempotencyKey: UUID().uuidString, workoutId: candidate.workoutId, suggestionId: candidate.suggestionId,
-            validForDate: candidate.validForDate, choice: candidate.choice, minutes: candidate.minutes, note: nil,
-            action: candidate.action, catalogWorkoutId: candidate.catalogWorkoutId, catalogVersion: candidate.catalogVersion
-        )
+        if pendingWorkoutChange != request { request.idempotencyKey = UUID().uuidString }
         pendingWorkoutChange = request
         isApplyingWorkoutChange = true
-        Task {
-            defer { isApplyingWorkoutChange = false }
-            await analyticsManager?.track(.init(.todayAdjustmentSelected, properties: [
-                .result: .string(selection.action), .sourceType: .string("workout_change"),
-                .selectionType: .string(selection.reason == .shortOnTime ? "short_on_time" : selection.reason.rawValue)
-            ]))
-            await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [
-                .result: .string("accepted"), .sourceType: .string("workout_change")
-            ]))
-            do {
-                try await trainingPlanStore.applyWorkoutChange(request)
-                await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("saved"), .sourceType: .string("workout_change")]))
-                customizedRunIntent = nil
-                pendingWorkoutChange = nil
-                workoutChangeToast = ProfileToast(text: String(localized: "today.change.applied", defaultValue: "Workout change applied"), style: .success)
-            } catch is CancellationError {
-                // Leaving the task retains its request key for an idempotent retry.
-            } catch {
-                await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("failed"), .sourceType: .string("workout_change")]))
-                let failure = error as NSError
-                print("[Planning] operation=apply_workout_change domain=\(failure.domain) code=\(failure.code)")
-                workoutChangeToast = ProfileToast(text: String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again."), style: .error)
-            }
+        defer { isApplyingWorkoutChange = false }
+        await analyticsManager?.track(.init(.todayAdjustmentSelected, properties: [
+            .result: .string(selection.change.operation), .sourceType: .string("workout_change")
+        ]))
+        do {
+            try await trainingPlanStore.applyWorkoutChange(request)
+            await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("saved"), .sourceType: .string("workout_change")]))
+            customizedRunIntent = nil
+            pendingWorkoutChange = nil
+            workoutChangePresentation = nil
+            let confirmation = String(localized: "today.change.applied", defaultValue: "Workout change applied")
+            workoutChangeToast = ProfileToast(text: confirmation, style: .success)
+            UIAccessibility.post(notification: .announcement, argument: confirmation)
+            return true
+        } catch is CancellationError {
+            // An ambiguous response retains the same request key and draft for retry.
+            return false
+        } catch {
+            await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("failed"), .sourceType: .string("workout_change")]))
+            ActivityDiagnosticLog.error(.sync,
+                "operation=apply_workout_edit error=\(ActivityDiagnosticLog.errorCategory(error))")
+            return false
         }
     }
 
@@ -1382,7 +1375,9 @@ private struct SimplifiedTodayView: View {
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         Text(String(localized: "Rest today")).font(.headline)
-                        Text(String(localized: "Skipping one run is better than turning discomfort into an injury."))
+                        Text(trainingPlanStore.activitySuggestion?.workoutEditOperation == "skip"
+                            ? String(localized: "today.edit.skipped", defaultValue: "Today’s workout has been skipped.")
+                            : String(localized: "Skipping one run is better than turning discomfort into an injury."))
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1569,8 +1564,6 @@ private struct SimplifiedTodayView: View {
                         CompactIntervalPreview(phases: todayPhases)
                     }
 
-                    Divider()
-
                     HStack(spacing: 0) {
                         Button(action: onOpenPlan) {
                             Label(String(localized: "Plan"), systemImage: "calendar")
@@ -1578,9 +1571,6 @@ private struct SimplifiedTodayView: View {
                                 .frame(maxWidth: .infinity, minHeight: 40)
                         }
                         .buttonStyle(.plain)
-
-                        Divider()
-                            .frame(height: 24)
 
                         Button {
                             openWorkoutChange()
@@ -1592,6 +1582,7 @@ private struct SimplifiedTodayView: View {
                                 .frame(maxWidth: .infinity, minHeight: 40)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("todayDirectEdit")
                     }
                 }
             }
@@ -1653,7 +1644,7 @@ private struct SimplifiedTodayView: View {
                         showsPlannedWorkoutDetails = false
                         Task { @MainActor in
                             await Task.yield()
-                            showsChangeSheet = true
+                            presentWorkoutChangeSheet()
                         }
                     } label: {
                         Label("Change workout", systemImage: "slider.horizontal.3")
@@ -1682,7 +1673,17 @@ private struct SimplifiedTodayView: View {
                 .entrySource: .string("today_planned_card_change"),
             ]))
         }
-        showsChangeSheet = true
+        presentWorkoutChangeSheet()
+    }
+
+    private func presentWorkoutChangeSheet() {
+        guard workoutChangePresentation == nil else { return }
+        // Item-driven presentation freezes identity and content before the first sheet frame.
+        // A background refresh must never attach an existing draft to a new slot/revision.
+        workoutChangePresentation = TodayWorkoutEditPresentation(
+            baseline: trainingPlanStore.activitySuggestion,
+            displayedOverride: customizedRunIntent ?? currentCalibrationWorkout?.sessionIntent
+        )
     }
 
     private func openPlannedWorkoutDetails() {
@@ -1893,7 +1894,7 @@ private struct SimplifiedTodayView: View {
               adjustmentID != presentedAdjustmentID,
               !isActivityFullscreenVisible else { return }
         presentedAdjustmentID = adjustmentID
-        showsChangeSheet = true
+        presentWorkoutChangeSheet()
     }
 
     private var companionInsightMessage: String {
@@ -1989,7 +1990,8 @@ private struct SimplifiedTodayView: View {
                 weight: 1
             )]
         }
-        if let meters = activeRunIntent.targetDistanceMeters, trainingPlanStore.activitySuggestion?.primary?.catalogWorkout != nil {
+        if let meters = activeRunIntent.targetDistanceMeters,
+           trainingPlanStore.activitySuggestion?.primary?.catalogWorkout != nil || trainingPlanStore.activitySuggestion?.primary?.effectiveWorkout != nil {
             return [WorkoutPhaseItem(id: activeRunIntent.id, duration: distanceLabel(meters), title: displayWorkoutCopy(activeRunIntent.title), weight: 1)]
         }
         if let customizedRunIntent {

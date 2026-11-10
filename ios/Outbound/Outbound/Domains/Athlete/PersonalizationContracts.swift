@@ -343,3 +343,55 @@ struct WorkoutAdjustmentApplyRequestDTO: Codable, Equatable {
 struct WorkoutAdjustmentApplyResponseDTO: Decodable {
     let accepted: Bool
 }
+
+// Manual edits are separate from readiness and adaptive proposals. The server owns capabilities and revisions.
+struct WorkoutEditContextDTO: Codable, Equatable {
+    let baseRevision: String
+    let canEditTarget: Bool
+    let canEditEffort: Bool
+    let canConvertGoal: Bool
+    let limitation: String?
+    let minimumDurationSeconds: Int
+    let maximumDurationSeconds: Int
+    let minimumDistanceMeters: Double
+    let maximumDistanceMeters: Double
+    let effortPresets: [EffortPreset]
+    let currentEffortPreset: String?
+    struct EffortPreset: Codable, Equatable { let id: String; let min: Int; let max: Int }
+}
+struct WorkoutEditApplyRequestDTO: Codable, Equatable {
+    var idempotencyKey: String
+    let plannedWorkoutId: String?
+    let suggestionId: String
+    let validForDate: String
+    let baseRevision: String
+    let reason: String?
+    let change: Change
+    // Null is meaningful on this authenticated contract, so encode it explicitly.
+    enum CodingKeys: String, CodingKey { case idempotencyKey, plannedWorkoutId, suggestionId, validForDate, baseRevision, reason, change }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(idempotencyKey, forKey: .idempotencyKey)
+        try c.encode(plannedWorkoutId, forKey: .plannedWorkoutId)
+        try c.encode(suggestionId, forKey: .suggestionId)
+        try c.encode(validForDate, forKey: .validForDate)
+        try c.encode(baseRevision, forKey: .baseRevision)
+        try c.encode(reason, forKey: .reason)
+        try c.encode(change, forKey: .change)
+    }
+    struct Change: Codable, Equatable {
+        let operation: String
+        var edits: Edits? = nil
+        var catalogWorkoutId: String? = nil
+        var catalogVersion: Int? = nil
+    }
+    struct Edits: Codable, Equatable {
+        let target: Target?
+        let effortPreset: String?
+    }
+    struct Target: Codable, Equatable {
+        let kind: String
+        var seconds: Int? = nil
+        var meters: Double? = nil
+    }
+}

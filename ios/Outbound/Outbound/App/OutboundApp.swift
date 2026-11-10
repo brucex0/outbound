@@ -1150,9 +1150,9 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
-    func applyWorkoutChange(_ request: WorkoutAdjustmentApplyRequestDTO, now: Date = Date()) async throws {
+    func applyWorkoutChange(_ request: WorkoutEditApplyRequestDTO, now: Date = Date()) async throws {
         refreshTask?.cancel()
-        let state = try await api.applyWorkoutAdjustment(request, readiness: lastReadiness)
+        let state = try await api.applyWorkoutEdit(request, readiness: lastReadiness)
         try Task.checkCancellation()
         applyServerState(state, now: now)
     }

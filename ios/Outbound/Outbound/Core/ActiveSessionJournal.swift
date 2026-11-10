@@ -19,6 +19,7 @@ struct ActiveSessionJournal {
     let wasPaused: Bool
     let activityType: ActivityType?
     let liveWorkoutOptions: LiveWorkoutSessionOptions?
+    let workoutSnapshot: SessionWorkoutRecoverySnapshot?
     let autoPauseEnabled: Bool?
     let walkingStepCount: Int?
     let cadenceTracker: RunningCadenceTracker?
@@ -43,6 +44,7 @@ struct ActiveSessionJournal {
         wasPaused: Bool,
         activityType: ActivityType?,
         liveWorkoutOptions: LiveWorkoutSessionOptions? = nil,
+        workoutSnapshot: SessionWorkoutRecoverySnapshot? = nil,
         autoPauseEnabled: Bool? = nil,
         walkingStepCount: Int? = nil,
         cadenceTracker: RunningCadenceTracker? = nil,
@@ -66,6 +68,7 @@ struct ActiveSessionJournal {
         self.wasPaused = wasPaused
         self.activityType = activityType
         self.liveWorkoutOptions = liveWorkoutOptions
+        self.workoutSnapshot = workoutSnapshot
         self.autoPauseEnabled = autoPauseEnabled
         self.walkingStepCount = walkingStepCount
         self.cadenceTracker = cadenceTracker
@@ -96,6 +99,7 @@ struct ActiveSessionJournal {
                 wasPaused: metadata.wasPaused,
                 activityType: metadata.activityType,
                 liveWorkoutOptions: metadata.liveWorkoutOptions,
+                workoutSnapshot: metadata.workoutSnapshot,
                 autoPauseEnabled: metadata.autoPauseEnabled,
                 walkingStepCount: metadata.walkingStepCount,
                 cadenceTracker: metadata.cadenceTracker,
@@ -130,6 +134,7 @@ struct ActiveSessionJournal {
             wasPaused: wasPaused,
             activityType: activityType,
             liveWorkoutOptions: liveWorkoutOptions,
+            workoutSnapshot: workoutSnapshot,
             autoPauseEnabled: autoPauseEnabled,
             walkingStepCount: walkingStepCount,
             cadenceTracker: cadenceTracker,
@@ -192,6 +197,7 @@ struct ActiveSessionJournal {
         let wasPaused: Bool
         let activityType: ActivityType?
         let liveWorkoutOptions: LiveWorkoutSessionOptions?
+        var workoutSnapshot: SessionWorkoutRecoverySnapshot? = nil
         let autoPauseEnabled: Bool?
         let walkingStepCount: Int?
         let cadenceTracker: RunningCadenceTracker?

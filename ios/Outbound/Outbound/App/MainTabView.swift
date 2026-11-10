@@ -45,6 +45,8 @@ struct MainTabView: View {
     @State private var isActivityFullscreenVisible = false
     @State private var isLocationSettingsPromptPresented = false
     @State private var didPresentLocationSettingsPromptThisSession = false
+    @State private var isResolvingWorkoutReminder = false
+    @State private var showsWorkoutReminderFailure = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -65,6 +67,19 @@ struct MainTabView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(10)
             }
+        }
+        .overlay(alignment: .top) {
+            if showsWorkoutReminderFailure {
+                Text(String(localized: "workout.reminder.unavailable", defaultValue: "This workout is no longer available. Check Today for the current workout."))
+                    .font(.body).padding(OutboundSpacing.standard)
+                    .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: OutboundRadius.card))
+                    .padding(OutboundSpacing.screen)
+            }
+        }
+        .task(id: showsWorkoutReminderFailure) {
+            guard showsWorkoutReminderFailure else { return }
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }; showsWorkoutReminderFailure = false
         }
         .animation(.easeInOut(duration: 0.22), value: connectivityStore.isOffline)
         .animation(.easeInOut(duration: 0.22), value: activityStore.failedActivityCount)
@@ -104,6 +119,14 @@ struct MainTabView: View {
 #if DEBUG && targetEnvironment(simulator)
             if ProcessInfo.processInfo.arguments.contains("-OutboundScreenshotLiveRun") {
                 presentActivity()
+            }
+#endif
+#if DEBUG && targetEnvironment(simulator)
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-OutboundUITestSeedData"),
+               let index = arguments.firstIndex(of: "-OutboundWorkoutReminderUITest"), index + 1 < arguments.count {
+                workoutNotificationScheduler.queueWorkoutEditFixtureReminder(workoutID: arguments[index + 1],
+                    stale: arguments.contains("-OutboundWorkoutReminderStaleUITest"))
             }
 #endif
             handlePendingWorkoutReminder()
@@ -247,27 +270,64 @@ struct MainTabView: View {
     }
 
     private func handlePendingWorkoutReminder() {
-        guard let reminder = workoutNotificationScheduler.pendingReminder else { return }
-        guard let sport = SportType(trainingPlanSport: reminder.sport) else {
-            workoutNotificationScheduler.consumePendingReminder()
-            return
-        }
+        guard !isResolvingWorkoutReminder, let reminder = workoutNotificationScheduler.pendingReminder else { return }
         selectedAppTab = .today
-        presentActivity(intent: SessionIntent(
-            id: "reminder-\(reminder.id)",
-            sport: sport,
-            title: reminder.title,
-            detail: String(
-                format: String(localized: "workout.reminder.intent_detail", defaultValue: "%d min planned workout"),
-                Int(ceil(Double(reminder.durationSeconds) / 60.0))
-            ),
-            guideLine: String(localized: "workout.reminder.intent_line", defaultValue: "Your planned workout is ready when you are."),
-            startLabel: String(localized: "workout.reminder.start", defaultValue: "Start workout"),
-            targetDurationSeconds: reminder.durationSeconds,
-            workoutReference: SessionWorkoutReference(source: "planned_workout", id: reminder.workoutID, version: nil),
-            startedFromWorkoutReminder: true
-        ))
+        isResolvingWorkoutReminder = true
+        Task { @MainActor in
+            defer {
+                isResolvingWorkoutReminder = false
+                if let next = workoutNotificationScheduler.pendingReminder, next.id != reminder.id { handlePendingWorkoutReminder() }
+            }
+            do {
+                try await trainingPlanStore.refetchAfterWorkoutMutation()
+                guard workoutNotificationScheduler.pendingReminder?.id == reminder.id else { return }
+                guard Calendar.current.isDateInToday(reminder.date),
+                      let envelope = trainingPlanStore.activitySuggestion, envelope.isValid(),
+                      envelope.primary?.plannedWorkoutId == reminder.workoutID,
+                      var session = envelope.todayTrainingSuggestion()?.suggestedSession else {
+                    showUnavailableWorkoutReminder()
+                    return
+                }
+                session.startedFromWorkoutReminder = true
+#if DEBUG && targetEnvironment(simulator)
+                writeWorkoutReminderFixtureProof(intent: session.intent)
+#endif
+                presentActivity(intent: session.intent)
+                workoutNotificationScheduler.consumePendingReminder()
+                await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("workout_reminder_resolution"), .result: .string("resolved")]))
+            } catch is CancellationError {
+                // Keep a pending reminder available if its resolver task is canceled.
+            } catch {
+                ActivityDiagnosticLog.error(.sync, "operation=resolve_workout_reminder error=\(ActivityDiagnosticLog.errorCategory(error))")
+                guard workoutNotificationScheduler.pendingReminder?.id == reminder.id else { return }
+                showUnavailableWorkoutReminder()
+            }
+        }
+    }
+
+#if DEBUG && targetEnvironment(simulator)
+    private func writeWorkoutReminderFixtureProof(intent: SessionIntent?) {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData"),
+              ProcessInfo.processInfo.arguments.contains("-OutboundWorkoutReminderUITest") else { return }
+        do {
+            let data = try intent.map { try JSONEncoder().encode(SessionWorkoutRecoverySnapshot($0)) } ?? Data("{\"unavailable\":true}".utf8)
+            try data.write(to: URL(fileURLWithPath: "/tmp/outbound-direct-edit-ui/23-reminder-resolution.json"))
+        } catch {
+            ActivityDiagnosticLog.error(.sync, "operation=write_synthetic_reminder_proof error=\(ActivityDiagnosticLog.errorCategory(error))")
+        }
+    }
+#endif
+
+    private func showUnavailableWorkoutReminder() {
         workoutNotificationScheduler.consumePendingReminder()
+        showsWorkoutReminderFailure = true
+#if DEBUG && targetEnvironment(simulator)
+        writeWorkoutReminderFixtureProof(intent: nil)
+#endif
+        UIAccessibility.post(notification: .announcement,
+            argument: String(localized: "workout.reminder.unavailable", defaultValue: "This workout is no longer available. Check Today for the current workout."))
+        ActivityDiagnosticLog.notice(.lifecycle, "Workout reminder resolution unavailable result=return_to_today")
+        Task { await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("workout_reminder_resolution"), .result: .string("unavailable")])) }
     }
 
     private func checkForHealthWorkouts(presentWhenFound: Bool) {
@@ -694,7 +754,10 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
     let routeName: String?
     let workoutSteps: [SessionIntentStep]?
     let catalogWorkout: StandaloneWorkout?
-    let startedFromWorkoutReminder: Bool
+    var effectiveWorkout: StandaloneWorkout? = nil
+    var workoutEditID: String? = nil
+    var workoutRevision: String? = nil
+    var startedFromWorkoutReminder: Bool
 
     init(
         id: String,
@@ -715,6 +778,9 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         routeName: String? = nil,
         workoutSteps: [SessionIntentStep]? = nil,
         catalogWorkout: StandaloneWorkout? = nil,
+        effectiveWorkout: StandaloneWorkout? = nil,
+        workoutEditID: String? = nil,
+        workoutRevision: String? = nil,
         startedFromWorkoutReminder: Bool = false
     ) {
         self.id = id
@@ -735,21 +801,25 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         self.routeName = routeName
         self.workoutSteps = workoutSteps
         self.catalogWorkout = catalogWorkout
+        self.effectiveWorkout = effectiveWorkout
+        self.workoutEditID = workoutEditID
+        self.workoutRevision = workoutRevision
         self.startedFromWorkoutReminder = startedFromWorkoutReminder
     }
 
     var intent: SessionIntent {
-        if let catalogWorkout {
+        if let catalogWorkout = effectiveWorkout ?? catalogWorkout {
             return SessionIntent(
                 id: id, sport: sport, title: catalogWorkout.title, detail: catalogWorkout.detail,
                 guideLine: catalogWorkout.guideLine, startLabel: catalogWorkout.startLabel,
                 targetDistanceMeters: catalogWorkout.targetDistanceMeters,
                 targetDurationSeconds: catalogWorkout.targetDistanceMeters == nil ? catalogWorkout.steps.reduce(0) { $0 + $1.durationSeconds } : nil,
                 estimatedDurationSeconds: catalogWorkout.targetDistanceMeters.map { Int(($0 / 1000 * 420).rounded()) },
-                allowsCalorieGoal: catalogWorkout.intent.allowsCalorieGoal,
+                allowsCalorieGoal: effectiveWorkout != nil ? allowsCalorieGoal : catalogWorkout.intent.allowsCalorieGoal,
                 workoutSteps: catalogWorkout.steps, coachingTarget: catalogWorkout.coachingTarget,
-                workoutReference: plannedWorkoutID.map { SessionWorkoutReference(source: "planned_workout", id: $0, version: nil) } ?? catalogWorkout.intent.workoutReference,
-                workoutCues: catalogWorkout.guideInstructions.segments
+                workoutReference: plannedWorkoutID.map { SessionWorkoutReference(source: "planned_workout", id: $0, version: nil, workoutEditId: workoutEditID, workoutRevision: workoutRevision) } ?? SessionWorkoutReference(source: "standalone_catalog", id: catalogWorkout.id, version: catalogWorkout.catalogVersion, workoutEditId: workoutEditID, workoutRevision: workoutRevision),
+                workoutCues: catalogWorkout.guideInstructions.segments,
+                startedFromWorkoutReminder: startedFromWorkoutReminder
             )
         }
         return SessionIntent(
@@ -770,7 +840,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
             routeName: routeName,
             workoutSteps: targetCalories == nil ? workoutSteps ?? [] : [],
             workoutReference: plannedWorkoutID.map {
-                SessionWorkoutReference(source: "planned_workout", id: $0, version: nil)
+                SessionWorkoutReference(source: "planned_workout", id: $0, version: nil, workoutEditId: workoutEditID, workoutRevision: workoutRevision)
             },
             startedFromWorkoutReminder: startedFromWorkoutReminder
         )

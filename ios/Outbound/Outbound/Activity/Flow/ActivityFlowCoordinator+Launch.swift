@@ -265,7 +265,15 @@ extension ActivityFlowCoordinator {
             .recovery,
             "Recovery presentation requested stage=\(self.recorder.recoveredAwaitingSave ? "awaiting_save" : "recording") route_selected=\(self.recorder.recoveredRouteGuidance != nil)"
         )
-        if let recovered = self.recorder.recoveredRouteGuidance {
+        if let snapshot = self.recorder.recordingWorkoutSnapshot {
+            self.setup.plannedIntent = snapshot.intent(
+                preparedRoute: self.recorder.recoveredRouteGuidance?.route,
+                activityEvent: self.recorder.recordingActivityEvent
+            )
+            if let route = self.recorder.recoveredRouteGuidance?.route {
+                self.setup.selectedRouteDistanceMeters = Self.calculatePreparedRouteDistance(route)
+            }
+        } else if let recovered = self.recorder.recoveredRouteGuidance {
             let route = recovered.route
             let recoveredActivityType = route.activityType ?? self.recorder.recoveredActivityType
             let sport = SportType(activityType: recoveredActivityType)
@@ -301,7 +309,8 @@ extension ActivityFlowCoordinator {
             if let mode = options.goalModeRawValue.flatMap(SessionGoalMode.init(rawValue:)) {
                 self.setup.selectedGoalMode = mode
             }
-            if let goal = options.goal {
+            if let goal = options.goal,
+               self.recorder.recordingWorkoutSnapshot == nil || self.activeIntent?.activityGoal != goal {
                 self.activeIntent = (self.activeIntent ?? .freestyleRun).replacingGoal(goal, unitSystem: self.dependencies.measurementPreferences.unitSystem)
             }
         }
@@ -658,6 +667,7 @@ extension ActivityFlowCoordinator {
                 routeGuidance: routeGuidance,
                 route: routeGuidance.route,
                 activityEvent: self.activeIntent?.activityEvent,
+                workoutSnapshot: self.activeIntent.map(SessionWorkoutRecoverySnapshot.init),
                 liveGroupSessionID: self.dependencies.liveGroupStore.isSharing ? self.dependencies.liveGroupStore.activeSession?.id : nil
             )
             self.track(.init(.activitySimulationStarted, properties: [
@@ -670,15 +680,25 @@ extension ActivityFlowCoordinator {
             return
         }
 #endif
+        var canonicalStartDate = self.dependencies.phoneWorkoutCoordinator.canonicalStartDate
+#if DEBUG && targetEnvironment(simulator)
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-OutboundUITestSeedData"), arguments.contains("-OutboundWorkoutEditRecoveryUITest"),
+           self.activeIntent?.workoutReference?.workoutEditId != nil {
+            // Dedicated synthetic QA only: keep the real recorder/journal/save path and production thresholds.
+            canonicalStartDate = Date().addingTimeInterval(-360)
+        }
+#endif
         self.recorder.start(
             activityType: self.activeIntent?.resolvedActivityType ?? .running,
             movingTimeDetectionEnabled: !self.setup.isIndoorSession,
             autoPauseEnabled: self.autoPauseEnabled(for: self.activeIntent?.resolvedActivityType ?? .running),
             routeGuidance: routeGuidance,
-            canonicalStartDate: self.dependencies.phoneWorkoutCoordinator.canonicalStartDate,
+            canonicalStartDate: canonicalStartDate,
             sessionMetadata: self.dependencies.phoneWorkoutCoordinator.recordingMetadata(),
             companionType: self.isCompanionContextEligible ? self.setup.companionType : nil,
             activityEvent: self.activeIntent?.activityEvent,
+            workoutSnapshot: self.activeIntent.map(SessionWorkoutRecoverySnapshot.init),
             liveGroupSessionID: self.dependencies.liveGroupStore.isSharing ? self.dependencies.liveGroupStore.activeSession?.id : nil
         )
         self.dependencies.phoneWorkoutCoordinator.markPhoneRecorderStarted()

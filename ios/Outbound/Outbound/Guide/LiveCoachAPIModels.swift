@@ -108,6 +108,8 @@ struct CreateLiveCoachSessionRequest: Encodable {
     var deferPlanning = true
     let clientSessionId: UUID
     let workoutId: String?
+    var workoutEditId: String? = nil
+    var workoutRevision: String? = nil
     let workoutRef: WorkoutReferenceDTO?
     let locale: String
     let coachPersonaId: String

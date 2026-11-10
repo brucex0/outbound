@@ -8,6 +8,7 @@ Read before changing iOS or Android UI. This is the entry point; [themes.md](the
 - iOS: `ios/Outbound/Outbound/DesignSystem/OutboundDesignSystem.swift` owns `OutboundSpacing`, `OutboundRadius`, `OutboundPalette`, adaptive themes, cards, and primary buttons. Use semantic SwiftUI text styles. Read the reactive `outboundTheme` environment for theme-dependent rendering.
 - Android: `android/core/designsystem/` owns shared Compose UI. Use `MaterialTheme.colorScheme`, `MaterialTheme.typography`, and `LocalPlainstrideThemeColors` for their intended roles. Keep palette definitions in `PlainstrideTheme.kt`.
 - Do not introduce literal RGB/hex colors in feature UI. Semantic chart, route, sport, safety, or asset colors can be exceptions with a specific reason; never recolor destructive/warning meaning to match a theme.
+- Avoid line separators and dividers in new or redesigned app surfaces; use spacing and hierarchy to group content.
 - Buttons are content-sized by default, including primary actions. Use full width only for an explicit layout need; preserve accessible hit targets without stretching the filled visual.
 - Preserve platform conventions and readable foreground/background pairings. Android has no shared spacing scale today; reuse existing shared components and keep feature dimensions consistent rather than inventing token APIs.
 - Localize display strings and accessibility labels. Use text-only launch option pills and icon-only sport selectors with localized labels. Transient API feedback uses toasts.

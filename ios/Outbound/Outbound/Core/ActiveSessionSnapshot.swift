@@ -192,6 +192,8 @@ struct SessionWorkoutReference: Hashable, Codable {
     let source: String
     let id: String
     let version: Int?
+    var workoutEditId: String? = nil
+    var workoutRevision: String? = nil
 }
 
 struct SessionWorkoutCueTrigger: Hashable, Codable {
@@ -517,5 +519,77 @@ struct SessionLocation: Equatable {
         verticalAccuracyMeters = location.verticalAccuracy
         speedMetersPerSecond = location.speed >= 0 ? location.speed : nil
         courseDegrees = location.course >= 0 ? location.course : nil
+    }
+}
+
+/// Immutable workout execution only; route geometry and group attribution retain their existing journals.
+struct SessionWorkoutRecoverySnapshot: Codable, Hashable {
+    let id: String
+    let sport: SportType
+    let title: String
+    let detail: String
+    let guideLine: String
+    let startLabel: String
+    let targetDistanceMeters: Double?
+    let targetDurationSeconds: Int?
+    let targetCalories: Int?
+    let estimatedDistanceMeters: Double?
+    let estimatedDurationSeconds: Int?
+    let allowsCalorieGoal: Bool
+    let routeName: String?
+    let activityTypeOverride: ActivityType?
+    let workoutSteps: [SessionIntentStep]
+    let coachingTarget: SessionCoachingTarget?
+    let workoutReference: SessionWorkoutReference?
+    let workoutCues: [SessionWorkoutCue]
+    let raceIntent: RaceExecutionIntent?
+    let startedFromWorkoutReminder: Bool
+    init(_ intent: SessionIntent) {
+        id = intent.id
+        sport = intent.sport
+        title = intent.title
+        detail = intent.detail
+        guideLine = intent.guideLine
+        startLabel = intent.startLabel
+        targetDistanceMeters = intent.targetDistanceMeters
+        targetDurationSeconds = intent.targetDurationSeconds
+        targetCalories = intent.targetCalories
+        estimatedDistanceMeters = intent.estimatedDistanceMeters
+        estimatedDurationSeconds = intent.estimatedDurationSeconds
+        allowsCalorieGoal = intent.allowsCalorieGoal
+        routeName = intent.routeName
+        activityTypeOverride = intent.activityTypeOverride
+        workoutSteps = intent.workoutSteps
+        coachingTarget = intent.coachingTarget
+        workoutReference = intent.workoutReference
+        workoutCues = intent.workoutCues
+        raceIntent = intent.raceIntent
+        startedFromWorkoutReminder = intent.startedFromWorkoutReminder
+    }
+    func intent(preparedRoute: PreparedRoute?, activityEvent: ActivityEventLaunchContext?, preservesRouteName: Bool = true) -> SessionIntent {
+        SessionIntent(
+            id: id,
+            sport: sport,
+            title: title,
+            detail: detail,
+            guideLine: guideLine,
+            startLabel: startLabel,
+            targetDistanceMeters: targetDistanceMeters,
+            targetDurationSeconds: targetDurationSeconds,
+            targetCalories: targetCalories,
+            estimatedDistanceMeters: estimatedDistanceMeters,
+            estimatedDurationSeconds: estimatedDurationSeconds,
+            allowsCalorieGoal: allowsCalorieGoal,
+            routeName: preservesRouteName ? routeName : nil,
+            preparedRoute: preparedRoute,
+            activityTypeOverride: activityTypeOverride,
+            workoutSteps: workoutSteps,
+            coachingTarget: coachingTarget,
+            workoutReference: workoutReference,
+            workoutCues: workoutCues,
+            raceIntent: raceIntent,
+            activityEvent: activityEvent,
+            startedFromWorkoutReminder: startedFromWorkoutReminder
+        )
     }
 }

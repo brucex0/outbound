@@ -144,7 +144,9 @@ extension ActivityFlowCoordinator {
         if let workoutReference = self.activeIntent?.workoutReference,
            workoutReference.source == "planned_workout" {
             let completionRequest = PlannedWorkoutCompletionRequest(
-                activityId: nil,
+                workoutEditId: workoutReference.workoutEditId,
+                workoutRevision: workoutReference.workoutRevision,
+                activityId: savedActivity.sync?.serverActivityId,
                 completedAt: resolvedActivity.summary.endedAt,
                 durationSeconds: resolvedActivity.summary.durationSecs,
                 distanceMeters: resolvedActivity.summary.distanceM,

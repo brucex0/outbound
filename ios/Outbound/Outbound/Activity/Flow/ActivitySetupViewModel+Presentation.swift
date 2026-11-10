@@ -396,12 +396,16 @@ extension ActivitySetupViewModel {
             workoutReference: preservesBaseStructure ? baseIntent.workoutReference : nil,
             workoutCues: preservesBaseStructure ? baseIntent.workoutCues : [],
             raceIntent: preservesBaseStructure ? baseIntent.raceIntent : nil,
-            activityEvent: preservesBaseStructure ? baseIntent.activityEvent : nil
+            activityEvent: preservesBaseStructure ? baseIntent.activityEvent : nil,
+            startedFromWorkoutReminder: preservesBaseStructure && baseIntent.startedFromWorkoutReminder
         )
     }
 
     func routeFreeIntent(from intent: SessionIntent) -> SessionIntent {
         guard intent.preparedRoute != nil else { return intent }
+        if intent.workoutReference?.workoutEditId != nil {
+            return SessionWorkoutRecoverySnapshot(intent).intent(preparedRoute: nil, activityEvent: intent.activityEvent, preservesRouteName: false)
+        }
         return self.freestyleFallback(for: intent.sport)
             .replacingGoal(intent.activityGoal, unitSystem: self.dependencies.measurementPreferences.unitSystem)
     }

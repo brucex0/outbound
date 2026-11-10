@@ -239,6 +239,7 @@ struct OutboundPrimaryButton: View {
     @Environment(\.outboundTheme) private var theme
     let title: String
     var systemImage: String?
+    var expands = true
     let action: () -> Void
 
     var body: some View {
@@ -250,7 +251,8 @@ struct OutboundPrimaryButton: View {
                 Text(title)
             }
             .font(.headline)
-            .frame(maxWidth: .infinity, minHeight: 48)
+            .padding(.horizontal, expands ? 0 : OutboundSpacing.standard)
+            .frame(maxWidth: expands ? .infinity : nil, minHeight: 48)
             .foregroundStyle(.white)
             .background(theme.actionColor, in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
         }

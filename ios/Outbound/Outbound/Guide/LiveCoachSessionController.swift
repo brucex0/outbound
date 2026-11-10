@@ -121,6 +121,8 @@ final class LiveCoachSessionController {
             clientSessionId: UUID(),
             workoutId: plannedWorkoutReference?.id
                 ?? (standaloneWorkoutReference == nil ? companionBrief?.workout?.id : nil),
+            workoutEditId: intent?.workoutReference?.workoutEditId,
+            workoutRevision: intent?.workoutReference?.workoutRevision,
             workoutRef: standaloneWorkoutReference.map {
                 .init(source: $0.source, id: $0.id, version: $0.version)
             },

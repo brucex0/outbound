@@ -74,6 +74,7 @@ final class ActivityRecorder: ObservableObject {
     @Published private(set) var recoveredSession = false
     @Published private(set) var recoveredAwaitingSave = false
     private(set) var recordingActivityEvent: ActivityEventLaunchContext?
+    private(set) var recordingWorkoutSnapshot: SessionWorkoutRecoverySnapshot?
     private(set) var recordingLiveGroupSessionID: String?
     @Published private(set) var recoveredRouteGuidance: ActiveRouteGuidanceJournal?
     @Published private(set) var recoveredActivityType: ActivityType?
@@ -169,6 +170,7 @@ final class ActivityRecorder: ObservableObject {
         sessionMetadata: ActivityRecordingSessionMetadata? = nil,
         companionType: ActivityCompanionType? = nil,
         activityEvent: ActivityEventLaunchContext? = nil,
+        workoutSnapshot: SessionWorkoutRecoverySnapshot? = nil,
         liveGroupSessionID: String? = nil
     ) {
         guard state == .idle else {
@@ -197,6 +199,7 @@ final class ActivityRecorder: ObservableObject {
         self.sessionMetadata = sessionMetadata
         self.companionType = companionType
         recordingActivityEvent = activityEvent
+        recordingWorkoutSnapshot = workoutSnapshot
         recordingLiveGroupSessionID = liveGroupSessionID
         recoveredWatchLifecycle = nil
         recoveredWatchMessageSequence = nil
@@ -410,6 +413,7 @@ final class ActivityRecorder: ObservableObject {
         route: PreparedRoute,
         speedKilometersPerHour: Double = 10,
         activityEvent: ActivityEventLaunchContext? = nil,
+        workoutSnapshot: SessionWorkoutRecoverySnapshot? = nil,
         liveGroupSessionID: String? = nil
     ) {
         guard let sampler = RunSimulationRouteSampler(route: route) else { return }
@@ -430,6 +434,7 @@ final class ActivityRecorder: ObservableObject {
         self.routeGuidance = routeGuidance
         routeGuidance.saveRouteSnapshot()
         recordingActivityEvent = activityEvent
+        recordingWorkoutSnapshot = workoutSnapshot
         recordingLiveGroupSessionID = liveGroupSessionID
         recoveredAwaitingSave = false
         routeGuidanceEngine = RouteGuidanceEngine(
@@ -837,6 +842,7 @@ final class ActivityRecorder: ObservableObject {
         goalDistanceAdjustmentMeters = journal.goalDistanceAdjustmentMeters ?? 0
         companionType = journal.companionType
         recordingActivityEvent = journal.activityEvent
+        recordingWorkoutSnapshot = journal.workoutSnapshot
         recordingLiveGroupSessionID = journal.liveGroupSessionID
         locationManager.restoreTracking(
             from: points,
@@ -947,6 +953,7 @@ final class ActivityRecorder: ObservableObject {
             wasPaused: state == .paused,
             activityType: activityType,
             liveWorkoutOptions: liveWorkoutOptions,
+            workoutSnapshot: recordingWorkoutSnapshot,
             autoPauseEnabled: autoPauseEnabled,
             walkingStepCount: walkingStepCount,
             cadenceTracker: activityType == .running ? cadenceTracker : nil,

@@ -555,8 +555,19 @@ extension ActivityFlowCoordinator {
         trackChange: Bool = true,
         selectionType: String? = nil
     ) -> Bool {
-        if trackChange { setup.hasEditedLaunchConfiguration = true }
         let currentIntent = self.setup.plannedIntent ?? .freestyleRun
+        if currentIntent.workoutReference?.workoutEditId != nil {
+            if goal == currentIntent.activityGoal {
+                self.setup.selectedGoalMode = SessionGoalMode(goal: goal)
+                return true
+            }
+            let message = String(localized: "record.goal.edited_workout", defaultValue: "Use Change workout on Today to change this saved workout’s goal.")
+            self.showSetupToast(message)
+            UIAccessibility.post(notification: .announcement, argument: message)
+            self.track(.init(.featureExposed, properties: [.feature: .string("edited_workout_goal_guard"), .result: .string("rejected")]))
+            return false
+        }
+        if trackChange { setup.hasEditedLaunchConfiguration = true }
         if case .calories(let targetCalories) = goal {
             let isEligibleManualSport = self.setup.selectedWorkoutChoice != .planned
                 && (currentIntent.sport == .run || currentIntent.sport == .walk)
@@ -719,7 +730,8 @@ extension ActivityFlowCoordinator {
                 workoutReference: restoredBase.workoutReference,
                 workoutCues: restoredBase.workoutCues,
                 raceIntent: restoredBase.raceIntent,
-                activityEvent: restoredBase.activityEvent
+                activityEvent: restoredBase.activityEvent,
+                startedFromWorkoutReminder: restoredBase.startedFromWorkoutReminder
             )
             self.setup.intentBeforeSelectedRoute = nil
             self.setup.selectedRouteDistanceMeters = nil
@@ -757,7 +769,8 @@ extension ActivityFlowCoordinator {
             workoutReference: currentIntent.workoutReference,
             workoutCues: currentIntent.workoutCues,
             raceIntent: currentIntent.raceIntent,
-            activityEvent: currentIntent.activityEvent
+            activityEvent: currentIntent.activityEvent,
+            startedFromWorkoutReminder: currentIntent.startedFromWorkoutReminder
         )
         self.track(.init(.activityConfigurationChanged, properties: [
             .changeType: .string("route_direction"),
