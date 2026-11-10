@@ -6,28 +6,15 @@ Use this for tool selection, Codex reasoning presets, task briefs, and handoffs.
 
 | Work | Starting tool |
 | --- | --- |
-| Initial execution for every substantive task | Supported Freebuff handoff when available; otherwise GPT-6 Luna at Low reasoning |
+| Initial execution for every substantive task | GPT-6 Luna at Low reasoning |
 | Escalation after concrete complexity or an unsuccessful correction cycle | GPT-6.1 Sol at High reasoning, using a compact handoff from Luna |
 
 The root coordinator performs high-effort analysis and planning, then gives the worker an outcome, acceptance criteria, behavior to preserve, and permitted verification. Start every worker with Luna/Low regardless of initial ambiguity; initial classification never sends work directly to Sol.
 
 - Keep one editing owner per worktree. Do not send every task through every tool.
-- Freebuff and OpenCode use the root `AGENTS.md`; `CLAUDE.md` directs Claude-compatible tools to the same rules. OpenCode is optional; this setup adds no provider credentials or paid plan.
+- OpenCode uses the root `AGENTS.md`; `CLAUDE.md` directs Claude-compatible tools to the same rules. OpenCode is optional; this setup adds no provider credentials or paid plan.
 - Give a new tool the specific task and a compact handoff. After one failed correction cycle, reassess or escalate instead of repeating blind retries.
 - Use Standard service normally. Choose Fast explicitly when the saved waiting time justifies its additional usage.
-
-## Freebuff Discovery
-
-- Before reporting Freebuff unavailable, inspect both the connected tool inventory and the local CLI:
-
-  ```sh
-  command -v freebuff
-  freebuff --help
-  ```
-
-- Use `PATH` discovery rather than depending on a fixed installation path. A missing connected tool means no connector is exposed; it does not establish that the local CLI is absent.
-- A successful help command establishes that the CLI is installed and launches. It does not establish login, service access, or task execution readiness. Check the supported workflow before attempting a handoff, and report the specific limitation if execution cannot proceed.
-- Say a handoff occurred only after work was actually dispatched. Keep one editing owner; do not switch an active task merely to repeat discovery.
 
 ## Local Codex Presets
 
@@ -49,7 +36,7 @@ model_reasoning_effort = "low" # Use "medium" for routine, "high" for deep.
 service_tier = "default"
 ```
 
-Profile syntax: [official Codex configuration](https://learn.chatgpt.com/docs/config-file/config-advanced). Freebuff discovery: [project instructions](https://www.codebuff.com/docs/help/faq).
+Profile syntax: [official Codex configuration](https://learn.chatgpt.com/docs/config-file/config-advanced).
 
 ## Automatic Routing
 
@@ -63,7 +50,7 @@ Use a fresh-context reviewer with explicit model/effort, as described in `docs/u
 
 1. Open this repository in the app and start a new chat so the updated project instructions load.
 2. Keep the coordinator at High reasoning.
-3. For substantive tasks, provide a clear brief and dispatch the first execution to a supported Freebuff worker when available, or a Luna/Low worker otherwise. Do not route directly to Sol based on initial ambiguity or classification. Escalate to Sol/High only after concrete complexity emerges or a correction attempt fails; pass a compact handoff and let Luna relinquish worktree ownership first.
+3. For substantive tasks, provide a clear brief and dispatch the first execution to a Luna/Low worker. Do not route directly to Sol based on initial ambiguity or classification. Escalate to Sol/High only after concrete complexity emerges or a correction attempt fails; pass a compact handoff and let Luna relinquish worktree ownership first.
 4. Inspect the worker activity to confirm the requested model was used. If the runtime disallows delegation or lacks model access, it must report the limitation. A higher-priority runtime restriction can override this project policy.
 
 The coordinator still consumes tokens. Short conversational answers stay in the main chat to avoid worker overhead. Current chats may retain earlier instructions; this is an instruction-driven workflow, not guaranteed product-level automatic routing.
