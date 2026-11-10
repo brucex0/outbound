@@ -1,6 +1,328 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "today.change.prompt": {
+      "comment": "Prompt in the compact menu before a workout change reason is chosen. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a change"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un cambio"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择调整方式"
+          }
+        }
+      }
+    },
+    "today.change.menu_hint": {
+      "comment": "Accessibility hint for choosing a reason to change today's workout. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose why you want to change today’s workout."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige por qué quieres cambiar el entrenamiento de hoy."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择调整今天训练的原因。"
+          }
+        }
+      }
+    },
+    "today.change.current_short": {
+      "comment": "Compact label for the current workout in the comparison. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前"
+          }
+        }
+      }
+    },
+    "today.change.new": {
+      "comment": "Label for the proposed workout in the comparison. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新训练"
+          }
+        }
+      }
+    },
+    "today.change.easier_short": {
+      "comment": "Compact low-energy action. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Easier"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más suave"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松些"
+          }
+        }
+      }
+    },
+    "today.change.shorter_short": {
+      "comment": "Compact duration action. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shorter"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más corto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缩短"
+          }
+        }
+      }
+    },
+    "today.change.rest_short": {
+      "comment": "Compact rest action. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descanso"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "休息"
+          }
+        }
+      }
+    },
+    "today.change.minutes_unit": {
+      "comment": "Unit beside the custom workout duration field. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分钟"
+          }
+        }
+      }
+    },
+    "today.change.workout_details": {
+      "comment": "Disclosure for details of a selected catalog workout. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout details"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalles del entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "训练详情"
+          }
+        }
+      }
+    },
+    "today.change.energy_choice": {
+      "comment": "Accessibility label for the low-energy action menu. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energy adjustment"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajuste por energía"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "精力调整"
+          }
+        }
+      }
+    },
+    "today.change.change_catalog": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change workout"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更换训练"
+          }
+        }
+      }
+    },
+    "today.change.duration_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duration"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duración"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时长"
+          }
+        }
+      }
+    },
+    "today.change.range_error": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter 5–%d minutes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introduce entre 5 y %d minutos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入 5–%d 分钟。"
+          }
+        }
+      }
+    },
+    "today.change.targets_removed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intervals and other targets are removed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se eliminan los intervalos y los demás objetivos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将移除间歇和其他目标。"
+          }
+        }
+      }
+    },
     "today.change.apply": {
       "localizations": {
         "en": {
@@ -72078,24 +72400,24 @@
       }
     },
     "today.change.sheet_title": {
-      "comment": "Today-only workout change. [platform:ios]",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Change today’s workout"
+            "value": "Change workout"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambiar el entrenamiento de hoy"
+            "value": "Cambiar entrenamiento"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "调整今天的训练"
+            "value": "调整训练"
           }
         }
       }

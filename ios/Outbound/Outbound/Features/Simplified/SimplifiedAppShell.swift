@@ -1167,7 +1167,6 @@ private struct SimplifiedTodayView: View {
                     showsChangeSheet = false
                 }
             )
-            .presentationDetents([.medium, .large])
         }
     }
 
