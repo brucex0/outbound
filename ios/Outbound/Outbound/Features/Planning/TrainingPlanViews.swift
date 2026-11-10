@@ -308,7 +308,7 @@ struct ActiveTrainingPlanDetailView: View {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     activeStat("Plan length", value: "\(activePlan.durationWeeks) weeks")
                     activeStat("Current week", value: "\(week.currentWeekIndex) of \(week.totalWeeks)")
-                    activeStat(String(localized: "plan.details.scheduled_sessions", defaultValue: "Sessions this week"), value: week.targetSessions.formatted())
+                    activeStat(String(localized: "plan.details.scheduled_sessions", defaultValue: "Sessions this week"), value: week.targetSessions.formatted(.number))
                     activeStat(String(localized: "plan.details.scheduled_minutes", defaultValue: "Time this week"), value: String(format: String(localized: "plan.details.minute_count", defaultValue: "%d min"), week.targetMinutes))
                 }
 
