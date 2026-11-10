@@ -35,7 +35,7 @@ export type StandaloneWorkoutCatalogItem = {
   subtitle: string;
   durationLabel: string;
   systemImage: string;
-  sport: "run" | "bike";
+  sport: "run" | "walk" | "bike";
   category: "guided_distance" | "easy" | "recovery" | "speed" | "tempo" | "fartlek" | "hill" | "walk_run";
   detail: string;
   guideLine: string;

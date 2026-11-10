@@ -25,7 +25,21 @@ import {
   planIntakeInterpretSchema,
 } from "../services/planning/planIntake.js";
 
+import { applyWorkoutEdit, workoutEditApplySchema, WorkoutEditError } from "../services/planning/workoutEdits.js";
+
 const router = new Hono<AppEnv>();
+
+router.post("/workout-edits/apply", zValidator("json", workoutEditApplySchema), async (c) => {
+  const user = await requirePlanningUser(c);
+  if (user instanceof Response) return user;
+  try { return c.json(await applyWorkoutEdit(user.id, c.req.valid("json"))); }
+  catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    console.error("[planning] workout_edit_apply_failed", { errorType: error instanceof Error ? error.name : "unknown",
+      failureCode: /^(P\d{4}|E[A-Z_]{2,30})$/.test(code) ? code : "unknown", status: error instanceof WorkoutEditError ? error.status : 500 });
+    return c.json({ error: error instanceof WorkoutEditError ? error.message : "The workout change could not be confirmed. Retry the same change." }, error instanceof WorkoutEditError ? error.status : 500);
+  }
+});
 
 router.get("/standalone-workouts", async (c) => {
   const user = await requirePlanningUser(c);
@@ -73,6 +87,8 @@ const readinessSchema = z.object({
 });
 
 const completionSchema = z.object({
+  workoutEditId: z.string().max(160).nullable().optional(),
+  workoutRevision: z.string().length(64).nullable().optional(),
   activityId: z.string().optional().nullable(),
   completedAt: z.string().optional(),
   durationSeconds: z.number().int().positive().optional().nullable(),

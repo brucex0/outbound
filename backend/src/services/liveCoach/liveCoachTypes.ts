@@ -48,6 +48,8 @@ export type CreateLiveCoachSessionInput = {
   preparationId?: string;
   deferPlanning?: boolean;
   workoutId?: string;
+  workoutEditId?: string;
+  workoutRevision?: string;
   workoutRef?: LiveCoachWorkoutReference;
   locale: SupportedAILocale;
   coachPersonaId: string;

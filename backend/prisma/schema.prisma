@@ -39,6 +39,7 @@ model User {
   configurations              UserConfiguration[]
   trainingGoals               TrainingGoal[]
   trainingPlans               TrainingPlan[]
+  workoutEdits                WorkoutEdit[]
   plannedWorkouts             PlannedWorkout[]
   workoutCompletions          WorkoutCompletion[]
   readinessCheckIns           ReadinessCheckIn[]
@@ -879,6 +880,7 @@ model PlannedWorkout {
 
   blocks      WorkoutBlock[]
   completions WorkoutCompletion[]
+  edits       WorkoutEdit[]
 
   @@index([userId, scheduledDate])
   @@index([planVersionId, scheduledDate])
@@ -923,6 +925,30 @@ model WorkoutStep {
   @@index([blockId, sortOrder])
 }
 
+model WorkoutEdit {
+  id                    String          @id @default(cuid())
+  userId                String
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  validForDate          String
+  plannedWorkoutId      String?
+  plannedWorkout        PlannedWorkout? @relation(fields: [plannedWorkoutId], references: [id], onDelete: SetNull)
+  suggestionId          String
+  operation             String
+  reason                String?
+  idempotencyKey        String
+  requestHash           String
+  baseRevision          String
+  resultRevision        String
+  beforeWorkout         Json
+  afterWorkout          Json
+  validationContext     Json
+  createdAt             DateTime        @default(now())
+  completions           WorkoutCompletion[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, validForDate, createdAt])
+}
+
 model WorkoutCompletion {
   id                 String         @id @default(cuid())
   plannedWorkoutId   String
@@ -940,6 +966,9 @@ model WorkoutCompletion {
   avgHeartRate       Int?
   avgPower           Float?
   perceivedEffort    Int?
+  workoutEditId      String?
+  workoutEdit        WorkoutEdit?    @relation(fields: [workoutEditId], references: [id], onDelete: SetNull)
+  workoutRevision    String?
   completionQuality  String         @default("completed")
   notes              String?
   createdAt          DateTime       @default(now())

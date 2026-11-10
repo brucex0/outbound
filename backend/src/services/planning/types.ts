@@ -80,6 +80,8 @@ export interface SubmitReadinessInput {
 }
 
 export interface CompleteWorkoutInput {
+  workoutEditId?: string | null;
+  workoutRevision?: string | null;
   activityId?: string | null;
   completedAt?: string;
   durationSeconds?: number | null;
@@ -249,6 +251,7 @@ export interface PlanningEventResult {
 }
 
 export interface PlanningState {
+  editContext?: WorkoutEditContext | null;
   roadmap?: unknown | null;
   goal: unknown | null;
   plan: unknown | null;
@@ -310,7 +313,10 @@ export interface ActivitySuggestion {
   plannedWorkoutId?: string | null;
   archetypeId?: string | null;
   catalogWorkout?: import("../../data/standaloneWorkouts.js").StandaloneWorkoutCatalogItem;
+  effectiveWorkout?: import("../../data/standaloneWorkouts.js").StandaloneWorkoutCatalogItem;
   catalogVersion?: number;
+  workoutEditId?: string;
+  workoutRevision?: string;
   durationSeconds?: number;
   optional: boolean;
 }
@@ -321,7 +327,23 @@ export interface ActivitySuggestionPlanContext {
   title?: string | null;
 }
 
+export interface WorkoutEditContext {
+  baseRevision: string;
+  canEditTarget: boolean;
+  canEditEffort: boolean;
+  canConvertGoal: boolean;
+  limitation: "structuredWorkout" | "unsupportedTargets" | null;
+  minimumDurationSeconds: number;
+  maximumDurationSeconds: number;
+  minimumDistanceMeters: number;
+  maximumDistanceMeters: number;
+  effortPresets: Array<{ id: string; min: number; max: number }>;
+  currentEffortPreset: string | null;
+}
+
 export interface ActivitySuggestionResponse {
+  workoutEditOperation?: string;
+  editContext?: WorkoutEditContext | null;
   status: ActivitySuggestionStatus;
   source: ActivitySuggestionSource;
   relationship: ActivitySuggestionRelationship;

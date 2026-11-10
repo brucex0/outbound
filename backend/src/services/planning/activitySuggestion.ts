@@ -15,7 +15,7 @@ import type {
   TrainingStimulus,
 } from "./types.js";
 import type { Prisma } from "@prisma/client";
-import { applyDailyWorkoutAdjustment } from "../personalization/workoutAdjustmentPolicy.js";
+import { canonicalWorkoutSuggestion } from "./workoutEdits.js";
 
 const ALGORITHM_VERSION = "activity-suggestion-v1";
 
@@ -55,8 +55,7 @@ export async function buildActivitySuggestion(
   now: Date = new Date()
 ): Promise<ActivitySuggestionResponse> {
   const prisma = getPrismaClient();
-  const baseline = await buildBaseActivitySuggestion(userId, planningStatus, now, prisma);
-  return applyDailyWorkoutAdjustment(prisma, userId, baseline);
+  return canonicalWorkoutSuggestion(prisma, userId, planningStatus, now);
 }
 
 export async function buildBaseActivitySuggestion(

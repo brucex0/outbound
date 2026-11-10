@@ -83,6 +83,8 @@ const createSessionSchema = z.object({
   preparationId: z.string().min(1).max(120).optional(),
   deferPlanning: z.boolean().optional(),
   workoutId: z.string().min(1).max(120).optional(),
+  workoutEditId: z.string().max(160).optional(),
+  workoutRevision: z.string().length(64).optional(),
   workoutRef: z.object({
     source: z.literal("standalone_catalog"),
     id: z.string().trim().min(1).max(120),

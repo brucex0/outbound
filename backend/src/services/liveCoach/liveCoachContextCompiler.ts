@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import type { LiveCoachCompiledContext } from "../aiProviders/types.js";
-import { standaloneWorkoutCatalog } from "../../data/standaloneWorkouts.js";
+import { standaloneWorkoutCatalog, type StandaloneWorkoutCatalogItem } from "../../data/standaloneWorkouts.js";
 import { AIProviderError } from "../aiProviders/errors.js";
 import type {
   CompiledLiveCoachSessionContext,
@@ -17,7 +17,7 @@ export async function compileLiveCoachContext(
   prisma: PrismaClient,
   userId: string,
   input: Pick<CreateLiveCoachSessionInput,
-    "workoutId" | "workoutRef" | "measurementUnitSystem" | "locale" | "sessionIntent" | "clientWorkout" | "environment">
+    "workoutId" | "workoutRef" | "workoutEditId" | "workoutRevision" | "measurementUnitSystem" | "locale" | "sessionIntent" | "clientWorkout" | "environment">
 ): Promise<CompiledLiveCoachSessionContext> {
   if (input.workoutId && input.workoutRef) {
     throw new AIProviderError("not_eligible", "Only one selected workout source may be used.");
@@ -90,10 +90,17 @@ export async function compileLiveCoachContext(
   if (input.workoutId && !workout && !input.clientWorkout) {
     throw new AIProviderError("not_eligible", "The selected workout is unavailable for this runner.");
   }
+  if (Boolean(input.workoutEditId) !== Boolean(input.workoutRevision)) throw new AIProviderError("not_eligible", "The workout revision is incomplete.");
+  const edit = input.workoutEditId ? await prisma.workoutEdit.findFirst({ where: {
+    id: input.workoutEditId, userId, resultRevision: input.workoutRevision,
+    plannedWorkoutId: input.workoutId ?? null, operation: { not: "skip" },
+  } }) : null;
+  if (input.workoutEditId && !edit) throw new AIProviderError("not_eligible", "The performed workout revision is unavailable.");
+  const effective = (edit?.afterWorkout as unknown as { effectiveWorkout?: StandaloneWorkoutCatalogItem } | undefined)?.effectiveWorkout;
   const prescription = workout?.prescription as Record<string, unknown> | undefined;
   const catalogReference = typeof prescription?.catalogWorkoutId === "string" && typeof prescription.catalogVersion === "number"
     ? { source: "standalone_catalog" as const, id: prescription.catalogWorkoutId, version: prescription.catalogVersion } : undefined;
-  const workoutExecution = resolveWorkoutExecution(catalogReference ?? input.workoutRef);
+  const workoutExecution = resolveWorkoutExecution(catalogReference ?? input.workoutRef, effective);
 
   const sevenDayActivities = activities.filter((activity) => activity.startedAt >= sevenDaysAgo);
   const olderBaselineActivities = activities.filter((activity) => activity.startedAt < sevenDaysAgo);
@@ -139,7 +146,15 @@ export async function compileLiveCoachContext(
       records: boundedJSON(guideProfile?.records ?? {}, 2_000),
       recentMemorySummary: boundedJSON(guideProfile?.memorySnapshot ?? {}, 3_000),
     },
-    workout: workout ? {
+    workout: effective ? {
+      title: clip(effective.title, 120), purpose: clip(effective.guideLine, 160),
+      durationSeconds: effective.targetDistanceMeters != null ? Math.round(effective.targetDistanceMeters / 1000 * 420) : effective.steps.reduce((n, s) => n + s.durationSeconds, 0), targetCalories: null,
+      intensityTarget: {}, prescription: { workoutRevision: input.workoutRevision },
+      blocks: effective.steps.map((step) => ({ type: step.coachingTarget?.phase ?? "main", modality: effective.sport,
+        stimulus: "effective_workout", durationSeconds: step.durationSeconds, distanceMeters: null, repeats: null, restSeconds: null,
+        metadata: {}, steps: [{ label: clip(step.label, 100), kind: step.coachingTarget?.phase ?? "easy", durationSeconds: step.durationSeconds,
+          distanceMeters: null, target: step.coachingTarget ?? {}, detail: nullableClip(step.detail, 240) }] })),
+    } : workout ? {
       title: clip(workout.title, 120),
       purpose: clip(workout.stimulus, 160),
       durationSeconds: workout.durationSeconds,
@@ -227,13 +242,14 @@ export async function compileLiveCoachContext(
 }
 
 function resolveWorkoutExecution(
-  reference: CreateLiveCoachSessionInput["workoutRef"]
+  reference: CreateLiveCoachSessionInput["workoutRef"],
+  effective?: StandaloneWorkoutCatalogItem
 ): LiveCoachCompiledContext["workoutExecution"] {
-  if (!reference) return null;
-  if (reference.version != null && reference.version !== standaloneWorkoutCatalog.version) {
+  if (!reference && !effective) return null;
+  if (!effective && reference?.version != null && reference.version !== standaloneWorkoutCatalog.version) {
     throw new AIProviderError("not_eligible", "The selected standalone workout catalog is out of date.");
   }
-  const workout = standaloneWorkoutCatalog.workouts.find((candidate) => candidate.id === reference.id);
+  const workout = effective ?? standaloneWorkoutCatalog.workouts.find((candidate) => candidate.id === reference?.id);
   if (!workout) {
     throw new AIProviderError("not_eligible", "The selected standalone workout is unavailable.");
   }

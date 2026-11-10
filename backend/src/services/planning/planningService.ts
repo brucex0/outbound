@@ -265,7 +265,8 @@ export async function updateRaceGoal(userId: string, goalId: string, input: Upda
 export async function getState(userId: string): Promise<PlanningState> {
   await processDueEvents(userId);
   await refreshGeneratedPlan(userId);
-  return assemblePlanningState(userId, "stable");
+  const state = await assemblePlanningState(userId, "stable");
+  return { ...state, editContext: (await buildActivitySuggestion(userId)).editContext ?? null };
 }
 
 export async function getToday(userId: string): Promise<TodayPlanningResponse> {
@@ -420,6 +421,13 @@ export async function completeWorkout(
     await lockPlanningUser(tx, userId);
     const current = await tx.plannedWorkout.findUniqueOrThrow({ where: { id: workout.id } });
     if (current.status === "completed") return false;
+    if (Boolean(input.workoutEditId) !== Boolean(input.workoutRevision)) throw new Error("An edit and revision must be supplied together.");
+    if (input.workoutEditId && !await tx.workoutEdit.findFirst({ where: {
+      id: input.workoutEditId, userId, plannedWorkoutId: workoutId, resultRevision: input.workoutRevision!, operation: { not: "skip" },
+    } })) throw new Error("The performed workout revision is unavailable.");
+    if (input.activityId && !await tx.activity.findFirst({ where: { id: input.activityId, userId, deletedAt: null }, select: { id: true } })) {
+      throw new Error("The saved activity is unavailable.");
+    }
     await tx.plannedWorkout.update({
       where: { id: workout.id },
       data: { status: "completed" },
@@ -437,6 +445,8 @@ export async function completeWorkout(
     await tx.workoutCompletion.create({
       data: {
         plannedWorkoutId: workout.id,
+        workoutEditId: input.workoutEditId ?? null,
+        workoutRevision: input.workoutRevision ?? null,
         userId,
         activityId: input.activityId ?? null,
         completedAt: input.completedAt ? new Date(input.completedAt) : new Date(),
@@ -546,11 +556,11 @@ export async function enqueueActivityCompletedEvent(userId: string, activityId: 
   });
 }
 
-async function assemblePlanningState(
+export async function assemblePlanningState(
   userId: string,
-  planningStatus: PlanningState["planningStatus"]
+  planningStatus: PlanningState["planningStatus"],
+  prisma: Prisma.TransactionClient = getPrismaClient()
 ): Promise<PlanningState> {
-  const prisma = getPrismaClient();
   const [goal, plan, athleteState, latestAdjustment] = await Promise.all([
     prisma.trainingGoal.findFirst({
       where: { userId, status: "active" },
