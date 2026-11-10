@@ -26,14 +26,9 @@ Open when changing iOS Today editing, edit persistence, or recording attribution
 
 ## Migration and verification
 
-This is additive; no production migration, reset, deployment or release is performed by implementation. Before deploying the API, apply `backend/prisma/migrations/20261110020000_workout_edits/migration.sql` through the normal migration deployment procedure. Generate the Prisma client and deploy the backend before distributing the new iOS client.
+The schema is additive and recorded in `backend/prisma/migrations/20261110020000_workout_edits/migration.sql`. Production deployment uses the exact-image, non-destructive `outbound-db-push` job before traffic promotion, as described in [backend-deploy.md](backend-deploy.md); do not substitute an uncoordinated manual migration command. The 2026-11-10 rollout record there captures schema execution and serving revision. Deploy the backend before distributing the matching iOS client.
 
-```sh
-cd backend
-npx prisma migrate deploy
-npm run db:generate
-npm run build
-```
+Local compile preparation remains `cd backend && npm run db:generate && npm run build`.
 
 An isolated disposable development database can instead use the documented `npm run db:rebuild`; it destroys only the explicitly configured database. Never point fixture commands at personal/production configuration.
 

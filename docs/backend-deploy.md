@@ -140,6 +140,13 @@ Adaptive planning uses Vertex AI through the runtime service account. Production
 - The candidate `/health` returned `ok`; a synthetic unauthenticated request to `POST /v1/personalization/adjustments/apply` returned `401`. Production `/health` returned `ok` after promotion, and the route continued to return `401` without authentication.
 - Revision `outbound-api-00191-gfd` serves 100% of production traffic. `outbound-planning-maintenance` was pinned to the same immutable image and was not executed. TypeScript compilation passed; the test suite and authenticated account behavior were not exercised.
 
+## Direct Workout Edits Rollout — 2026-11-10
+
+- Deployed reviewed source `4fc82d21` as revision `outbound-api-00192-2bs`, serving 100% of production traffic. Cloud Build: `2e0f20bb-a758-4786-8c0d-72df1e831b73`.
+- Immutable image: `us-central1-docker.pkg.dev/outbound-494602/cloud-run-source-deploy/outbound-api@sha256:9a673a348c16ea67629356f8f40d97dbaa83eed6d934279e3d3b77629bff6fea`.
+- Exact-image schema execution `outbound-db-push-vl45w` succeeded in 48.06 seconds using the standard non-destructive Prisma schema push followed by training-plan seeding. It did not accept data loss or reset the database.
+- Existing 13 AI settings and all Secret Manager `valueFrom` references were preserved. Production `/health` returned 200; an invalid `{}` request to `POST /v1/planning/workout-edits/apply` returned validation status 400, replacing the old revision's 404. Bruce subsequently reported verifying the signed iPhone update himself and requested deployment only. No further agent phone verification was performed; route validation alone does not establish authenticated saving.
+
 ## Daily Planning Maintenance
 
 The `outbound-planning-maintenance` Cloud Run Job uses the latest ready `outbound-api` image, the same runtime service account, Cloud SQL attachment, database secret, and adaptive-planning environment. Its container command is `npm run planning:maintenance`. Cloud Scheduler invokes it daily at 02:15 in `America/Los_Angeles` using the runtime service account's OAuth identity.
