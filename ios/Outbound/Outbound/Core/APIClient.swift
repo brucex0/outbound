@@ -1976,6 +1976,9 @@ struct ActivitySuggestionPayload: Codable, Equatable, Identifiable {
     let startLabel: String
     let plannedWorkoutId: String?
     let archetypeId: String?
+    var catalogWorkout: StandaloneWorkout? = nil
+    var catalogVersion: Int? = nil
+    var durationSeconds: Int? = nil
     let optional: Bool
 }
 
@@ -1996,7 +1999,8 @@ extension ActivitySuggestionResponse {
     var shouldSupersedeCalibration: Bool {
         if status == "restRecommended" { return true }
         guard primary != nil else { return false }
-        return ["optionalRecovery", "adjustedFromPlan"].contains(relationship)
+        return primary?.id.hasPrefix("changed-") == true || primary?.catalogWorkout != nil
+            || ["optionalRecovery", "adjustedFromPlan"].contains(relationship)
     }
 
     var isPlanLinkedToPlan: Bool {
@@ -2028,7 +2032,20 @@ extension ActivitySuggestionResponse {
 extension ActivitySuggestionPayload {
     func todayTrainingSuggestion(guideLine: String) -> TodayTrainingSuggestion? {
         guard let sport = SportType.apiSport(from: modality) else { return nil }
-        let durationSeconds = durationMinutes * 60
+        let catalog = catalogWorkout.map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) }
+        let catalogEfforts = catalog?.guideInstructions.segments.map(\.effort)
+        let displayEffort = catalogEfforts.map { efforts in
+            String(format: String(localized: "today.change.rpe_range", defaultValue: "RPE %1$d–%2$d"), locale: .autoupdatingCurrent, efforts.map(\.rpeMin).min() ?? 1, efforts.map(\.rpeMax).max() ?? 2)
+        } ?? BuiltinWorkoutText.localized(effortLabel)
+        let durationSeconds = self.durationSeconds ?? durationMinutes * 60
+        let durationText = durationSeconds % 60 == 0
+            ? String(format: String(localized: "activity.completed.duration.format", defaultValue: "%d min"), locale: .autoupdatingCurrent, durationSeconds / 60)
+            : String(format: String(localized: "today.change.duration_seconds", defaultValue: "%1$d min %2$d sec"), locale: .autoupdatingCurrent, durationSeconds / 60, durationSeconds % 60)
+        let catalogDetail = catalog.map { workout in
+            workout.targetDistanceMeters.map { distance in
+                String(format: String(localized: "today.change.distance_estimate", defaultValue: "%1$@ · about %2$@"), APIDateParser.distanceLabel(meters: distance), durationText)
+            } ?? "\(durationText) • \(displayEffort)"
+        }
         let calorieDetail = targetCalories.map { targetCalories in
             let target = String(
                 format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"),
@@ -2055,28 +2072,30 @@ extension ActivitySuggestionPayload {
             return "\(target) · \(duration)"
         }
         let stepDuration = max(60, durationSeconds / max(1, steps.count))
-        let workoutSteps = steps.enumerated().map { index, step in
+        let workoutSteps = catalog?.steps.map { step in
+            TrainingPlanWorkoutStep(id: step.id, kind: stimulus.stepKind, label: step.label, durationSeconds: step.durationSeconds, detail: step.detail ?? "")
+        } ?? steps.enumerated().map { index, step in
             TrainingPlanWorkoutStep(
                 id: "\(id)-step-\(index)",
                 kind: stimulus.stepKind,
                 label: step,
                 durationSeconds: stepDuration,
-                detail: BuiltinWorkoutText.localized(effortLabel)
+                detail: displayEffort
             )
         }
         let workout = TrainingPlanWorkout(
             id: plannedWorkoutId ?? id,
-            title: BuiltinWorkoutText.localized(title),
+            title: catalog?.title ?? BuiltinWorkoutText.localized(title),
             kind: stimulus.workoutKind,
             dayLabel: "Today",
-            summary: why,
-            purpose: why,
-            guideCue: guideLine,
-            effortLabel: BuiltinWorkoutText.localized(effortLabel),
+            summary: catalog?.detail ?? why,
+            purpose: catalog?.guideInstructions.objective ?? why,
+            guideCue: catalog?.guideLine ?? guideLine,
+            effortLabel: displayEffort,
             durationSeconds: durationSeconds,
             distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
             targetCalories: targetCalories,
-            steps: targetCalories != nil
+            steps: targetCalories != nil || catalog?.targetDistanceMeters != nil
                 ? []
                 : workoutSteps.isEmpty ? [
                     TrainingPlanWorkoutStep(
@@ -2084,7 +2103,7 @@ extension ActivitySuggestionPayload {
                         kind: stimulus.stepKind,
                         label: title,
                         durationSeconds: durationSeconds,
-                        detail: BuiltinWorkoutText.localized(effortLabel)
+                        detail: displayEffort
                     )
                 ]
                 : workoutSteps,
@@ -2093,11 +2112,11 @@ extension ActivitySuggestionPayload {
         let suggestion = SuggestedSession(
             id: plannedWorkoutId ?? archetypeId ?? id,
             sport: sport,
-            title: BuiltinWorkoutText.localized(title),
-            durationLabel: String(localized: "\(durationMinutes) min"),
-            activityLabel: BuiltinWorkoutText.localized(effortLabel).lowercased(),
+            title: catalog?.title ?? BuiltinWorkoutText.localized(title),
+            durationLabel: durationText,
+            activityLabel: displayEffort.lowercased(),
             framing: why,
-            guideLine: guideLine,
+            guideLine: catalog?.guideLine ?? guideLine,
             startLabel: startLabel,
             targetDistanceMeters: targetCalories == nil ? distanceMeters : nil,
             targetDurationSeconds: targetCalories == nil ? durationSeconds : nil,
@@ -2105,17 +2124,18 @@ extension ActivitySuggestionPayload {
             estimatedDistanceMeters: targetCalories == nil ? nil : distanceMeters,
             estimatedDurationSeconds: targetCalories == nil ? nil : durationSeconds,
             allowsCalorieGoal: modality == "run" && ["easyAerobic", "recovery"].contains(stimulus),
-            plannedWorkoutID: plannedWorkoutId
+            plannedWorkoutID: plannedWorkoutId,
+            catalogWorkout: catalog
         )
 
         return TodayTrainingSuggestion(
-            title: BuiltinWorkoutText.localized(title),
-            detail: calorieDetail ?? "\(String(localized: "\(durationMinutes) min")) • \(BuiltinWorkoutText.localized(effortLabel))",
-            guideLine: guideLine,
+            title: catalog?.title ?? BuiltinWorkoutText.localized(title),
+            detail: catalogDetail ?? calorieDetail ?? "\(String(localized: "\(durationMinutes) min")) • \(displayEffort)",
+            guideLine: catalog?.guideLine ?? guideLine,
             adjustmentLine: optional ? "Optional" : nil,
             suggestedSession: suggestion,
             workout: workout,
-            stepSummary: steps
+            stepSummary: catalog?.steps.map(\.label) ?? steps
         )
     }
 }

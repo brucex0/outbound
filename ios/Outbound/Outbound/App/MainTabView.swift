@@ -693,6 +693,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
     let plannedWorkoutID: String?
     let routeName: String?
     let workoutSteps: [SessionIntentStep]?
+    let catalogWorkout: StandaloneWorkout?
     let startedFromWorkoutReminder: Bool
 
     init(
@@ -713,6 +714,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         plannedWorkoutID: String? = nil,
         routeName: String? = nil,
         workoutSteps: [SessionIntentStep]? = nil,
+        catalogWorkout: StandaloneWorkout? = nil,
         startedFromWorkoutReminder: Bool = false
     ) {
         self.id = id
@@ -732,11 +734,25 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         self.plannedWorkoutID = plannedWorkoutID
         self.routeName = routeName
         self.workoutSteps = workoutSteps
+        self.catalogWorkout = catalogWorkout
         self.startedFromWorkoutReminder = startedFromWorkoutReminder
     }
 
     var intent: SessionIntent {
-        SessionIntent(
+        if let catalogWorkout {
+            return SessionIntent(
+                id: id, sport: sport, title: catalogWorkout.title, detail: catalogWorkout.detail,
+                guideLine: catalogWorkout.guideLine, startLabel: catalogWorkout.startLabel,
+                targetDistanceMeters: catalogWorkout.targetDistanceMeters,
+                targetDurationSeconds: catalogWorkout.targetDistanceMeters == nil ? catalogWorkout.steps.reduce(0) { $0 + $1.durationSeconds } : nil,
+                estimatedDurationSeconds: catalogWorkout.targetDistanceMeters.map { Int(($0 / 1000 * 420).rounded()) },
+                allowsCalorieGoal: catalogWorkout.intent.allowsCalorieGoal,
+                workoutSteps: catalogWorkout.steps, coachingTarget: catalogWorkout.coachingTarget,
+                workoutReference: plannedWorkoutID.map { SessionWorkoutReference(source: "planned_workout", id: $0, version: nil) } ?? catalogWorkout.intent.workoutReference,
+                workoutCues: catalogWorkout.guideInstructions.segments
+            )
+        }
+        return SessionIntent(
             id: id,
             sport: sport,
             title: title,

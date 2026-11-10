@@ -548,7 +548,7 @@ enum ProductAnalyticsSchema {
         .homeWidgetSetupGuideCompleted: [.entrySource],
         .homeWidgetAlreadyPresent: [.result],
         .todayCardDisplayChanged: [.sourceType, .selectionType],
-        .todayAdjustmentSelected: [.result, .sourceType],
+        .todayAdjustmentSelected: [.result, .sourceType, .selectionType],
         .todayAdjustmentDecided: [.result, .sourceType],
         .planningSurfaceOpened: [.sourceType, .entrySource, .countBucket],
         .raceGoalUpdated: [.result, .selectionType],

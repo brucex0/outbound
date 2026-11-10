@@ -335,6 +335,9 @@ struct WorkoutAdjustmentApplyRequestDTO: Codable, Equatable {
     let choice: ReadinessChoice
     let minutes: Int
     let note: String?
+    var action: String? = nil
+    var catalogWorkoutId: String? = nil
+    var catalogVersion: Int? = nil
 }
 
 struct WorkoutAdjustmentApplyResponseDTO: Decodable {

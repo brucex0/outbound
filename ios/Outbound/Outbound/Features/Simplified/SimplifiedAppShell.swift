@@ -1150,12 +1150,11 @@ private struct SimplifiedTodayView: View {
         }
         .sheet(isPresented: $showsChangeSheet) {
             TodayChangeSheet(
-                originalTitle: "\(todayWorkoutName) · \(todayTotalDuration)",
+                original: trainingPlanStore.activitySuggestion?.primary,
+                displayedOverride: customizedRunIntent ?? currentCalibrationWorkout?.sessionIntent,
                 pendingAdjustment: personalizationStore.snapshot.pendingAdjustment,
                 busy: isApplyingWorkoutChange,
-                onApply: { reason, note, minutes in
-                    applyWorkoutChange(reason: reason, note: note, minutes: minutes)
-                },
+                onApply: { selection in applyWorkoutChange(selection) },
                 onDecision: { accept in
                     Task {
                         await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [
@@ -1172,7 +1171,7 @@ private struct SimplifiedTodayView: View {
         }
     }
 
-    private func applyWorkoutChange(reason: ReadinessChoice, note: String?, minutes: Int) {
+    private func applyWorkoutChange(_ selection: TodayWorkoutChangeSelection) {
         guard !isApplyingWorkoutChange else { return }
         showsChangeSheet = false
         guard let envelope = trainingPlanStore.activitySuggestion, let primary = envelope.primary,
@@ -1183,31 +1182,35 @@ private struct SimplifiedTodayView: View {
         let candidate = WorkoutAdjustmentApplyRequestDTO(
             idempotencyKey: pendingWorkoutChange?.idempotencyKey ?? UUID().uuidString,
             workoutId: primary.plannedWorkoutId ?? primary.id, suggestionId: primary.id,
-            validForDate: envelope.validForDate, choice: reason, minutes: minutes,
-            note: note.map { String($0.prefix(160)) }
+            validForDate: envelope.validForDate, choice: selection.reason, minutes: selection.minutes,
+            note: nil, action: selection.action, catalogWorkoutId: selection.catalog?.id, catalogVersion: selection.catalog?.catalogVersion
         )
         let request = candidate == pendingWorkoutChange ? candidate : WorkoutAdjustmentApplyRequestDTO(
             idempotencyKey: UUID().uuidString, workoutId: candidate.workoutId, suggestionId: candidate.suggestionId,
-            validForDate: candidate.validForDate, choice: reason, minutes: minutes, note: candidate.note
+            validForDate: candidate.validForDate, choice: candidate.choice, minutes: candidate.minutes, note: nil,
+            action: candidate.action, catalogWorkoutId: candidate.catalogWorkoutId, catalogVersion: candidate.catalogVersion
         )
         pendingWorkoutChange = request
         isApplyingWorkoutChange = true
         Task {
             defer { isApplyingWorkoutChange = false }
             await analyticsManager?.track(.init(.todayAdjustmentSelected, properties: [
-                .result: .string(reason == .shortOnTime ? "short_on_time" : reason.rawValue), .sourceType: .string("workout_change")
+                .result: .string(selection.action), .sourceType: .string("workout_change"),
+                .selectionType: .string(selection.reason == .shortOnTime ? "short_on_time" : selection.reason.rawValue)
             ]))
             await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [
                 .result: .string("accepted"), .sourceType: .string("workout_change")
             ]))
             do {
                 try await trainingPlanStore.applyWorkoutChange(request)
+                await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("saved"), .sourceType: .string("workout_change")]))
                 customizedRunIntent = nil
                 pendingWorkoutChange = nil
                 workoutChangeToast = ProfileToast(text: String(localized: "today.change.applied", defaultValue: "Workout change applied"), style: .success)
             } catch is CancellationError {
                 // Leaving the task retains its request key for an idempotent retry.
             } catch {
+                await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [.result: .string("failed"), .sourceType: .string("workout_change")]))
                 let failure = error as NSError
                 print("[Planning] operation=apply_workout_change domain=\(failure.domain) code=\(failure.code)")
                 workoutChangeToast = ProfileToast(text: String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again."), style: .error)
@@ -1987,6 +1990,9 @@ private struct SimplifiedTodayView: View {
                 weight: 1
             )]
         }
+        if let meters = activeRunIntent.targetDistanceMeters, trainingPlanStore.activitySuggestion?.primary?.catalogWorkout != nil {
+            return [WorkoutPhaseItem(id: activeRunIntent.id, duration: distanceLabel(meters), title: displayWorkoutCopy(activeRunIntent.title), weight: 1)]
+        }
         if let customizedRunIntent {
             if let meters = customizedRunIntent.targetDistanceMeters {
                 return [WorkoutPhaseItem(
@@ -2351,122 +2357,6 @@ private struct CompactIntervalPreview: View {
 
     private func expandedDuration(_ value: String) -> String {
         value.replacingOccurrences(of: "m", with: " min")
-    }
-}
-
-private struct TodayChangeSheet: View {
-    @FocusState private var focusedInput: String?
-    @Environment(\.dismiss) private var dismiss
-    let originalTitle: String
-    let pendingAdjustment: AdjustmentProposalDTO?
-    let busy: Bool
-    let onApply: (ReadinessChoice, String?, Int) -> Void
-    let onDecision: (Bool) -> Void
-    @State private var reason: ReadinessChoice?
-    @State private var note = ""
-    @State private var availableMinutes = 15
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                if let pendingAdjustment {
-                    Text(String(localized: "today.adjustment.recommendation.title", defaultValue: "Recommended plan update"))
-                        .font(.title2.weight(.semibold))
-                    Text(pendingAdjustment.explanation)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    ForEach(Array(pendingAdjustment.changes.enumerated()), id: \.offset) { _, change in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(change.beforeTitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .strikethrough()
-                            Label(change.afterTitle, systemImage: "arrow.triangle.2.circlepath")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                    }
-                    Spacer()
-                    OutboundPrimaryButton(
-                        title: String(localized: "today.adjustment.apply", defaultValue: "Apply update"),
-                        systemImage: "checkmark.circle.fill"
-                    ) { onDecision(true) }
-                    Button(String(localized: "today.adjustment.keep", defaultValue: "Keep original plan")) {
-                        onDecision(false)
-                    }
-                    .frame(maxWidth: .infinity)
-                } else if let reason {
-                    Text(reasonHeading(reason)).font(.title2.weight(.semibold))
-                    Text(recommendationText(reason)).font(.subheadline).foregroundStyle(.secondary)
-
-                    if reason == .shortOnTime {
-                        Picker("Available time", selection: $availableMinutes) {
-                            ForEach([10, 15, 20], id: \.self) { Text("\($0) min").tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    TextField("Anything else? (optional)", text: $note, axis: .vertical)
-                        .focused($focusedInput, equals: "note")
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(2...3)
-
-                    Spacer()
-
-                    OutboundPrimaryButton(title: String(localized: "today.change.apply", defaultValue: "Apply"), systemImage: "checkmark") {
-                        focusedInput = nil
-                        onApply(reason, cleanedNote, recommendedMinutes(reason))
-                    }
-                    .disabled(busy)
-                    Button("Keep original") { dismiss() }
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Text("What needs to change?").font(.title2.weight(.semibold))
-                    Text(originalTitle).font(.subheadline).foregroundStyle(.secondary)
-                    changeReasonButton("Less time", icon: "clock", reason: .shortOnTime)
-                    changeReasonButton("Low energy", icon: "battery.25percent", reason: .tired)
-                    changeReasonButton("Sore or uncomfortable", icon: "bandage", reason: .sore)
-                    Spacer()
-                }
-            }
-            .padding(OutboundSpacing.screen)
-            .background {
-                Color.clear.contentShape(Rectangle()).onTapGesture { focusedInput = nil }
-            }
-            .navigationTitle("Change today’s run")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
-        }
-    }
-
-    private func changeReasonButton(_ title: LocalizedStringKey, icon: String, reason: ReadinessChoice) -> some View {
-        Button { self.reason = reason } label: {
-            HStack { Label(title, systemImage: icon); Spacer(); Image(systemName: "chevron.right") }
-                .frame(maxWidth: .infinity, minHeight: 48)
-        }
-        .buttonStyle(.bordered)
-    }
-
-    private var cleanedNote: String? {
-        let value = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.isEmpty ? nil : value
-    }
-
-    private func recommendedMinutes(_ reason: ReadinessChoice) -> Int { reason == .shortOnTime ? availableMinutes : 15 }
-    private func reasonHeading(_ reason: ReadinessChoice) -> String {
-        switch reason {
-        case .tired: String(localized: "Try 15 minutes easy")
-        case .sore: String(localized: "Rest today")
-        case .shortOnTime: String(localized: "Fit the time you have")
-        case .good: String(localized: "Keep today’s run")
-        }
-    }
-    private func recommendationText(_ reason: ReadinessChoice) -> String {
-        switch reason {
-        case .tired: String(localized: "A short easy run keeps the rhythm without forcing the full workout.")
-        case .sore: String(localized: "Skipping one run is better than turning discomfort into an injury.")
-        case .shortOnTime: String(localized: "Plainstride will keep this easy and end it at your selected time.")
-        case .good: String(localized: "The original workout still fits.")
-        }
     }
 }
 
