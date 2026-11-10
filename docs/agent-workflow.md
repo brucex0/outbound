@@ -55,6 +55,10 @@ Profile syntax: [official Codex configuration](https://learn.chatgpt.com/docs/co
 
 The routing criteria and worker ownership rules live in `AGENTS.md`. The coordinator stays at high effort for analysis and planning; every execution worker starts with Luna/Low. Escalate to Sol/High only after evidence of concrete complexity or an unsuccessful correction cycle. Instructions do not change the desktop model selector.
 
+Independent UX QA is a separate mandatory review gate, not an implementation handoff: `plainstride_ux_qa` uses GPT-6.1 Sol at Medium reasoning under the exception documented in `AGENTS.md`. Follow `docs/ux-qa.md` for setup and the evidence-based review contract. The agent's TOML template is tracked at `config/codex/agents/plainstride-ux-qa.toml`; install it in personal Codex configuration with `scripts/install-plainstride-ux-qa.py`. Start a fresh Codex session to discover it. If it is not exposed, a configured Sol/Medium reviewer can be spawned using the same contract; report the actual model and path. If model/delegation is unavailable, report the blocker. Do not replace this reviewer with a Luna implementation worker or self-review.
+
+Use a fresh-context reviewer with explicit model/effort, as described in `docs/ux-qa.md`; a full-history fork can inherit the coordinator's settings. Confirm the actual session settings before accepting the review.
+
 ### Desktop
 
 1. Open this repository in the app and start a new chat so the updated project instructions load.

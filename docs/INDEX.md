@@ -7,6 +7,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Task | Open |
 | --- | --- |
 | Coding workflow, automatic model routing, Codex presets, Freebuff, handoffs, task template | `docs/agent-workflow.md` |
+| Mandatory independent UX review, evidence, check matrix, and reviewer setup | `docs/ux-qa.md` |
 | Current product flow and terminology | `docs/product-overview.md` |
 | iOS source layout, recording, camera, persistence, guide | `docs/ios-architecture.md` |
 | iOS build, signing, simulator, device install | `docs/build-test-device.md` |

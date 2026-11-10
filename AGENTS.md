@@ -25,6 +25,15 @@ When user ask questions or brain storm, always answer in concise bullet points
 - Keep one editing owner per worktree. The coordinator must not edit while a worker owns execution. Workers must not recursively delegate for model routing.
 - The desktop selector remains the coordinator's model, and coordination consumes tokens. See `docs/agent-workflow.md` for desktop setup and the automatic CLI launcher.
 
+## Mandatory UX QA
+
+- Every UX change requires an independent `plainstride_ux_qa` review after implementation and before merge or completion. UX scope includes visual layout and components, user-facing strings and localization, interaction/navigation/forms/keyboard, accessibility, themes/shared components, and user-visible behavior including backend-driven states.
+- The reviewer must use the tracked contract in `docs/ux-qa.md`, inspect the exact proposed revision and diff, and return its required `Pass`, `Issues found`, or `Incomplete` report. Wait for that report; fix findings and re-review affected diffs. Unresolved findings or missing applicable runtime evidence block a QA pass and merge/completion unless Bruce explicitly accepts a documented waiver.
+- The dedicated reviewer uses GPT-6.1 Sol at Medium reasoning. This is a deliberate exception only for independent UX QA; implementation workers still follow the routing rules above. If the named agent is not exposed, the coordinator may use a configured Sol/Medium reviewer with the same contract and report that fallback. If the model or delegation is unavailable, report the blocker; do not silently substitute another model or claim independent review.
+- Spawn the reviewer with fresh context (`fork_turns="none"`), explicit `model="gpt-6.1-sol"` and `reasoning_effort="medium"`, and a self-contained handoff. Full-history forks can inherit the coordinator's model/effort; verify the actual reviewer settings instead of assuming the agent name guarantees them.
+- The reviewer does not edit application code, delegate recursively, change production data, or run the full test suite. Targeted UI checks and the design-system checker are permitted. Source review or a build alone cannot establish runtime behavior.
+- See `docs/ux-qa.md` for installation, review evidence, and the check matrix.
+
 ## Scope And Behavior Preservation
 
 - Keep changes within the user's requested scope. Do not bundle unrelated fixes, cleanup, or behavior changes into the task.
