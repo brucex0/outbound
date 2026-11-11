@@ -1,3 +1,4 @@
+import { accountTimeZone, accountDateLabel } from "../accountCalendar.js";
 import type { Prisma } from "@prisma/client";
 import type { GeneratePlanInput } from "./generator.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
@@ -12,6 +13,7 @@ export async function loadRunningPlanningContext(tx: Prisma.TransactionClient, i
   now: Date; createdAt: Date; enableProgramme: boolean; authored?: boolean; authoredInitialSeconds?: number;
 }) {
   const { userId, now } = input;
+  const calendarDate = accountDateLabel(now, await accountTimeZone(userId, undefined, tx));
   const [rawActivities, planned, evidence, readiness, feedback] = await Promise.all([
     tx.activity.findMany({ where: { userId, deletedAt: null, startedAt: { gte: new Date(now.getTime() - 90 * 86400000), lte: now } },
       orderBy: { startedAt: "desc" }, take: 1000,
@@ -38,7 +40,7 @@ export async function loadRunningPlanningContext(tx: Prisma.TransactionClient, i
   const cap = Math.min(input.goal.maxSessionMinutes * 60, previous?.status === "active" ? (budget?.ordinarySessionMinutes ?? initialSeconds / 60) * 60 : Infinity);
   const lastRecordedRunAt = activities.find((row) => isRunningActivityType(row.type) && ((row.durationSecs ?? 0) >= 300 || (row.distanceM ?? 0) >= 500))?.startedAt;
   const after = previous?.stageStartedOn ? new Date(previous.stageStartedOn) : input.createdAt;
-  const evaluation = evaluateRunWalkProgramme({ previous, enabled: input.enableProgramme, now, createdAt: input.createdAt,
+  const evaluation = evaluateRunWalkProgramme({ calendarDate, previous, enabled: input.enableProgramme, now, createdAt: input.createdAt,
     evidence: evidence as PrescribedRunningEvidence[], athleteState, readiness: latestReadiness,
     explicitDifficulty: feedback.some((row) => row.recordedAt >= after && row.effort === "tooHard"), lastRecordedRunAt,
     initialSessionSeconds: initialSeconds, sessionCapSeconds: cap });

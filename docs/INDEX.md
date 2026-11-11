@@ -34,6 +34,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Live coaching operations and audio | `docs/live-coach-operations.md` |
 | Stretch catalog, editor, generation | `docs/stretch-routines.md` |
 | Groups, membership approval, member invitations, weekly recurrence, and Social | `docs/run-groups.md`, `docs/social.md` |
+| Account-local Monday weeks, timezone initialization, partial plan weeks and cached calendar context | `docs/account-calendar.md` |
 | Account preferences and statistics | `docs/account-preferences.md`, `docs/account-statistics.md` |
 | Git transport problems | `docs/git-transport.md` |
 | Any other feature, historical plan, prototype, or handoff | Search `docs/reference-map.md` |

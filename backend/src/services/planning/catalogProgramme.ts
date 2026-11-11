@@ -1,3 +1,4 @@
+import { accountDateLabel } from "../accountCalendar.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { buildRunningWorkout, isShortSourceRepetition, limitRunningQuality, resizeTimedRunningWorkout, synchronizeRunningPrescription } from "./runningPrescription.js";
 import { adequateRunningEvidence, evaluateRunWalkProgramme, RUN_WALK_LADDER, stampIssuedRunningDose, type PrescribedRunningEvidence, type RunWalkProgramme } from "./runWalkProgramme.js";
@@ -32,6 +33,7 @@ export function generateCatalogWindow(input: {
   goal: GeneratePlanInput["goal"];
   now: Date;
   createdAt: Date;
+  timeZone?: string;
   priorDecision?: Record<string, unknown>;
   evidence: ProgrammeEvidence[];
   readyToAdvance: boolean;
@@ -53,10 +55,10 @@ export function generateCatalogWindow(input: {
     throw new Error("The training programme cursor is invalid. Choose a current programme before rebuilding.");
   }
   const cursor: ProgrammeCursor = valid ? { ...raw } : {
-    templateID: input.template.id, weekIndex: 1, weekAnchor: key(monday(input.createdAt)), episodeStart: key(day(input.createdAt)), status: "active",
+    templateID: input.template.id, weekIndex: 1, weekAnchor: key(monday(accountDateLabel(input.createdAt, input.timeZone ?? "UTC"))), episodeStart: key(accountDateLabel(input.createdAt, input.timeZone ?? "UTC")), status: "active",
   };
   let outcome: ProgrammeOutcome = valid ? "same_week" : "initial";
-  const today = day(input.now);
+  const today = accountDateLabel(input.now, input.timeZone ?? "UTC");
   const anchor = new Date(cursor.weekAnchor);
   const elapsed = today >= addDays(anchor, 7);
   if (cursor.status === "completed") outcome = "completed";
@@ -89,7 +91,7 @@ export function generateCatalogWindow(input: {
         programmeWeekAnchor: key(addDays(currentAnchor, offset * 7)), provisional: offset > 0 } }))
   );
   return {
-    phase: cursor.status === "completed" ? "maintenance" : phaseForGoal(input.goal, input.now),
+    phase: cursor.status === "completed" ? "maintenance" : phaseForGoal(input.goal, today),
     summary: input.template.summary,
     workouts: workouts.map((workout) => applyRunningBenchmark(workout, input.goal.constraints, input.now)),
     engineDecision: {
@@ -110,7 +112,7 @@ function key(value: Date): string { return value.toISOString().slice(0, 10); }
 
 /** Earned source exposure is independent of calendar frequency and projected dates. */
 function generateRunningCatalogWindow(input: Parameters<typeof generateCatalogWindow>[0]): PlanGenerationResult {
-  const today = day(input.now);
+  const today = accountDateLabel(input.now, input.timeZone ?? "UTC");
   const raw = record(input.priorDecision?.programme);
   const initial = !raw;
   const sourceIndex = raw ? Number(raw.weekIndex) : 1;
@@ -136,7 +138,7 @@ function generateRunningCatalogWindow(input: Parameters<typeof generateCatalogWi
   const state = input.athleteState ?? computeAthleteTrainingState({ activities: [], plannedWorkouts: [], readiness: [], now: input.now });
   const authoredWalkRun = input.template.weeks[0].workouts.some((row) => row.kind === "walkRun" && !row.isOptional);
   const programme = input.runWalkProgramme ?? evaluateRunWalkProgramme({
-    previous: input.priorDecision?.runWalkProgramme, enabled: !authoredWalkRun && input.goal.baselineContext !== "currentlyActive", now: input.now,
+    previous: input.priorDecision?.runWalkProgramme, enabled: !authoredWalkRun && input.goal.baselineContext !== "currentlyActive", now: input.now, calendarDate: today,
     evidence: input.evidence as PrescribedRunningEvidence[], explicitDifficulty: input.explicitDifficulty || !input.readyToAdvance,
     athleteState: state, initialSessionSeconds: Math.min(1500, input.goal.maxSessionMinutes * 60), sessionCapSeconds: input.goal.maxSessionMinutes * 60,
   }).state;
@@ -296,7 +298,7 @@ function generateRunningCatalogWindow(input: Parameters<typeof generateCatalogWi
     }
   }
   const recipeNeedsReview = qualityNeedsReview || conservativeRecipeNeedsReview;
-  return { phase: cursor.status === "completed" && !input.goal.targetDate ? "maintenance" : phaseForGoal(input.goal, input.now), summary: input.template.summary, workouts,
+  return { phase: cursor.status === "completed" && !input.goal.targetDate ? "maintenance" : phaseForGoal(input.goal, today), summary: input.template.summary, workouts,
     engineDecision: { runningBenchmark: runningBenchmarkDecision(input.goal.constraints, input.now), source: "trainingPlanCatalog", templateID: input.template.id,
       catalogPolicyVersion: CATALOG_POLICY_VERSION, runningDosePolicy: RUNNING_DOSE_POLICY, programme: cursor, programmeOutcome: outcome, runWalkProgramme: programme ?? null,
       preparationOnly: true,

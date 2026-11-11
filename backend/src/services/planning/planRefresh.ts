@@ -1,3 +1,4 @@
+import { accountTimeZone, accountDateLabel } from "../accountCalendar.js";
 import { runningPlanReview, runningConstraintReview, retainRunningPlanForReview, clearRunningPlanReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
 import { sameRunWalkProgramme } from "./runWalkProgramme.js";
@@ -49,8 +50,9 @@ async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userI
   if (!plan) return;
   const version = plan.versions[0];
   const goal = { ...plan.goal, activities: plan.goal.activities, constraints: plan.goal.constraints } as GeneratePlanInput["goal"];
-  const phase = phaseForGoal(goal, now);
-  const today = day(now);
+  const timeZone = await accountTimeZone(userId, undefined, tx);
+  const today = accountDateLabel(now, timeZone);
+  const phase = phaseForGoal(goal, today);
   const decision = version?.engineDecision as Record<string, unknown> | undefined;
   const policyChanged = decision?.plannerPolicyVersion !== PLANNER_POLICY_VERSION
     || runningBenchmarkDecisionChanged(decision?.runningBenchmark, goal.constraints, now);
@@ -80,14 +82,14 @@ async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userI
   });
   const protectedDays = new Set(protectedWorkouts.map(workoutSlotKey));
   let windowStart = today;
-  let generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, now: windowStart, reason: force ? "goalUpdated" : policyChanged ? "policyUpdated" : "weeklyRollover" });
+  let generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, now, scheduleStart: windowStart, reason: force ? "goalUpdated" : policyChanged ? "policyUpdated" : "weeklyRollover" });
   const required = generation.workouts.filter((workout) => !isOptionalWorkout(workout));
   if (required.length > 0 && required.every((workout) => protectedDays.has(workoutSlotKey(workout)))) {
     // Skip the entire protected horizon, even when several windows were completed
     // in advance. Optional supports cannot prevent required-run replenishment.
     const latest = Math.max(...protectedWorkouts.filter((workout) => !isOptionalWorkout(workout)).map((workout) => workout.scheduledDate.getTime()));
     windowStart = addDays(new Date(latest), 1);
-    generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, now: windowStart, reason: "weeklyRollover" });
+    generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, now, scheduleStart: windowStart, reason: "weeklyRollover" });
   }
   const latestReadiness = runningContext ? runningContext.latestReadiness : readiness.find((entry) => entry.date >= addDays(today, -1));
   const adapted = latestReadiness && (latestReadiness.illnessOrPain || latestReadiness.energy <= 2 || latestReadiness.soreness >= 4 || latestReadiness.stress >= 4)

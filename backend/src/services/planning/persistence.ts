@@ -1,3 +1,4 @@
+import { accountDateLabel, accountTimeZone } from "../accountCalendar.js";
 import { Prisma, type TrainingPlanVersion } from "@prisma/client";
 import type { PlannedWorkoutDraft } from "./types.js";
 
@@ -19,7 +20,7 @@ export async function createPlanVersionWithWorkouts(
   // retire only future prescriptions, and never prescribe another required run
   // on a date already completed/skipped in any version of this plan.
   const effectiveFrom = input.effectiveFrom ?? new Date();
-  const today = new Date(Date.UTC(effectiveFrom.getUTCFullYear(), effectiveFrom.getUTCMonth(), effectiveFrom.getUTCDate()));
+  const today = accountDateLabel(effectiveFrom, await accountTimeZone(input.userId, undefined, tx));
   const protectedWorkouts = await tx.plannedWorkout.findMany({
     where: { userId: input.userId, planVersion: { planId: input.planId }, status: { in: ["completed", "skipped"] } },
     select: { scheduledDate: true, prescription: true },

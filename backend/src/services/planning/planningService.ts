@@ -1,3 +1,4 @@
+import { accountTimeZone, accountDateLabel, planningCalendarContext } from "../accountCalendar.js";
 import { preferredLongRunDays, LongRunDaysError } from "./longRunDays.js";
 import { runningPlanReview, runningReviewDecision, clearRunningPlanReview } from "./runningPlanReview.js";
 import { recordWorkoutCompletion } from "./workoutCompletion.js";
@@ -12,7 +13,7 @@ import { buildActivitySuggestion } from "./activitySuggestion.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { enqueuePlanningEvent } from "./events.js";
 import { allowsShortRuns, generateInitialPlan, normalizeGoalInput } from "./generator.js";
-import { createPlanVersionWithWorkouts, json, lockPlanningUser, isOptionalWorkout, protectedEditedWorkouts } from "./persistence.js";
+import { createPlanVersionWithWorkouts, json, lockPlanningUser, isOptionalWorkout, protectedEditedWorkouts, workoutSlotKey } from "./persistence.js";
 import { processDuePlanningEventsForUser, processPlanningEventById } from "./processor.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import { getPlanIntakeContext, PlanningContextChangedError } from "./planIntake.js";
@@ -53,6 +54,7 @@ export async function createGoal(
     throw new GoalFeasibilityError();
   }
   const prisma = getPrismaClient();
+  const timeZone = await accountTimeZone(userId);
   const selection = readCatalogRecommendationSelection(input.constraints);
   if (selection && preferredLongRunDays(input.constraints).length) throw new LongRunDaysError("catalog");
   const [activities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
@@ -128,9 +130,10 @@ export async function createGoal(
     goal: normalized,
     athleteState,
     reason: "initial",
+    scheduleStart: accountDateLabel(new Date(), timeZone),
   });
   const generation = selectedRecommendation
-    ? generateCatalogWindow({ template: selectedRecommendation.template, goal: normalized, now: new Date(), createdAt: new Date(),
+    ? generateCatalogWindow({ template: selectedRecommendation.template, goal: normalized, now: new Date(), createdAt: new Date(), timeZone,
         evidence: [], readyToAdvance: false, explicitDifficulty: false, athleteState })
     : { ...generated!, workouts: applyCalorieTargets({
         workouts: generated!.workouts, preferredRunGoalType: normalized.preferredRunGoalType,
@@ -595,16 +598,18 @@ export async function assemblePlanningState(
       }),
     ]);
     const version = plan?.versions[0] ?? null;
-    const now = startOfDay(new Date());
+    const timeZone = await accountTimeZone(userId, undefined, prisma);
+    const calendar = planningCalendarContext(timeZone, new Date(), plan?.startedAt);
+    const now = accountDateLabel(new Date(), timeZone);
     // A rolling replan replaces future prescriptions, not completed progress.
-    // Seven days covers any creation-anchored current week in the client.
+    // Monday labels select the whole current account week, including prior versions.
     const earlierCompletions = plan && version ? await prisma.plannedWorkout.findMany({
       where: {
         userId,
         planVersion: { planId: plan.id },
         planVersionId: { not: version.id },
         status: "completed",
-        scheduledDate: { gte: addDays(now, -7), lt: addDays(now, 29) },
+        scheduledDate: { gte: accountDateLabel(new Date(calendar.weekStart), timeZone), lt: addDays(now, 29) },
       },
       orderBy: { scheduledDate: "asc" },
       take: 50,
@@ -616,7 +621,27 @@ export async function assemblePlanningState(
       },
     }) : [];
     const protectedEdits = plan && version ? await protectedEditedWorkouts(prisma, userId, plan.id, version.id, now) : [];
-    const storedWorkouts = [...protectedEdits, ...earlierCompletions, ...(version?.workouts ?? []).filter((workout) => workout.status !== "superseded")]
+    const existingWorkouts = [...protectedEdits, ...earlierCompletions, ...(version?.workouts ?? []).filter((workout) => workout.status !== "superseded")];
+    // Refill replaces future prescriptions, not this calendar week's existing target.
+    // Historical planned rows count even before missed-workout maintenance runs;
+    // skipped slots stay protected for the whole current week, including future days.
+    const priorCalendarWorkouts = plan && version ? await prisma.plannedWorkout.findMany({
+      where: {
+        userId, planVersion: { planId: plan.id }, planVersionId: { not: version.id },
+        scheduledDate: { gte: accountDateLabel(new Date(calendar.weekStart), timeZone), lt: accountDateLabel(new Date(calendar.weekEnd), timeZone) },
+        OR: [{ status: "skipped" }, { status: { in: ["planned", "missed"] }, scheduledDate: { lt: now } }],
+      },
+      orderBy: [{ planVersion: { versionNumber: "desc" } }, { createdAt: "desc" }, { id: "desc" }],
+      include: { blocks: { orderBy: { sortOrder: "asc" }, include: { steps: { orderBy: { sortOrder: "asc" } } } } },
+    }) : [];
+    const representedSlots = new Set(existingWorkouts.map(workoutSlotKey));
+    const retainedCalendarWorkouts = priorCalendarWorkouts.filter((workout) => {
+      const slot = workoutSlotKey(workout);
+      if (representedSlots.has(slot)) return false;
+      representedSlots.add(slot);
+      return true;
+    });
+    const storedWorkouts = [...existingWorkouts, ...retainedCalendarWorkouts]
       .sort((left, right) => left.scheduledDate.getTime() - right.scheduledDate.getTime());
     const workouts = await Promise.all(storedWorkouts.map(async (workout) => workout.status === "planned"
       ? { ...workout, performedWorkoutReference: await issueWorkout(prisma, userId, workout.id) } : workout));
@@ -632,6 +657,7 @@ export async function assemblePlanningState(
       data: { planningStateRevision: { increment: 1 } }, select: { planningStateRevision: true } });
     return {
       revision: observation.planningStateRevision,
+      calendar,
       goal: goal ? { ...goal, currentRunningFitness: resolveRunningBenchmark((goal.constraints as Record<string, unknown>).runningBenchmark, new Date()), shortRunSessions: (goal.constraints as Record<string, unknown>).shortRunSessions === "true", optionalMobility: (goal.constraints as Record<string, unknown>).optionalMobility === "true" } : null,
       plan: plan ? { ...plan, versions: undefined } : null,
       currentVersion: version ? { ...version, engineDecision: runningReviewDecision(version.engineDecision), workouts: undefined } : null,

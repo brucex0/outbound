@@ -1,3 +1,5 @@
+import { accountTimeZone, accountDateLabel, ACCOUNT_FIRST_WEEKDAY } from "../accountCalendar.js";
+import { StatisticsCalendar } from "../statistics/calendar.js";
 import { runningPlanReview } from "./runningPlanReview.js";
 import { withSessionEffort } from "./sessionEffort.js";
 import { protectedEditedWorkouts } from "./persistence.js";
@@ -67,8 +69,11 @@ export async function buildBaseActivitySuggestion(
   now: Date = new Date(),
   prisma: Prisma.TransactionClient = getPrismaClient(),
 ): Promise<ActivitySuggestionResponse> {
-  const todayStart = startOfDay(now);
-  const tomorrowStart = addDays(todayStart, 1);
+  const timeZone = await accountTimeZone(userId, undefined, prisma);
+  const accountCalendar = new StatisticsCalendar(timeZone, ACCOUNT_FIRST_WEEKDAY);
+  const todayStart = accountDateLabel(now, timeZone);
+  const todayInstant = accountCalendar.start(now, "day");
+  const tomorrowInstant = accountCalendar.add(todayInstant, 1, "day");
   const [plan, activities, readiness] = await Promise.all([
     prisma.trainingPlan.findFirst({
       where: { userId, status: "active" },
@@ -125,7 +130,7 @@ export async function buildBaseActivitySuggestion(
     now,
   });
   const todayActivities = typedActivities.filter(
-    (activity) => activity.startedAt >= todayStart && activity.startedAt < tomorrowStart
+    (activity) => activity.startedAt >= todayInstant && activity.startedAt < tomorrowInstant
   );
   const todayWorkout = workouts.find(
     (workout) =>
@@ -136,6 +141,8 @@ export async function buildBaseActivitySuggestion(
     workouts.find((workout) => workout.scheduledDate >= todayStart && workout.status === "planned" && !((workout.prescription as Record<string, unknown>)?.optional === true)) ?? null;
   const base = baseResponse({
     now,
+    validFor: todayStart,
+    validUntil: tomorrowInstant,
     planningStatus,
     planVersionId: latestVersion?.id ?? null,
     planContext: plan
@@ -634,13 +641,15 @@ function responseWithPrimary(params: {
 
 function baseResponse(params: {
   now: Date;
+  validFor: Date;
+  validUntil: Date;
   planningStatus: PlanningStatus;
   planVersionId: string | null;
   planContext: ActivitySuggestionResponse["planContext"];
   activities: ActivityForPlanning[];
 }): ActivitySuggestionResponse {
   const latestActivity = params.activities[0];
-  const validFor = startOfDay(params.now);
+  const validFor = params.validFor;
   return {
     status: "noSuggestion",
     source: "adaptive",
@@ -651,7 +660,7 @@ function baseResponse(params: {
     planningStatus: params.planningStatus,
     generatedAt: params.now.toISOString(),
     validForDate: validFor.toISOString().slice(0, 10),
-    validUntil: addDays(validFor, 1).toISOString(),
+    validUntil: params.validUntil.toISOString(),
     planVersionId: params.planVersionId,
     planContext: params.planContext,
     activityWatermark: {

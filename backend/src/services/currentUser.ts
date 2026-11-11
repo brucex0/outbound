@@ -4,13 +4,17 @@ import { getPrismaClient } from "./prisma.js";
 import type { AppEnv, AuthContext } from "../types/hono.js";
 import { isReservedUsername } from "./usernames.js";
 
+import { accountTimeZone } from "./accountCalendar.js";
+
 type RegistrationProfile = { username?: string; displayName?: string };
 
 export function getAuthenticatedIdentity(c: Context<AppEnv>): AuthContext | null { return c.get("auth"); }
 
 export async function getAuthenticatedAppUser(c: Context<AppEnv>, profile: RegistrationProfile = {}) {
   const auth = getAuthenticatedIdentity(c);
-  return auth ? resolveAuthenticatedAppUser(auth, profile) : null;
+  const user = auth ? await resolveAuthenticatedAppUser(auth, profile) : null;
+  if (user && !user.calendarTimeZone) await accountTimeZone(user.id, c.req.header("X-Plainstride-Time-Zone"));
+  return user;
 }
 
 export async function resolveAuthenticatedAppUser(auth: AuthContext, profile: RegistrationProfile = {}) {

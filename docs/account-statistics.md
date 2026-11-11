@@ -1,5 +1,7 @@
 # Account Statistics
 
+Account weeks and timezone initialization follow `account-calendar.md`: persisted account IANA zone, Monday first weekday, exclusive end boundary, and stable periods while travelling.
+
 Open this when changing account totals, Progress, statistics caches, history synchronization, or import reconciliation.
 
 ## Ownership

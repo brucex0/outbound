@@ -99,7 +99,7 @@ Recommended layers:
 - Starter/re-entry planning uses a75-minute weekly reference, mostly walking; it is neither observed capacity nor a safety guarantee. Standard floors plus an explicit commitment may raise this to100minutes (4×25);125minutes (5×25) requires fewer days or explicit shorter-session allowance. This reference is not a hard ceiling.
 - The existing athlete-state JSON modality breakdown now includes running `typicalSessionMinutes`, `representativeSessions`, and `activeWeeks`. No database reset or schema migration is required. The next normal generation computes fresh evidence; existing prescriptions remain unchanged until replanning.
 - Persisted engine decisions include only the boolean `runHistoryLongSessionBalanced` for this decision path, alongside the existing planning inputs. It is not a client analytics metric.
-- Planning state retains up to 50 prior-version completed workouts from the same plan over the last seven days so a rolling replan does not erase current-week progress. Upcoming prescriptions continue to come from the latest version. Historical completion does not silently cancel a new prescription on the same date.
+- Planning state retains up to 50 prior-version completed workouts from the same plan starting at the current account-local Monday, so a rolling replan does not erase current-week progress. Calendar metadata and logical date semantics are owned by `account-calendar.md`. Upcoming prescriptions continue to come from the latest version. Historical completion does not silently cancel a new prescription on the same date.
 
 The engine should not regenerate the entire future plan on every event.
 

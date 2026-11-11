@@ -1,3 +1,4 @@
+import { accountTimeZone, accountDateLabel } from "../accountCalendar.js";
 import { runningPlanReview, runningConstraintReview, retainRunningPlanForReview, clearRunningPlanReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
 import { sameRunWalkProgramme } from "./runWalkProgramme.js";
@@ -37,7 +38,8 @@ async function refreshCatalogPlanCandidate(tx: Prisma.TransactionClient, userId:
   const version = plan.versions[0];
   const decision = record(version?.engineDecision);
   const cursor = record(decision?.programme);
-  const today = day(now);
+  const timeZone = await accountTimeZone(userId, undefined, tx);
+  const today = accountDateLabel(now, timeZone);
   const elapsed = typeof cursor?.weekAnchor === "string" && today >= addDays(new Date(cursor.weekAnchor), 7);
   // Once checked, a read/refill within an episode does not advance or reset it.
   const benchmarkChanged = runningBenchmarkDecisionChanged(decision?.runningBenchmark, record(plan.goal.constraints), now);
@@ -81,7 +83,7 @@ async function refreshCatalogPlanCandidate(tx: Prisma.TransactionClient, userId:
     && latestReadiness.soreness < 4 && latestReadiness.stress < 4));
   const difficulty = feedback.some((item) => item.effort === "tooHard") || evidence.some((row) => row.scheduledDate >= addDays(today, -7)
     && row.completions.some((completion) => unexpectedRunningEffort({ ...completion, stimulus: completion.prescriptionRevision?.stimulus ?? row.stimulus }, latestReadiness)));
-  const generation = generateCatalogWindow({ template, goal, now, createdAt: plan.createdAt, priorDecision: decision,
+  const generation = generateCatalogWindow({ template, goal, now, timeZone, createdAt: plan.createdAt, priorDecision: decision,
     evidence, readyToAdvance: readyToAdvance && eventType !== "painFlagged", explicitDifficulty: difficulty, athleteState: state, runWalkProgramme: runningContext?.state });
   const protectedSlots = new Set(evidence.filter((row) => ["completed", "skipped"].includes(row.status)
     || row.status === "planned" && (typeof record(row.prescription)?.workoutEditId === "string" || record(row.prescription)?.source === "explicitWorkoutChange")).map(workoutSlotKey));

@@ -15,6 +15,7 @@ export interface AdaptationInput {
   athleteState: AthleteTrainingStateSnapshot;
   latestReadiness?: ReadinessForPlanning;
   now?: Date;
+  scheduleStart?: Date;
   basePlan?: PlanGenerationResult;
   runWalkProgramme?: GeneratePlanInput["runWalkProgramme"];
 }
@@ -35,6 +36,7 @@ export function adaptPlan(input: AdaptationInput): AdaptationResult {
     runWalkProgramme: input.runWalkProgramme,
     athleteState: input.athleteState,
     now,
+    scheduleStart: input.scheduleStart,
     reason: input.eventType,
   });
   const result = resultForEvent(input, base);

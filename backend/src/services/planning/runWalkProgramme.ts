@@ -34,6 +34,7 @@ export function evaluateRunWalkProgramme(input: {
   previous?: unknown;
   enabled: boolean;
   now: Date;
+  calendarDate?: Date;
   createdAt?: Date;
   evidence: PrescribedRunningEvidence[];
   athleteState: AthleteTrainingStateSnapshot;
@@ -43,12 +44,13 @@ export function evaluateRunWalkProgramme(input: {
   initialSessionSeconds?: number;
   sessionCapSeconds?: number;
 }): { state?: RunWalkProgramme; outcome: RunWalkOutcome } {
-  const today = dayKey(input.now);
+  const calendarDate = input.calendarDate ?? day(input.now);
+  const today = dayKey(calendarDate);
   const parsed = parseRunWalkProgramme(input.previous);
   const prior = parsed ? { ...parsed, sessionTotalSeconds: Math.min(parsed.sessionTotalSeconds, input.sessionCapSeconds ?? Infinity) } : undefined;
   if (!prior) return input.enabled ? { state: { policyVersion: RUN_WALK_POLICY, stageIndex: 0, stageStartedOn: today, episode: 0,
     sessionTotalSeconds: Math.min(input.initialSessionSeconds ?? 1500, input.sessionCapSeconds ?? Infinity), status: "active" }, outcome: "initial" } : { outcome: "not_applicable" };
-  if (new Date(prior.stageStartedOn) > day(input.now)) {
+  if (new Date(prior.stageStartedOn).getTime() > Math.max(day(input.now).getTime(), calendarDate.getTime())) {
     console.error("[planning] run_walk_programme_failed", { operation: "evaluate", category: "future_state" });
     throw new Error("The running programme state is invalid. Recreate the current plan before rebuilding.");
   }
@@ -71,7 +73,7 @@ export function evaluateRunWalkProgramme(input: {
       sessionTotalSeconds: prior.status === "active" ? prior.sessionTotalSeconds : Math.min(input.initialSessionSeconds ?? 1500, input.sessionCapSeconds ?? Infinity), status: "active" }, outcome: "reset" };
   }
   if (prior.status === "completed") return { state: prior, outcome: "held" };
-  const elapsed = day(input.now).getTime() - new Date(prior.stageStartedOn).getTime() >= 7 * 86400000;
+  const elapsed = calendarDate.getTime() - new Date(prior.stageStartedOn).getTime() >= 7 * 86400000;
   const readiness = input.readiness;
   const adverse = readiness && (readiness.illnessOrPain || readiness.energy <= 2 || readiness.soreness >= 4 || readiness.stress >= 4);
   // A fresh late difficulty report holds the stage; old reports do not penalize it forever.
@@ -86,7 +88,7 @@ export function evaluateRunWalkProgramme(input: {
   if (new Set(trials.map((row) => row.id)).size < 3) return { state: prior, outcome: "held" };
   return { state: { ...prior, status: "completed", completedTrialMainSeconds: Math.min(...trials.map((row) => Number(record(record(row.prescription)?.issuedRunningDose)?.mainSeconds ?? 0))),
     completedTrialTotalSeconds: Math.min(...trials.map((row) => row.durationSeconds)),
-    completedTrialWeeklyMinutes: trials.reduce((sum, row) => sum + row.durationSeconds / 60, 0) / Math.max(1, (day(input.now).getTime() - new Date(prior.stageStartedOn).getTime()) / (7 * 86400000)) }, outcome: "completed" };
+    completedTrialWeeklyMinutes: trials.reduce((sum, row) => sum + row.durationSeconds / 60, 0) / Math.max(1, (calendarDate.getTime() - new Date(prior.stageStartedOn).getTime()) / (7 * 86400000)) }, outcome: "completed" };
 }
 
 export function parseRunWalkProgramme(value: unknown): RunWalkProgramme | undefined {

@@ -6,14 +6,18 @@ import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
 import { accountStatistics } from "../services/statistics/service.js";
 import type { AppEnv } from "../types/hono.js";
+import { accountTimeZone, ACCOUNT_FIRST_WEEKDAY } from "../services/accountCalendar.js";
 const router = new Hono<AppEnv>();
 router.get("/", async c => {
   c.header("Cache-Control", "private, no-store");
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
-  const query = z.object({ timeZone: z.string().max(100).default("UTC").refine(value => { try { new Intl.DateTimeFormat("en-US", { timeZone: value }); return true; } catch { return false; } }), firstWeekday: z.coerce.number().int().min(1).max(7).default(1) }).safeParse(c.req.query());
+  const query = z.object({ timeZone: z.string().max(100).refine(value => { try { new Intl.DateTimeFormat("en-US", { timeZone: value }); return true; } catch { return false; } }).optional(), firstWeekday: z.coerce.number().int().min(1).max(7).default(1) }).safeParse(c.req.query());
   if (!query.success) { console.warn("[statistics] invalid_calendar status=400"); return c.json({ error: "Invalid statistics calendar." }, 400); }
-  try { return c.json(await accountStatistics(user.id, query.data.timeZone, query.data.firstWeekday) as any); }
+  try {
+    const timeZone = await accountTimeZone(user.id, c.req.header("X-Plainstride-Time-Zone") ?? query.data.timeZone);
+    return c.json(await accountStatistics(user.id, timeZone, ACCOUNT_FIRST_WEEKDAY) as any);
+  }
   catch (error) { console.error("[statistics] snapshot_failed", { category: error instanceof Error ? error.name : "unknown" }); return c.json({ error: "Statistics are temporarily unavailable." }, 503); }
 });
 // Exact candidate lookups avoid downloading the account's entire identity/history index.

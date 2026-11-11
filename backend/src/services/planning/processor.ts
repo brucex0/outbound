@@ -1,3 +1,4 @@
+import { accountTimeZone, accountDateLabel } from "../accountCalendar.js";
 import { runningConstraintReview, retainRunningPlanForReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
 import { parseRunWalkProgramme } from "./runWalkProgramme.js";
@@ -192,8 +193,12 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
         reviewHorizonWeeks: plan.goal.reviewHorizonWeeks as 4 | 8 | 12 | null,
         constraints: plan.goal.constraints as Record<string, unknown>,
       };
+    const calendarNow = new Date();
+    const timeZone = await accountTimeZone(event.userId, undefined, prisma);
     let adaptation = adaptPlan({
       eventType,
+      now: calendarNow,
+      scheduleStart: accountDateLabel(calendarNow, timeZone),
       basePlan: plan.source === "catalog" ? { phase: plan.currentPhase as import("./types.js").TrainingPlanPhase, summary: "Catalogue review", workouts: [], engineDecision: (activeVersion?.engineDecision as Record<string, unknown>) ?? {} } : undefined,
       goal,
       runWalkProgramme: parseRunWalkProgramme((activeVersion?.engineDecision as Record<string, unknown> | undefined)?.runWalkProgramme),

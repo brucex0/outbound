@@ -1,3 +1,4 @@
+import { accountTimeZone, ACCOUNT_FIRST_WEEKDAY } from "../accountCalendar.js";
 import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "../prisma.js";
 import { activityFact, identityColumns, type Fact, STATISTICS_VERSION } from "./facts.js";
@@ -6,6 +7,9 @@ import { StatisticsCalendar } from "./calendar.js";
 // Bounded process cache. Revision checks happen against the database on every request.
 const cache = new Map<string, { expires: number; revision: number; goalRevision: string; value: unknown }>();
 export async function accountStatistics(userId: string, timeZone: string, firstWeekday: number) {
+  // All callers (including assistant context) share the persisted account policy.
+  timeZone = await accountTimeZone(userId);
+  firstWeekday = ACCOUNT_FIRST_WEEKDAY;
   const db = getPrismaClient(), now = new Date(), calendar = new StatisticsCalendar(timeZone, firstWeekday);
   const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { statisticsRevision: true } });
   const goal = await db.trainingGoal.findFirst({
@@ -30,7 +34,7 @@ export async function accountStatistics(userId: string, timeZone: string, firstW
       facts.push(fact);
     }
     const weekStart = calendar.start(now, "week"), weekEnd = calendar.add(weekStart, 1, "week");
-    const currentWeek = facts.filter(a => Date.parse(a.startedAt) >= +weekStart && Date.parse(a.startedAt) <= +weekEnd);
+    const currentWeek = facts.filter(a => Date.parse(a.startedAt) >= +weekStart && Date.parse(a.startedAt) < +weekEnd);
     // Personal frequency is independent of prescribed-workout completion and Progress eligibility.
     const runningGoal = await tx.trainingGoal.findFirst({
       where: { userId, status: "active" }, orderBy: { createdAt: "desc" },

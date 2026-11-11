@@ -1,3 +1,5 @@
+import { accountTimeZone, accountDateLabel, validCalendarTimeZone } from "../accountCalendar.js";
+import { withIssuanceTransaction } from "./workoutIssuance.js";
 import { isOptionalWorkout } from "./persistence.js";
 import { refreshGeneratedPlan } from "./planRefresh.js";
 import { getPrismaClient } from "../prisma.js";
@@ -15,7 +17,6 @@ export async function runPlanningMaintenance(now: Date = new Date()): Promise<Pl
   const prisma = getPrismaClient();
   await prisma.liveCoachPreparation.deleteMany({ where: { expiresAt: { lte: now } } });
   const activeSince = addDays(now, -activeUserWindowDays());
-  const today = startOfUtcDay(now);
   const plans = await prisma.trainingPlan.findMany({
     where: {
       status: "active",
@@ -28,10 +29,12 @@ export async function runPlanningMaintenance(now: Date = new Date()): Promise<Pl
     select: {
       id: true,
       userId: true,
+      startedAt: true,
+      user: { select: { calendarTimeZone: true } },
       versions: {
         orderBy: { versionNumber: "desc" },
         take: 1,
-        select: { workouts: { where: { status: "planned", scheduledDate: { lt: today } }, select: { id: true, prescription: true } } },
+        select: { workouts: { where: { status: "planned" }, select: { id: true, prescription: true, scheduledDate: true } } },
       },
     },
   });
@@ -40,11 +43,18 @@ export async function runPlanningMaintenance(now: Date = new Date()): Promise<Pl
   let missedWorkoutsDetected = 0;
   let eventsProcessed = 0;
   for (const plan of plans) {
-    const missed = (plan.versions[0]?.workouts ?? []).filter((workout) => !isOptionalWorkout(workout));
+    // A provisional server UTC read must not mark a device-local session missed.
+    if (!validCalendarTimeZone(plan.user.calendarTimeZone)) continue;
+    const timeZone = await accountTimeZone(plan.userId);
+    const today = accountDateLabel(now, timeZone);
+    const planStart = accountDateLabel(plan.startedAt, timeZone);
+    const missed = (plan.versions[0]?.workouts ?? []).filter((workout) => !isOptionalWorkout(workout) && workout.scheduledDate >= planStart && workout.scheduledDate < today);
     if (missed.length > 0) {
-      await prisma.plannedWorkout.updateMany({
-        where: { id: { in: missed.map((workout) => workout.id) }, status: "planned" },
-        data: { status: "missed" },
+      await withIssuanceTransaction(prisma, plan.userId, async (tx) => {
+        await tx.plannedWorkout.updateMany({
+          where: { id: { in: missed.map((workout) => workout.id) }, status: "planned" },
+          data: { status: "missed" },
+        });
       });
       await enqueuePlanningEvent({
         userId: plan.userId,

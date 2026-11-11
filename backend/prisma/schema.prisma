@@ -26,6 +26,7 @@ model User {
   termsAcceptedAt      DateTime?
   statisticsRevision   Int       @default(0)
   planningStateRevision Int      @default(0)
+  calendarTimeZone     String?
   onboardingStatus     String    @default("pending")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
