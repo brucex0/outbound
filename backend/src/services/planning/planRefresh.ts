@@ -1,3 +1,4 @@
+import { runningPlanReview, runningConstraintReview, retainRunningPlanForReview, clearRunningPlanReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
 import { sameRunWalkProgramme } from "./runWalkProgramme.js";
 import { withSessionEffort } from "./sessionEffort.js";
@@ -25,6 +26,22 @@ export async function refreshGeneratedPlanInTransaction(
   tx: Prisma.TransactionClient, userId: string, now: Date, force = false,
 ): Promise<void> {
   if (await refreshCatalogPlanInTransaction(tx, userId, now, force ? "goalUpdated" : undefined)) return;
+  if (force) return refreshGeneratedPlanCandidate(tx, userId, now, force);
+  try {
+    await refreshGeneratedPlanCandidate(tx, userId, now, force);
+    await clearRunningPlanReview(tx, userId);
+  } catch (error) {
+    const review = runningConstraintReview(error);
+    if (!review || !await retainRunningPlanForReview(tx, userId, review)) throw error;
+  }
+}
+
+/** Explicit unchanged goal submissions still validate current capacity without version churn. */
+export async function validateGeneratedPlanForWrite(tx: Prisma.TransactionClient, userId: string, now: Date): Promise<void> {
+  return refreshGeneratedPlanCandidate(tx, userId, now, true, true);
+}
+
+async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userId: string, now: Date, force: boolean, validationOnly = false): Promise<void> {
   const plan = await tx.trainingPlan.findFirst({
     where: { userId, status: "active", source: "generated" }, orderBy: { createdAt: "desc" },
     include: { goal: true, versions: { orderBy: { versionNumber: "desc" }, take: 1, include: { workouts: true } } },
@@ -46,9 +63,9 @@ export async function refreshGeneratedPlanInTransaction(
     enableProgramme: goal.baselineContext !== "currentlyActive",
   }) : undefined;
   const programmeChanged = runningContext != null && !sameRunWalkProgramme(decision?.runWalkProgramme, runningContext.state);
-  if (!force && !policyChanged && !programmeChanged && phase === plan.currentPhase && !refill) return;
+  if (!force && !runningPlanReview(decision) && !policyChanged && !programmeChanged && phase === plan.currentPhase && !refill) return;
   // An event plan ends at its event; phase still advances after the event without endless refill.
-  if (!force && !policyChanged && ["recovery", "maintenance"].includes(phase) && phase === plan.currentPhase) return;
+  if (!force && !runningPlanReview(decision) && !policyChanged && ["recovery", "maintenance"].includes(phase) && phase === plan.currentPhase) return;
   const [rawActivities, planned, readiness, profile, calibration] = await Promise.all([
     tx.activity.findMany({ where: { userId, deletedAt: null, startedAt: { gte: addDays(today, -90) } }, orderBy: { startedAt: "desc" }, take: 1000, select: { id: true, type: true, startedAt: true, durationSecs: true, distanceM: true, avgPace: true, avgHeartRate: true } }),
     tx.plannedWorkout.findMany({ where: { userId, scheduledDate: { gte: addDays(today, -35) } }, take: 1000, select: { id: true, scheduledDate: true, modality: true, stimulus: true, durationSeconds: true, distanceMeters: true, targetCalories: true, isKeyWorkout: true, status: true, prescription: true } }),
@@ -80,6 +97,7 @@ export async function refreshGeneratedPlanInTransaction(
     preferredRunGoalType: goal.preferredRunGoalType, weightKilograms: profile?.weightKilograms,
     pace: resolveLearnedRunPace(activities as ActivityForPlanning[], calibration?.status === "completed"),
   });
+  if (validationOnly) return;
   if (!force && !policyChanged && workouts.filter((workout) => !isOptionalWorkout(workout)).length === 0) {
     if (phase !== plan.currentPhase) await tx.trainingPlan.update({ where: { id: plan.id }, data: { currentPhase: phase } });
     return;

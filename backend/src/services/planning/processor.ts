@@ -1,3 +1,4 @@
+import { runningConstraintReview, retainRunningPlanForReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
 import { parseRunWalkProgramme } from "./runWalkProgramme.js";
 import { withSessionEffort } from "./sessionEffort.js";
@@ -59,6 +60,7 @@ export async function processPlanningEventById(eventId: string): Promise<Plannin
 
 async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEventResult> {
   const prisma = getPrismaClient();
+  let assessedPlan: { planId: string; versionId?: string } | undefined;
 
   try {
     const admission = await evaluationAdmission(event);
@@ -96,6 +98,8 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       });
       return result;
     }
+
+    assessedPlan = { planId: plan.id, versionId: plan.versions[0]?.id };
 
     // Catalogue plans must never pass through generic stimulus generation. Reads
     // and rollover also use this source-aware path, under the same user lock.
@@ -334,6 +338,22 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       message: adaptation.adjustmentMessage,
     };
   } catch (error) {
+    const review = runningConstraintReview(error);
+    if (review && assessedPlan) {
+      try {
+        const retained = await prisma.$transaction(async (tx) => {
+          await lockPlanningUser(tx, event.userId);
+          const retained = await retainRunningPlanForReview(tx, event.userId, review, assessedPlan);
+          await tx.planningEvent.update({ where: { id: event.id }, data: { status: retained ? "completed" : "ignored", processedAt: new Date() } });
+          return retained;
+        }, { timeout: 30_000 });
+        return { eventId: event.id, status: retained ? "completed" : "ignored", message: retained ? "The existing plan needs schedule review; issued workouts are retained." : "The assessed plan version is no longer active." };
+      } catch (reviewError) {
+        console.error("[planning] running_plan_review_failed", { operation: "event", errorType: reviewError instanceof Error ? reviewError.name : "unknown" });
+        await failPlanningEvent(event.id, reviewError instanceof Error ? reviewError : new Error("Unable to retain planning review."));
+        return { eventId: event.id, status: "failed", message: "Unable to retain the planning review." };
+      }
+    }
     await failPlanningEvent(event.id, error instanceof Error ? error : new Error(String(error)));
     return {
       eventId: event.id,

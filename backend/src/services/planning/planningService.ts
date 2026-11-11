@@ -1,3 +1,4 @@
+import { runningPlanReview, runningReviewDecision, clearRunningPlanReview } from "./runningPlanReview.js";
 import { recordWorkoutCompletion } from "./workoutCompletion.js";
 import { issueWorkout, withIssuanceTransaction } from "./workoutIssuance.js";
 import { freshReadiness } from "./runWalkProgramme.js";
@@ -14,7 +15,7 @@ import { createPlanVersionWithWorkouts, json, lockPlanningUser, isOptionalWorkou
 import { processDuePlanningEventsForUser, processPlanningEventById } from "./processor.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import { getPlanIntakeContext } from "./planIntake.js";
-import { refreshGeneratedPlan, refreshGeneratedPlanInTransaction } from "./planRefresh.js";
+import { refreshGeneratedPlan, refreshGeneratedPlanInTransaction, validateGeneratedPlanForWrite } from "./planRefresh.js";
 import { generateCatalogWindow } from "./catalogProgramme.js";
 import { raceRoadmap } from "./raceRoadmap.js";
 import { getPrismaClient } from "../prisma.js";
@@ -263,7 +264,11 @@ export async function updateRaceGoal(userId: string, goalId: string, input: Upda
       && plan.goal.maxSessionMinutes === input.maxSessionMinutes
       && (constraints.shortRunSessions === "true") === input.shortRunSessions
       && (constraints.optionalMobility === "true") === input.optionalMobility;
-    if (unchanged) return;
+    if (unchanged) {
+      await validateGeneratedPlanForWrite(tx, userId, new Date());
+      await clearRunningPlanReview(tx, userId, plan.id);
+      return;
+    }
     await tx.trainingGoal.update({ where: { id: goalId }, data: {
       targetDate: new Date(input.targetDate), targetDistanceMeters: input.targetDistanceMeters,
       eventIntent: input.eventIntent, targetTimeSeconds: input.eventIntent === "targetTime" ? input.targetTimeSeconds : null,
@@ -306,6 +311,7 @@ export async function getToday(userId: string): Promise<TodayPlanningResponse> {
   const state = await assemblePlanningState(userId, "stable");
   return {
     workout: state.today,
+    runningPlanReview: state.runningPlanReview,
     adjustment: state.latestAdjustment,
     guideLine: state.today
       ? "Here is the best next session based on your current plan."
@@ -621,7 +627,8 @@ export async function assemblePlanningState(
     return {
       goal: goal ? { ...goal, currentRunningFitness: resolveRunningBenchmark((goal.constraints as Record<string, unknown>).runningBenchmark, new Date()), shortRunSessions: (goal.constraints as Record<string, unknown>).shortRunSessions === "true", optionalMobility: (goal.constraints as Record<string, unknown>).optionalMobility === "true" } : null,
       plan: plan ? { ...plan, versions: undefined } : null,
-      currentVersion: version ? { ...version, workouts: undefined } : null,
+      currentVersion: version ? { ...version, engineDecision: runningReviewDecision(version.engineDecision), workouts: undefined } : null,
+      runningPlanReview: runningPlanReview(version?.engineDecision),
       today,
       workouts,
       upcoming: workouts.filter((workout) => workout.scheduledDate >= now && workout.status === "planned").slice(0, 20),

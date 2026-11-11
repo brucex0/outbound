@@ -172,6 +172,11 @@ function modalityBreakdownFor(activities: ActivityForPlanning[], now: Date): Rec
     current.distanceMeters += activity.distanceM ?? 0;
     breakdown[key] = current;
   }
+  // Running dose/quality budgets use actual seconds, without per-session minute inflation.
+  if (breakdown.run) breakdown.run.minutes = activities
+    .filter((activity) => isRunningActivityType(activity.type) && activity.durationSecs != null
+      && Number.isFinite(activity.durationSecs) && activity.durationSecs > 0)
+    .reduce((seconds, activity) => seconds + activity.durationSecs!, 0) / 60;
   const doseRuns = activities.filter((activity) => modalityForActivityType(activity.type) === "run"
     && activity.durationSecs != null && Number.isFinite(activity.durationSecs) && activity.durationSecs >= 300);
   if (breakdown.run && doseRuns.length) {

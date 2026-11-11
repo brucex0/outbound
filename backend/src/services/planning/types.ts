@@ -257,6 +257,7 @@ export interface PlanningEventResult {
 }
 
 export interface PlanningState {
+  runningPlanReview?: import("./runningPlanReview.js").RunningPlanReview | null;
   editContext?: WorkoutEditContext | null;
   roadmap?: unknown | null;
   goal: unknown | null;
@@ -272,6 +273,7 @@ export interface PlanningState {
 }
 
 export interface TodayPlanningResponse {
+  runningPlanReview?: import("./runningPlanReview.js").RunningPlanReview | null;
   workout: unknown | null;
   adjustment: unknown | null;
   guideLine: string;
@@ -349,6 +351,7 @@ export interface WorkoutEditContext {
 }
 
 export interface ActivitySuggestionResponse {
+  runningPlanReview?: import("./runningPlanReview.js").RunningPlanReview | null;
   workoutEditOperation?: string;
   editContext?: WorkoutEditContext | null;
   status: ActivitySuggestionStatus;

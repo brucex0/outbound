@@ -1,3 +1,4 @@
+import { runningPlanReview } from "./runningPlanReview.js";
 import { withSessionEffort } from "./sessionEffort.js";
 import { protectedEditedWorkouts } from "./persistence.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
@@ -146,6 +147,7 @@ export async function buildBaseActivitySuggestion(
       : null,
     activities: typedActivities,
   });
+  base.runningPlanReview = runningPlanReview(latestVersion?.engineDecision);
 
   if (latestReadiness?.illnessOrPain) {
     return {

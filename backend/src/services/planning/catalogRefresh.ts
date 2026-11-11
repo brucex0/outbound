@@ -1,3 +1,4 @@
+import { runningPlanReview, runningConstraintReview, retainRunningPlanForReview, clearRunningPlanReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
 import { sameRunWalkProgramme } from "./runWalkProgramme.js";
 import { unexpectedRunningEffort, withSessionEffort } from "./sessionEffort.js";
@@ -15,6 +16,19 @@ import type { ActivityForPlanning, PlannedWorkoutForState, PlanningEventType, Re
 export async function refreshCatalogPlanInTransaction(
   tx: Prisma.TransactionClient, userId: string, now: Date, eventType?: PlanningEventType, expectedPlanId?: string,
 ): Promise<boolean> {
+  if (eventType === "goalUpdated") return refreshCatalogPlanCandidate(tx, userId, now, eventType, expectedPlanId);
+  try {
+    const handled = await refreshCatalogPlanCandidate(tx, userId, now, eventType, expectedPlanId);
+    if (handled) await clearRunningPlanReview(tx, userId, expectedPlanId);
+    return handled;
+  } catch (error) {
+    const review = runningConstraintReview(error);
+    if (!review || !await retainRunningPlanForReview(tx, userId, review, { planId: expectedPlanId })) throw error;
+    return true;
+  }
+}
+
+async function refreshCatalogPlanCandidate(tx: Prisma.TransactionClient, userId: string, now: Date, eventType?: PlanningEventType, expectedPlanId?: string): Promise<boolean> {
   const plan = await tx.trainingPlan.findFirst({
     where: { userId, status: "active", source: "catalog", ...(expectedPlanId ? { id: expectedPlanId } : {}) }, orderBy: { createdAt: "desc" },
     include: { goal: true, versions: { orderBy: { versionNumber: "desc" }, take: 1, include: { workouts: true } } },
@@ -48,7 +62,7 @@ export async function refreshCatalogPlanInTransaction(
     authoredInitialSeconds: Math.min(...template.weeks[0].workouts.filter((row) => !row.isOptional && row.durationSeconds > 0).map((row) => row.durationSeconds)),
   }) : undefined;
   const programmeChanged = runningContext != null && !sameRunWalkProgramme(decision?.runWalkProgramme, runningContext.state);
-  if (!eventType && decision?.catalogPolicyVersion === CATALOG_POLICY_VERSION && !elapsed && !benchmarkChanged && !programmeChanged) return true;
+  if (!eventType && !runningPlanReview(decision) && decision?.catalogPolicyVersion === CATALOG_POLICY_VERSION && !elapsed && !benchmarkChanged && !programmeChanged) return true;
   const since = template.sport === "run" ? new Date(typeof cursor?.sourceWeekStartedOn === "string" ? cursor.sourceWeekStartedOn : cursor?.episodeStart as string ?? plan.createdAt)
     : typeof cursor?.weekAnchor === "string" ? new Date(cursor.weekAnchor) : day(plan.createdAt);
   const [activities, evidence, readiness, feedback] = await Promise.all([

@@ -2,7 +2,7 @@ import type { GeneratePlanInput } from "./generator.js";
 import type { AthleteTrainingStateSnapshot } from "./types.js";
 import type { RunWalkProgramme } from "./runWalkProgramme.js";
 
-export const RUNNING_DOSE_POLICY = "running-dose-v3";
+export const RUNNING_DOSE_POLICY = "running-dose-v4";
 export class RunningScheduleError extends Error {
   readonly code = "running_schedule_conflict";
   constructor(readonly category: "session_minimum" | "frequency_capacity" | "session_capacity") {
@@ -55,7 +55,8 @@ export function runningDoseBudget(goal: GeneratePlanInput["goal"], state: Athlet
   const minimumWeekly = minimumMinutes * sessionsPerWeek;
   // A confirmed existing 15min programme cannot grow merely because its cap increased.
   if (!authored && starter && sessionEvidence < minimumMinutes) throw new RunningScheduleError("session_minimum");
-  if (capacityKnown && minimumWeekly > baselineWeeklyMinutes * 1.5) throw new RunningScheduleError("frequency_capacity");
+  // A minimum weekly dose 50% or more above the reference requires explicit schedule review.
+  if (capacityKnown && minimumWeekly >= baselineWeeklyMinutes * 1.5) throw new RunningScheduleError("frequency_capacity");
   if (capacityKnown && minimumMinutes > sessionEvidence * 1.5) throw new RunningScheduleError("session_capacity");
   // Preferences alter supported growth, never a recurring percentage decay.
   const growth = goal.riskTolerance === "conservative" ? 1 : goal.riskTolerance === "stretch" ? 1.15 : 1.10;
@@ -70,5 +71,5 @@ export function runningDoseBudget(goal: GeneratePlanInput["goal"], state: Athlet
 }
 
 export function assertAuthoredRunningDose(budget: RunningDoseBudget | undefined, minutes: number, allowsShorter: boolean): void {
-  if (budget?.capacityKnown && !allowsShorter && minutes > budget.baselineWeeklyMinutes * 1.5) throw new RunningScheduleError("frequency_capacity");
+  if (budget?.capacityKnown && !allowsShorter && minutes >= budget.baselineWeeklyMinutes * 1.5) throw new RunningScheduleError("frequency_capacity");
 }

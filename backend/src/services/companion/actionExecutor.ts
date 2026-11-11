@@ -5,6 +5,7 @@ import { persistCompanionModelVersion } from "./runnerModelProjector.js";
 import { rebuildPlan } from "../planning/planningService.js";
 import { estimateCalorieRunFromTarget, resolveLearnedRunPace } from "../planning/runGoalEstimator.js";
 import { decideAdjustment } from "../personalization/personalizationService.js";
+import { lockPlanningUser } from "../planning/persistence.js";
 
 export async function createAgentAction(
   prisma: PrismaClient,
@@ -67,15 +68,17 @@ export async function decideAndExecuteAgentAction(
   let rollback: Prisma.InputJsonValue | undefined;
   if (proposal.actionType === "shorten_workout" && proposal.workoutId && proposal.durationMinutes) {
     const durationMinutes = proposal.durationMinutes;
-    const workout = await prisma.plannedWorkout.findFirst({
-      where: { id: proposal.workoutId, userId, status: "planned" },
-      include: { blocks: { include: { steps: true } } },
-    });
-    if (!workout) throw new Error("Planned workout is no longer available.");
-    const nextDurationSeconds = durationMinutes * 60;
-    beforeState = { workoutId: workout.id, durationSeconds: workout.durationSeconds, title: workout.title };
-    const ratio = nextDurationSeconds / workout.durationSeconds;
-    const updated = await prisma.$transaction(async (tx) => {
+    const { updated, previousDurationSeconds } = await prisma.$transaction(async (tx) => {
+      // Issuance uses the same lock: snapshot reads and recipe writes must be serialized.
+      await lockPlanningUser(tx, userId);
+      const workout = await tx.plannedWorkout.findFirst({
+        where: { id: proposal.workoutId, userId, status: "planned" },
+        include: { blocks: { include: { steps: true } } },
+      });
+      if (!workout) throw new Error("Planned workout is no longer available.");
+      const nextDurationSeconds = durationMinutes * 60;
+      beforeState = { workoutId: workout.id, durationSeconds: workout.durationSeconds, title: workout.title };
+      const ratio = nextDurationSeconds / workout.durationSeconds;
       for (const block of workout.blocks) {
         if (block.durationSeconds) {
           await tx.workoutBlock.update({
@@ -92,50 +95,53 @@ export async function decideAndExecuteAgentAction(
           }
         }
       }
-      return tx.plannedWorkout.update({
+      const updated = await tx.plannedWorkout.update({
         where: { id: workout.id },
         data: { durationSeconds: nextDurationSeconds, title: replaceDuration(workout.title, durationMinutes) },
       });
-    });
+      return { updated, previousDurationSeconds: workout.durationSeconds };
+    }, { timeout: 30_000 });
     afterState = {
       workoutId: updated.id,
       durationSeconds: updated.durationSeconds,
       title: updated.title,
-      summary: `Duration changed from ${Math.round(workout.durationSeconds / 60)} to ${durationMinutes} minutes; timed blocks and steps were resized to fit.`,
+      summary: `Duration changed from ${Math.round(previousDurationSeconds / 60)} to ${durationMinutes} minutes; timed blocks and steps were resized to fit.`,
     };
     rollback = beforeState;
   } else if (proposal.actionType === "set_workout_calories" && proposal.workoutId && proposal.targetCalories) {
-    const [workout, profile, calibration, activities] = await Promise.all([
-      prisma.plannedWorkout.findFirst({ where: { id: proposal.workoutId, userId, status: "planned" } }),
-      prisma.runnerProfile.findUnique({ where: { userId } }),
-      prisma.calibrationProgram.findUnique({ where: { userId } }),
-      prisma.activity.findMany({
-        where: { userId, type: "running", startedAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1_000) } },
-        orderBy: { startedAt: "desc" },
-        select: { id: true, type: true, startedAt: true, durationSecs: true, distanceM: true, avgPace: true, avgHeartRate: true },
-      }),
-    ]);
-    if (!workout) throw new Error("Planned workout is no longer available.");
-    if (workout.modality !== "run" || !["easyAerobic", "recovery"].includes(workout.stimulus)) {
-      throw new Error("Only easy and recovery runs can use a calorie target.");
-    }
-    if (profile?.weightKilograms == null) throw new Error("Add weight in your private training profile before using calorie targets.");
-    const pace = resolveLearnedRunPace(activities, calibration?.status === "completed");
-    if (!pace.paceSecondsPerKilometer) throw new Error("Complete calibration or save at least three valid runs before using calorie targets.");
-    const estimate = estimateCalorieRunFromTarget({
-      targetCalories: proposal.targetCalories,
-      weightKilograms: profile.weightKilograms,
-      paceSecondsPerKilometer: pace.paceSecondsPerKilometer,
-    });
-    if (!estimate) throw new Error("Unable to calculate a safe calorie target from the current profile.");
-    beforeState = {
-      workoutId: workout.id,
-      durationSeconds: workout.durationSeconds,
-      distanceMeters: workout.distanceMeters,
-      targetCalories: workout.targetCalories,
-      title: workout.title,
-    };
+    const targetCalories = proposal.targetCalories;
     const updated = await prisma.$transaction(async (tx) => {
+      await lockPlanningUser(tx, userId);
+      const [workout, profile, calibration, activities] = await Promise.all([
+        tx.plannedWorkout.findFirst({ where: { id: proposal.workoutId, userId, status: "planned" } }),
+        tx.runnerProfile.findUnique({ where: { userId } }),
+        tx.calibrationProgram.findUnique({ where: { userId } }),
+        tx.activity.findMany({
+          where: { userId, type: "running", startedAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1_000) } },
+          orderBy: { startedAt: "desc" },
+          select: { id: true, type: true, startedAt: true, durationSecs: true, distanceM: true, avgPace: true, avgHeartRate: true },
+        }),
+      ]);
+      if (!workout) throw new Error("Planned workout is no longer available.");
+      if (workout.modality !== "run" || !["easyAerobic", "recovery"].includes(workout.stimulus)) {
+        throw new Error("Only easy and recovery runs can use a calorie target.");
+      }
+      if (profile?.weightKilograms == null) throw new Error("Add weight in your private training profile before using calorie targets.");
+      const pace = resolveLearnedRunPace(activities, calibration?.status === "completed");
+      if (!pace.paceSecondsPerKilometer) throw new Error("Complete calibration or save at least three valid runs before using calorie targets.");
+      const estimate = estimateCalorieRunFromTarget({
+        targetCalories,
+        weightKilograms: profile.weightKilograms,
+        paceSecondsPerKilometer: pace.paceSecondsPerKilometer,
+      });
+      if (!estimate) throw new Error("Unable to calculate a safe calorie target from the current profile.");
+      beforeState = {
+        workoutId: workout.id,
+        durationSeconds: workout.durationSeconds,
+        distanceMeters: workout.distanceMeters,
+        targetCalories: workout.targetCalories,
+        title: workout.title,
+      };
       await tx.workoutBlock.deleteMany({ where: { plannedWorkoutId: workout.id } });
       return tx.plannedWorkout.update({
         where: { id: workout.id },
@@ -151,7 +157,7 @@ export async function decideAndExecuteAgentAction(
           },
         },
       });
-    });
+    }, { timeout: 30_000 });
     afterState = {
       workoutId: updated.id,
       durationSeconds: updated.durationSeconds,
@@ -162,11 +168,12 @@ export async function decideAndExecuteAgentAction(
     };
     rollback = beforeState;
   } else if (proposal.actionType === "update_run_goal_preference" && proposal.goalType) {
-    beforeState = await prisma.runnerProfile.findUnique({
-      where: { userId },
-      select: { preferredRunGoalType: true, primaryMotivation: true },
-    }) ?? { preferredRunGoalType: "time", primaryMotivation: "generalFitness" };
     await prisma.$transaction(async (tx) => {
+      await lockPlanningUser(tx, userId);
+      beforeState = await tx.runnerProfile.findUnique({
+        where: { userId },
+        select: { preferredRunGoalType: true, primaryMotivation: true },
+      }) ?? { preferredRunGoalType: "time", primaryMotivation: "generalFitness" };
       await tx.runnerProfile.upsert({
         where: { userId },
         create: { userId, preferredRunGoalType: proposal.goalType },
@@ -176,7 +183,8 @@ export async function decideAndExecuteAgentAction(
         where: { userId, status: "active" },
         data: { preferredRunGoalType: proposal.goalType },
       });
-    });
+    }, { timeout: 30_000 });
+    // Rebuild acquires the planning lock itself; release the preference transaction first.
     await rebuildPlan(userId, { reason: "manualRebuild" });
     afterState = {
       preferredRunGoalType: proposal.goalType,

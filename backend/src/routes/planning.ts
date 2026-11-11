@@ -238,6 +238,10 @@ router.patch("/goals/:id/running-benchmark", zValidator("json", z.object({ runni
       console.info("[planning] running_benchmark_validation", { operation: "update", category: error.category });
       return c.json({ error: error.message, code: error.code }, 422);
     }
+    if (error instanceof RunningScheduleError || error instanceof ProgrammeTimelineError || error instanceof ProgrammeConstraintError) {
+      console.info("[planning] running_schedule_validation", { operation: "benchmark_update", category: error instanceof RunningScheduleError ? error.category : error instanceof ProgrammeTimelineError ? "programme_timeline" : "programme_quality" });
+      return c.json({ error: error.message, code: error.code }, 422);
+    }
     if (error instanceof RunningBenchmarkConflictError) {
       console.info("[planning] running_benchmark_validation", { operation: "update", category: "goal_changed" });
       return c.json({ error: error.message, code: error.code }, 409);
