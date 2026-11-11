@@ -29,7 +29,6 @@ struct LiveMapView: View {
 
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var isFollowingUser = true
-    @State private var statusCardHeight: CGFloat = 132
     @State private var bottomOverlayHeight: CGFloat = 168
     @State private var eventParticipants: [ActivityEventParticipantDTO] = []
     @State private var participantToast: String?
@@ -103,14 +102,12 @@ struct LiveMapView: View {
             .onChange(of: recorder.state) { _, state in
                 if state == .idle { framePlannedRoute(including: locationManager.location?.coordinate) }
             }
-            .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
-                if height > 0 {
-                    statusCardHeight = height
-                }
-            }
             .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
                 if height > 0 {
-                    bottomOverlayHeight = max(height, statusCardHeight + 18)
+                    // The complete stack already includes the card, its padding, and
+                    // route guidance. A separate card-height preference can still hold
+                    // the expanded drag height when this compact measurement arrives.
+                    bottomOverlayHeight = height
                 }
             }
         }
@@ -377,14 +374,6 @@ struct LiveMapView: View {
             onFinish: onFinish,
             isFinishEnabled: isFinishEnabled
             )
-        }
-        .background {
-            GeometryReader { proxy in
-                Color.clear.preference(
-                    key: SessionStatusCardHeightPreferenceKey.self,
-                    value: isWorkoutPanelExpanded ? 0 : proxy.size.height
-                )
-            }
         }
     }
 
