@@ -13,13 +13,14 @@ struct RunningProgrammeProgress: Codable, Equatable {
     let programmeReviewAction: String?
     let preparationOnly: Bool?
     let futureWeeksProvisional: Bool?
+    var requiresReview: Bool { programmeDoseStatus == "needs_review" || programmeTimelineStatus == "needs_review" }
 }
 
 struct RunningProgrammeProgressView: View {
     let progress: RunningProgrammeProgress
     @Environment(\.analyticsManager) private var analytics
 
-    private var needsReview: Bool { progress.programmeDoseStatus == "needs_review" || progress.programmeTimelineStatus == "needs_review" }
+    private var needsReview: Bool { progress.requiresReview }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let source = progress.programme, let count = progress.nominalSourceWeeks {
@@ -33,6 +34,9 @@ struct RunningProgrammeProgressView: View {
                     Text(String(format: String(localized: "planning.programme.minimum_remaining"), weeks))
                 }
                 Text(String(localized: "planning.programme.exposure_notice"))
+            } else if needsReview {
+                if progress.programmeDoseStatus == "needs_review" { Text(String(localized: "planning.running_schedule_conflict")) }
+                Text(String(localized: progress.programmeDoseStatus == "needs_review" ? "planning.programme.schedule_review" : "planning.programme.timeline_review"))
             }
         }
         .font(.footnote)

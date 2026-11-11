@@ -310,7 +310,7 @@ struct ActiveTrainingPlanDetailView: View {
                     Text(activePlan.localizedTitle)
                         .font(.system(.title2, design: .rounded).weight(.bold))
                     TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
-                    if let progress = activePlan.programmeProgress, progress.programme != nil { RunningProgrammeProgressView(progress: progress) }
+                    if let progress = activePlan.programmeProgress, progress.programme != nil || progress.requiresReview { RunningProgrammeProgressView(progress: progress) }
                     if let benchmark = activePlan.runningBenchmark {
                         RunningBenchmarkManagementRow(context: benchmark, saveOverride: benchmarkSaveOverride)
                     }

@@ -162,11 +162,12 @@ struct RunningBenchmarkEditor: View {
                 let validation: Bool
                 if let api = error as? APIError, case let .http(_, _, code) = api { validation = code == "running_benchmark_invalid" }
                 else { validation = false }
-                if validation { ActivityDiagnosticLog.notice(.sync, "running_benchmark_validation category=invalid_input") }
+                let planValidation = error.planningValidationMessage
+                if validation || planValidation != nil { ActivityDiagnosticLog.notice(.sync, "running_benchmark_validation category=\(validation ? "invalid_input" : "plan_constraint")") }
                 else { ActivityDiagnosticLog.error(.sync, "running_benchmark_update_failed category=\(ActivityDiagnosticLog.errorCategory(error))") }
                 await analytics?.track(.init(.featureExposed, properties: [.feature: .string("running_benchmark_save"), .result: .string("failure")]))
                 toastTask?.cancel()
-                toast = benchmarkText(validation ? "validation" : "failed")
+                toast = planValidation ?? benchmarkText(validation ? "validation" : "failed")
                 toastTask = Task {
                     do { try await Task.sleep(for: .seconds(4)); toast = nil }
                     catch { /* Dismissed/replaced toast is expected cancellation. */ }
