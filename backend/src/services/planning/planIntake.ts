@@ -1,9 +1,15 @@
+import { createHash } from "node:crypto";
 import { generateStructuredAI } from "../aiReliability/structuredGeneration.js";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { getPrismaClient } from "../prisma.js";
 
-export const PLAN_INTAKE_POLICY_VERSION = "plan-intake-v5";
+export const PLAN_INTAKE_POLICY_VERSION = "plan-intake-v6";
+
+export class PlanningContextChangedError extends Error {
+  readonly code = "planning_context_changed";
+  constructor() { super("Planning context changed. Refresh and review your answers before creating the plan."); }
+}
 
 const objectives = [
   "eventPreparation", "endurance", "speed", "weightLoss",
@@ -77,7 +83,7 @@ export async function getPlanIntakeContext(
     prisma.runnerProfile.findUnique({ where: { userId } }),
     prisma.activity.findMany({
       where: { userId, deletedAt: null, startedAt: { gte: ninetyDaysAgo } },
-      orderBy: { startedAt: "desc" },
+      orderBy: [{ startedAt: "desc" }, { id: "asc" }],
       select: { id: true, type: true, startedAt: true, durationSecs: true, distanceM: true },
     }),
     prisma.trainingPlan.findFirst({
@@ -98,7 +104,16 @@ export async function getPlanIntakeContext(
   const observedActivities = activityMix(recent.map((item) => item.type));
   const preferredDays = preferredDaysFor(recent, sessionsPerWeek, timeZoneIdentifier);
   const suggestedMaxSessionMinutes = suggestedSessionCap(durations, activePlan?.goal.maxSessionMinutes);
-  const contextVersion = [PLAN_INTAKE_POLICY_VERSION, profile?.updatedAt.toISOString() ?? "no-profile", latest?.startedAt.toISOString() ?? "no-activity", recent.length].join(":");
+  // Hash reviewed planning evidence, not the row timestamp: creating a plan also
+  // updates profile preferences, which must not invalidate that same intake.
+  // Include edited activity measures and recency classification, not just count.
+  const contextVersion = `${PLAN_INTAKE_POLICY_VERSION}:${createHash("sha256").update(JSON.stringify({
+    body: [profile?.sexAtBirth, profile?.birthDate, profile?.heightCentimeters, profile?.weightKilograms],
+    activities: activityHistory.map((item) => [item.id, item.type, item.startedAt, item.durationSecs, item.distanceM]),
+    recent: recent.map((item) => item.id),
+    evidenceState,
+    dataTier,
+  })).digest("hex")}`;
   const questions = questionIds({
     objective,
     rich,

@@ -1,3 +1,4 @@
+import { preferredLongRunDays, LongRunDaysError } from "./longRunDays.js";
 import { runningPlanReview, runningReviewDecision, clearRunningPlanReview } from "./runningPlanReview.js";
 import { recordWorkoutCompletion } from "./workoutCompletion.js";
 import { issueWorkout, withIssuanceTransaction } from "./workoutIssuance.js";
@@ -14,7 +15,7 @@ import { allowsShortRuns, generateInitialPlan, normalizeGoalInput } from "./gene
 import { createPlanVersionWithWorkouts, json, lockPlanningUser, isOptionalWorkout, protectedEditedWorkouts } from "./persistence.js";
 import { processDuePlanningEventsForUser, processPlanningEventById } from "./processor.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
-import { getPlanIntakeContext } from "./planIntake.js";
+import { getPlanIntakeContext, PlanningContextChangedError } from "./planIntake.js";
 import { refreshGeneratedPlan, refreshGeneratedPlanInTransaction, validateGeneratedPlanForWrite } from "./planRefresh.js";
 import { generateCatalogWindow } from "./catalogProgramme.js";
 import { raceRoadmap } from "./raceRoadmap.js";
@@ -53,6 +54,7 @@ export async function createGoal(
   }
   const prisma = getPrismaClient();
   const selection = readCatalogRecommendationSelection(input.constraints);
+  if (selection && preferredLongRunDays(input.constraints).length) throw new LongRunDaysError("catalog");
   const [activities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
     recentActivities(userId),
     recentPlannedWorkouts(userId),
@@ -106,7 +108,7 @@ export async function createGoal(
   if (goalInput.intakeContextVersion) {
     const currentContext = await getPlanIntakeContext(userId, goalInput.type);
     if (currentContext.contextVersion !== goalInput.intakeContextVersion) {
-      throw new Error("Planning context changed. Review the updated assumptions before creating the plan.");
+      throw new PlanningContextChangedError();
     }
   }
   const normalized = normalizeGoalInput({

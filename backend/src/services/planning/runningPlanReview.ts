@@ -1,14 +1,16 @@
+import { LongRunDaysError, type LongRunDaysCode, type LongRunDaysCategory } from "./longRunDays.js";
 import type { Prisma } from "@prisma/client";
 import { RunningScheduleError, ProgrammeTimelineError, ProgrammeConstraintError } from "./runningDosePolicy.js";
 import { json } from "./persistence.js";
 
 export interface RunningPlanReview {
   status: "needs_review";
-  code: "running_schedule_conflict" | "programme_timeline_conflict" | "programme_constraints_conflict";
-  category: "session_minimum" | "frequency_capacity" | "session_capacity" | "programme_timeline" | "programme_quality";
+  code: LongRunDaysCode | "running_schedule_conflict" | "programme_timeline_conflict" | "programme_constraints_conflict";
+  category: LongRunDaysCategory | "session_minimum" | "frequency_capacity" | "session_capacity" | "programme_timeline" | "programme_quality";
   action: "replacement_schedule_or_programme" | "later_date_or_replacement";
 }
 export function runningConstraintReview(error: unknown): RunningPlanReview | null {
+  if (error instanceof LongRunDaysError) return { status: "needs_review", code: error.code, category: error.category, action: "replacement_schedule_or_programme" };
   if (error instanceof RunningScheduleError) return { status: "needs_review", code: error.code, category: error.category, action: "replacement_schedule_or_programme" };
   if (error instanceof ProgrammeTimelineError) return { status: "needs_review", code: error.code, category: "programme_timeline", action: "later_date_or_replacement" };
   if (error instanceof ProgrammeConstraintError) return { status: "needs_review", code: error.code, category: "programme_quality", action: "replacement_schedule_or_programme" };
@@ -18,6 +20,9 @@ function record(value: unknown): Record<string, unknown> { return value != null 
 export function runningPlanReview(decision: unknown): RunningPlanReview | null {
   const value = record(record(decision).runningPlanReview);
   if (value.status !== "needs_review") return null;
+  if (["selection", "capacity", "modalities", "programme", "catalog"].includes(String(value.category)) && value.code === `long_run_days_${value.category}`) {
+    return { status: "needs_review", code: value.code as LongRunDaysCode, category: value.category as LongRunDaysCategory, action: "replacement_schedule_or_programme" };
+  }
   if (value.code === "running_schedule_conflict" && ["session_minimum", "frequency_capacity", "session_capacity"].includes(String(value.category))) {
     return { status: "needs_review", code: value.code, category: value.category as RunningPlanReview["category"], action: "replacement_schedule_or_programme" };
   }

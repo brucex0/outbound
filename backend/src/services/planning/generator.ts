@@ -1,3 +1,4 @@
+import { preferredLongRunDays, longRunWeekModalities, longRunAllocation, LongRunDaysError } from "./longRunDays.js";
 import { raceTaperDays } from "./raceRoadmap.js";
 import { evaluateRunWalkProgramme, RUN_WALK_LADDER, stampIssuedRunningDose, type RunWalkProgramme } from "./runWalkProgramme.js";
 import { runningDoseBudget, RUNNING_DOSE_POLICY, type RunningDoseBudget } from "./runningDosePolicy.js";
@@ -44,6 +45,7 @@ export interface GeneratePlanInput {
 }
 
 export function normalizeGoalInput(input: CreateTrainingGoalInput) {
+  const longDays = preferredLongRunDays(input.constraints);
   return {
     type: input.type,
     activities: [...new Set(input.activities)].slice(0, 3),
@@ -61,7 +63,9 @@ export function normalizeGoalInput(input: CreateTrainingGoalInput) {
     eventIntent: input.eventIntent ?? null,
     targetTimeSeconds: input.targetTimeSeconds ?? null,
     reviewHorizonWeeks: input.reviewHorizonWeeks ?? null,
-    constraints: { ...input.constraints, shortRunSessions: String(input.constraints?.shortRunSessions === true || input.constraints?.shortRunSessions === "true"), optionalMobility: String(input.constraints?.optionalMobility === true || input.constraints?.optionalMobility === "true") },
+    constraints: { ...input.constraints,
+      ...(input.constraints?.preferredLongRunDays !== undefined ? { preferredLongRunDays: longDays } : {}),
+      shortRunSessions: String(input.constraints?.shortRunSessions === true || input.constraints?.shortRunSessions === "true"), optionalMobility: String(input.constraints?.optionalMobility === true || input.constraints?.optionalMobility === "true") },
   };
 }
 
@@ -75,24 +79,31 @@ export function generateNextWindow(input: GeneratePlanInput): PlanGenerationResu
 
 function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGenerationResult {
   const now = input.now ?? new Date();
-  const initialBudget = runningDoseBudget(input.goal, input.athleteState, input.runWalkProgramme);
+  const longDays = preferredLongRunDays(input.goal.constraints);
+  const weekDates = longDays.length ? scheduledDates({ now, preferredDays: input.goal.preferredDays, preferredLongSessionDay: null,
+    sessionsPerWeek: input.goal.daysPerWeekTarget, horizonDays: 7 }) : [];
+  const weekModalities = longRunWeekModalities(input.goal, weekDates, longDays);
+  const explicitRunCount = weekModalities ? [...weekModalities.values()].filter((activity) => activity === "run").length : undefined;
+  const initialBudget = runningDoseBudget(input.goal, input.athleteState, input.runWalkProgramme, false, explicitRunCount);
   let programme = input.runWalkProgramme ?? evaluateRunWalkProgramme({ enabled: input.goal.activities.includes("run") && input.goal.baselineContext !== "currentlyActive",
     now, evidence: [], athleteState: input.athleteState, initialSessionSeconds: (initialBudget?.ordinarySessionMinutes ?? 25) * 60,
     sessionCapSeconds: input.goal.maxSessionMinutes * 60 }).state;
-  let budget = runningDoseBudget(input.goal, input.athleteState, programme);
+  let budget = runningDoseBudget(input.goal, input.athleteState, programme, false, explicitRunCount);
+  if (longDays.length && programme?.status === "active") throw new LongRunDaysError("programme");
   const effectiveGoal = programme?.status === "completed" ? { ...input.goal, baselineContext: "currentlyActive" } : input.goal;
   const phase = phaseForGoal(input.goal, now);
-  const dates = scheduledDates({ now, preferredDays: input.goal.preferredDays, preferredLongSessionDay: input.goal.preferredLongSessionDay,
+  const dates = scheduledDates({ now, preferredDays: input.goal.preferredDays, preferredLongSessionDay: longDays.length ? null : input.goal.preferredLongSessionDay,
     sessionsPerWeek: input.goal.daysPerWeekTarget, horizonDays: horizonDaysFor(input.goal, now) })
     .filter((date) => !input.goal.activities.includes("run") || input.goal.type !== "eventPreparation" || !input.goal.targetDate || date < startOfDay(new Date(input.goal.targetDate)));
   const render = () => dates.map((date, index) => workoutForDate({ date, index, total: dates.length,
-    isPreferredLongSessionDay: isDay(date, input.goal.preferredLongSessionDay), goal: effectiveGoal, athleteState: input.athleteState,
+    isPreferredLongSessionDay: longDays.length ? longDays.some((day) => isDay(date, day)) : isDay(date, input.goal.preferredLongSessionDay),
+    explicitModality: weekModalities?.get(date.getUTCDay()), longDays, goal: effectiveGoal, athleteState: input.athleteState,
     phase: input.goal.activities.includes("run") ? phaseForGoal(input.goal, date) : phase, budget, programme }));
   let workouts = render();
   const runCounts = [0, 0];
   for (const row of workouts) if (row.modality === "run") runCounts[Math.min(1, Math.floor((row.scheduledDate.getTime() - startOfDay(now).getTime()) / (7 * 86400000)))]++;
   const actualRunningSlots = Math.max(...runCounts);
-  if (budget && actualRunningSlots > 0 && actualRunningSlots !== budget.sessionsPerWeek) {
+  if (!weekModalities && budget && actualRunningSlots > 0 && actualRunningSlots !== budget.sessionsPerWeek) {
     budget = runningDoseBudget(input.goal, input.athleteState, programme, false, actualRunningSlots);
     if (programme?.status === "active") programme = { ...programme, sessionTotalSeconds: Math.min(programme.sessionTotalSeconds, budget!.ordinarySessionMinutes * 60) };
     workouts = render();
@@ -111,6 +122,7 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
     engineDecision: {
       runningDosePolicy: RUNNING_DOSE_POLICY,
       runningDoseBasis: budget?.basis ?? null,
+      explicitLongRunDays: longDays,
       runWalkProgramme: programme ?? null,
       effectiveBaselineContext: effectiveGoal.baselineContext,
       runningBenchmark: runningBenchmarkDecision(input.goal.constraints, now),
@@ -142,9 +154,27 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
 function balanceRunningWeek(workouts: PlannedWorkoutDraft[], input: GeneratePlanInput, budget?: RunningDoseBudget, programme?: RunWalkProgramme): PlannedWorkoutDraft[] {
   if (!budget) return workouts;
   const result = [...workouts];
+  const longDays = preferredLongRunDays(input.goal.constraints);
+  const allocation = longDays.length ? longRunAllocation({ sessions: budget.sessionsPerWeek, longSessions: longDays.length,
+    weeklySeconds: budget.targetWeeklyMinutes * 60, ordinaryCeiling: budget.perSessionCeilingMinutes * 60,
+    longCeiling: budget.longSessionCeilingMinutes * 60, minimum: budget.minimumMinutes * 60 }) : undefined;
   for (let start = 0; start < workouts.length; start += input.goal.daysPerWeekTarget) {
     const week = workouts.slice(start, start + input.goal.daysPerWeekTarget).filter((row) => row.modality === "run");
     if (!week.length) continue;
+    if (allocation) {
+      for (const row of week) {
+        const selected = longDays.some((day) => isDay(row.scheduledDate, day));
+        // Prior hard work, pain/fatigue and the race approach may override a long slot.
+        const base = selected && row.stimulus === "longEndurance" ? allocation.longSeconds : allocation.ordinarySeconds;
+        const phase = phaseForGoal(input.goal, row.scheduledDate);
+        const safetyReduction = row.stimulus === "recovery" || input.athleteState.fatigueRisk === "high";
+        const factor = safetyReduction ? .7 : phase === "taper" ? .8 : 1;
+        const floor = safetyReduction ? Math.min(900, base) : budget.minimumMinutes * 60;
+        const seconds = Math.min(base, input.goal.maxSessionMinutes * 60, Math.max(floor, Math.floor(base * factor)));
+        result[workouts.indexOf(row)] = regenerate(row, seconds, row.stimulus);
+      }
+      continue;
+    }
     const candidate = week.find((row) => row.stimulus === "longEndurance");
     const ordinaryCeiling = budget.perSessionCeilingMinutes * 60;
     const longCeiling = budget.longSessionCeilingMinutes * 60;
@@ -194,6 +224,8 @@ function workoutForDate(params: {
   index: number;
   total: number;
   isPreferredLongSessionDay: boolean;
+  explicitModality?: Modality;
+  longDays?: string[];
   goal: GeneratePlanInput["goal"];
   athleteState: AthleteTrainingStateSnapshot;
   phase: TrainingPlanPhase;
@@ -208,12 +240,16 @@ function workoutForDate(params: {
     params.isPreferredLongSessionDay,
     params.phase
   );
-  const modality = modalityFor(params.goal, stimulus, params.index);
+  if (params.longDays?.length && stimulus === "longEndurance" && !params.isPreferredLongSessionDay) stimulus = "easyAerobic";
+  const modality = params.explicitModality ?? modalityFor(params.goal, stimulus, params.index);
+  if (params.explicitModality && !activitySupports(modality, stimulus)) stimulus = "easyAerobic";
   if (modality === "run") {
     const run = params.athleteState.modalityBreakdown.run as { lastReportedHardAt?: string } | undefined;
     const recentHard = Math.max(params.athleteState.lastHardWorkoutAt?.getTime() ?? 0, run?.lastReportedHardAt ? new Date(run.lastReportedHardAt).getTime() : 0);
     const daysToEvent = daysUntil(params.goal.targetDate, params.date);
-    const nearLong = params.goal.preferredLongSessionDay && [1, -1].some((offset) => isDay(addDays(params.date, offset), params.goal.preferredLongSessionDay));
+    const longDays = params.longDays?.length ? params.longDays : [params.goal.preferredLongSessionDay].filter((day): day is string => day != null);
+    // Weekday checks include the next/previous cycle outside this 14-day window.
+    const nearLong = longDays.some((day) => [1, -1].some((offset) => isDay(addDays(params.date, offset), day)));
     if (params.programme?.status === "active" || recentHard > params.date.getTime() - 48 * 3600000 || daysToEvent != null && daysToEvent <= 2
         || ["threshold", "speed"].includes(stimulus) && (nearLong || params.goal.daysPerWeekTarget < 3)) stimulus = "easyAerobic";
     if (stimulus === "threshold" && (params.goal.type === "speed" || (params.goal.targetDistanceMeters ?? Infinity) <= 10000) && Math.floor(params.index / params.goal.daysPerWeekTarget) % 2 === 1) stimulus = "speed";

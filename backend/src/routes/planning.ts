@@ -1,3 +1,4 @@
+import { LongRunDaysError } from "../services/planning/longRunDays.js";
 import { PerformedWorkoutConflictError, performedWorkoutReferenceSchema } from "../services/planning/workoutIssuance.js";
 import { RunningScheduleError, ProgrammeTimelineError, ProgrammeConstraintError } from "../services/planning/runningDosePolicy.js";
 import { GoalFeasibilityError } from "../services/planning/goalFeasibility.js";
@@ -26,6 +27,7 @@ import type { AppEnv } from "../types/hono.js";
 import { standaloneWorkoutCatalog } from "../data/standaloneWorkouts.js";
 import {
   getPlanIntakeContext,
+  PlanningContextChangedError,
   interpretPlanIntake,
   planIntakeInterpretSchema,
 } from "../services/planning/planIntake.js";
@@ -199,6 +201,10 @@ router.patch("/goals/:id", zValidator("json", raceGoalUpdateSchema), async (c) =
   try {
     return c.json(await updateRaceGoal(user.id, c.req.param("id"), c.req.valid("json")));
   } catch (error) {
+    if (error instanceof LongRunDaysError) {
+      console.info("[planning] long_run_days_validation", { operation: "goal_write", status: 422, category: error.category });
+      return c.json({ error: error.message, code: error.code }, 422);
+    }
     if (error instanceof RunningScheduleError || error instanceof ProgrammeTimelineError || error instanceof ProgrammeConstraintError) {
       console.info("[planning] running_schedule_validation", { operation: "goal_write", category: error instanceof RunningScheduleError ? error.category : error instanceof ProgrammeTimelineError ? "programme_timeline" : "programme_quality" });
       return c.json({ error: error.message, code: error.code }, 422);
@@ -215,6 +221,10 @@ router.post("/goals", zValidator("json", goalSchema), async (c) => {
   try {
     return c.json(await createGoal(user.id, c.req.valid("json")), 201);
   } catch (error) {
+    if (error instanceof LongRunDaysError) {
+      console.info("[planning] long_run_days_validation", { operation: "goal_write", status: 422, category: error.category });
+      return c.json({ error: error.message, code: error.code }, 422);
+    }
     if (error instanceof RunningScheduleError || error instanceof ProgrammeTimelineError || error instanceof ProgrammeConstraintError) {
       console.info("[planning] running_schedule_validation", { operation: "goal_write", category: error instanceof RunningScheduleError ? error.category : error instanceof ProgrammeTimelineError ? "programme_timeline" : "programme_quality" });
       return c.json({ error: error.message, code: error.code }, 422);
@@ -224,6 +234,11 @@ router.post("/goals", zValidator("json", goalSchema), async (c) => {
       console.info("[planning] running_benchmark_validation", { operation: "create", category: error.category });
       return c.json({ error: error.message, code: error.code }, 422);
     }
+    if (error instanceof PlanningContextChangedError) {
+      console.info("[planning] goal_create_rejected", { operation: "create", status: 409, code: error.code });
+      return c.json({ error: error.message, code: error.code }, 409);
+    }
+    console.error("[planning] goal_create_failed", { operation: "create", status: 400, errorType: error instanceof Error ? error.name : "unknown" });
     return c.json({ error: error instanceof Error ? error.message : "Unable to create plan." }, 400);
   }
 });
@@ -236,6 +251,10 @@ router.patch("/goals/:id/running-benchmark", zValidator("json", z.object({ runni
   } catch (error) {
     if (error instanceof RunningBenchmarkError) {
       console.info("[planning] running_benchmark_validation", { operation: "update", category: error.category });
+      return c.json({ error: error.message, code: error.code }, 422);
+    }
+    if (error instanceof LongRunDaysError) {
+      console.info("[planning] long_run_days_validation", { operation: "goal_write", status: 422, category: error.category });
       return c.json({ error: error.message, code: error.code }, 422);
     }
     if (error instanceof RunningScheduleError || error instanceof ProgrammeTimelineError || error instanceof ProgrammeConstraintError) {
