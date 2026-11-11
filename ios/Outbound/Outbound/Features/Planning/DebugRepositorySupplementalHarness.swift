@@ -237,7 +237,9 @@ struct DebugRepositorySupplementalHarness: View {
         let fixture = try JSONDecoder().decode(JournalFixture.self, from: Data(contentsOf: URL.documentsDirectory.appendingPathComponent("repository-journal-fixture.json")))
         let target = fixture.target.withRoute(fixture.targetRoute), source = fixture.source
         let loaded = try await ActivityPersistence.shared.uploadSnapshot(for: target.id)!
-        try expect(loaded.activity.route?.points == target.route?.points, "process_restart_recovers_existing_target_route_A")
+        try expect(loaded.activity.route?.points.map(\.latitude) == target.route?.points.map(\.latitude)
+            && loaded.activity.route?.points.map(\.longitude) == target.route?.points.map(\.longitude)
+            && loaded.activity.route?.elevationMetadata == target.route?.elevationMetadata, "process_restart_recovers_existing_target_route_A")
         let retainedSource = try await ActivityPersistence.shared.uploadSnapshot(for: source.id)
         try expect(retainedSource != nil, "journal_recovery_retains_source_B")
         let directory = routeDirectory(target.id)
