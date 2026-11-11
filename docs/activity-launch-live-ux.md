@@ -101,6 +101,8 @@ Primary live metrics follow the selected mode:
 
 Keep map, current guidance, Pause, and Finish primary. The camera and map share one compact bottom workout panel by default. Its grabber and chevron support both an upward drag and a tap to open a full-screen workout dashboard with a large goal-aware primary metric, progress, supporting metrics, structured-workout and route context, the latest live-coach message, and persistent session controls. The expanded dashboard uses only compact and full-screen states, remains synchronized while switching between camera and map, and can drag or tap down only to collapse; it cannot dismiss or minimize the active workout. Pause reveals separate Resume and Finish actions. Finish requires confirmation before handing off to post-run review.
 
+The live panel retains its measured compact footprint while its visible surface expands above that footprint. Dragging must not repeatedly reframe the map or move its utility rail. The dashboard keeps its final content height during the transition, with compact content fading out as the panel opens; its grabber and edge insets follow the same progress. Commit the shared detent and local drag geometry in one snap transaction, without a second layout change at animation completion.
+
 ### Live workout options
 
 - The full-screen workout dashboard embeds Workout options below metrics and guidance, above the persistent session controls. The compact card stays unchanged; camera and map share the same session state.

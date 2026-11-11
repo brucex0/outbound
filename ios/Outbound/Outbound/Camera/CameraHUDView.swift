@@ -108,18 +108,9 @@ struct CameraHUDView: View {
                         onFinish: onFinish,
                         isFinishEnabled: !isCapturingPhoto
                     )
-                    .background {
-                        GeometryReader { proxy in
-                            Color.clear.preference(
-                                key: SessionStatusCardHeightPreferenceKey.self,
-                                value: isWorkoutPanelExpanded ? 0 : proxy.size.height
-                            )
-                        }
-                    }
-                    .padding(.horizontal, isWorkoutPanelExpanded ? 0 : 16)
-                    .padding(.bottom, isWorkoutPanelExpanded ? 0 : 18)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 }
+                .zIndex(1)
 
                 if !isWorkoutPanelExpanded {
                     VStack {
@@ -768,9 +759,33 @@ struct SessionStatusCard: View {
     var body: some View {
         let panelHeight = resolvedPanelHeight
         let expansionProgress = panelExpansionProgress(for: panelHeight)
+        let dashboardOpacity = min(expansionProgress * 4, 1)
 
+        // Keep the compact obstruction stable while the panel travels above it.
+        // Publishing the moving panel's height reframes MapKit on every drag frame.
+        Color.clear
+            .frame(height: collapsedHeight + 18)
+            .overlay(alignment: .bottom) {
+                GeometryReader { geometry in
+                    panelContent(height: panelHeight, progress: expansionProgress, dashboardOpacity: dashboardOpacity, dashboardWidth: geometry.size.width)
+                        .padding(.horizontal, 16 * (1 - expansionProgress))
+                        .padding(.bottom, 18 * (1 - expansionProgress))
+                        .frame(width: geometry.size.width, height: geometry.size.height, alignment: .bottom)
+                }
+            }
+            .preference(key: SessionStatusCardHeightPreferenceKey.self, value: collapsedHeight)
+            .animation(panelAnimation, value: isExpanded)
+            .onChange(of: isExpanded) { _, _ in
+                // Camera and map share the detent, but keep local drag geometry.
+                panelDragHeight = nil
+            }
+            .accessibilityIdentifier("CameraDataOverlay")
+    }
+
+    private func panelContent(height panelHeight: CGFloat, progress expansionProgress: CGFloat, dashboardOpacity: CGFloat, dashboardWidth: CGFloat) -> some View {
         VStack(spacing: 0) {
             panelGrabber
+                .padding(.top, 48 * expansionProgress)
             if locationPermissionUnavailable {
                 locationPermissionBanner
                     .fixedSize(horizontal: false, vertical: true)
@@ -781,22 +796,33 @@ struct SessionStatusCard: View {
                     .padding(.bottom, 8)
             }
 
-            if expansionProgress > 0.08 {
+            ZStack(alignment: .top) {
+                // Lay out the dashboard at its final height throughout the gesture.
+                // Only the outer panel reveals it; short intermediate detents must
+                // not squeeze the scroll view and its persistent session controls.
                 expandedDashboard
-                    .opacity(expansionProgress)
+                    .frame(width: dashboardWidth)
+                    .frame(width: max(0, dashboardWidth - 32 * (1 - expansionProgress)))
+                    .frame(height: max(0, maximumPanelHeight - 76
+                        - (locationPermissionUnavailable ? permissionContentHeight + 8 : 0)))
+                    .opacity(dashboardOpacity)
                     .allowsHitTesting(isExpanded && panelDragHeight == nil)
-            } else {
+                    .accessibilityHidden(!isExpanded || panelDragHeight != nil)
+
                 compactRow
                     .fixedSize(horizontal: false, vertical: true)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
                         compactContentHeight = $0
                     }
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 14 + 16 * expansionProgress)
                     .padding(.bottom, 10)
+                    .opacity(1 - dashboardOpacity)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         setExpanded(true)
                     }
+                    .allowsHitTesting(!isExpanded && panelDragHeight == nil)
+                    .accessibilityHidden(isExpanded || panelDragHeight != nil)
             }
         }
         .frame(maxWidth: .infinity)
@@ -816,15 +842,6 @@ struct SessionStatusCard: View {
             .strokeBorder(theme.accentColor.opacity(0.18), lineWidth: 1)
         }
         .shadow(color: theme.glowColor.opacity(0.55), radius: 18, y: -6)
-        .animation(panelAnimation, value: isExpanded)
-        .onChange(of: isExpanded) { _, _ in
-            // The detent is shared by the camera and map cards, while drag
-            // geometry belongs to this card instance. Clear any interrupted
-            // drag when the shared detent changes so a stale height cannot
-            // keep the compact card displaced after collapsing.
-            panelDragHeight = nil
-        }
-        .accessibilityIdentifier("CameraDataOverlay")
     }
 
     private var locationPermissionBanner: some View {
@@ -857,7 +874,6 @@ struct SessionStatusCard: View {
         .frame(maxWidth: .infinity)
         .frame(height: 28)
         .contentShape(Rectangle())
-        .padding(.top, isExpanded ? 48 : 0)
         .onTapGesture {
             setExpanded(!isExpanded)
         }
@@ -891,14 +907,10 @@ struct SessionStatusCard: View {
                 let midpoint = collapsedHeight + ((maximumPanelHeight - collapsedHeight) * 0.5)
                 let shouldExpand = projectedHeight >= midpoint
                 withAnimation(panelAnimation) {
-                    panelDragHeight = shouldExpand ? maximumPanelHeight : collapsedHeight
-                } completion: {
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) {
-                        isExpanded = shouldExpand
-                        panelDragHeight = nil
-                    }
+                    // Change the shared detent and local geometry together. A second
+                    // completion transaction otherwise changes insets after the snap.
+                    isExpanded = shouldExpand
+                    panelDragHeight = nil
                 }
             }
     }
@@ -969,7 +981,8 @@ struct SessionStatusCard: View {
                                 label: String(localized: "running_cadence.live_label", defaultValue: "Steps / min")
                             )
                             .accessibilityIdentifier("LiveRunningCadence")
-                            .task {
+                            .task(id: isExpanded) {
+                                guard isExpanded else { return }
                                 await analyticsManager?.track(.init(.featureExposed, properties: [
                                     .feature: .string("running_cadence_live")
                                 ]))

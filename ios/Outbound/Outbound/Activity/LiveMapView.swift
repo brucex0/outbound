@@ -49,6 +49,7 @@ struct LiveMapView: View {
                     .allowsHitTesting(activePage == .map)
                     .accessibilityHidden(activePage != .map)
                 bottomControls(expandedHeight: geometry.size.height)
+                    .zIndex(1)
                 if !isWorkoutPanelExpanded {
                     rightControls
                 }
@@ -318,8 +319,6 @@ struct LiveMapView: View {
                 }
 
                 statusCard(expandedHeight: expandedHeight)
-                    .padding(.horizontal, isWorkoutPanelExpanded ? 0 : 16)
-                    .padding(.bottom, isWorkoutPanelExpanded ? 0 : 18)
             }
             .background {
                 GeometryReader { proxy in
