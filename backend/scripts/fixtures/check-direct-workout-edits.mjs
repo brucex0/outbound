@@ -12,6 +12,7 @@ const {compileLiveCoachContext}=await import(pathToFileURL(backend+'/dist/servic
 const {buildActivitySuggestion}=await import(pathToFileURL(backend+'/dist/services/planning/activitySuggestion.js'));
 const db=getPrismaClient();
 const base='http://127.0.0.1:28480';
+const selectedCheck=process.env.OUTBOUND_DIRECT_EDIT_CHECK;
 const report={scope:'isolated synthetic local API + real PostgreSQL; no test suite, no production',at:new Date().toISOString(),compiledHash:createHash('sha256').update(await readFile(backend+'/dist/services/planning/workoutEdits.js')).digest('hex'),checks:[]};
 async function request(path,{method='GET',body,account='root'}={}) {const r=await fetch(base+path,{method,headers:{'content-type':'application/json','x-fixture-account':account},...(body===undefined?{}:{body:JSON.stringify(body)})});return {status:r.status,data:await r.json()};}
 const reset=(body={},account='root')=>request('/__fixture/reset',{method:'POST',body,account});
@@ -20,7 +21,7 @@ function command(s,change,reason) {return {plannedWorkoutId:s.primary.plannedWor
 const apply=(body,account='root')=>request('/v1/planning/workout-edits/apply',{method:'POST',body,account});
 const evidence=async(account='root')=>(await request('/__fixture/evidence',{account})).data;
 const edit=(seconds,effortPreset)=>({operation:'edit',edits:{...(seconds==null?{}:{target:{kind:'time',seconds}}),...(effortPreset?{effortPreset}:{})}});
-async function check(name,run) {try {const detail=await run();report.checks.push({name,status:'pass',detail});console.log('PASS '+name);}catch(e){report.checks.push({name,status:'fail',message:e.message});console.log('FAIL '+name+': '+e.message.slice(0,300));}await writeFile(output+'/backend-checks.json',JSON.stringify(report,null,2));}
+async function check(name,run) {if(selectedCheck&&!name.includes(selectedCheck))return;try {const detail=await run();report.checks.push({name,status:'pass',detail});console.log('PASS '+name);}catch(e){report.checks.push({name,status:'fail',message:e.message});console.log('FAIL '+name+': '+e.message.slice(0,300));}await writeFile(output+'/backend-checks.json',JSON.stringify(report,null,2));}
 const catalog=(await request('/v1/planning/standalone-workouts')).data;
 const fiveK=catalog.workouts.find(w=>w.targetDistanceMeters===5000);
 
@@ -57,6 +58,49 @@ await check('ownership; invalid edit; structured unsupported edit are non-mutati
   assert.equal((await apply({...cmd,change:edit(1)})).status,400);assert.equal((await evidence()).edits.length,0);
   await reset({structured:true});const structured=await suggestion();assert.equal(structured.editContext.canEditTarget,false);
   assert.equal((await apply(command(structured,edit(1200)))).status,422);assert.equal((await evidence()).edits.length,0);return {ownership409:true,validation400:true,structured422:true};
+});
+await check('adaptive recovery edits use displayed phases; effort-only materializes original tempo slot',async()=>{
+  await reset({tempo:true});const canonical=await suggestion();
+  assert.equal(canonical.primary.archetypeId,null);assert.equal(canonical.editContext.canEditTarget,false);assert.equal(canonical.editContext.canEditEffort,false);
+  assert.equal((await apply(command(canonical,edit(1200)))).status,422);assert.equal((await evidence()).edits.length,0);
+  const seed=(await reset({adaptedRecovery:true})).data;const s=await suggestion();
+  assert.equal(s.primary.id,'recovery-run-25');assert.equal(s.primary.plannedWorkoutId,seed.plannedWorkoutId);
+  assert.deepEqual(s.decision.safetyFlags,[]);assert.equal(s.editContext.canEditTarget,true);assert.equal(s.editContext.canEditEffort,true);assert.equal(s.editContext.canConvertGoal,false);
+  assert.deepEqual(s.primary.effectiveWorkout.steps.map(s=>s.durationSeconds),[300,900,300]);
+  assert.equal((await apply(command(s,{operation:'edit',edits:{target:{kind:'distance',meters:3000}}}))).status,422);
+  assert.equal((await evidence()).edits.length,0);
+  const cmd=command(s,edit(null,'steady'));const saved=await apply(cmd);assert.equal(saved.status,200,JSON.stringify(saved.data));
+  const receipt=saved.data.receipt;const fresh=await suggestion();assert.equal(fresh.primary.workoutEditId,receipt.workoutEditId);assert.equal(fresh.primary.durationSeconds,1500);
+  assert.equal(fresh.primary.stimulus,'recovery');assert.equal(fresh.editContext.canEditTarget,true);assert.equal(fresh.editContext.canEditEffort,true);assert.equal(fresh.editContext.canConvertGoal,false);
+  const e=await evidence();const row=e.workouts.find(w=>w.id===seed.plannedWorkoutId);assert.equal(e.edits.length,1);assert.equal(e.edits[0].operation,'edit');
+  assert.equal(row.durationSeconds,1500);assert.equal(row.stimulus,'recovery');assert.equal(row.intensityModel,'rpe');assert.equal(row.isKeyWorkout,false);
+  const blocks=row.blocks.sort((a,b)=>a.sortOrder-b.sortOrder);const steps=blocks.flatMap(b=>b.steps);
+  assert.deepEqual(blocks.map(b=>b.stimulus),['recovery','recovery','recovery']);assert.deepEqual(steps.map(s=>s.durationSeconds),[300,900,300]);
+  assert.deepEqual(steps.map(s=>s.target.rpe),[[2,3],[4,6],[2,3]]);assert.ok(steps.every(s=>!s.target.pace&&!s.target.heartRate));
+  assert.equal(e.edits[0].beforeWorkout.structure.stimulus,'threshold');assert.equal(e.edits[0].beforeWorkout.structure.durationSeconds,2520);
+  assert.equal(e.edits[0].beforeWorkout.structure.blocks[1].steps[0].target.pace.targetSecondsPerKilometer,330);
+  assert.equal(e.edits[0].afterWorkout.suggestion.plannedWorkoutId,seed.plannedWorkoutId);assert.equal(fresh.primary.workoutRevision,receipt.revision);
+  const replay=await apply(cmd);assert.equal(replay.status,200);assert.equal(replay.data.receipt.workoutEditId,receipt.workoutEditId);assert.equal((await evidence()).edits.length,1);
+  // A later time edit still preserves the displayed recovery warmup and cooldown.
+  const shortened=await apply(command(fresh,edit(1200)));assert.equal(shortened.status,200,JSON.stringify(shortened.data));
+  const reread=await suggestion();assert.deepEqual(reread.primary.effectiveWorkout.steps.map(s=>s.durationSeconds),[300,600,300]);
+  assert.equal(reread.primary.plannedWorkoutId,seed.plannedWorkoutId);
+  return {canonicalTempoProtected:true,adaptedRecoveryEditable:true,effortOnlySeconds:1500,oldTempoAudited:true,sameSlot:true,retryOnce:true,timeEditPhaseSeconds:[300,600,300]};
+});
+await check('adaptive observed baseline uses continuous easy phases instead of original short slot',async()=>{
+  const seed=(await reset()).data;const today=new Date();today.setUTCHours(0,0,0,0);
+  for(const days of [2,6,10,14,18,22,26]) {
+    const startedAt=new Date(today);startedAt.setUTCDate(startedAt.getUTCDate()-days);startedAt.setUTCHours(12);
+    await db.activity.create({data:{userId:'fixture-edit-root',type:'running',startedAt,durationSecs:3600,distanceM:10000,avgPace:360}});
+  }
+  const s=await suggestion();assert.equal(s.primary.archetypeId,'easy-run-observed-baseline');assert.deepEqual(s.decision.safetyFlags,[]);
+  assert.equal(s.editContext.canEditTarget,true);assert.equal(s.editContext.canEditEffort,true);assert.equal(s.editContext.canConvertGoal,false);
+  assert.deepEqual(s.primary.effectiveWorkout.steps.map(s=>s.durationSeconds),[300,3000,300]);
+  const saved=await apply(command(s,edit(2700)));assert.equal(saved.status,200,JSON.stringify(saved.data));
+  const fresh=await suggestion();assert.equal(fresh.primary.workoutEditId,saved.data.receipt.workoutEditId);
+  assert.deepEqual(fresh.primary.effectiveWorkout.steps.map(s=>s.durationSeconds),[300,2100,300]);assert.equal(fresh.primary.plannedWorkoutId,seed.plannedWorkoutId);
+  const e=await evidence();assert.equal(e.workouts[0].durationSeconds,2700);assert.deepEqual(e.workouts[0].blocks.sort((a,b)=>a.sortOrder-b.sortOrder).map(b=>b.durationSeconds),[300,2100,300]);
+  return {observedBaselineSeconds:3600,editedSeconds:2700,sameSlot:true,exactPhaseSeconds:[300,2100,300]};
 });
 await check('real newer readiness invalidates stale command atomically',async()=>{
   await reset();const s=await suggestion();const day=new Date(s.validForDate+'T00:00:00Z');
@@ -164,4 +208,4 @@ await check('catalog replacement clears source run-walk state and preserves its 
 });
 report.summary={passed:report.checks.filter(x=>x.status==='pass').length,failed:report.checks.filter(x=>x.status==='fail').length};
 await writeFile(output+'/backend-checks.json',JSON.stringify(report,null,2));
-console.log(JSON.stringify(report.summary));await db.$disconnect();process.exitCode=report.summary.failed?1:0;
+console.log(JSON.stringify(report.summary));await db.$disconnect();process.exitCode=report.summary.failed||report.summary.passed===0?1:0;

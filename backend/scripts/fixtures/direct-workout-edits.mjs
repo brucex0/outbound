@@ -36,7 +36,7 @@ const accounts={root:'fixture-edit-root',ui:'fixture-edit-ui',other:'fixture-edi
 const faults=new Map(), traces=[];
 const stable = value => Array.isArray(value) ? '['+value.map(stable).join(',')+']' : value && typeof value==='object' ? '{'+Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>JSON.stringify(k)+':'+stable(v)).join(',')+'}' : JSON.stringify(value);
 function account(c) { return accounts[c.req.header('x-fixture-account')] ?? (new URL(c.req.url).port==='28480'?accounts.root:accounts.ui); }
-async function seed(userId,{planned=true,duration=1710,structured=false}={}) {
+async function seed(userId,{planned=true,duration=1710,structured=false,tempo=false,adaptedRecovery=false}={}) {
   await db.user.deleteMany({where:{id:userId}});
   await db.user.create({data:{id:userId,username:userId,displayName:'Synthetic Runner',onboardingStatus:'completed',termsAcceptedVersion:1}});
   await db.calibrationProgram.create({data:{userId,status:'skipped',targetSessionCount:3,currentSession:'comfortableRun'}});
@@ -45,8 +45,18 @@ async function seed(userId,{planned=true,duration=1710,structured=false}={}) {
   const plan=await db.trainingPlan.create({data:{userId,goalId:goal.id,source:'fixture',currentPhase:'base'}});
   const version=await db.trainingPlanVersion.create({data:{planId:plan.id,versionNumber:1,reason:'fixture',summary:'Synthetic plan'}});
   const today=new Date(); today.setUTCHours(0,0,0,0);
-  const parts=structured?[['warmup',300,1,2],['interval',300,5,7],['recovery',120,1,2],['interval',300,5,7],['cooldown',300,1,2]]:[['warmup',300,1,2],['main',duration-600,2,4],['cooldown',300,1,2]];
-  const workout=await db.plannedWorkout.create({data:{userId,planVersionId:version.id,scheduledDate:today,modality:'run',stimulus:structured?'speed':'easyAerobic',title:structured?'Synthetic intervals':'Easy run',durationSeconds:parts.reduce((n,p)=>n+p[1],0),intensityModel:'rpe',intensityTarget:{min:2,max:4},prescription:{optional:false},blocks:{create:parts.map(([kind,seconds,min,max],index)=>({sortOrder:index,blockType:kind,modality:'run',stimulus:structured?'speed':'easyAerobic',durationSeconds:seconds,steps:{create:{sortOrder:0,kind:kind==='main'?'easy':kind,label:kind==='main'?'Easy run':kind==='warmup'?'Warm up':kind==='cooldown'?'Cool down':kind,durationSeconds:seconds,target:{rpe:[min,max]}}}}))}}});
+  tempo ||= adaptedRecovery;
+  const stimulus=tempo?'threshold':structured?'speed':'easyAerobic';
+  const parts=tempo?[['warmup',300,1,2],['tempo',1920,5,7],['cooldown',300,1,2]]:structured?[['warmup',300,1,2],['interval',300,5,7],['recovery',120,1,2],['interval',300,5,7],['cooldown',300,1,2]]:[['warmup',300,1,2],['main',duration-600,2,4],['cooldown',300,1,2]];
+  const workout=await db.plannedWorkout.create({data:{userId,planVersionId:version.id,scheduledDate:today,modality:'run',stimulus,title:tempo?'Controlled tempo run':structured?'Synthetic intervals':'Easy run',durationSeconds:parts.reduce((n,p)=>n+p[1],0),intensityModel:'rpe',intensityTarget:{min:2,max:4},prescription:{optional:false},blocks:{create:parts.map(([kind,seconds,min,max],index)=>({sortOrder:index,blockType:kind,modality:'run',stimulus,durationSeconds:seconds,steps:{create:{sortOrder:0,kind:kind==='main'?'easy':kind,label:kind==='main'?'Easy run':kind==='warmup'?'Warm up':kind==='cooldown'?'Cool down':kind,durationSeconds:seconds,target:{rpe:[min,max],...(tempo&&kind==='tempo'?{pace:{reference:'absolute',targetSecondsPerKilometer:330,athleteReferenceOffsetSeconds:0,fasterToleranceSeconds:15},heartRate:{min:140,max:160}}:{})}}}}))}}});
+  if (adaptedRecovery) {
+    // A denser six-day streak with an established lower-density baseline triggers
+    // recovery while keeping fatigue low, so the real route can still authorize edits.
+    for (const days of [1,2,3,4,5,6,8,10,12,14,16,18,20,22,24,26]) {
+      const startedAt=new Date(today);startedAt.setUTCDate(startedAt.getUTCDate()-days);startedAt.setUTCHours(12);
+      await db.activity.create({data:{userId,type:'running',startedAt,durationSecs:days<=6?900:1800,distanceM:days<=6?3633:5000,avgPace:360}});
+    }
+  }
   return {userId,plannedWorkoutId:workout.id,planId:plan.id,versionId:version.id};
 }
 for(const [name,id] of Object.entries(accounts)) await seed(id,{planned:name!=='standalone'});

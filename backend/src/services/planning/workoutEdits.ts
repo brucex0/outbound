@@ -74,11 +74,21 @@ function capabilities(primary: ActivitySuggestion, effective: StandaloneWorkoutC
     currentEffortPreset: presets.find((p) => effort?.rpeMin === p.min && effort?.rpeMax === p.max)?.id ?? null };
 }
 
+/** These server-owned adaptive paths replace a slot's execution content, not its identity. */
+function isAdaptivePlannedPrescription(primary: ActivitySuggestion): boolean {
+  if (!primary.plannedWorkoutId) return false;
+  if (["recovery-run-25", "recovery-spin-25"].includes(primary.archetypeId ?? "")) return primary.id === primary.archetypeId;
+  return primary.archetypeId === "easy-run-observed-baseline" && primary.id === `observed-baseline-${primary.plannedWorkoutId}`;
+}
+
 /** Make a guide from the real prescription, preserving each phase and target. */
 export async function effectiveWorkout(db: DB, userId: string, primary: ActivitySuggestion): Promise<StandaloneWorkoutCatalogItem> {
   if (primary.effectiveWorkout) return structuredClone(primary.effectiveWorkout);
   if (primary.catalogWorkout) return structuredClone(primary.catalogWorkout);
-  const workout = primary.plannedWorkoutId ? await db.plannedWorkout.findFirst({ where: { id: primary.plannedWorkoutId, userId }, include: workoutInclude }) : null;
+  // An adaptive recommendation still references the original slot for Apply/audit,
+  // but its reviewed recovery/easy phases have already replaced that slot's tempo/interval content.
+  const workout = primary.plannedWorkoutId && !isAdaptivePlannedPrescription(primary)
+    ? await db.plannedWorkout.findFirst({ where: { id: primary.plannedWorkoutId, userId }, include: workoutInclude }) : null;
   const rpe = (primary.intensityTarget ?? {}) as { min?: number; max?: number };
   let steps: StandaloneWorkoutCatalogItem["steps"] = workout?.blocks.flatMap((block) => block.steps.length ? block.steps.map((step, index) => ({
     id: `${block.sortOrder}-${index}`, label: step.label, durationSeconds: step.durationSeconds ?? block.durationSeconds ?? 0,
@@ -90,7 +100,7 @@ export async function effectiveWorkout(db: DB, userId: string, primary: Activity
     durationSeconds: primary.durationSeconds ?? primary.durationMinutes * 60,
     coachingTarget: { phase: "easy", recognizesTargetLock: false } }];
   if (!workout && primary.steps.length > 1) {
-    const continuous = ["easy-run-30", "recovery-run-25", "easy-ride-35", "easy-walk-25"].includes(primary.archetypeId ?? primary.id);
+    const continuous = ["easy-run-30", "easy-run-observed-baseline", "recovery-run-25", "easy-ride-35", "easy-walk-25"].includes(primary.archetypeId ?? primary.id);
     steps = primary.steps.map((label, index) => ({ id: `phase-${index}`, label,
       durationSeconds: Number(label.match(/^(\d+) min/)?.[1] ?? 0) * 60,
       coachingTarget: { phase: continuous ? index === 0 ? "warmup" : index === primary.steps.length - 1 ? "cooldown" : "easy" : "work", recognizesTargetLock: false } }));
@@ -129,7 +139,9 @@ function readPace(value: unknown): NonNullable<StandaloneWorkoutCatalogItem["coa
 }
 async function checkedCapabilities(db: DB, userId: string, primary: ActivitySuggestion, effective: StandaloneWorkoutCatalogItem) {
   const result = capabilities(primary, effective);
-  if (!primary.plannedWorkoutId) return result;
+  // Original slot targets belong in revision/audit, not capability checks for
+  // the explicitly selected adaptive prescription. Ordinary canonical rows retain all guards below.
+  if (!primary.plannedWorkoutId || isAdaptivePlannedPrescription(primary)) return result;
   const raw = await db.plannedWorkout.findFirst({ where: { id: primary.plannedWorkoutId, userId }, include: workoutInclude });
   const unsafeDistance = raw && (raw.blocks.length !== 1 || primary.distanceMeters == null)
     && raw.blocks.some((b) => b.distanceMeters != null || b.steps.some((s) => s.distanceMeters != null));
@@ -198,7 +210,7 @@ export async function attachWorkoutEditContext(db: DB, userId: string, response:
   const effective = await effectiveWorkout(db, userId, primary);
   const allowed = await checkedCapabilities(db, userId, primary, effective);
   // Expose the real phase durations to iOS instead of forcing it to divide plain step labels evenly.
-  const enriched: ActivitySuggestionResponse = primary.plannedWorkoutId && primary.id === `planned-${primary.plannedWorkoutId}` && allowed.canEditTarget && !primary.catalogWorkout
+  const enriched: ActivitySuggestionResponse = primary.plannedWorkoutId && allowed.canEditTarget && !primary.catalogWorkout
     ? { ...response, primary: { ...primary, effectiveWorkout: effective } } : response;
   return { ...enriched, editContext: { ...allowed, baseRevision: await revision(db, userId, enriched) } };
 }
@@ -314,11 +326,15 @@ export async function applyWorkoutEdit(userId: string, input: WorkoutEditApplyIn
     if (planned) {
       if (skip) await tx.plannedWorkout.update({ where: { id: planned.id }, data: { status: "skipped" } });
       else {
-        // A plain edit preserves the original prescription/targets and phase rows. Only explicitly changed fields are rewritten.
+        // Adaptation has already replaced the original execution content. Persist that
+        // effective phase tree even for effort-only edits, keeping the original slot and audit.
+        const materializeAdaptive = !replacing && isAdaptivePlannedPrescription(primary);
+        const rewritePhases = replacing || materializeAdaptive;
+        // A canonical plain edit preserves its original phase rows and unedited targets.
         const provenance = catalog ? { catalogWorkoutId: catalog.id, catalogVersion: standaloneWorkoutCatalog.version } : {};
         const originalPrescription = planned.prescription as Record<string, unknown>;
         let stepIndex = 0;
-        const recipes = replacing ? effective.steps.map((step) => ({ type: step.coachingTarget?.phase ?? "main", durationSeconds: step.durationSeconds }))
+        const recipes = rewritePhases ? effective.steps.map((step) => ({ type: step.coachingTarget?.phase ?? "main", durationSeconds: step.durationSeconds }))
           : planned.blocks.map((block, index) => {
               const count = Math.max(1, block.steps.length);
               const duration = effective.steps.slice(stepIndex, stepIndex + count).reduce((sum, step) => sum + step.durationSeconds, 0);
@@ -328,18 +344,21 @@ export async function applyWorkoutEdit(userId: string, input: WorkoutEditApplyIn
             });
         await tx.plannedWorkout.update({ where: { id: planned.id }, data: {
           title: after.title, durationSeconds, distanceMeters: after.distanceMeters,
-          ...(replacing ? { targetCalories: null, modality: effective.sport, stimulus: after.stimulus,
-            isKeyWorkout: ["threshold", "speed", "longEndurance"].includes(after.stimulus), intensityModel: "rpe", intensityTarget: {} } : {}),
+          ...(rewritePhases ? { targetCalories: after.targetCalories ?? null, modality: effective.sport, stimulus: after.stimulus,
+            isKeyWorkout: ["threshold", "speed", "longEndurance"].includes(after.stimulus), intensityModel: after.intensityModel,
+            intensityTarget: json(after.intensityTarget ?? {}) } : {}),
           ...(effort ? { intensityModel: "rpe", intensityTarget: json({ min: effort.min, max: effort.max }) } : {}),
           prescription: json({ ...originalPrescription, ...provenance, blocks: recipes, effectiveWorkout: effective, workoutEditId: id }),
         } });
-        if (replacing) {
+        if (rewritePhases) {
           await tx.workoutBlock.deleteMany({ where: { plannedWorkoutId: planned.id } });
           for (const [index, step] of effective.steps.entries()) await tx.workoutBlock.create({ data: {
             plannedWorkoutId: planned.id, sortOrder: index, blockType: step.coachingTarget?.phase ?? "main", modality: effective.sport,
             stimulus: after.stimulus, durationSeconds: step.durationSeconds,
             steps: { create: { sortOrder: 0, label: step.label, kind: step.coachingTarget?.phase ?? "easy", durationSeconds: step.durationSeconds,
-              detail: step.detail, target: json(step.coachingTarget ?? {}) } },
+              detail: step.detail, target: json({ ...step.coachingTarget,
+                ...(materializeAdaptive ? { rpe: [effective.guideInstructions.segments[index].effort.rpeMin,
+                  effective.guideInstructions.segments[index].effort.rpeMax] } : {}) }) } },
           } });
         } else if (edits?.target || effort) {
           let index = 0;

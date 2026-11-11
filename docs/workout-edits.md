@@ -10,12 +10,14 @@ Open when changing iOS Today editing, edit persistence, or recording attribution
 - Apply serializes on the planning-user lock, refreshes/rechecks the exact active slot, day, safety and normalized revision, and writes the same planned row plus a durable `WorkoutEdit` atomically. It never completes a workout or starts recording.
 - The response contains a receipt and canonical planning state/suggestion assembled inside the transaction. Same-key/same-payload retries return the original receipt plus current canonical state; key reuse for another payload is rejected. iOS retains the request key after an ambiguous failure and does not queue offline edits.
 - Continuous time edits preserve warmup/cooldown and change the single main phase. Goal conversion is independently restricted to a single continuous phase. Repeats, run/walk, unsupported step targets and intervals keep their original structure and explicitly disable unsupported edits; catalog replacement is available. No target or phase is silently discarded.
+- Adaptive recovery and observed-baseline easy recommendations use their displayed effective phases for edit capabilities and Apply; the original planned slot remains the ownership/revision/audit identity. Apply persists the adapted stimulus, targets and phase tree into that same row, including effort-only edits. An unchanged canonical tempo/interval/pace/HR prescription retains its restrictions. Enriched editable suggestions expose exact phase durations to clients; three-phase workouts still cannot convert time to distance.
 - A daily override uses the newest explicit command. Readiness, safety, activity/plan changes, completion and day rollover invalidate its fingerprint. Later legacy Android Apply commands take precedence. Invalidated newer commands cannot resurrect an older direct edit.
 
 ## UI and execution
 
 - The sheet freezes the displayed workout and server identity/revision at opening; background refreshes never retarget an unsaved draft. A stale save is rejected with its draft/key retained.
 - Missing capabilities do not block local goal, target, effort, reason or cached catalog drafting. Basic local bounds only validate input; known server restrictions remain in force. Apply/Use alone refresh a missing or expired baseline, and accept it only when the full frozen primary payload, day, plan context/version, activity watermark and decision still match. A mismatch updates canonical state for the next opening, keeps the current draft/selection, and requests retry or reopening; no revision is invented and no upload is queued.
+- Goal type is static text when phase preservation prevents conversion; the numeric time/distance field and effort retain their independent edit capabilities. Available selector chevrons follow their values. This uses the existing workout-edit analytics flow and `edit` operation; no event or private reason handling changes.
 - The sheet opens on the current filled goal and effort, with an always-visible optional reason. Reason selection changes no other fields. Canceling the catalog retains the unsaved fields. Catalog details ends with `Use workout`; successful Apply closes the entire flow to Today.
 - A local custom/calibration session without a matching canonical edit baseline shows its actual filled values and a replacement-only explanation; direct Apply and Skip are disabled. Choosing a catalog replacement saves the server-owned replacement and clears the local override. Accessibility text sizes use a scrollable reason selection list so all choices remain reachable.
 - The active save remains visible with loading, blocks duplicate actions/dismissal, and reports failures as temporary feedback. The caller consumes canonical state before closing.
@@ -47,6 +49,8 @@ npm run build
 node scripts/fixtures/direct-workout-edits.mjs
 # In another shell, while that fixture is running:
 node scripts/fixtures/check-direct-workout-edits.mjs
+# Run only the adaptive recovery/observed-baseline regressions when checks are authorized:
+OUTBOUND_DIRECT_EDIT_CHECK=adaptive node scripts/fixtures/check-direct-workout-edits.mjs
 ```
 
 Evidence and the disposable database live under `/tmp/plainstride-workout-edit-fixture` (override with `OUTBOUND_DIRECT_EDIT_OUTPUT` in both shells). Normal dependency installation runs the embedded PostgreSQL platform package's library-symlink setup; do not use another checkout's native binaries as a permanent workaround.
