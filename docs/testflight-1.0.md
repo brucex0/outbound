@@ -20,11 +20,17 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 ## Submission Status
 
+- Version 1.7.15 (69) completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 11, 2026 (Pacific), from source `c09174f241d1ed8cda17432f676cfb325e7b0a2b`. English beta notes were published and assignment to internal TestFlight group `Plainstride Team` was confirmed.
+- Submitted through App Store Connect on November 11, 2026 at 2:34 PM Pacific. The version is **Waiting for Review**, submission `bba96776-83c5-433b-ade3-f20c1d0733f3`, with automatic release after approval and immediate availability to all users configured.
+- Version 1.7.14 (68) is confirmed **Ready for Distribution**. Its listing and screenshots were retained.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.15-69/`; the 72,804,550-byte IPA SHA-256 is `cea03b52ea341c4f409be05d237468743be5ae7d72a86290714635f6fb779f62`; upload ID `1364ffe8-bf1b-4749-aabd-5267ef5b1f86`. All 14 upload chunks were accepted, with transient broken-pipe errors on several chunks recovered by the bounded retry logic.
+- No tests or physical-device acceptance were run. Release compilation succeeded with existing compiler warnings; it does not confirm device behavior.
+
+### Previous Release: 1.7.14 (68)
+
 - Version 1.7.14 (68) completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 8, 2026 (Pacific), from source `5b837f2f82d91fa9be9769bda76bf8f1a765a233`. English beta notes were published and assignment to internal TestFlight group `Plainstride Team` was confirmed.
-- Submitted through App Store Connect on November 8, 2026 at 11:20 PM Pacific. The version is **Waiting for Review**, submission ID `544e83b4-acb6-48dc-9ef2-1b9346a85c95`, with automatic release after approval and immediate availability to all users configured.
-- Version 1.7.13 is confirmed **Ready for Distribution**. Its listing, screenshots, and existing release metadata were preserved.
-- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.14-68/`; the 71,746,744-byte IPA SHA-256 is `164870945774542dbb03ece6e0d742144498234c6399c308a66f0bbb24187aa4`; upload ID `fef02fad-345b-48c1-80fb-bf8a7230d389`. The first delivery stopped after chunk 9 when chunk 10 exhausted retries. Resuming the same preserved IPA completed chunks 10–14 successfully; do not rebuild or re-upload to finish distribution setup.
-- Production backend `/health` returned HTTP 200. No tests or physical-device acceptance were run. Release compilation succeeded with existing compiler warnings; it does not confirm device behavior.
+- Submitted through App Store Connect on November 8, 2026 at 11:20 PM Pacific. It was approved and is now **Ready for Distribution**.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.14-68/`; the 71,746,744-byte IPA SHA-256 is `164870945774542dbb03ece6e0d742144498234c6399c308a66f0bbb24187aa4`; upload ID `fef02fad-345b-48c1-80fb-bf8a7230d389`.
 
 ### Previous Release: 1.7.13 (67)
 
@@ -89,10 +95,7 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### App Store What's New
 
-- Manage plans faster and revisit saved race goals with a clear phase roadmap.
-- Finish rebuilt plan setup from Today and see your weekly running goal on Me.
-- Clearer plan week targets and more consistent cadence guidance during runs.
-- Additional interface improvements.
+Improved the live workout map and made planned workouts easier to follow. Fixed layout and touch-target issues across the activity experience.
 
 ### How to Report Feedback
 
@@ -207,6 +210,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.15 (69)`, validate, and upload from Xcode Organizer.
-- After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
+- Build `1.7.15 (69)` was archived, validated, and uploaded with the repository helper. Apple processing completed; the helper populated **What to Test** and confirmed the build in the `Plainstride Team` internal group.
+- Version `1.7.15 (69)` was submitted to App Review with automatic release after approval.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
