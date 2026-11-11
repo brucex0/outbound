@@ -257,6 +257,8 @@ export interface PlanningEventResult {
 }
 
 export interface PlanningState {
+  /** Serialized planning observation watermark, not a count of source mutations. */
+  revision: number;
   runningPlanReview?: import("./runningPlanReview.js").RunningPlanReview | null;
   editContext?: WorkoutEditContext | null;
   roadmap?: unknown | null;

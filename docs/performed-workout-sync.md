@@ -12,6 +12,30 @@ Open for planned recording attribution, offline completion, effective Today vari
 
 ## Atomic reconciliation and history
 
+### Upload acknowledgement and revisions
+
+- `POST /v1/activities` keeps the canonical activity identity at the top level
+  and returns `reconciliation = { planningRevision, statisticsRevision,
+  completion }`. `completion` is either `null` or the canonical completion
+  summary `{ activityId, plannedWorkoutId, planVersionId, status,
+  prescribedDurationSeconds }`. The canonical identity behavior is unchanged;
+  clients persist the acknowledgement before removing the accepted mutation
+  from their pending outbox. Planning-state responses expose the same planning
+  observation watermark as `revision`.
+- `planningRevision` is the account's `User.planningStateRevision` observation
+  watermark. It advances under the planning-user lock when planning state is
+  assembled for a response or an activity is accepted. It is not a counter for
+  every planning mutation. `planVersionId` remains the identity of the plan
+  version that owns the workout and is not a mutation revision. Statistics
+  uses its separate `statisticsRevision`, also returned by the accepted upload.
+- Completion exposes the exact issued prescription duration in
+  `prescribedDurationSeconds`. That value is distinct from current scheduled-slot
+  progress minutes and from actual activity duration in history. Clients must
+  not derive one from another.
+- Generate and apply the additive backend schema before releasing clients that
+  consume these acknowledgement fields. No database reset, historical backfill,
+  or recreation of completed-workout IDs is required.
+
 - Lock order: planning-user advisory lock, then recording/import identity and activity rows. Every activity create, update, import deduplication and recording-session deduplication reconciles the receipt before committing. Activity, social activity record and completion association all succeed or roll back together.
 - Companion shorten/calorie actions acquire that same planning-user lock before reading the workout, blocks or estimate inputs, then calculate and mutate inside the transaction. This prevents a response assembled from one recipe from receiving a receipt for a concurrently changed recipe. The preference writer also locks its snapshot/write, commits, then calls the separately locked rebuild; it does not nest rebuild locks. Existing action summaries, accepted-outcome/evidence records and rollback behavior are unchanged.
 - Nullable unique `WorkoutCompletion.activityId` permits one immutable canonical activity association. Retries reuse that completion; another workout, issued revision, edit linkage or performed-variant declaration cannot reassign it. Missing optional metadata preserves an existing association. Unknown unlinked manual/best-effort completion records are preserved separately; a reference alone is insufficient to guess which old physical recording they described.

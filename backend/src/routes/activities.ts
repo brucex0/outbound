@@ -391,9 +391,26 @@ router.post("/", zValidator("json", createSchema), async (c) => {
   let routeCompletionRecorded = false;
   let performedPlanId: string | undefined;
   let performedAssociationChanged = false;
+  let reconciliation: { planningRevision: number; statisticsRevision: number; completion: {
+    activityId: string; plannedWorkoutId: string; planVersionId: string; status: string; prescribedDurationSeconds: number;
+  } | null } | undefined;
   const reconcilePerformed = async (transaction: Prisma.TransactionClient, saved: Prisma.ActivityGetPayload<{}>) => {
     const result = await reconcileUploadedWorkout(transaction, resolvedUserId, saved, body.clientData?.performedWorkoutReference);
     if (result) { performedPlanId = result.planId; performedAssociationChanged ||= result.changed; }
+    // Capture acceptance and its exact association before this transaction commits.
+    // A later live query could accidentally acknowledge a different concurrent state.
+    const watermark = await transaction.user.update({ where: { id: resolvedUserId },
+      data: { planningStateRevision: { increment: 1 } }, select: { planningStateRevision: true, statisticsRevision: true } });
+    const completion = await transaction.workoutCompletion.findUnique({ where: { activityId: saved.id },
+      include: { plannedWorkout: true, prescriptionRevision: true } });
+    const snapshot = completion?.prescriptionRevision?.snapshot as Record<string, unknown> | undefined;
+    const effective = snapshot?.effectiveWorkout as { targetDurationSeconds?: number; steps?: { durationSeconds: number }[] } | undefined;
+    const retainedDuration = typeof snapshot?.durationSeconds === "number" ? snapshot.durationSeconds
+      : effective?.targetDurationSeconds ?? effective?.steps?.reduce((total, step) => total + step.durationSeconds, 0);
+    reconciliation = { planningRevision: watermark.planningStateRevision, statisticsRevision: watermark.statisticsRevision,
+      completion: completion ? { activityId: saved.id, plannedWorkoutId: completion.plannedWorkoutId,
+        planVersionId: completion.plannedWorkout.planVersionId, status: completion.plannedWorkout.status,
+        prescribedDurationSeconds: retainedDuration && retainedDuration > 0 ? retainedDuration : completion.plannedWorkout.durationSeconds } : null };
     return transaction.activity.findUniqueOrThrow({ where: { id: saved.id } });
   };
   const createActivityWithSocialPost = () =>
@@ -674,6 +691,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       routeCompletionRecorded,
       followedRouteUnavailable: body.followedRouteId != null && resolvedFollowedRouteId == null,
       groupContributions,
+      reconciliation,
     },
     wasCreated ? 201 : 200
   );

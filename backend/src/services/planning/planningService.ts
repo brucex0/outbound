@@ -626,7 +626,12 @@ export async function assemblePlanningState(
       null;
     const recommendations = plan ? [] : await trainingPlanRecommendationsForUser(userId);
 
+    // Reads and accepted activity transactions share the user planning lock. Every
+    // assembled snapshot is ordered; this deliberately is an observation watermark.
+    const observation = await prisma.user.update({ where: { id: userId },
+      data: { planningStateRevision: { increment: 1 } }, select: { planningStateRevision: true } });
     return {
+      revision: observation.planningStateRevision,
       goal: goal ? { ...goal, currentRunningFitness: resolveRunningBenchmark((goal.constraints as Record<string, unknown>).runningBenchmark, new Date()), shortRunSessions: (goal.constraints as Record<string, unknown>).shortRunSessions === "true", optionalMobility: (goal.constraints as Record<string, unknown>).optionalMobility === "true" } : null,
       plan: plan ? { ...plan, versions: undefined } : null,
       currentVersion: version ? { ...version, engineDecision: runningReviewDecision(version.engineDecision), workouts: undefined } : null,

@@ -64,6 +64,7 @@ export async function issueWorkout(tx: Prisma.TransactionClient, userId: string,
   const programmeExposureEligible = unchangedProgramme && sameExecution && !actual?.replacement;
   const sourceExposureEligible = programmeExposureEligible && prescription.sourceExposureEligible !== false;
   const snapshot = { policyVersion: PERFORMED_WORKOUT_POLICY, modality: primary.modality, stimulus: primary.stimulus,
+    durationSeconds: primary.durationSeconds ?? primary.durationMinutes * 60,
     targetCalories: primary.targetCalories ?? null, effectiveWorkout: effective,
     provenance: { source: prescription.source ?? null, templateID: prescription.templateID ?? null, weekIndex: prescription.weekIndex ?? null,
       workoutID: prescription.workoutID ?? null, runWalkProgramme: prescription.runWalkProgramme ?? null,
