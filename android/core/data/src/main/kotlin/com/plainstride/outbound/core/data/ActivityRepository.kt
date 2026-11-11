@@ -67,6 +67,7 @@ import com.plainstride.outbound.core.network.RemoteActivityDto
 import com.plainstride.outbound.core.network.apiCall
 
 interface ActivityRepository {
+    fun observeStatisticsPending(accountId: String): Flow<Boolean> = observePendingSyncCount(accountId).map { it > 0 }
     fun observeStatistics(accountId: String): Flow<JsonObject?>
     suspend fun refreshStatistics(accountId: String): Boolean
     suspend fun loadHistoryPage(accountId: String, targetCount: Int = 30): Boolean
@@ -79,6 +80,7 @@ interface ActivityRepository {
     suspend fun correctElevationIfNeeded(accountId: String, activityId: String): Boolean
     suspend fun edit(activity: SavedActivity)
     suspend fun delete(accountId: String, activityId: String, deletedAt: Instant = Instant.now())
+    suspend fun retryRejected(accountId: String) {}
     suspend fun synchronize(accountId: String): ActivitySyncResult
 }
 
@@ -102,33 +104,40 @@ class OfflineFirstActivityRepository(
     private val currentAccountId: () -> String?,
     private val now: () -> Instant = Instant::now,
 ) : ActivityRepository {
+    private val reads = AccountReadRepository(database, accessTokens)
+    private val syncMutex = kotlinx.coroutines.sync.Mutex()
+    private val recoveredAccounts = mutableSetOf<String>()
+    private fun context(accountId: String) = accessTokens.captureAccount(accountId)?.takeIf { currentAccountId() == accountId }
+    private fun current(owner: com.plainstride.outbound.core.network.AccountRequestContext) = currentAccountId() == owner.accountId && accessTokens.isCurrent(owner)
+    override suspend fun retryRejected(accountId: String) { context(accountId)?.let {
+        reads.retryRejected(it)
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "performed_workout_retry")))
+    } }
     private val historyDownloaded = mutableMapOf<String, Int>()
     private val historyCursors = mutableMapOf<String, String?>()
     private val historyHasMore = kotlinx.coroutines.flow.MutableStateFlow<Map<String, Boolean>>(emptyMap())
     private val historyMutex = kotlinx.coroutines.sync.Mutex()
-    private fun statisticsKey(): String = "v1:${java.time.ZoneId.systemDefault().id}:${java.time.temporal.WeekFields.of(java.util.Locale.getDefault()).firstDayOfWeek.value % 7 + 1}"
-    override fun observeStatistics(accountId: String): Flow<JsonObject?> = database.accountCacheDao().observe(accountId, "statistics", statisticsKey(), "und").map { row ->
-        if (row == null) null else try { PlainstrideJson.parseToJsonElement(row.payloadJson).jsonObject } catch (e: SerializationException) { Log.e("PlainstrideStatistics", "cache_decode_failed type=${e.javaClass.simpleName}"); null }
-    }
+    override fun observeStatisticsPending(accountId: String): Flow<Boolean> = reads.observe(accountId).map { it?.baseline?.statisticsDirty ?: true }
+    override fun observeStatistics(accountId: String): Flow<JsonObject?> = reads.observeStatistics(accountId)
     override suspend fun refreshStatistics(accountId: String): Boolean {
-        if (currentAccountId() != accountId) return false
-        val token = accessTokens.validAccessToken() ?: return false
-        val result = apiCall { api.statistics("Bearer $token", java.time.ZoneId.systemDefault().id, java.time.temporal.WeekFields.of(java.util.Locale.getDefault()).firstDayOfWeek.value % 7 + 1) }
+        val owner = context(accountId) ?: return false
+        val ticket = reads.statisticsTicket(owner) ?: return false
+        val token = accessTokens.validAccessToken(owner) ?: return false
+        val result = apiCall { api.statistics("Bearer $token", java.time.ZoneId.systemDefault().id, 2) }
         if (result !is ApiResult.Success) { Log.w("PlainstrideStatistics", "refresh_failed category=${(result as? ApiResult.Failure)?.error?.code?.name ?: "unavailable"}"); return false }
-        val value = result.value
-        if (currentAccountId() != accountId || value["status"]?.jsonPrimitive?.contentOrNull != "complete" || value["algorithmVersion"]?.jsonPrimitive?.intOrNull != 1) return false
-        database.accountCacheDao().upsert(com.plainstride.outbound.core.database.AccountCacheEntity(accountId, "statistics", statisticsKey(), "und", value.toString(), null, now().toEpochMilli(), null))
-        analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "server_statistics")))
-        return true
+        val accepted = current(owner) && reads.acceptStatistics(owner, result.value, ticket)
+        if (accepted) analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "server_statistics")))
+        return accepted
     }
     override suspend fun loadHistoryPage(accountId: String, targetCount: Int): Boolean = historyMutex.withLock {
-        val token = accessTokens.validAccessToken() ?: return@withLock false
+        val owner = context(accountId) ?: return@withLock false
+        val token = accessTokens.validAccessToken(owner) ?: return@withLock false
         var downloaded = 0
         do {
             val page = apiCall { api.activities("Bearer $token", 30, 0, historyCursors[accountId]) }
             if (page !is ApiResult.Success) { Log.w("PlainstrideActivity", "history_page_failed category=${(page as? ApiResult.Failure)?.error?.code?.name ?: "unavailable"}"); return@withLock false }
-            if (currentAccountId() != accountId) return@withLock false
-            for (remote in page.value.activities) if (mergeRemote(accountId, remote, preserveRoute = true)) downloaded++
+            if (!current(owner)) return@withLock false
+            for (remote in page.value.activities) if (mergeRemote(owner, remote, preserveRoute = true)) downloaded++
             historyCursors[accountId] = page.value.nextCursor
             historyHasMore.value = historyHasMore.value + (accountId to (page.value.hasMore && page.value.nextCursor != null))
         } while (dao.activeCount(accountId) < targetCount && historyHasMore.value[accountId] != false)
@@ -136,22 +145,25 @@ class OfflineFirstActivityRepository(
         true
     }
     override suspend fun refreshActivity(accountId: String, activityId: String) {
+        val owner = context(accountId) ?: return
         val local = activity(accountId, activityId)
         // An uncached notification carries a server ID; a local unsynced activity needs no fetch.
         val serverId = if (local == null) activityId else local.serverActivityId ?: return
-        val token = accessTokens.validAccessToken()
+        val token = accessTokens.validAccessToken(owner)
         if (token != null) {
             val response = apiCall { api.activities("Bearer $token", 1, 0, ids = serverId, includeRoute = true) }
-            if (response is ApiResult.Success && currentAccountId() == accountId) response.value.activities.forEach { mergeRemote(accountId, it) }
+            if (response is ApiResult.Success && current(owner)) response.value.activities.forEach { mergeRemote(owner, it) }
             else Log.w("PlainstrideActivity", "detail_refresh_failed category=${(response as? ApiResult.Failure)?.error?.code?.name ?: "account_changed"}")
         }
-        cacheActivityPhotos(accountId, local?.id ?: activityId)
+        if (current(owner)) cacheActivityPhotos(owner, local?.id ?: activityId)
     }
-    private suspend fun cacheActivityPhotos(accountId: String, activityId: String) =
+    private suspend fun cacheActivityPhotos(owner: com.plainstride.outbound.core.network.AccountRequestContext, activityId: String) =
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val accountId = owner.accountId
+            if (!current(owner)) return@withContext
             val snapshot = activity(accountId, activityId) ?: return@withContext
             for (photo in snapshot.photos) {
-                if (currentAccountId() != accountId) return@withContext
+                if (!current(owner)) return@withContext
                 val remoteId = photo.remotePhotoId ?: continue
                 try {
                     val cached = photo.localRelativePath?.let { path ->
@@ -160,12 +172,12 @@ class OfflineFirstActivityRepository(
                     } ?: false
                     if (cached) continue
                     val bytes = photos.load(remoteId).getOrNull() ?: continue
-                    if (currentAccountId() != accountId) return@withContext
+                    if (!current(owner)) return@withContext
                     val path = mediaStore.write(accountId, snapshot.id, bytes)
                     val attached = database.withTransaction {
                         val latest = activity(accountId, snapshot.id)
                         val target = latest?.photos?.firstOrNull { it.id == photo.id && it.remotePhotoId == remoteId && it.remoteUpdatedAt == photo.remoteUpdatedAt }
-                        if (currentAccountId() != accountId || latest == null || latest.deletedAt != null || target == null
+                        if (!current(owner) || latest == null || latest.deletedAt != null || target == null
                             || target.localRelativePath != photo.localRelativePath) false
                         else {
                             dao.upsertPhotos(listOf(target.copy(localRelativePath = path).toEntity(latest, latest.photos.indexOfFirst { it.id == target.id })))
@@ -181,15 +193,17 @@ class OfflineFirstActivityRepository(
             }
         }
 
-    private suspend fun refreshCachedMetadata(accountId: String, authorization: String) {
+    private suspend fun refreshCachedMetadata(owner: com.plainstride.outbound.core.network.AccountRequestContext, authorization: String) {
+        val accountId = owner.accountId
+        if (!current(owner)) return
         val cached = dao.observeAll(accountId).first().mapNotNull { row -> row.activity.serverActivityId?.let { com.plainstride.outbound.core.network.CachedActivityVersion(it, row.activity.serverUpdatedAtEpochMs?.let { time -> Instant.ofEpochMilli(time).toString() }) } }
         for (batch in cached.chunked(200)) {
             val response = apiCall { api.cachedChanges(authorization, com.plainstride.outbound.core.network.CachedActivityVersions(batch)) }
-            if (response !is ApiResult.Success || currentAccountId() != accountId) {
+            if (response !is ApiResult.Success || !current(owner)) {
                 Log.w("PlainstrideActivity", "cached_metadata_refresh_failed category=${(response as? ApiResult.Failure)?.error?.code?.name ?: "account_changed"}")
                 return
             }
-            response.value.activities.forEach { mergeRemote(accountId, it, preserveRoute = true) }
+            response.value.activities.forEach { mergeRemote(owner, it, preserveRoute = true) }
         }
     }
     private val dao: ActivityDao get() = database.activityDao()
@@ -214,8 +228,12 @@ class OfflineFirstActivityRepository(
 
     override suspend fun save(activity: SavedActivity) = persistAndEnqueue(activity.copy(deletedAt = null))
 
-    override suspend fun edit(activity: SavedActivity) = database.withTransaction {
+    override suspend fun edit(activity: SavedActivity) {
+        val owner = context(activity.accountId) ?: throw IOException("Activity owner changed")
+        database.withTransaction {
+        if (!current(owner)) throw IOException("Activity owner changed")
         val latest = dao.get(activity.accountId, activity.id)?.toDomain()
+        if (latest?.deletedAt != null) throw IOException("Activity was deleted")
         // Title/gear edits may originate from a detail snapshot opened before enrichment.
         // Keep the newer terrain result when the edit has not changed route geometry.
         val sameGeometry = latest != null && latest.track.size == activity.track.size && activity.track.indices.all { index ->
@@ -232,11 +250,13 @@ class OfflineFirstActivityRepository(
             }
         }
         persistAndEnqueue(updated.copy(localUpdatedAt = now().toString()))
+        }
     }
 
     override suspend fun correctElevationIfNeeded(accountId: String, activityId: String): Boolean {
+        val owner = context(accountId) ?: return false
         val key = accountId to activityId
-        if (currentAccountId() != accountId || !elevationCorrections.add(key)) return false
+        if (!current(owner) || !elevationCorrections.add(key)) return false
         val started = System.nanoTime()
         var source = "existing_on_device"
         try {
@@ -247,13 +267,13 @@ class OfflineFirstActivityRepository(
                 original.serverActivityId == null -> "mapzen_terrain_v2"
                 else -> "mapzen_backfill"
             }
-            val token = accessTokens.validAccessToken() ?: return false
-            if (currentAccountId() != accountId) return false
+            val token = accessTokens.validAccessToken(owner) ?: return false
+            if (!current(owner)) return false
             val corrected = elevationCorrector.correct(original, "Bearer $token")
             val applied = database.withTransaction {
                 val latest = activity(accountId, activityId) ?: return@withTransaction false
                 // Do not resurrect deleted routes, overwrite edits, or write after an account switch.
-                if (currentAccountId() != accountId || latest.deletedAt != null
+                if (!current(owner) || latest.deletedAt != null
                     || latest.localUpdatedAt != original.localUpdatedAt || latest.track != original.track
                     || latest.elevationMetadata != original.elevationMetadata || latest.source != original.source
                     || latest.indoorJson != original.indoorJson) return@withTransaction false
@@ -319,104 +339,165 @@ class OfflineFirstActivityRepository(
     }
 
     override suspend fun delete(accountId: String, activityId: String, deletedAt: Instant) {
+        val owner = context(accountId) ?: throw IOException("Activity owner changed")
         database.withTransaction {
+            if (!current(owner)) throw IOException("Activity owner changed")
             if (dao.tombstone(accountId, activityId, deletedAt.toEpochMilli()) == 0) return@withTransaction
             dao.deleteOriginalRoute(accountId, activityId)
+            reads.deleted(accountId, activityId)
             enqueue(accountId, activityId, DELETE, deletedAt.toString(), "{}")
         }
     }
 
-    override suspend fun synchronize(accountId: String): ActivitySyncResult {
-        val token = accessTokens.validAccessToken() ?: return ActivitySyncResult(0, 0, pendingCount(accountId), "authentication_required")
+    override suspend fun synchronize(accountId: String): ActivitySyncResult = syncMutex.withLock {
+        val owner = context(accountId) ?: return@withLock ActivitySyncResult(0, 0, pendingCount(accountId), "authentication_required")
+        val token = accessTokens.validAccessToken(owner) ?: return@withLock ActivitySyncResult(0, 0, pendingCount(accountId), "authentication_required")
         val authorization = "Bearer $token"
-        // Save has already committed locally. Enrich a bounded set before building the
-        // upload batch; provider/auth failures never block normal activity synchronization.
-        // Budget expiry intentionally falls back to uploading existing data; detail can retry.
+        if (recoveredAccounts.add(accountId)) database.syncOutboxDao().recoverInterrupted(accountId)
         withTimeoutOrNull(15_000) {
             database.syncOutboxDao().pending(accountId, now().toEpochMilli(), 100)
                 .filter { it.operationType == UPSERT }.map { it.aggregateId }.distinct()
-                .forEach { correctElevationIfNeeded(accountId, it) }
+                .forEach { if (current(owner)) correctElevationIfNeeded(accountId, it) }
         }
         var uploaded = 0
         var photosUploaded = 0
         var failure: String? = null
         for (operation in database.syncOutboxDao().pending(accountId, now().toEpochMilli(), 100)) {
+            if (!current(owner)) break
             if (database.syncOutboxDao().claim(accountId, operation.operationId) == 0) continue
-            val result = when (operation.operationType) {
-                UPSERT -> apiCall {
-                    val request = PlainstrideJson.decodeFromString<ActivityUploadRequest>(operation.payloadJson)
-                    api.upload(authorization, request)
+            try {
+                val result = when (operation.operationType) {
+                    UPSERT -> apiCall { api.upload(authorization, PlainstrideJson.decodeFromString<ActivityUploadRequest>(operation.payloadJson)) }
+                    DELETE -> apiCall { api.delete(authorization, operation.aggregateId) }
+                    "delete_photo" -> apiCall { api.deleteActivityPhoto(authorization, operation.payloadJson) }
+                    else -> null
                 }
-                DELETE -> apiCall { api.delete(authorization, operation.aggregateId) }
-                "delete_photo" -> apiCall { api.deleteActivityPhoto(authorization, operation.payloadJson) }
-                else -> null
-            }
-            if (result is ApiResult.Success) {
-                try {
-                if (operation.operationType == UPSERT) {
-                    val existing = dao.get(accountId, operation.aggregateId)?.toDomain()
-                    val response = result.value
-                    if (existing != null && response is com.plainstride.outbound.core.network.ActivityUploadResponse) {
-                        val canonicalClientId = response.clientActivityId
-                        if (canonicalClientId != null && canonicalClientId != existing.id) {
-                            val canonicalPage = apiCall { api.activities(authorization, 1, 0, ids = response.id, includeRoute = false) }
-                            if (canonicalPage !is ApiResult.Success) throw IOException("Canonical import refresh failed")
-                            canonicalPage.value.activities.forEach { mergeRemote(accountId, it, preserveRoute = true) }
-                            val canonical = dao.get(accountId, canonicalClientId)?.toDomain() ?: throw IOException("Canonical import missing")
-                            val photos = existing.photos.filter { old -> canonical.photos.none { it.id == old.id } }.map { photo ->
-                                photo.copy(localRelativePath = photo.localRelativePath?.let { mediaStore.write(accountId, canonical.id, mediaStore.read(it)) })
+                if (!current(owner)) {
+                    database.syncOutboxDao().retry(accountId, operation.operationId, now().toEpochMilli())
+                    break
+                }
+                if (result is ApiResult.Success) {
+                    if (operation.operationType == UPSERT) {
+                        val response = result.value as? com.plainstride.outbound.core.network.ActivityUploadResponse ?: throw IOException("Invalid upload acknowledgement")
+                        acceptUpload(owner, operation, response, authorization)
+                    } else database.withTransaction {
+                        if (!current(owner)) throw IOException("Account changed")
+                        reads.invalidate(owner)
+                        database.syncOutboxDao().acknowledge(accountId, operation.operationId)
+                    }
+                    uploaded++
+                } else {
+                    val error = (result as? ApiResult.Failure)?.error
+                    val conflict = operation.operationType == UPSERT && error?.httpStatus == 409 && error.wireCode == "performed_workout_conflict"
+                    database.withTransaction {
+                        if (conflict) {
+                            val latestGeneration = dao.get(accountId, operation.aggregateId)?.activity?.mutationGeneration
+                            if (latestGeneration == operation.mutationGeneration) {
+                                reads.rejected(accountId, operation.aggregateId, operation.mutationGeneration)
+                                database.syncOutboxDao().reject(accountId, operation.operationId)
+                            } else {
+                                // A later edit already owns a fresh operation; an obsolete rejected
+                                // generation must not leave an invisible terminal row behind.
+                                database.syncOutboxDao().acknowledge(accountId, operation.operationId)
                             }
-                            persist(canonical.copy(photos = canonical.photos + photos), enqueue = false)
-                            dao.tombstone(accountId, existing.id, now().toEpochMilli())
-                            mediaStore.deleteActivity(accountId, existing.id)
                         } else {
-                            persist(existing.copy(serverActivityId = response.id, serverUpdatedAt = response.serverUpdatedAt ?: response.uploadedAt), enqueue = false)
+                            val delayMs = (30_000L * (1L shl minOf(operation.attemptCount + 1, 7))).coerceAtMost(3_600_000L)
+                            database.syncOutboxDao().retry(accountId, operation.operationId, now().toEpochMilli() + delayMs)
                         }
-                        trackActivitySync("activity_sync_completed", existing)
                     }
+                    failure = if (conflict) "performed_workout_conflict" else error?.code?.name ?: "invalid_outbox_operation"
+                    Log.w("PlainstrideActivity", "sync_failed category=$failure http_status=${error?.httpStatus ?: 0}")
+                    dao.get(accountId, operation.aggregateId)?.toDomain()?.let { trackActivitySync("activity_sync_failed", it, failure) }
                 }
-                database.syncOutboxDao().acknowledge(accountId, operation.operationId)
-                uploaded++
-                } catch (e: CancellationException) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { database.syncOutboxDao().retry(accountId, operation.operationId, now().toEpochMilli()) }
-                    throw e
-                } catch (e: Exception) {
-                    database.syncOutboxDao().retry(accountId, operation.operationId, now().toEpochMilli() + 30_000)
-                    failure = "local_reconciliation"
-                    Log.e("PlainstrideActivity", "sync_reconciliation_failed type=${e.javaClass.simpleName}")
-                }
-            } else {
-                val attempt = operation.attemptCount + 1
-                val delayMs = (30_000L * (1L shl minOf(attempt, 7))).coerceAtMost(3_600_000L)
-                database.syncOutboxDao().retry(accountId, operation.operationId, now().toEpochMilli() + delayMs)
-                failure = (result as? ApiResult.Failure)?.error?.code?.name ?: "invalid_outbox_operation"
-                if (operation.operationType == UPSERT) {
-                    dao.get(accountId, operation.aggregateId)?.toDomain()?.let { activity ->
-                        trackActivitySync("activity_sync_failed", activity, (result as? ApiResult.Failure)?.error?.code?.name ?: "unknown")
-                    }
-                }
+            } catch (error: CancellationException) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { database.syncOutboxDao().retry(accountId, operation.operationId, now().toEpochMilli()) }
+                throw error
+            } catch (error: Exception) {
+                database.syncOutboxDao().retry(accountId, operation.operationId, now().toEpochMilli() + 30_000)
+                failure = "local_reconciliation"
+                Log.e("PlainstrideActivity", "sync_reconciliation_failed type=${error.javaClass.simpleName}")
             }
         }
-        // Photo uploads can retry independently after their activity has synced.
-        dao.observeAll(accountId).first().map { it.toDomain() }
-            .filter { it.serverActivityId != null && it.photos.any { photo -> photo.remotePhotoId == null } }
-            .forEach { activity ->
-                val result = syncPhotos(activity, authorization)
-                photosUploaded += result.uploaded
-                if (result.failed) {
-                    failure = failure ?: "activity_photo_upload_failed"
-                    trackActivitySync("activity_sync_failed", activity, "photo_upload")
+        if (current(owner)) {
+            dao.observeAll(accountId).first().map { it.toDomain() }
+                .filter { it.serverActivityId != null && it.photos.any { photo -> photo.remotePhotoId == null } }
+                .forEach { activity ->
+                    if (current(owner)) {
+                        val result = syncPhotos(owner, activity, authorization)
+                        photosUploaded += result.uploaded
+                        if (result.failed) failure = failure ?: "activity_photo_upload_failed"
+                    }
                 }
-            }
-        refreshCachedMetadata(accountId, authorization)
-        // History is a bounded cache; account statistics never depend on its completeness.
-        historyCursors.remove(accountId)
-        historyHasMore.value = historyHasMore.value + (accountId to true)
-        val pageLoaded = loadHistoryPage(accountId, 0)
+            refreshCachedMetadata(owner, authorization)
+            historyCursors.remove(accountId)
+            historyHasMore.value = historyHasMore.value + (accountId to true)
+        }
+        val pageLoaded = current(owner) && loadHistoryPage(accountId, 0)
         val downloaded = if (pageLoaded) historyDownloaded[accountId] ?: 0 else 0
         if (!pageLoaded) failure = failure ?: "history_page_failed"
-        refreshStatistics(accountId)
-        return ActivitySyncResult(uploaded, downloaded, pendingCount(accountId), failure, photosUploaded)
+        if (current(owner)) refreshStatistics(accountId)
+        ActivitySyncResult(uploaded, downloaded, pendingCount(accountId), failure, photosUploaded)
+    }
+
+    private suspend fun acceptUpload(owner: com.plainstride.outbound.core.network.AccountRequestContext, operation: SyncOutboxEntity,
+        response: com.plainstride.outbound.core.network.ActivityUploadResponse, authorization: String) {
+        val reconciliation = response.reconciliation ?: throw IOException("Missing reconciliation receipt")
+        val accountId = owner.accountId
+        val source = dao.get(accountId, operation.aggregateId) ?: throw IOException("Missing upload source")
+        val canonicalId = response.clientActivityId ?: source.activity.activityId
+        val adopting = canonicalId != source.activity.activityId && source.activity.mutationGeneration == operation.mutationGeneration
+        val target = if (adopting) dao.get(accountId, canonicalId) else null
+        val remote = if (adopting) {
+            val fetched = apiCall { api.activities(authorization, 1, 0, ids = response.id, includeRoute = true) }
+            (fetched as? ApiResult.Success)?.value?.activities?.singleOrNull()?.takeIf { it.clientActivityId == canonicalId && it.id == response.id }
+                ?: throw IOException("Canonical activity refresh failed")
+        } else null
+        if (!current(owner)) throw IOException("Account changed")
+        val prepared = mutableListOf<String>()
+        var adopted = false
+        var switched = false
+        try {
+            val copiedPhotos = if (adopting) source.toDomain().photos.map { photo ->
+                photo.copy(localRelativePath = photo.localRelativePath?.let { path -> mediaStore.write(accountId, canonicalId, mediaStore.read(path)).also(prepared::add) })
+            } else emptyList()
+            database.withTransaction {
+                if (!current(owner)) throw IOException("Account changed")
+                val latest = dao.get(accountId, operation.aggregateId) ?: throw IOException("Missing upload source")
+                if (adopting && latest.activity.mutationGeneration == operation.mutationGeneration) {
+                    val latestTarget = dao.get(accountId, canonicalId)
+                    if (latestTarget != target || database.syncOutboxDao().hasActivityMutation(accountId, canonicalId)) throw IOException("Canonical generation changed")
+                    val decoded = remote!!.clientData.toDomain(accountId, remote) ?: throw IOException("Invalid canonical activity")
+                    val retained = (target?.toDomain()?.photos.orEmpty() + copiedPhotos).distinctBy { it.id }
+                    val merged = retained.map { localPhoto ->
+                        decoded.photos.firstOrNull { it.id == localPhoto.id }?.copy(localRelativePath = localPhoto.localRelativePath) ?: localPhoto
+                    } + decoded.photos.filter { remotePhoto -> retained.none { it.id == remotePhoto.id } }
+                    val targetActivity = target?.toDomain()
+                    val sourceActivity = source.toDomain()
+                    val routeOwner = when {
+                        decoded.track.isNotEmpty() -> decoded
+                        targetActivity?.track?.isNotEmpty() == true -> targetActivity
+                        else -> sourceActivity
+                    }
+                    persist(decoded.copy(photos = merged, track = routeOwner.track, elevationMetadata = routeOwner.elevationMetadata,
+                        elevationGainM = if (decoded.track.isNotEmpty()) decoded.elevationGainM else routeOwner.elevationGainM), enqueue = false)
+                    dao.originalRoute(accountId, operation.aggregateId)?.let { dao.preserveOriginalRoute(it.copy(activityId = canonicalId)) }
+                    dao.tombstone(accountId, operation.aggregateId, now().toEpochMilli())
+                    dao.deleteOriginalRoute(accountId, operation.aggregateId)
+                    switched = true
+                } else if (canonicalId == latest.activity.activityId) {
+                    // Metadata applies to the latest row; never restore a captured payload over an edit.
+                    persist(latest.toDomain().copy(serverActivityId = response.id,
+                        serverUpdatedAt = response.serverUpdatedAt ?: response.uploadedAt), enqueue = false)
+                }
+                reads.accepted(accountId, operation.aggregateId, operation.mutationGeneration, reconciliation)
+                database.syncOutboxDao().acknowledge(accountId, operation.operationId)
+            }
+            adopted = switched
+            if (adopted && current(owner)) mediaStore.deleteActivity(accountId, operation.aggregateId)
+            trackActivitySync("activity_sync_completed", source.toDomain())
+        } finally {
+            if (!adopted) prepared.forEach { mediaStore.delete(it) }
+        }
     }
 
     private data class PhotoSyncResult(val uploaded: Int, val failed: Boolean)
@@ -434,12 +515,13 @@ class OfflineFirstActivityRepository(
         analytics.record(AnalyticsEvent(name, properties))
     }
 
-    private suspend fun syncPhotos(activity: SavedActivity, authorization: String): PhotoSyncResult {
+    private suspend fun syncPhotos(owner: com.plainstride.outbound.core.network.AccountRequestContext, activity: SavedActivity, authorization: String): PhotoSyncResult {
         val serverActivityId = activity.serverActivityId ?: return PhotoSyncResult(0, activity.photos.isNotEmpty())
         val synchronizedPhotos = activity.photos.toMutableList()
         var uploaded = 0
         var failed = false
         for (index in synchronizedPhotos.indices) {
+            if (!current(owner)) return PhotoSyncResult(uploaded, true)
             val photo = synchronizedPhotos[index]
             if (photo.remotePhotoId != null) continue
             val localPath = photo.localRelativePath
@@ -482,11 +564,12 @@ class OfflineFirstActivityRepository(
             // Photo transfer can overlap detail enrichment; update only photo metadata
             // on the latest activity instead of restoring its previous elevation/route.
             val latest = dao.get(activity.accountId, activity.id)?.toDomain()
-            if (latest != null && latest.deletedAt == null) {
+            if (current(owner) && latest != null && latest.deletedAt == null) {
                 val transferred = synchronizedPhotos.associateBy { it.id }
                 persist(latest.copy(photos = latest.photos.map { photo ->
                     val remote = transferred[photo.id]
-                    if (remote?.remotePhotoId != null && photo.remotePhotoId == null) photo.copy(
+                    if (remote?.remotePhotoId != null && photo.remotePhotoId == null
+                        && activity.photos.firstOrNull { it.id == photo.id }?.localRelativePath == photo.localRelativePath) photo.copy(
                         remotePhotoId = remote.remotePhotoId, remoteUpdatedAt = remote.remoteUpdatedAt,
                         byteSize = remote.byteSize, sha256 = remote.sha256,
                     ) else photo
@@ -497,18 +580,28 @@ class OfflineFirstActivityRepository(
     }
 
     private suspend fun persistAndEnqueue(activity: SavedActivity) {
-        val payload = PlainstrideJson.encodeToString(activity.toUploadRequest())
+        val owner = context(activity.accountId) ?: throw IOException("Activity owner is no longer active")
         database.withTransaction {
-            preserveOriginalElevationRoute(activity)
-            persist(activity, enqueue = false)
-            enqueue(activity.accountId, activity.id, UPSERT, activity.localUpdatedAt, payload)
+            if (!current(owner)) throw IOException("Activity owner changed")
+            val old = dao.get(activity.accountId, activity.id)?.activity
+            val generation = (old?.mutationGeneration ?: 0) + 1
+            val updated = activity.copy(localUpdatedAt = instant(maxOf(now().toEpochMilli(), (old?.localUpdatedAtEpochMs ?: 0) + 1)))
+            preserveOriginalElevationRoute(updated)
+            persist(updated, enqueue = false)
+            dao.upsertActivity(updated.toEntity().copy(mutationGeneration = generation))
+            reads.saved(updated, generation)
+            database.syncOutboxDao().supersedeUnsent(activity.accountId, activity.id)
+            enqueue(activity.accountId, activity.id, UPSERT, generation.toString(), PlainstrideJson.encodeToString(updated.toUploadRequest()), generation)
         }
     }
 
     private suspend fun persist(activity: SavedActivity, enqueue: Boolean) {
         require(activity.id.isNotBlank() && activity.accountId.isNotBlank())
         database.withTransaction {
-            dao.upsertActivity(activity.toEntity())
+            val existingOwner = dao.owner(activity.id)
+            require(existingOwner == null || existingOwner == activity.accountId) { "Activity identity belongs to another account" }
+            val generation = dao.get(activity.accountId, activity.id)?.activity?.mutationGeneration ?: 0
+            dao.upsertActivity(activity.toEntity().copy(mutationGeneration = generation))
             dao.deleteTrack(activity.accountId, activity.id)
             dao.deleteSplits(activity.accountId, activity.id)
             dao.deletePhotos(activity.accountId, activity.id)
@@ -519,9 +612,12 @@ class OfflineFirstActivityRepository(
         }
     }
 
-    private suspend fun mergeRemote(accountId: String, remote: RemoteActivityDto, preserveRoute: Boolean = false): Boolean = database.withTransaction {
+    private suspend fun mergeRemote(owner: com.plainstride.outbound.core.network.AccountRequestContext, remote: RemoteActivityDto, preserveRoute: Boolean = false): Boolean = database.withTransaction {
+        val accountId = owner.accountId
+        if (!current(owner)) return@withTransaction false
         val clientId = remote.clientActivityId ?: dao.getByReference(accountId, remote.id)?.activity?.activityId ?: remote.id
         val local = dao.get(accountId, clientId)?.toDomain()
+        if (database.syncOutboxDao().hasActivityMutation(accountId, clientId)) return@withTransaction false
         val remoteUpdated = parseEpoch(remote.clientUpdatedAt ?: remote.updatedAt)
         if (local != null && parseEpoch(local.localUpdatedAt) > remoteUpdated) return@withTransaction false
         val remoteDeletedAt = remote.deletedAt
@@ -547,17 +643,17 @@ class OfflineFirstActivityRepository(
         return@withTransaction true
     }
 
-    private suspend fun enqueue(accountId: String, activityId: String, operation: String, revision: String, payload: String) {
+    private suspend fun enqueue(accountId: String, activityId: String, operation: String, revision: String, payload: String, generation: Long = 0) {
         val created = now().toEpochMilli()
         database.syncOutboxDao().enqueue(SyncOutboxEntity(
             operationId = UUID.randomUUID().toString(), accountId = accountId, aggregateType = "activity",
             aggregateId = activityId, operationType = operation,
             idempotencyKey = "activity:$activityId:$operation:$revision", payloadJson = payload,
-            createdAtEpochMs = created, nextAttemptAtEpochMs = created,
+            createdAtEpochMs = created, nextAttemptAtEpochMs = created, mutationGeneration = generation,
         ))
     }
 
-    private suspend fun pendingCount(accountId: String): Int = database.syncOutboxDao().count(accountId)
+    private suspend fun pendingCount(accountId: String): Int = database.syncOutboxDao().retryableCount(accountId)
 
     private companion object { const val UPSERT = "upsert"; const val DELETE = "delete" }
 }

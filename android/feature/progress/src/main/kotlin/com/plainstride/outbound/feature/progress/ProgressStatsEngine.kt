@@ -20,7 +20,7 @@ object ProgressStatsEngine {
         activities: List<ProgressActivity>,
         now: Instant = Instant.now(),
         zoneId: ZoneId = ZoneId.systemDefault(),
-        firstDayOfWeek: DayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek,
+        firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY,
     ): ProgressStatsSnapshot {
         val eligible = activities.filter { it.durationSeconds > MINIMUM_DURATION_SECONDS }.sortedByDescending { it.startedAt }
         val currentStart = weekStart(now.atZone(zoneId).toLocalDate(), firstDayOfWeek)

@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 data class ConnectivityUiState(
     val isOffline: Boolean = false,
     val pendingSyncCount: Int = 0,
+    val hasRejectedWorkout: Boolean = false,
 )
 
 @HiltViewModel
@@ -23,6 +24,7 @@ class ConnectivityViewModel @Inject constructor(
     monitor: NetworkConnectivityMonitor,
     private val activities: ActivityRepository,
     private val syncScheduler: ActivitySyncScheduler,
+    private val reads: com.plainstride.outbound.core.data.AccountReadRepository,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(ConnectivityUiState())
     val state = mutableState.asStateFlow()
@@ -40,14 +42,20 @@ class ConnectivityViewModel @Inject constructor(
         }
     }
 
+    fun retryRejected() {
+        val owner = accountId ?: return
+        viewModelScope.launch { activities.retryRejected(owner); syncScheduler.schedule(owner) }
+    }
     fun start(accountId: String) {
         if (this.accountId == accountId) return
         this.accountId = accountId
         pendingSyncJob?.cancel()
         mutableState.update { it.copy(pendingSyncCount = 0) }
         pendingSyncJob = viewModelScope.launch {
-            activities.observePendingSyncCount(accountId).collectLatest { count ->
-                mutableState.update { it.copy(pendingSyncCount = count) }
+            kotlinx.coroutines.flow.combine(activities.observePendingSyncCount(accountId), reads.observe(accountId)) { count, row ->
+                count to (row?.completions?.any { it.state == "rejected" } == true)
+            }.collectLatest { (count, rejected) ->
+                mutableState.update { it.copy(pendingSyncCount = count, hasRejectedWorkout = rejected) }
             }
         }
     }

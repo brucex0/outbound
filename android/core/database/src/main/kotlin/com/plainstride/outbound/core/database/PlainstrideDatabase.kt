@@ -6,11 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.withTransaction
 
-private const val DATABASE_SCHEMA_VERSION = 8
+private const val DATABASE_SCHEMA_VERSION = 9
 
 @Database(
     entities = [
         AccountCacheEntity::class,
+        AccountProjectionEntity::class,
+        ActivityCompletionEntity::class,
         SyncOutboxEntity::class,
         ActiveSessionJournalEntity::class,
         ActivityEntity::class,
@@ -26,6 +28,7 @@ private const val DATABASE_SCHEMA_VERSION = 8
     exportSchema = true,
 )
 abstract class PlainstrideDatabase : RoomDatabase() {
+    abstract fun accountProjectionDao(): AccountProjectionDao
     abstract fun accountCacheDao(): AccountCacheDao
     abstract fun syncOutboxDao(): SyncOutboxDao
     abstract fun activeSessionJournalDao(): ActiveSessionJournalDao
@@ -59,6 +62,8 @@ class AccountDatabaseOperations(
 ) {
     suspend fun clearAccount(accountId: String) {
         database.withTransaction {
+            database.accountProjectionDao().deleteCompletions(accountId)
+            database.accountProjectionDao().deleteForAccount(accountId)
             database.accountCacheDao().deleteForAccount(accountId)
             database.syncOutboxDao().deleteForAccount(accountId)
             database.activeSessionJournalDao().deleteForAccount(accountId)

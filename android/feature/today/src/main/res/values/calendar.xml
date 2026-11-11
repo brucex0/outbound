@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_calendar_partial_week">Partial first week · starts on your plan start date</string>
+    <plurals name="plan_calendar_progress">
+        <item quantity="one">%1$d of %2$d scheduled workout completed · %3$d of %4$d planned min</item>
+        <item quantity="other">%1$d of %2$d scheduled workouts completed · %3$d of %4$d planned min</item>
+    </plurals>
+    <string name="plan_calendar_no_scheduled">No scheduled workouts this week</string>
+</resources>

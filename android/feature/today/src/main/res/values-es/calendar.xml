@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_calendar_partial_week">Primera semana parcial · comienza en la fecha de inicio del plan</string>
+    <plurals name="plan_calendar_progress">
+        <item quantity="one">%1$d de %2$d entrenamiento programado completado · %3$d de %4$d min previstos</item>
+        <item quantity="other">%1$d de %2$d entrenamientos programados completados · %3$d de %4$d min previstos</item>
+    </plurals>
+    <string name="plan_calendar_no_scheduled">No hay entrenamientos programados esta semana</string>
+</resources>

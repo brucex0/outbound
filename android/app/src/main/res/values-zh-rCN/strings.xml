@@ -128,4 +128,6 @@
     <string name="connectivity_offline_accessibility">当前离线。更改已保存在此设备，稍后将同步。</string>
     <string name="connectivity_pending">仍有部分内容待同步</string>
     <string name="connectivity_pending_accessibility">仍有部分已保存内容待同步。Plainstride 会自动重试。</string>
+    <string name="connectivity_workout_conflict">训练已保存。请重试同步计划。</string>
+    <string name="connectivity_retry">重试</string>
 </resources>

@@ -132,7 +132,10 @@ object FoundationModule {
         return OkHttpClient.Builder()
             .retryOnConnectionFailure(true)
             .addInterceptor { chain ->
-                val request = chain.request()
+                val request = chain.request().newBuilder()
+                    .header("X-Plainstride-Time-Zone", java.time.ZoneId.systemDefault().id)
+                    .header("X-Plainstride-First-Weekday", "2")
+                    .build()
                 val route = "${request.url.scheme}://${request.url.host}${request.url.encodedPath}"
                 val startedAt = System.nanoTime()
                 Log.d(NETWORK_TAG, "--> ${request.method} $route")
@@ -208,8 +211,15 @@ object FoundationModule {
         analytics: ProductAnalytics,
         sessions: SessionCoordinator,
     ): ActivityPhotoRepository = ActivityPhotoRepository(context, api, tokens, database.activityDao(), media, analytics,
-        currentAccountId = { (sessions.state.value as? com.plainstride.outbound.core.auth.SessionState.SignedIn)?.accountId },
+        currentAccountId = { when (val state = sessions.state.value) {
+            is com.plainstride.outbound.core.auth.SessionState.SignedIn -> state.accountId
+            is com.plainstride.outbound.core.auth.SessionState.Refreshing -> state.accountId
+            else -> null
+        } },
     )
+
+    @Provides @Singleton fun accountReadRepository(database: PlainstrideDatabase, tokens: AccessTokenProvider) =
+        com.plainstride.outbound.core.data.AccountReadRepository(database, tokens)
 
     @Provides @Singleton fun activitySyncScheduler(@ApplicationContext context: Context): ActivitySyncScheduler =
         WorkManagerActivitySyncScheduler(context)
@@ -223,7 +233,11 @@ object FoundationModule {
         analytics: ProductAnalytics,
         sessions: SessionCoordinator,
     ): ActivityRepository = OfflineFirstActivityRepository(database, api, accessTokens, mediaStore, photos, analytics,
-        currentAccountId = { (sessions.state.value as? com.plainstride.outbound.core.auth.SessionState.SignedIn)?.accountId },
+        currentAccountId = { when (val state = sessions.state.value) {
+            is com.plainstride.outbound.core.auth.SessionState.SignedIn -> state.accountId
+            is com.plainstride.outbound.core.auth.SessionState.Refreshing -> state.accountId
+            else -> null
+        } },
     )
 
     @Provides @Singleton fun weatherApi(client: OkHttpClient): WeatherApiService =
@@ -254,6 +268,16 @@ object FoundationModule {
     @Provides fun accessTokenProvider(sessions: SessionCoordinator): AccessTokenProvider =
         object : AccessTokenProvider {
             override suspend fun validAccessToken(): String? = sessions.validAccessToken()
+            private fun owner(): String? = when (val state = sessions.state.value) {
+                is com.plainstride.outbound.core.auth.SessionState.SignedIn -> state.accountId
+                is com.plainstride.outbound.core.auth.SessionState.Refreshing -> state.accountId
+                else -> null
+            }
+            override fun currentContext() = owner()?.let { com.plainstride.outbound.core.network.AccountRequestContext(it, sessions.generation) }
+            override fun captureAccount(accountId: String) =
+                com.plainstride.outbound.core.network.AccountRequestContext(accountId, sessions.generation).takeIf { owner() == accountId }
+            override fun isCurrent(context: com.plainstride.outbound.core.network.AccountRequestContext) =
+                owner() == context.accountId && sessions.generation == context.generation
         }
 
     @Provides @Singleton fun authRepository(api: AuthApiService, sessions: SessionCoordinator): AuthRepository =

@@ -128,4 +128,6 @@
     <string name="connectivity_offline_accessibility">Sin conexión. Los cambios se guardan en este dispositivo y se sincronizarán más tarde.</string>
     <string name="connectivity_pending">Aún quedan elementos por sincronizar</string>
     <string name="connectivity_pending_accessibility">Aún quedan elementos guardados por sincronizar. Plainstride volverá a intentarlo automáticamente.</string>
+    <string name="connectivity_workout_conflict">Sesión guardada. Vuelve a intentar sincronizar el plan.</string>
+    <string name="connectivity_retry">Reintentar</string>
 </resources>

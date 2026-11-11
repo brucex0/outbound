@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_calendar_partial_week">首周为不完整周 · 从计划开始日算起</string>
+    <plurals name="plan_calendar_progress">
+        <item quantity="other">已完成 %1$d/%2$d 次计划训练 · 已完成 %3$d/%4$d 分钟计划时长</item>
+    </plurals>
+    <string name="plan_calendar_no_scheduled">本周没有安排训练</string>
+</resources>

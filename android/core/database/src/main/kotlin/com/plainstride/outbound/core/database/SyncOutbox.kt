@@ -27,6 +27,7 @@ data class SyncOutboxEntity(
     val attemptCount: Int = 0,
     val nextAttemptAtEpochMs: Long,
     val state: String = STATE_PENDING,
+    val mutationGeneration: Long = 0,
 ) {
     companion object {
         const val STATE_PENDING = "pending"
@@ -52,6 +53,9 @@ interface SyncOutboxDao {
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE accountId = :accountId")
     fun observeCount(accountId: String): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM sync_outbox WHERE accountId = :accountId AND state != 'rejected'")
+    suspend fun retryableCount(accountId: String): Int
+
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE accountId = :accountId")
     suspend fun count(accountId: String): Int
 
@@ -67,6 +71,21 @@ interface SyncOutboxDao {
            WHERE operationId = :operationId AND accountId = :accountId""",
     )
     suspend fun retry(accountId: String, operationId: String, nextAttemptAtEpochMs: Long): Int
+
+    @Query("UPDATE sync_outbox SET state = 'rejected' WHERE accountId = :accountId AND operationId = :operationId")
+    suspend fun reject(accountId: String, operationId: String): Int
+
+    @Query("UPDATE sync_outbox SET state = 'pending', nextAttemptAtEpochMs = :now WHERE accountId = :accountId AND state = 'rejected'")
+    suspend fun retryRejected(accountId: String, now: Long): Int
+
+    @Query("UPDATE sync_outbox SET state = 'pending' WHERE accountId = :accountId AND state = 'in_flight'")
+    suspend fun recoverInterrupted(accountId: String): Int
+
+    @Query("DELETE FROM sync_outbox WHERE accountId = :accountId AND aggregateId = :activityId AND operationType = 'upsert' AND state != 'in_flight'")
+    suspend fun supersedeUnsent(accountId: String, activityId: String)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM sync_outbox WHERE accountId = :accountId AND aggregateId = :activityId AND operationType IN ('upsert', 'delete'))")
+    suspend fun hasActivityMutation(accountId: String, activityId: String): Boolean
 
     @Query("DELETE FROM sync_outbox WHERE operationId = :operationId AND accountId = :accountId")
     suspend fun acknowledge(accountId: String, operationId: String): Int

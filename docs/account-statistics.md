@@ -33,7 +33,7 @@ Open this when changing account totals, Progress, statistics caches, history syn
 
 ## Client Cache And Offline Behavior
 
-- iOS durably stores complete snapshots in the account-scoped activity manifest under the canonical `monday-v1` policy, independent of the travelling device timezone. The app coordinator owns refresh/invalidation. Android caches complete snapshots with its account/calendar policy key. Sign-out/account switches do not reuse another account's snapshot.
+- iOS durably stores complete snapshots in the account-scoped activity manifest under the canonical `monday-v1` policy, independent of the travelling device timezone. The app coordinator owns refresh/invalidation. Android durably stores complete snapshots and revision/invalidation cursors in its account-scoped Room projection. Sign-out/account switches do not reuse another account's snapshot.
 - Progress, sport selectors, Me totals, weekly-focus progress, and gear mileage consume that snapshot independently of history cache size.
 - With no snapshot, show loading/unavailable with retry. A failed refresh retains the last complete snapshot and identifies it as cached.
 - Android Me refreshes the shared Today planning snapshot on entry and its refresh action. Its current-focus card distinguishes an active plan from a confirmed no-plan state; when there is no active plan, it may show a non-stale same-day Today recommendation with explicit wording. The bounded `feature_exposed` event uses `feature=me_daily_recommendation_focus` and includes no recommendation content. Weekly run targets remain unset unless the saved run-only goal supplies a target.
@@ -65,7 +65,7 @@ Open this when changing account totals, Progress, statistics caches, history syn
 
 ## Schema And Rollout
 
-No activity/database reset is required. Android reuses its current account-cache table, so its Room schema version does not change.
+No backend/iOS activity reset is required. Android repository reconciliation uses the current Room v9 account projection tables and opens clean local data under the unreleased-client policy; see `activity-repository.md`.
 
 1. Build backend and apply the additive Prisma schema through the guarded deployment helper before releasing either client.
 2. Backfill historical facts/indexed import identities, preferably before client rollout:

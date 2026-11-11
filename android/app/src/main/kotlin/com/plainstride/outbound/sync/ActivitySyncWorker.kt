@@ -15,6 +15,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.Duration
 import java.util.Locale
+import kotlinx.coroutines.flow.first
 import com.plainstride.outbound.core.data.ActivityRepository
 import com.plainstride.outbound.core.data.ActivitySyncScheduler
 import com.plainstride.outbound.feature.social.SocialRepository
@@ -25,16 +26,22 @@ class ActivitySyncWorker @AssistedInject constructor(
     @Assisted parameters: WorkerParameters,
     private val activities: ActivityRepository,
     private val social: SocialRepository,
+    private val today: com.plainstride.outbound.feature.today.TodayRepository,
+    private val reads: com.plainstride.outbound.core.data.AccountReadRepository,
 ) : CoroutineWorker(appContext, parameters) {
     override suspend fun doWork(): Result {
         val accountId = inputData.getString(KEY_ACCOUNT_ID)?.takeIf(String::isNotBlank) ?: return Result.failure()
+        val owner = reads.context(accountId) ?: return Result.failure()
         val result = activities.synchronize(accountId)
+        if (!reads.isCurrent(owner)) return Result.failure()
         if (result.uploaded > 0 || result.photosUploaded > 0) {
             social.refresh(accountId, Locale.getDefault().toLanguageTag())
         }
+        val planningError = today.refresh(accountId, Locale.getDefault().toLanguageTag())
+        val dirty = reads.observe(accountId).first()?.baseline?.let { it.planningDirty || it.statisticsDirty } == true
         return when {
             result.failure == "authentication_required" -> Result.failure()
-            result.failure != null || result.pending > 0 -> Result.retry()
+            (result.failure != null && result.failure != "performed_workout_conflict") || result.pending > 0 || dirty || planningError != null -> Result.retry()
             else -> Result.success()
         }
     }

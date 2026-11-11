@@ -128,4 +128,6 @@
     <string name="connectivity_offline_accessibility">Offline. Changes are saved on this device and will sync later.</string>
     <string name="connectivity_pending">Some items still need to sync</string>
     <string name="connectivity_pending_accessibility">Some saved items still need to sync. Plainstride will retry automatically.</string>
+    <string name="connectivity_workout_conflict">Workout saved. Plan sync needs a retry.</string>
+    <string name="connectivity_retry">Retry</string>
 </resources>

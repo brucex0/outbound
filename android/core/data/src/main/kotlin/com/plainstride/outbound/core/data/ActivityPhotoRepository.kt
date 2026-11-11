@@ -40,30 +40,31 @@ class ActivityPhotoRepository(
 
     suspend fun load(photoId: String, thumbnail: Boolean = false): Result<ByteArray> = withContext(Dispatchers.IO) {
         val account = currentAccountId() ?: return@withContext failure(ApiErrorCode.Unauthenticated)
+        val owner = tokens.captureAccount(account) ?: return@withContext failure(ApiErrorCode.Unauthenticated)
         val key = digest("$account:$photoId:$thumbnail")
         locks[(key.hashCode() and Int.MAX_VALUE) % locks.size].withLock {
             try {
-                checkAccount(account)
+                checkAccount(owner)
                 // Originals already owned by the local activity need no second disk copy.
                 if (!thumbnail) dao.photoByRemoteId(account, photoId)?.localRelativePath?.let { path ->
                     read { media.read(path) }?.let { bytes ->
-                        checkAccount(account)
+                        checkAccount(owner)
                         return@withLock Result.success(bytes)
                     }
                 }
                 val file = File(File(root, digest(account)), key)
                 val cached = read { file.readBytes() }
                 if (cached != null && System.currentTimeMillis() - file.lastModified() < CACHE_TTL_MS) {
-                    checkAccount(account)
+                    checkAccount(owner)
                     return@withLock Result.success(cached)
                 }
-                val token = tokens.validAccessToken()
-                checkAccount(account)
+                val token = tokens.validAccessToken(owner)
+                checkAccount(owner)
                 if (token == null) return@withLock failure(ApiErrorCode.Unauthenticated)
                 val response = if (thumbnail) api.activityPhotoThumbnail("Bearer $token", photoId)
                     else api.activityPhotoContent("Bearer $token", photoId)
                 try {
-                    checkAccount(account)
+                    checkAccount(owner)
                     if (!response.isSuccessful) {
                         response.errorBody()?.close()
                         val code = when (response.code()) {
@@ -82,7 +83,7 @@ class ActivityPhotoRepository(
                     }
                     val bytes = response.body()?.use { it.bytes() }
                     currentCoroutineContext().ensureActive()
-                    checkAccount(account)
+                    checkAccount(owner)
                     if (bytes == null || bytes.isEmpty()) {
                         Log.w(TAG, "download_failed representation=${representation(thumbnail)} empty_body=true")
                         return@withLock failure(ApiErrorCode.InvalidResponse)
@@ -94,6 +95,7 @@ class ActivityPhotoRepository(
                         val temporary = File(file.parentFile, ".${file.name}.tmp")
                         try {
                             temporary.writeBytes(bytes)
+                            checkAccount(owner)
                             check(temporary.renameTo(file)) { "Photo cache rename failed" }
                             cachedToDisk = true
                         } finally { if (temporary.exists() && !temporary.delete()) Log.w(TAG, "cache_temporary_cleanup_failed") }
@@ -101,6 +103,7 @@ class ActivityPhotoRepository(
                     } catch (error: Exception) {
                         Log.w(TAG, "cache_write_failed type=${error.javaClass.simpleName}")
                     }
+                    checkAccount(owner)
                     if (cachedToDisk) analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "activity_photo_cached")))
                     Result.success(bytes)
                 } finally {
@@ -118,8 +121,8 @@ class ActivityPhotoRepository(
         }
     }
 
-    private fun checkAccount(account: String) {
-        if (currentAccountId() != account) throw ActivityPhotoException(ApiFailure(ApiErrorCode.Unauthenticated, false))
+    private fun checkAccount(owner: com.plainstride.outbound.core.network.AccountRequestContext) {
+        if (currentAccountId() != owner.accountId || !tokens.isCurrent(owner)) throw ActivityPhotoException(ApiFailure(ApiErrorCode.Unauthenticated, false))
     }
 
     private fun read(load: () -> ByteArray): ByteArray? = try {

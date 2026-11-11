@@ -114,6 +114,9 @@ data class TrainingGoal(
 
 @Serializable
 data class PlanningState(
+    val revision: Long = 0,
+    val cachedScheduleCoverageAvailable: Boolean = true,
+    val calendar: PlanningCalendarContext? = null,
     val goal: TrainingGoal? = null,
     val plan: TrainingPlan? = null,
     val currentVersion: PlanVersion? = null,

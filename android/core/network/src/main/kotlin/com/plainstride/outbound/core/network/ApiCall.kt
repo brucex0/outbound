@@ -11,6 +11,8 @@ suspend fun <T : Any> apiCall(block: suspend () -> Response<T>): ApiResult<T> = 
     val body = response.body()
     if (response.isSuccessful && body != null) ApiResult.Success(body)
     else ApiResult.Failure(response.toFailure())
+} catch (error: java.util.concurrent.CancellationException) {
+    throw error
 } catch (_: IOException) {
     ApiResult.Failure(ApiFailure(ApiErrorCode.NetworkUnavailable, retryable = true))
 } catch (_: Exception) {
@@ -47,5 +49,6 @@ private fun Response<*>.toFailure(): ApiFailure {
         retryable = code == ApiErrorCode.NetworkUnavailable || code == ApiErrorCode.ServerUnavailable || code == ApiErrorCode.RateLimited,
         httpStatus = this.code(),
         requestId = headers()["x-request-id"],
+        wireCode = wireCode,
     )
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
@@ -580,8 +581,8 @@ private fun SignedInApp(
     LaunchedEffect(connectivityState.isOffline) {
         if (!connectivityState.isOffline && !voicePreparation.preparation.state.value.ready) voicePreparation.preparation.retry()
     }
-    LaunchedEffect(connectivityState.isOffline, connectivityState.pendingSyncCount > 0) {
-        if (!connectivityState.isOffline && connectivityState.pendingSyncCount > 0) {
+    LaunchedEffect(connectivityState.isOffline, connectivityState.pendingSyncCount > 0, connectivityState.hasRejectedWorkout) {
+        if (!connectivityState.isOffline && connectivityState.pendingSyncCount > 0 && !connectivityState.hasRejectedWorkout) {
             snackbar.showSnackbar(resources.getString(R.string.connectivity_pending))
         }
     }
@@ -759,10 +760,11 @@ private fun SignedInApp(
             },
         )
         Column(Modifier.fillMaxSize().padding(contentInsets).consumeWindowInsets(contentInsets)) {
-        if (currentRoute != RECORDING_ROUTE && connectivityState.isOffline) {
+        if (currentRoute != RECORDING_ROUTE && (connectivityState.isOffline || connectivityState.hasRejectedWorkout)) {
             ConnectivityBanner(
                 connectivityState,
-                Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp),
+                onRetry = connectivityViewModel::retryRejected,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp),
             )
         }
         NavHost(
@@ -1522,24 +1524,25 @@ private fun SignedInApp(
 }
 
 @Composable
-private fun ConnectivityBanner(state: ConnectivityUiState, modifier: Modifier = Modifier) {
-    if (!state.isOffline) return
-    val message = stringResource(R.string.connectivity_offline)
-    val accessibilityLabel = stringResource(R.string.connectivity_offline_accessibility)
+internal fun ConnectivityBanner(state: ConnectivityUiState, modifier: Modifier = Modifier, onRetry: () -> Unit = {}) {
+    if (!state.isOffline && !state.hasRejectedWorkout) return
+    val message = stringResource(if (state.hasRejectedWorkout) R.string.connectivity_workout_conflict else R.string.connectivity_offline)
+    val accessibilityLabel = stringResource(if (state.hasRejectedWorkout) R.string.connectivity_workout_conflict else R.string.connectivity_offline_accessibility)
     Surface(
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = accessibilityLabel },
-        shape = RoundedCornerShape(50),
+        shape = if (state.hasRejectedWorkout) RoundedCornerShape(20.dp) else RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
         shadowElevation = 6.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.28f)),
     ) {
         Row(
-            Modifier.padding(horizontal = 14.dp).height(36.dp),
+            Modifier.padding(horizontal = 14.dp, vertical = if (state.hasRejectedWorkout) 8.dp else 0.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Icon(Icons.Default.CloudOff, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
-            Text(message, style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+            Text(message, modifier = Modifier.weight(1f, fill = false), style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+            if (state.hasRejectedWorkout) TextButton(onClick = onRetry, enabled = !state.isOffline) { Text(stringResource(R.string.connectivity_retry)) }
         }
     }
 }

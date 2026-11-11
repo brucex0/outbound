@@ -606,6 +606,12 @@ fun TodayScreen(
                 }
                 when {
                     groupActivityContent != null -> groupActivityContent()
+                    state.pendingWorkoutToday != null && activityChoice == TodayActivityChoice.PLANNED -> Card {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(state.pendingWorkoutToday!!.title, style = MaterialTheme.typography.titleLarge)
+                            Text(stringResource(R.string.plan_details_pending), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                     state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
                     suggestion != null && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
                         suggestion = suggestion,

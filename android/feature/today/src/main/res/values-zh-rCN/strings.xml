@@ -207,4 +207,7 @@
     <string name="planning_programme_schedule_review">此方案需要不同的安排，才能兼顾训练与恢复。请通过“更换计划”新建训练日不同的替代计划，或选择其他方案。</string>
     <string name="planning_programme_timeline_review">剩余备赛训练已无法在比赛日期前完成。请通过“更换计划”新建日期更晚的替代计划，或选择其他方案。</string>
     <string name="planning_programme_exposure_notice">原方案的周次随规定训练的完成而推进，不会仅因时间流逝而推进。后续训练仍为暂定安排。</string>
+    <string name="plan_details_pending">已保存 · 等待同步</string>
+    <string name="plan_calendar_connect">请联网加载本周安排。</string>
+    <plurals name="plan_pending_sessions"><item quantity="one">%1$d 次训练已保存，等待同步</item><item quantity="other">%1$d 次训练已保存，等待同步</item></plurals>
 </resources>

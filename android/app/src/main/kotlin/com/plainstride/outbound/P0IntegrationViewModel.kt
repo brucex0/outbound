@@ -118,7 +118,10 @@ data class P0IntegrationState(
         serverStatistics = null
         mutable.update { it.copy(progress = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList())), weeklyRunGoal = null, statisticsWeekStart = null, statisticsWeekEnd = null) }
         pendingObservation?.cancel()
-        pendingObservation = viewModelScope.launch { activities.observePendingSyncCount(accountId).collect { pending -> mutable.update { it.copy(progress = it.progress.copy(pendingChanges = pending, isCached = it.progress.isCached || pending > 0)) } } }
+        pendingObservation = viewModelScope.launch { combine(activities.observePendingSyncCount(accountId), activities.observeStatisticsPending(accountId)) { count, dirty -> maxOf(count, if (dirty) 1 else 0) }.collect { pending ->
+            val expired = serverStatistics?.get("computedAt")?.jsonPrimitive?.contentOrNull?.let { java.time.Duration.between(Instant.parse(it), Instant.now()).seconds > 60 } ?: true
+            mutable.update { it.copy(progress = it.progress.copy(pendingChanges = pending, isCached = expired || pending > 0)) }
+        } }
         statisticsObservation?.cancel()
         statisticsObservation = viewModelScope.launch {
             activities.observeStatistics(accountId).collect { payload ->

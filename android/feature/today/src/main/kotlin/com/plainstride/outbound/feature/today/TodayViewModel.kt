@@ -59,6 +59,11 @@ data class TodayUiState(
             is CachedResource.Failed -> planning.cachedValue
             CachedResource.Loading -> null
         }
+    val pendingWorkoutToday: com.plainstride.outbound.core.model.PlannedWorkout?
+        get() = planningSnapshot?.let { snapshot ->
+            val today = java.time.LocalDate.now(snapshot.calendar?.zone() ?: java.time.ZoneId.of("UTC")).toString()
+            snapshot.workouts.firstOrNull { it.status == "pending" && it.scheduledDate.take(10) == today }
+        }
     val currentRecommendationSnapshot: ActivitySuggestionEnvelope?
         get() {
             val snapshot = when (suggestion) {
@@ -67,7 +72,7 @@ data class TodayUiState(
                 CachedResource.Loading -> null
             } ?: return null
             return snapshot.takeIf {
-                it.primary != null && it.isCurrent()
+                it.primary != null && it.isCurrent() && !isSavedPlannedWorkout(it.primary?.plannedWorkoutId)
             }
         }
     val restRecommended: Boolean
@@ -82,11 +87,12 @@ data class TodayUiState(
             }
             val hasCurrentPlanSuggestion = planSuggestion?.planContext != null &&
                 planSuggestion.isCurrent()
-            return snapshot.value.plan == null && !snapshot.isStale && !refreshing &&
-                refreshError == null && !hasCurrentPlanSuggestion
+            return snapshot.value.plan == null && !hasCurrentPlanSuggestion
         }
     val primarySuggestion: ActivitySuggestion?
-        get() = (suggestion as? CachedResource.Available)?.value?.primary
+        get() = (suggestion as? CachedResource.Available)?.value?.takeIf { it.isCurrent() }?.primary?.takeUnless { isSavedPlannedWorkout(it.plannedWorkoutId) }
+    private fun isSavedPlannedWorkout(workoutId: String?): Boolean = workoutId != null &&
+        planningSnapshot?.workouts?.any { it.id == workoutId && (it.status == "pending" || it.status == "completed") } == true
     val pendingAdjustment: AdjustmentProposal?
         get() = when (personalization) {
             is CachedResource.Available -> personalization.value.pendingAdjustment

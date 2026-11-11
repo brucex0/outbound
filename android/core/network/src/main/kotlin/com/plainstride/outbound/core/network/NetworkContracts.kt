@@ -12,6 +12,7 @@ data class ApiFailure(
     val retryable: Boolean,
     val httpStatus: Int? = null,
     val requestId: String? = null,
+    val wireCode: String? = null,
 )
 
 sealed interface ApiResult<out T> {
@@ -24,7 +25,17 @@ inline fun <T, R> ApiResult<T>.map(transform: (T) -> R): ApiResult<R> = when (th
     is ApiResult.Failure -> this
 }
 
-interface AccessTokenProvider { suspend fun validAccessToken(): String? }
+interface AccessTokenProvider {
+    suspend fun validAccessToken(): String?
+    fun currentContext(): AccountRequestContext? = null
+    fun captureAccount(accountId: String): AccountRequestContext? = AccountRequestContext(accountId, 0)
+    fun isCurrent(context: AccountRequestContext): Boolean = true
+    suspend fun validAccessToken(context: AccountRequestContext): String? {
+        if (!isCurrent(context)) return null
+        val token = validAccessToken()
+        return token.takeIf { isCurrent(context) }
+    }
+}
 
 interface PlainstrideApi { suspend fun health(): ApiResult<Unit> }
 

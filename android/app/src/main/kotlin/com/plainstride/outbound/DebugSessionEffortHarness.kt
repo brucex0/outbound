@@ -59,8 +59,8 @@ import kotlinx.serialization.json.intOrNull
 @HiltViewModel
 class DebugSessionEffortViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val activities: ActivityRepository,
-    private val database: PlainstrideDatabase,
+    api: com.plainstride.outbound.core.network.ActivitiesApiService,
+    photos: com.plainstride.outbound.core.data.ActivityPhotoRepository,
     groups: GroupActivityRepository,
     media: ActivityMediaStore,
     planningApi: PlanningApiService,
@@ -72,6 +72,9 @@ class DebugSessionEffortViewModel @Inject constructor(
         override fun setUserId(userId: String?) {}
         override fun record(event: SanitizedAnalyticsEvent) {}
     })
+    private val database = androidx.room.Room.databaseBuilder(context, PlainstrideDatabase::class.java, "session-effort-fixture-v9.db").build()
+    private val activities = com.plainstride.outbound.core.data.OfflineFirstActivityRepository(database, api,
+        object : AccessTokenProvider { override suspend fun validAccessToken(): String? = null }, media, photos, noAnalytics, { account })
     private val localRepository = object : ActivityRepository by activities {
         override suspend fun save(activity: SavedActivity) {
             require(activity.accountId == account) // Never write another account through this fixture.

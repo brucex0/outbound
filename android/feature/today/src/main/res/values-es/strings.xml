@@ -207,4 +207,7 @@
     <string name="planning_programme_schedule_review">Este programa necesita otro horario para las sesiones y la recuperación. En Cambiar plan, crea un plan que sustituya al actual con otros días de entrenamiento, o elige otro programa.</string>
     <string name="planning_programme_timeline_review">La preparación pendiente ya no cabe antes de la carrera. En Cambiar plan, crea un plan que sustituya al actual con una fecha posterior, o elige otro programa.</string>
     <string name="planning_programme_exposure_notice">Las semanas del programa avanzan al completar las sesiones prescritas, no solo por el paso del tiempo. Los entrenamientos posteriores son provisionales.</string>
+    <string name="plan_details_pending">Guardada · pendiente de sincronizar</string>
+    <string name="plan_calendar_connect">Conéctate para cargar el calendario de esta semana.</string>
+    <plurals name="plan_pending_sessions"><item quantity="one">%1$d sesión guardada pendiente de sincronizar</item><item quantity="other">%1$d sesiones guardadas pendientes de sincronizar</item></plurals>
 </resources>

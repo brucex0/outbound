@@ -21,6 +21,7 @@ class DefaultOnboardingRepository @Inject constructor(
     private val personalization: PlanningApiService,
     private val sessions: SessionCoordinator,
     private val health: HealthProfileImporter,
+    private val reads: com.plainstride.outbound.core.data.AccountReadRepository,
 ) : OnboardingRepository {
     override suspend fun currentAccount(): OnboardingAccount {
         val authorization = authorization()
@@ -72,9 +73,14 @@ class DefaultOnboardingRepository @Inject constructor(
     }
 
     override suspend fun createPlan(input: PlanBuilderInput): Result<PlanningState> = runCatching {
-        apiCall {
+        val owner = when (val state = sessions.state.value) {
+            is com.plainstride.outbound.core.auth.SessionState.SignedIn -> state.accountId
+            is com.plainstride.outbound.core.auth.SessionState.Refreshing -> state.accountId
+            else -> null
+        }?.let(reads::context) ?: throw OnboardingDataException.SignedOut
+        val result = apiCall {
             personalization.createGoal(
-                authorization(),
+                authorization(owner),
                 CreateTrainingGoalRequest(
                     type = input.objective.wireValue,
                     activities = input.activities.map { it.modality },
@@ -100,6 +106,9 @@ class DefaultOnboardingRepository @Inject constructor(
                 ),
             )
         }.valueOrThrow()
+        if (!reads.isCurrent(owner)) throw OnboardingDataException.SignedOut
+        reads.acceptPlanning(owner, result, command = true)
+        result
     }
 
     override suspend fun planIntakeContext(objective: PlanObjective?): Result<PlanIntakeContext> = runCatching {
@@ -108,6 +117,13 @@ class DefaultOnboardingRepository @Inject constructor(
 
     override suspend fun interpretPlanIntake(input: PlanIntakeInterpretRequest): Result<PlanIntakeInterpretation> = runCatching {
         apiCall { personalization.interpretPlanIntake(authorization(), input) }.valueOrThrow()
+    }
+
+    private suspend fun authorization(owner: com.plainstride.outbound.core.network.AccountRequestContext): String {
+        if (!reads.isCurrent(owner)) throw OnboardingDataException.SignedOut
+        val token = sessions.validAccessToken()
+        if (token == null || !reads.isCurrent(owner)) throw OnboardingDataException.SignedOut
+        return "Bearer $token"
     }
 
     private suspend fun authorization(): String = sessions.validAccessToken()?.let { "Bearer $it" } ?: throw OnboardingDataException.SignedOut

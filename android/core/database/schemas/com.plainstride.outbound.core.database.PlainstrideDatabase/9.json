@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 8,
-    "identityHash": "badeba00c686c9f8af3f046fe2b18c6e",
+    "version": 9,
+    "identityHash": "2aa2e098d677daf6b105c93ed91d863a",
     "entities": [
       {
         "tableName": "account_cache",
@@ -79,8 +79,147 @@
         ]
       },
       {
+        "tableName": "account_projections",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `planningJson` TEXT, `planningRevision` INTEGER NOT NULL, `requiredPlanningRevision` INTEGER NOT NULL, `planningDirty` INTEGER NOT NULL, `statisticsJson` TEXT, `statisticsRevision` INTEGER NOT NULL, `requiredStatisticsRevision` INTEGER NOT NULL, `statisticsTicket` INTEGER NOT NULL, `statisticsDirty` INTEGER NOT NULL, `planningUpdatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`accountId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "planningJson",
+            "columnName": "planningJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "planningRevision",
+            "columnName": "planningRevision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requiredPlanningRevision",
+            "columnName": "requiredPlanningRevision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "planningDirty",
+            "columnName": "planningDirty",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statisticsJson",
+            "columnName": "statisticsJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "statisticsRevision",
+            "columnName": "statisticsRevision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requiredStatisticsRevision",
+            "columnName": "requiredStatisticsRevision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statisticsTicket",
+            "columnName": "statisticsTicket",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statisticsDirty",
+            "columnName": "statisticsDirty",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "planningUpdatedAtEpochMs",
+            "columnName": "planningUpdatedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        }
+      },
+      {
+        "tableName": "activity_completions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `activityId` TEXT NOT NULL, `generation` INTEGER NOT NULL, `plannedWorkoutId` TEXT NOT NULL, `receiptJson` TEXT, `state` TEXT NOT NULL, `canonicalCompletionJson` TEXT, `rejectionCode` TEXT, `acceptedPlanningRevision` INTEGER, PRIMARY KEY(`accountId`, `activityId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityId",
+            "columnName": "activityId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plannedWorkoutId",
+            "columnName": "plannedWorkoutId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "receiptJson",
+            "columnName": "receiptJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "canonicalCompletionJson",
+            "columnName": "canonicalCompletionJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rejectionCode",
+            "columnName": "rejectionCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "acceptedPlanningRevision",
+            "columnName": "acceptedPlanningRevision",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId",
+            "activityId"
+          ]
+        }
+      },
+      {
         "tableName": "sync_outbox",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`operationId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `aggregateType` TEXT NOT NULL, `aggregateId` TEXT NOT NULL, `operationType` TEXT NOT NULL, `idempotencyKey` TEXT NOT NULL, `payloadJson` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `attemptCount` INTEGER NOT NULL, `nextAttemptAtEpochMs` INTEGER NOT NULL, `state` TEXT NOT NULL, PRIMARY KEY(`operationId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`operationId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `aggregateType` TEXT NOT NULL, `aggregateId` TEXT NOT NULL, `operationType` TEXT NOT NULL, `idempotencyKey` TEXT NOT NULL, `payloadJson` TEXT NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, `attemptCount` INTEGER NOT NULL, `nextAttemptAtEpochMs` INTEGER NOT NULL, `state` TEXT NOT NULL, `mutationGeneration` INTEGER NOT NULL, PRIMARY KEY(`operationId`))",
         "fields": [
           {
             "fieldPath": "operationId",
@@ -146,6 +285,12 @@
             "fieldPath": "state",
             "columnName": "state",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mutationGeneration",
+            "columnName": "mutationGeneration",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -254,7 +399,7 @@
       },
       {
         "tableName": "activities",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activityId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `serverActivityId` TEXT, `type` TEXT NOT NULL, `title` TEXT NOT NULL, `guideNudge` TEXT NOT NULL, `reflectionJson` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER NOT NULL, `endedAtEpochMs` INTEGER NOT NULL, `durationSecs` INTEGER NOT NULL, `distanceM` REAL NOT NULL, `averagePaceSecsPerKm` REAL, `elevationGainM` REAL, `walkingStepCount` INTEGER, `averageHeartRateBpm` INTEGER, `maximumHeartRateBpm` INTEGER, `heartRateSampleCount` INTEGER, `energyKilocalories` INTEGER, `sourceJson` TEXT NOT NULL, `gearJson` TEXT, `goalJson` TEXT, `indoorJson` TEXT, `cadenceJson` TEXT, `heartRateZonesJson` TEXT, `activityEventId` TEXT, `followedRouteId` TEXT, `followedRouteCompleted` INTEGER NOT NULL, `recognitionBadgeIdsJson` TEXT NOT NULL, `localUpdatedAtEpochMs` INTEGER NOT NULL, `serverUpdatedAtEpochMs` INTEGER, `deletedAtEpochMs` INTEGER, `companionType` TEXT, `elevationMetadataJson` TEXT, `sessionEffortRating` INTEGER, `performedWorkoutReferenceJson` TEXT, `plannedWorkoutCompletionQuality` TEXT, PRIMARY KEY(`activityId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activityId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `serverActivityId` TEXT, `type` TEXT NOT NULL, `title` TEXT NOT NULL, `guideNudge` TEXT NOT NULL, `reflectionJson` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER NOT NULL, `endedAtEpochMs` INTEGER NOT NULL, `durationSecs` INTEGER NOT NULL, `distanceM` REAL NOT NULL, `averagePaceSecsPerKm` REAL, `elevationGainM` REAL, `walkingStepCount` INTEGER, `averageHeartRateBpm` INTEGER, `maximumHeartRateBpm` INTEGER, `heartRateSampleCount` INTEGER, `energyKilocalories` INTEGER, `sourceJson` TEXT NOT NULL, `gearJson` TEXT, `goalJson` TEXT, `indoorJson` TEXT, `cadenceJson` TEXT, `heartRateZonesJson` TEXT, `activityEventId` TEXT, `followedRouteId` TEXT, `followedRouteCompleted` INTEGER NOT NULL, `recognitionBadgeIdsJson` TEXT NOT NULL, `localUpdatedAtEpochMs` INTEGER NOT NULL, `serverUpdatedAtEpochMs` INTEGER, `deletedAtEpochMs` INTEGER, `companionType` TEXT, `elevationMetadataJson` TEXT, `sessionEffortRating` INTEGER, `performedWorkoutReferenceJson` TEXT, `plannedWorkoutCompletionQuality` TEXT, `mutationGeneration` INTEGER NOT NULL, PRIMARY KEY(`activityId`))",
         "fields": [
           {
             "fieldPath": "activityId",
@@ -454,6 +599,12 @@
             "fieldPath": "plannedWorkoutCompletionQuality",
             "columnName": "plannedWorkoutCompletionQuality",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mutationGeneration",
+            "columnName": "mutationGeneration",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -1003,7 +1154,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'badeba00c686c9f8af3f046fe2b18c6e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2aa2e098d677daf6b105c93ed91d863a')"
     ]
   }
 }

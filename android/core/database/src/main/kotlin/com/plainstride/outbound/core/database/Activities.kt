@@ -58,6 +58,7 @@ data class ActivityEntity(
     val sessionEffortRating: Int? = null,
     val performedWorkoutReferenceJson: String? = null,
     val plannedWorkoutCompletionQuality: String? = null,
+    val mutationGeneration: Long = 0,
 )
 
 /** Local-only, first available pre-correction samples; never included in activity relations/uploads. */
@@ -155,6 +156,12 @@ interface ActivityDao {
     @Query("SELECT COUNT(*) FROM activities WHERE accountId = :accountId AND deletedAtEpochMs IS NULL")
     suspend fun activeCount(accountId: String): Int
 
+    @Query("SELECT accountId FROM activities WHERE activityId = :activityId")
+    suspend fun owner(activityId: String): String?
+
+    @Query("SELECT * FROM activity_original_routes WHERE accountId = :accountId AND activityId = :activityId")
+    suspend fun originalRoute(accountId: String, activityId: String): ActivityOriginalRouteEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertActivity(entity: ActivityEntity)
 
@@ -179,7 +186,7 @@ interface ActivityDao {
     @Query("DELETE FROM activity_photos WHERE accountId = :accountId AND activityId = :activityId")
     suspend fun deletePhotos(accountId: String, activityId: String)
 
-    @Query("UPDATE activities SET deletedAtEpochMs = :deletedAtEpochMs, localUpdatedAtEpochMs = :deletedAtEpochMs WHERE accountId = :accountId AND activityId = :activityId")
+    @Query("UPDATE activities SET deletedAtEpochMs = :deletedAtEpochMs, localUpdatedAtEpochMs = :deletedAtEpochMs, mutationGeneration = mutationGeneration + 1 WHERE accountId = :accountId AND activityId = :activityId")
     suspend fun tombstone(accountId: String, activityId: String, deletedAtEpochMs: Long): Int
 
     @Query("SELECT EXISTS(SELECT 1 FROM activity_original_routes WHERE accountId = :accountId AND activityId = :activityId)")

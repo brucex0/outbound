@@ -24,6 +24,6 @@ npx prisma db push --skip-generate
 npm run build
 ```
 
-Android uses the current `monday-v1` account-cache key. The unreleased client does not migrate old locale-dependent statistics cache entries; the next request populates the current entry. No Room schema change is needed.
+Android keeps the `monday-v1` account policy in its current Room v9 shared projection. Calendar alignment itself needs no separate schema change; repository reconciliation opens clean v9 local data without migrating old caches. See `activity-repository.md`.
 
 Operational initialization analytics contain only bounded policy/source values; no account IDs, dates, timezone values, activity metrics or user content.

@@ -78,6 +78,7 @@ data class ActivityUploadResponse(
     val status: String,
     val uploadedAt: String? = null,
     val serverUpdatedAt: String? = null,
+    val reconciliation: ActivityReconciliation? = null,
 )
 
 @Serializable

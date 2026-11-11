@@ -579,8 +579,11 @@ private fun ResultStep(
     SummaryCard(R.string.plan_builder_review_objective, stringResource(draft.objective.label))
     SummaryCard(R.string.plan_builder_review_activities, draft.activities.joinToString(" · ") { resources.getString(it.label) })
     Text(stringResource(R.string.plan_builder_result_week), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-    val weekStart = plan?.planStartDate() ?: LocalDate.now()
-    val weekEnd = weekStart.plusDays(7)
+    val accountCalendar = plan?.calendar
+    val zone = accountCalendar?.zone() ?: java.time.ZoneId.systemDefault()
+    val weekStart = accountCalendar?.let { java.time.Instant.parse(it.weekStart).atZone(zone).toLocalDate() }
+        ?: (plan?.planStartDate() ?: LocalDate.now(zone)).with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+    val weekEnd = accountCalendar?.let { java.time.Instant.parse(it.weekEnd).atZone(zone).toLocalDate() } ?: weekStart.plusDays(7)
     val workouts = plan?.workouts.orEmpty().filter { workout ->
         val day = runCatching { LocalDate.parse(workout.scheduledDate.take(10)) }.getOrNull()
         day != null && !day.isBefore(weekStart) && day.isBefore(weekEnd)
