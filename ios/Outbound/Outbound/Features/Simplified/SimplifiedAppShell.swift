@@ -1575,12 +1575,12 @@ private struct SimplifiedTodayView: View {
                                 Spacer(minLength: 8)
                                 Text(plannedWorkoutWarmupRoutine.calculatedDuration)
                                     .font(.caption.weight(.semibold).monospacedDigit())
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.primary)
                                 Image(systemName: "chevron.right")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
                             }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
