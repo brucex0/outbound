@@ -25,6 +25,11 @@ sealed interface CachedResource<out T> {
 sealed interface TodayDataError {
     data object SignedOut : TodayDataError
     data object Offline : TodayDataError
+    data object RunningScheduleConflict : TodayDataError
+    data object ProgrammeTimelineConflict : TodayDataError
+    data object ProgrammeConstraintsConflict : TodayDataError
+    data object GoalTimelineUnrealistic : TodayDataError
+    data object RunningBenchmarkInvalid : TodayDataError
     data object InvalidServerResponse : TodayDataError
     data object PermissionDenied : TodayDataError
     data object NotFound : TodayDataError
@@ -41,6 +46,7 @@ interface TodayRepository {
     fun observeStandaloneWorkouts(accountId: String, localeTag: String): Flow<CachedResource<StandaloneWorkoutCatalog>>
     suspend fun refresh(accountId: String, localeTag: String): TodayDataError?
     suspend fun createGoal(accountId: String, localeTag: String, request: CreateTrainingGoalRequest): Result<PlanningState>
+    suspend fun updateRunningBenchmark(accountId: String, localeTag: String, goalId: String, request: com.plainstride.outbound.core.network.RunningBenchmarkUpdateRequest): Result<PlanningState>
     suspend fun updateRaceGoal(accountId: String, localeTag: String, goalId: String, request: com.plainstride.outbound.core.network.RaceGoalUpdateRequest): Result<PlanningState>
     suspend fun planRecommendations(): Result<PlanRecommendationsResponse>
     suspend fun activatePlanRecommendation(accountId: String, localeTag: String, recommendation: PlanRecommendation): Result<PlanningState>

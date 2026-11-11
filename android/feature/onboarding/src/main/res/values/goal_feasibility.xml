@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planning_goal_timeline_unrealistic">This goal isn’t realistic from your current starting point. Choose a later race or start with a shorter-distance plan.</string>
+</resources>

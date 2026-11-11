@@ -60,7 +60,8 @@ class MainActivity : ComponentActivity() {
                 insetsController.isAppearanceLightNavigationBars = !darkTheme
             }
             PlainstrideTheme(theme = settings.preferences.theme, darkTheme = darkTheme) {
-                PlainstrideApp(
+                if (BuildConfig.DEBUG && intent.getBooleanExtra("debug_session_effort", false)) DebugSessionEffortHarness()
+                else if (BuildConfig.DEBUG && intent.getBooleanExtra("debug_running_plan", false)) DebugRunningPlanHarness() else PlainstrideApp(
                     settingsViewModel = settingsViewModel,
                     transferCode = transferCode,
                     onTransferCodeConsumed = { transferCode = null },

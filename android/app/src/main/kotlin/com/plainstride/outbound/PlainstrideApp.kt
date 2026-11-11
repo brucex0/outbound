@@ -305,6 +305,10 @@ private fun SignedInApp(
                     OnboardingEffect.IdentityUnavailable -> R.string.onboarding_identity_unavailable
                     OnboardingEffect.HealthUnavailable -> R.string.onboarding_health_unavailable
                     OnboardingEffect.ProfileUnavailable -> R.string.onboarding_save_unavailable
+                    OnboardingEffect.RunningScheduleConflict -> OnboardingR.string.planning_running_schedule_conflict
+                    OnboardingEffect.ProgrammeTimelineConflict -> OnboardingR.string.planning_programme_timeline_conflict
+                    OnboardingEffect.ProgrammeConstraintsConflict -> OnboardingR.string.planning_programme_constraints_conflict
+                    OnboardingEffect.GoalTimelineUnrealistic -> OnboardingR.string.planning_goal_timeline_unrealistic
                     OnboardingEffect.PlanCreationUnavailable -> OnboardingR.string.plan_builder_create_error
                     OnboardingEffect.SkipUnavailable -> OnboardingR.string.plan_builder_skip_error
                     OnboardingEffect.Completed, OnboardingEffect.FailedOpen -> return@OnboardingRoute
@@ -1277,7 +1281,7 @@ private fun SignedInApp(
                     isOffline = connectivityState.isOffline,
                     unitSystem = measurementUnitSystem,
                     weightKilograms = integration.weightKilograms,
-                    onSavedSideEffects = { review -> suppressRecordingRecovery = true; healthViewModel.export(review); integrationViewModel.completePlannedWorkout(recordingLaunch, review) },
+                    onSavedSideEffects = { review -> suppressRecordingRecovery = true; healthViewModel.export(review) },
                     onOpenAssistant = {
                         assistantEntryDestination = "recording"
                         integrationViewModel.trackAssistantOpened("today", "live_session")
@@ -1461,7 +1465,11 @@ private fun SignedInApp(
                             OnboardingEffect.IdentityUnavailable -> R.string.onboarding_identity_unavailable
                             OnboardingEffect.HealthUnavailable -> R.string.onboarding_health_unavailable
                             OnboardingEffect.ProfileUnavailable -> R.string.onboarding_save_unavailable
-                            OnboardingEffect.PlanCreationUnavailable -> OnboardingR.string.plan_builder_create_error
+                            OnboardingEffect.RunningScheduleConflict -> OnboardingR.string.planning_running_schedule_conflict
+                            OnboardingEffect.ProgrammeTimelineConflict -> OnboardingR.string.planning_programme_timeline_conflict
+                            OnboardingEffect.ProgrammeConstraintsConflict -> OnboardingR.string.planning_programme_constraints_conflict
+                            OnboardingEffect.GoalTimelineUnrealistic -> OnboardingR.string.planning_goal_timeline_unrealistic
+                    OnboardingEffect.PlanCreationUnavailable -> OnboardingR.string.plan_builder_create_error
                             OnboardingEffect.SkipUnavailable -> OnboardingR.string.plan_builder_skip_error
                             OnboardingEffect.Completed, OnboardingEffect.FailedOpen -> return@OnboardingRoute
                         }
@@ -1624,6 +1632,7 @@ private fun RecordingLaunchConfiguration.withTodayRoute(
         title = route.name,
         workoutSteps = workoutSteps.takeIf { preservesWorkoutStructure }.orEmpty(),
         plannedWorkoutId = plannedWorkoutId.takeIf { preservesWorkoutStructure },
+        performedWorkoutReference = performedWorkoutReference.takeIf { preservesWorkoutStructure },
         standaloneWorkoutId = standaloneWorkoutId.takeIf { preservesWorkoutStructure },
         standaloneWorkoutCatalogVersion = standaloneWorkoutCatalogVersion.takeIf { preservesWorkoutStructure },
         workoutDetail = workoutDetail.takeIf { preservesWorkoutStructure },
@@ -1637,31 +1646,6 @@ private fun RecordingLaunchConfiguration.withTodayRoute(
         raceIntent = raceIntent.takeIf { preservesWorkoutStructure },
         followedRoute = routeLaunch.followedRoute,
         startImmediately = true,
-    )
-}
-
-private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguration {
-    val goal = when {
-        targetCalories != null -> RecordingGoal(RecordingGoalType.CALORIES, targetCalories = targetCalories)
-        distanceMeters != null -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = distanceMeters)
-        steps.isNotEmpty() -> RecordingGoal(RecordingGoalType.WORKOUT, targetDurationSeconds = durationSeconds.toLong())
-        else -> RecordingGoal(RecordingGoalType.TIME, targetDurationSeconds = durationSeconds.toLong())
-    }
-    return RecordingLaunchConfiguration(
-        activityKind = when (modality) {
-            Modality.walk -> ActivityKind.WALKING
-            Modality.bike -> ActivityKind.CYCLING
-            Modality.swim -> ActivityKind.SWIMMING
-            else -> ActivityKind.RUNNING
-        },
-        title = title,
-        goal = goal,
-        workoutSteps = steps.map { StructuredWorkoutStep(it) },
-        entrySource = source,
-        suggestionId = suggestionId,
-        plannedWorkoutId = plannedWorkoutId,
-        workoutDetail = effortLabel,
-        workoutGuideline = guideLine ?: listOf(stimulus.name, intensityModel).filter(String::isNotBlank).joinToString(" · "),
     )
 }
 

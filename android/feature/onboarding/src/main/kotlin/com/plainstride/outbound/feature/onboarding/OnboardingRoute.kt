@@ -100,12 +100,20 @@ fun OnboardingRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val unrealisticGoal = stringResource(R.string.planning_goal_timeline_unrealistic)
+    val running_schedule_conflict = stringResource(R.string.planning_running_schedule_conflict)
+    val programme_timeline_conflict = stringResource(R.string.planning_programme_timeline_conflict)
+    val programme_constraints_conflict = stringResource(R.string.planning_programme_constraints_conflict)
     val createError = stringResource(R.string.plan_builder_create_error)
     val retry = stringResource(R.string.plan_builder_retry)
-    LaunchedEffect(viewModel, createError, retry) {
+    LaunchedEffect(viewModel, createError, retry, unrealisticGoal) {
         viewModel.effects.collect {
             when (it) {
                 OnboardingEffect.Completed, OnboardingEffect.FailedOpen -> onComplete()
+                OnboardingEffect.RunningScheduleConflict -> { launch { snackbar.showSnackbar(running_schedule_conflict, duration = SnackbarDuration.Long) } }
+                OnboardingEffect.ProgrammeTimelineConflict -> { launch { snackbar.showSnackbar(programme_timeline_conflict, duration = SnackbarDuration.Long) } }
+                OnboardingEffect.ProgrammeConstraintsConflict -> { launch { snackbar.showSnackbar(programme_constraints_conflict, duration = SnackbarDuration.Long) } }
+                OnboardingEffect.GoalTimelineUnrealistic -> { launch { snackbar.showSnackbar(unrealisticGoal, duration = SnackbarDuration.Long) } }
                 OnboardingEffect.PlanCreationUnavailable -> {
                     launch {
                         if (snackbar.showSnackbar(createError, retry, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) {

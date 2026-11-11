@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_workout_fit_header">¿Te resultó adecuado este entrenamiento?</string>
+    <string name="recording_session_effort_header">¿Cuánto esfuerzo te supuso la sesión completa?</string>
+    <string name="recording_session_effort_detail">Opcional. Valora la sesión completa, incluido el calentamiento y las recuperaciones: 1 = muy suave, 10 = esfuerzo máximo.</string>
+    <string name="recording_session_effort_accessibility">Esfuerzo %1$d de 10</string>
+    <string name="recording_session_effort_selected">Esfuerzo de la sesión: %1$d/10</string>
+    <string name="recording_session_effort_clear">Borrar valoración</string>
+</resources>

@@ -22,6 +22,11 @@ private fun Response<*>.toFailure(): ApiFailure {
         errorBody()?.string()?.let { PlainstrideJson.decodeFromString<ErrorEnvelope>(it).code }
     }.getOrNull()
     val code = when (wireCode) {
+        "running_schedule_conflict" -> ApiErrorCode.RunningScheduleConflict
+        "programme_timeline_conflict" -> ApiErrorCode.ProgrammeTimelineConflict
+        "programme_constraints_conflict" -> ApiErrorCode.ProgrammeConstraintsConflict
+        "running_benchmark_invalid" -> ApiErrorCode.RunningBenchmarkInvalid
+        "goal_timeline_unrealistic" -> ApiErrorCode.GoalTimelineUnrealistic
         "authentication_required", "invalid_refresh_token", "invalid_provider_credential" -> ApiErrorCode.Unauthenticated
         "provider_identity_in_use" -> ApiErrorCode.Conflict
         "terms_version_outdated" -> ApiErrorCode.InvalidRequest

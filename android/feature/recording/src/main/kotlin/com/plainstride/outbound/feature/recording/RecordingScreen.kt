@@ -168,6 +168,7 @@ data class RecordedActivityReview(
     /** App-private path; callers must not expose it without an explicit share action. */
     val photoPaths: List<String>,
     val importedPhotoPaths: Set<String>,
+    val sessionEffortRating: Int? = null,
 )
 
 @Composable
@@ -623,6 +624,8 @@ fun RecordingRoute(
                 unitSystem = unitSystem,
                 weightKilograms = weightKilograms,
                 selected = ui.reflection,
+                sessionEffortRating = ui.sessionEffortRating,
+                onSessionEffortRating = viewModel::setSessionEffortRating,
                 guidanceReport = guidanceReport,
                 selectedGuidanceFeedback = selectedGuidanceFeedback,
                 onGuidanceFeedbackSelect = onGuidanceFeedbackSelect,
@@ -640,7 +643,7 @@ fun RecordingRoute(
                 onSave = {
                     onGuidanceFeedbackSubmit()
                     val reflection = ui.reflection
-                    val review = RecordedActivityReview(snapshot, reflection, ui.continuationCapacity, ui.photoPaths, ui.importedPhotoPaths)
+                    val review = RecordedActivityReview(snapshot, reflection, ui.continuationCapacity, ui.photoPaths, ui.importedPhotoPaths, ui.sessionEffortRating)
                     val needsLegacyStoragePermission = saveActivityPhotosToAlbum &&
                         ui.photoPaths.any { it !in ui.importedPhotoPaths } &&
                         Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
@@ -1888,6 +1891,8 @@ private fun ReflectionScreen(
     unitSystem: MeasurementUnitSystem,
     weightKilograms: Double?,
     selected: ReflectionChoice?,
+    sessionEffortRating: Int?,
+    onSessionEffortRating: (Int?) -> Unit,
     guidanceReport: WorkoutGuidanceReport,
     selectedGuidanceFeedback: WorkoutGuidanceFeedback?,
     onGuidanceFeedbackSelect: (WorkoutGuidanceFeedback) -> Unit,
@@ -1974,7 +1979,7 @@ private fun ReflectionScreen(
             if (snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE) {
                 item {
                     WorkoutFeedbackEntryPoint(
-                        hasFeedback = selected != null || selectedGuidanceFeedback != null,
+                        hasFeedback = sessionEffortRating != null || selected != null || selectedGuidanceFeedback != null,
                         enabled = !saving,
                         onClick = { showFeedback = true; onFeedbackOpened() },
                         modifier = Modifier.padding(horizontal = 20.dp),
@@ -2065,6 +2070,9 @@ private fun ReflectionScreen(
     if (showFeedback) {
         WorkoutFeedbackSheet(
             selected = selected,
+            sessionEffortRating = sessionEffortRating,
+            onSessionEffortRating = onSessionEffortRating,
+            showsSessionEffort = snapshot.activityKind == ActivityKind.RUNNING,
             continuationCapacity = continuationCapacity,
             onSelect = onSelect,
             onCapacitySelect = onCapacitySelect,
@@ -2310,3 +2318,7 @@ internal fun LiveWorkoutOptions(
         }
     }
 }
+
+/** Developer fixture adapter around the production phase-progress component. */
+@Composable
+fun DebugRunningPhase(elapsedSeconds: Long, steps: List<StructuredWorkoutStep>) = CurrentWorkoutStep(elapsedSeconds, steps)

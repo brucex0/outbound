@@ -197,4 +197,7 @@
     <string name="plan_builder_race_optional">可选</string>
     <string name="plan_builder_race_short">我希望安排较短的训练</string>
     <string name="plan_builder_race_short_detail">当我选择较短的总时长时，允许主要跑步训练少于 15 分钟。</string>
+    <string name="planning_running_schedule_conflict">当前计划的跑步时长无法满足这个安排。请选择更少的跑步天数，或明确允许较短的训练。</string>
+    <string name="planning_programme_timeline_conflict">按照所选安排，无法在比赛日期前完成这个训练方案。请选择更晚的日期或其他方案。</string>
+    <string name="planning_programme_constraints_conflict">这个方案的较高强度训练无法兼顾当前跑步时长与恢复间隔。请调整训练日或选择其他方案。</string>
 </resources>

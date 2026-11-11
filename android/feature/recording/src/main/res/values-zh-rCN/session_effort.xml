@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_workout_fit_header">这次训练适合你吗？</string>
+    <string name="recording_session_effort_header">整次训练的用力程度如何？</string>
+    <string name="recording_session_effort_detail">可不填。请评价整次训练，包括热身和恢复阶段：1 表示非常轻松，10 表示竭尽全力。</string>
+    <string name="recording_session_effort_accessibility">用力程度 %1$d，满分 10</string>
+    <string name="recording_session_effort_selected">整次训练用力程度：%1$d/10</string>
+    <string name="recording_session_effort_clear">清除评分</string>
+</resources>

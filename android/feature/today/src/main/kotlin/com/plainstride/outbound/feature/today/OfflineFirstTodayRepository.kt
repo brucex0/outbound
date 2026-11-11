@@ -39,14 +39,15 @@ import java.time.LocalDate
 
 /** Account- and locale-scoped cache; workout IDs and launch prescriptions remain server-authored. */
 class OfflineFirstTodayRepository @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val api: PlanningApiService,
     private val tokens: AccessTokenProvider,
     private val cache: AccountCacheDao,
 ) : TodayRepository {
     private val refreshMutex = Mutex()
 
-    override fun observePlanning(accountId: String, localeTag: String) = observe(accountId, localeTag, PLANNING, PlanningState.serializer())
-    override fun observeSuggestion(accountId: String, localeTag: String) = observe(accountId, localeTag, SUGGESTION, ActivitySuggestionEnvelope.serializer())
+    override fun observePlanning(accountId: String, localeTag: String) = observe(accountId, localeTag, PLANNING, PlanningState.serializer()).map { it.mapValue(StructuredWorkoutText(context, localeTag)::planning) }
+    override fun observeSuggestion(accountId: String, localeTag: String) = observe(accountId, localeTag, SUGGESTION, ActivitySuggestionEnvelope.serializer()).map { it.mapValue(StructuredWorkoutText(context, localeTag)::envelope) }
     override fun observePersonalization(accountId: String, localeTag: String) = observe(accountId, localeTag, PERSONALIZATION, PersonalizationSnapshot.serializer())
     override fun observeStandaloneWorkouts(accountId: String, localeTag: String) = observe(accountId, localeTag, CATALOG, StandaloneWorkoutCatalog.serializer())
 
@@ -72,38 +73,10 @@ class OfflineFirstTodayRepository @Inject constructor(
     override suspend fun createGoal(accountId: String, localeTag: String, request: CreateTrainingGoalRequest) = planningMutation(accountId, localeTag) { apiCall { api.createGoal(it, request) } }
     override suspend fun planRecommendations(): Result<PlanRecommendationsResponse> = authenticated { apiCall { api.recommendations(it) } }
     override suspend fun activatePlanRecommendation(accountId: String, localeTag: String, recommendation: PlanRecommendation): Result<PlanningState> {
-        val template = recommendation.template
-        val focus = template["focus"]?.jsonPrimitive?.contentOrNull ?: return Result.failure(IllegalArgumentException("Missing plan focus"))
-        val sport = template["sport"]?.jsonPrimitive?.contentOrNull ?: return Result.failure(IllegalArgumentException("Missing plan activity"))
-        val activities = when (sport) {
-            "mixed" -> listOf(com.plainstride.outbound.core.model.Modality.run, com.plainstride.outbound.core.model.Modality.walk, com.plainstride.outbound.core.model.Modality.bike)
-            "walk" -> listOf(com.plainstride.outbound.core.model.Modality.walk)
-            "bike" -> listOf(com.plainstride.outbound.core.model.Modality.bike)
-            else -> listOf(com.plainstride.outbound.core.model.Modality.run)
-        }
-        val targetDistance = when (focus) {
-            "fiveK" -> 5_000.0
-            "tenK" -> 10_000.0
-            "tenMile" -> 16_093.4
-            "halfMarathon" -> 21_097.5
-            "marathon" -> 42_195.0
-            else -> null
-        }
-        val eventFocused = targetDistance != null
-        return createGoal(accountId, localeTag, CreateTrainingGoalRequest(
-            type = if (eventFocused) "eventPreparation" else "endurance",
-            activities = activities,
-            baselineContext = "currentlyActive",
-            targetDate = if (eventFocused) LocalDate.now().plusWeeks(recommendation.durationWeeks.toLong()).toString() else null,
-            targetDistanceMeters = targetDistance,
-            eventIntent = if (eventFocused) "finish" else null,
-            priority = if (focus == "comeback") "rebuild" else "fitness",
-            daysPerWeekTarget = recommendation.sessionsPerWeek,
-            maxSessionMinutes = recommendation.longSessionMinutes,
-            riskTolerance = "balanced",
-            constraints = mapOf("candidateID" to recommendation.id, "templateID" to (template["id"]?.jsonPrimitive?.contentOrNull ?: "")),
-        ))
+        val request = runCatching { recommendation.activationGoalRequest() }.getOrElse { return Result.failure(it) }
+        return createGoal(accountId, localeTag, request)
     }
+    override suspend fun updateRunningBenchmark(accountId: String, localeTag: String, goalId: String, request: com.plainstride.outbound.core.network.RunningBenchmarkUpdateRequest) = planningMutation(accountId, localeTag) { apiCall { api.updateRunningBenchmark(it, goalId, request) } }
     override suspend fun updateRaceGoal(accountId: String, localeTag: String, goalId: String, request: com.plainstride.outbound.core.network.RaceGoalUpdateRequest) = planningMutation(accountId, localeTag) { apiCall { api.updateRaceGoal(it, goalId, request) } }
     override suspend fun submitPlanningReadiness(accountId: String, localeTag: String, request: PlanningReadinessRequest) = planningMutation(accountId, localeTag) { apiCall { api.submitPlanningReadiness(it, request) } }
     override suspend fun skipWorkout(accountId: String, localeTag: String, workoutId: String) = planningMutation(accountId, localeTag) { apiCall { api.skipWorkout(it, workoutId) } }
@@ -248,6 +221,11 @@ class OfflineFirstTodayRepository @Inject constructor(
 }
 
 private fun ApiFailure.toTodayError(): TodayDataError = when (code) {
+    ApiErrorCode.RunningScheduleConflict -> TodayDataError.RunningScheduleConflict
+    ApiErrorCode.ProgrammeTimelineConflict -> TodayDataError.ProgrammeTimelineConflict
+    ApiErrorCode.ProgrammeConstraintsConflict -> TodayDataError.ProgrammeConstraintsConflict
+    ApiErrorCode.RunningBenchmarkInvalid -> TodayDataError.RunningBenchmarkInvalid
+    ApiErrorCode.GoalTimelineUnrealistic -> TodayDataError.GoalTimelineUnrealistic
     ApiErrorCode.Unauthenticated -> TodayDataError.SignedOut
     ApiErrorCode.NetworkUnavailable -> TodayDataError.Offline
     ApiErrorCode.InvalidResponse, ApiErrorCode.InvalidRequest -> TodayDataError.InvalidServerResponse

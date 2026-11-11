@@ -53,6 +53,7 @@ data class RecordingUiState(
     val countdown: Int? = null,
     val countdownVoiceReady: Boolean = false,
     val reflection: ReflectionChoice? = null,
+    val sessionEffortRating: Int? = null,
     val continuationCapacity: ContinuationCapacity? = null,
     val photoPaths: List<String> = emptyList(),
     val importedPhotoPaths: Set<String> = emptySet(),
@@ -235,7 +236,7 @@ class RecordingViewModel @Inject constructor(
         // A changed run prepares setup without starting yet; its easy time prescription
         // must still win over saved intervals, race goals, routes, and calorie targets.
         val carriesExplicitSetup = configuration.startImmediately || configuration.followedRoute != null ||
-            configuration.activityEventId != null || configuration.entrySource == "today_changed_run"
+            configuration.activityEventId != null || configuration.performedWorkoutReference != null || configuration.entrySource == "today_changed_run"
         val base = if (carriesExplicitSetup) configuration
             else restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
         val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
@@ -441,6 +442,11 @@ class RecordingViewModel @Inject constructor(
             continuationCapacity = if (choice == ReflectionChoice.EASY) mutableState.value.continuationCapacity else null,
         )
     }
+    fun setSessionEffortRating(rating: Int?) {
+        require(rating == null || rating in 1..10)
+        mutableState.value = mutableState.value.copy(sessionEffortRating = rating)
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to if (rating == null) "session_effort_cleared" else "session_effort_selected")))
+    }
     fun setContinuationCapacity(capacity: ContinuationCapacity) { mutableState.value = mutableState.value.copy(continuationCapacity = capacity) }
     fun setPhotoPaths(paths: List<String>) {
         mutableState.value = mutableState.value.copy(photoPaths = paths, importedPhotoPaths = mutableState.value.importedPhotoPaths.intersect(paths.toSet()), pendingMedia = false)
@@ -477,7 +483,10 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.LocationAttached to locationAttached,
         )))
     }
-    fun trackWorkoutFeedbackOpened() = analytics.record(AnalyticsEvent("workout_feedback_opened", mapOf(AnalyticsProperty.SourceType to "finish_review")))
+    fun trackWorkoutFeedbackOpened() {
+        analytics.record(AnalyticsEvent("workout_feedback_opened", mapOf(AnalyticsProperty.SourceType to "finish_review")))
+        if (mutableState.value.launch.activityKind == ActivityKind.RUNNING) analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "session_effort_optional")))
+    }
 
     fun trackPhotoRemoved() = analytics.record(AnalyticsEvent("photo_removed", mapOf(AnalyticsProperty.SourceType to "finish_review")))
     fun trackPhotoPreviewed() = analytics.record(AnalyticsEvent("photo_previewed", mapOf(AnalyticsProperty.SourceType to "finish_review")))
@@ -613,6 +622,7 @@ class RecordingViewModel @Inject constructor(
                 workoutSteps = emptyList(),
                 suggestionId = null,
                 plannedWorkoutId = null,
+                performedWorkoutReference = null,
                 standaloneWorkoutId = null,
                 standaloneWorkoutCatalogVersion = null,
                 workoutDetail = null,
@@ -747,6 +757,13 @@ class RecordingViewModel @Inject constructor(
             val reflectionBody = context.getString(if (shortSession) R.string.recording_reflection_promise_body else R.string.recording_reflection_body)
             val savedActivity = base.copy(
                 title = savedActivityTitle(mutableState.value.launch),
+                sessionEffortRating = review.sessionEffortRating.takeIf { snapshot.activityKind == ActivityKind.RUNNING },
+                performedWorkoutReference = mutableState.value.launch.performedWorkoutReference,
+                plannedWorkoutCompletionQuality = review.reflection?.let { when (it) {
+                    ReflectionChoice.EASY -> "feltEasy"
+                    ReflectionChoice.ABOUT_RIGHT -> "completed"
+                    ReflectionChoice.TOO_HARD -> "tooHard"
+                } },
                 companionType = mutableState.value.launch.companionType,
                 gearJson=mutableState.value.launch.gearId?.let { "{\"id\":\"$it\"}" },
                 indoorJson="{\"indoor\":${mutableState.value.launch.indoor}}",
@@ -762,6 +779,8 @@ class RecordingViewModel @Inject constructor(
                 photos = photos,
             )
             activities.save(savedActivity)
+            if (savedActivity.performedWorkoutReference != null) analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "performed_workout_saved")))
+            if (savedActivity.sessionEffortRating != null) analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "session_effort_saved")))
             syncScheduler.schedule(accountId)
             val cameraPhotos = sourcePhotos.filter { it.path !in review.importedPhotoPaths }
             val photoAlbumExport = if (savePhotoToAlbum && cameraPhotos.isNotEmpty()) {

@@ -45,6 +45,10 @@ sealed interface OnboardingEffect {
     data object IdentityUnavailable : OnboardingEffect
     data object HealthUnavailable : OnboardingEffect
     data object ProfileUnavailable : OnboardingEffect
+    data object RunningScheduleConflict : OnboardingEffect
+    data object ProgrammeTimelineConflict : OnboardingEffect
+    data object ProgrammeConstraintsConflict : OnboardingEffect
+    data object GoalTimelineUnrealistic : OnboardingEffect
     data object PlanCreationUnavailable : OnboardingEffect
     data object SkipUnavailable : OnboardingEffect
 }
@@ -449,7 +453,13 @@ class OnboardingViewModel @Inject constructor(
                 drafts.save(reviewDraft)
                 mutableState.value = mutableState.value.copy(saving = false, draft = reviewDraft)
                 trackCreation(draft, "failure", startedAt, it)
-                mutableEffects.emit(OnboardingEffect.PlanCreationUnavailable)
+                mutableEffects.emit(when ((it as? OnboardingDataException.Api)?.failure?.code) {
+                    com.plainstride.outbound.core.network.ApiErrorCode.GoalTimelineUnrealistic -> OnboardingEffect.GoalTimelineUnrealistic
+                    com.plainstride.outbound.core.network.ApiErrorCode.RunningScheduleConflict -> OnboardingEffect.RunningScheduleConflict
+                    com.plainstride.outbound.core.network.ApiErrorCode.ProgrammeTimelineConflict -> OnboardingEffect.ProgrammeTimelineConflict
+                    com.plainstride.outbound.core.network.ApiErrorCode.ProgrammeConstraintsConflict -> OnboardingEffect.ProgrammeConstraintsConflict
+                    else -> OnboardingEffect.PlanCreationUnavailable
+                })
             },
         )
     }

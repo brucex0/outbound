@@ -197,4 +197,14 @@
     <string name="today_changed_run_guide">保持轻松的强度。跑得短一点，也能延续运动习惯。</string>
     <string name="today_changed_run_title">轻松跑 %1$d 分钟</string>
     <string name="today_readiness_saved_offline">已离线保存。Plainstride 稍后会同步本次状态记录。</string>
+    <string name="planning_running_schedule_conflict">当前计划的跑步时长无法满足这个安排。请选择更少的跑步天数，或明确允许较短的训练。</string>
+    <string name="planning_programme_timeline_conflict">按照所选安排，无法在比赛日期前完成这个训练方案。请选择更晚的日期或其他方案。</string>
+    <string name="planning_programme_constraints_conflict">这个方案的较高强度训练无法兼顾当前跑步时长与恢复间隔。请调整训练日或选择其他方案。</string>
+    <string name="planning_programme_source_week">原方案第 %1$d 周，共 %2$d 周</string>
+    <string name="planning_programme_preparation_complete">已完成规定的备赛训练。这不表示已完成比赛。</string>
+    <string name="planning_programme_minimum_remaining">预计至少还需 %1$d 个日历周，具体取决于规定训练的完成情况。这是估计，并非完成日期。</string>
+    <string name="planning_programme_recipe_review">当前单次时长与维持训练量的偏好无法支持此方案继续推进。请通过“更换计划”新建替代计划并明确允许较短训练，或选择其他方案。</string>
+    <string name="planning_programme_schedule_review">此方案需要不同的安排，才能兼顾训练与恢复。请通过“更换计划”新建训练日不同的替代计划，或选择其他方案。</string>
+    <string name="planning_programme_timeline_review">剩余备赛训练已无法在比赛日期前完成。请通过“更换计划”新建日期更晚的替代计划，或选择其他方案。</string>
+    <string name="planning_programme_exposure_notice">原方案的周次随规定训练的完成而推进，不会仅因时间流逝而推进。后续训练仍为暂定安排。</string>
 </resources>

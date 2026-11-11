@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="benchmark_title">Carrera o contrarreloj reciente</string>
+    <string name="benchmark_detail">Opcional. Usa un resultado reciente de carrera a esfuerzo máximo, no un entrenamiento ni tu tiempo objetivo.</string>
+    <string name="benchmark_source">Tipo de resultado</string>
+    <string name="benchmark_race">Carrera</string>
+    <string name="benchmark_time_trial">Contrarreloj</string>
+    <string name="benchmark_distance">Distancia (km)</string>
+    <string name="benchmark_duration">Tiempo final (H:MM:SS)</string>
+    <string name="benchmark_date">Fecha del resultado</string>
+    <string name="benchmark_maximal">Fue un esfuerzo máximo</string>
+    <string name="benchmark_validation">Usa entre 1,5 y 30 km, un tiempo final válido en H:MM:SS y un resultado a esfuerzo máximo de las últimas 12 semanas.</string>
+    <string name="benchmark_estimate_detail">Los ritmos estiman tu forma actual a partir de este resultado, por separado de tu ritmo objetivo. Guíate por el esfuerzo cuando cambien las condiciones.</string>
+    <string name="benchmark_fallback">Opcional. Añade un resultado reciente a esfuerzo máximo para estimar ritmos, o sigue guiándote por el esfuerzo.</string>
+    <string name="benchmark_stale">Este resultado tiene más de 12 semanas. Actualízalo para volver a estimar ritmos, o sigue guiándote por el esfuerzo.</string>
+    <string name="benchmark_remove">Eliminar referencia</string>
+    <string name="benchmark_remove_title">¿Eliminar esta referencia?</string>
+    <string name="benchmark_remove_detail">Los nuevos entrenamientos usarán indicaciones de esfuerzo. Los cambios guardados de cada sesión se conservarán.</string>
+    <string name="benchmark_failed">No se pudo guardar. Tus datos siguen aquí. Inténtalo de nuevo.</string>
+    <string name="benchmark_phase_paces">Ritmos estimados por fase</string>
+    <string name="benchmark_phase_range">%1$s · %2$s–%3$s</string>
+    <string name="benchmark_per_km">/km</string>
+    <string name="benchmark_per_mile">/mi</string>
+    <string name="benchmark_phase_effort">Esfuerzo RPE %1$s</string>
+</resources>

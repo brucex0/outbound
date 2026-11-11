@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="structured_easy_recovery">轻松恢复</string>
+    <string name="structured_walk_recovery">步行恢复</string>
+    <string name="structured_walk_recovery_detail">步行至呼吸平稳。</string>
+    <string name="structured_easy_recovery_detail">下一组开始前，先轻松恢复。</string>
+    <string name="structured_warmup_walk">步行热身</string>
+</resources>

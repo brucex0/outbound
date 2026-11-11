@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="structured_easy_recovery">Recuperación suave</string>
+    <string name="structured_walk_recovery">Recuperación caminando</string>
+    <string name="structured_walk_recovery_detail">Camina hasta recuperar una respiración tranquila.</string>
+    <string name="structured_easy_recovery_detail">Recupérate con suavidad antes del siguiente esfuerzo.</string>
+    <string name="structured_warmup_walk">Caminata de calentamiento</string>
+</resources>

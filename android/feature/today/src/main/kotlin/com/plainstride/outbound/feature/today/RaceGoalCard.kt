@@ -131,10 +131,20 @@ private fun RaceGoalEditor(goal: TrainingGoal, onDismiss: () -> Unit, onSave: su
             val request = RaceGoalUpdateRequest(dateText, distanceValue!! * 1000, intent, targetTime?.takeIf { intent == "targetTime" }, days, cap, short, mobility)
             saving = true
             scope.launch {
-                val success = onSave(goal.id, request)
-                Toast.makeText(context, context.getString(if (success) R.string.today_race_goal_saved else R.string.today_race_goal_failed), Toast.LENGTH_SHORT).show()
-                saving = false
-                if (success) onDismiss()
+                try {
+                    val success = onSave(goal.id, request)
+                    Toast.makeText(context, context.getString(if (success) R.string.today_race_goal_saved else R.string.today_race_goal_failed), Toast.LENGTH_SHORT).show()
+                    if (success) onDismiss()
+                } catch (error: TodayRepositoryException) {
+                    val resource = when (error.dataError) {
+                        TodayDataError.GoalTimelineUnrealistic -> R.string.planning_goal_timeline_unrealistic
+                        TodayDataError.RunningScheduleConflict -> R.string.planning_running_schedule_conflict
+                        TodayDataError.ProgrammeTimelineConflict -> R.string.planning_programme_timeline_conflict
+                        TodayDataError.ProgrammeConstraintsConflict -> R.string.planning_programme_constraints_conflict
+                        else -> R.string.today_race_goal_failed
+                    }
+                    Toast.makeText(context, context.getString(resource), Toast.LENGTH_LONG).show()
+                } finally { saving = false }
             }
         }) { Text(stringResource(R.string.today_race_goal_save)) } },
         dismissButton = { TextButton(onClick = onDismiss, enabled = !saving) { Text(stringResource(R.string.today_race_goal_cancel)) } },

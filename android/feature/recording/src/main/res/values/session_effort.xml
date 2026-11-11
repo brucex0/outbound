@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_workout_fit_header">Did this workout suit you?</string>
+    <string name="recording_session_effort_header">How hard was the whole session?</string>
+    <string name="recording_session_effort_detail">Optional. Rate the whole session, including warm-up and recovery: 1 = very easy, 10 = maximum effort.</string>
+    <string name="recording_session_effort_accessibility">Effort %1$d of 10</string>
+    <string name="recording_session_effort_selected">Whole-session effort: %1$d/10</string>
+    <string name="recording_session_effort_clear">Clear rating</string>
+</resources>

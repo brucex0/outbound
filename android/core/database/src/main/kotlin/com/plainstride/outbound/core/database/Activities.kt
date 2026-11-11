@@ -55,6 +55,9 @@ data class ActivityEntity(
     val deletedAtEpochMs: Long?,
     val companionType: String?,
     val elevationMetadataJson: String? = null,
+    val sessionEffortRating: Int? = null,
+    val performedWorkoutReferenceJson: String? = null,
+    val plannedWorkoutCompletionQuality: String? = null,
 )
 
 /** Local-only, first available pre-correction samples; never included in activity relations/uploads. */

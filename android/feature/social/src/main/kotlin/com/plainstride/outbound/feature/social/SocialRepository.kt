@@ -324,6 +324,6 @@ private fun ApiFailure.toSocialError() = when (code) {
     ApiErrorCode.Conflict -> SocialError.CONFLICT
     ApiErrorCode.RateLimited -> SocialError.RATE_LIMITED
     ApiErrorCode.ServerUnavailable -> SocialError.SERVER
-    ApiErrorCode.InvalidRequest, ApiErrorCode.InvalidResponse -> SocialError.INVALID_RESPONSE
+    ApiErrorCode.RunningScheduleConflict, ApiErrorCode.ProgrammeTimelineConflict, ApiErrorCode.ProgrammeConstraintsConflict, ApiErrorCode.GoalTimelineUnrealistic, ApiErrorCode.RunningBenchmarkInvalid, ApiErrorCode.InvalidRequest, ApiErrorCode.InvalidResponse -> SocialError.INVALID_RESPONSE
     ApiErrorCode.Cancelled, ApiErrorCode.Unknown -> SocialError.UNEXPECTED
 }

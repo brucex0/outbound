@@ -36,22 +36,6 @@ import com.plainstride.outbound.core.model.activity.ActivityFacts
 import com.plainstride.outbound.core.model.activity.PlannedCalorieEstimate
 import com.plainstride.outbound.core.model.activity.WorkoutCalorieEstimator
 
-data class WorkoutLaunchIntent(
-    val suggestionId: String,
-    val plannedWorkoutId: String?,
-    val title: String,
-    val modality: Modality,
-    val stimulus: TrainingStimulus,
-    val durationSeconds: Int,
-    val distanceMeters: Double?,
-    val targetCalories: Int?,
-    val effortLabel: String,
-    val intensityModel: String,
-    val steps: List<String>,
-    val source: String,
-    val guideLine: String? = null,
-)
-
 enum class TodayConstraint(val wireValue: String) {
     LowEnergy("tired"),
     Soreness("sore"),
@@ -126,6 +110,7 @@ data class PlanPickerUiState(
     val replacing: Boolean = false,
     val error: Boolean = false,
     val loadingError: Boolean = false,
+    val constraintError: TodayDataError? = null,
 )
 
 sealed interface TodayMessage {
@@ -206,17 +191,23 @@ class TodayViewModel @Inject constructor(
         }
     }
 
-    fun trackPlanDetailsOpened(workoutCount: Int, entrySource: String) = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
-        AnalyticsProperty.SourceType to "plan_details",
-        AnalyticsProperty.EntrySource to entrySource,
-        AnalyticsProperty.CountBucket to when (workoutCount) {
-            0 -> "0"
-            1 -> "1"
-            in 2..3 -> "2_3"
-            in 4..7 -> "4_7"
-            else -> "8_plus"
-        },
-    )))
+    fun trackPlanDetailsOpened(workoutCount: Int, entrySource: String) {
+        analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
+            AnalyticsProperty.SourceType to "plan_details",
+            AnalyticsProperty.EntrySource to entrySource,
+            AnalyticsProperty.CountBucket to when (workoutCount) {
+                0 -> "0"
+                1 -> "1"
+                in 2..3 -> "2_3"
+                in 4..7 -> "4_7"
+                else -> "8_plus"
+            },
+        )))
+        val progress = (state.value.planning as? CachedResource.Available)?.value?.currentVersion?.engineDecision
+        if (progress?.programmeDoseStatus == "needs_review" || progress?.programmeTimelineStatus == "needs_review") {
+            analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "running_programme_review")))
+        }
+    }
 
     fun trackDailyRecommendationDetailsOpened(entrySource: String) = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
         AnalyticsProperty.SourceType to "daily_recommendation_details",
@@ -266,9 +257,11 @@ class TodayViewModel @Inject constructor(
 
     fun confirmPlanRecommendation(recommendation: PlanRecommendation, replacing: Boolean) {
         if (mutablePlanPicker.value.replacing) return
-        mutablePlanPicker.value = mutablePlanPicker.value.copy(replacing = true, error = false, loadingError = false)
+        mutablePlanPicker.value = mutablePlanPicker.value.copy(replacing = true, error = false, loadingError = false, constraintError = null)
         viewModelScope.launch {
-            repository.activatePlanRecommendation(accountScope.value.first, accountScope.value.second, recommendation).fold(
+            val result = repository.activatePlanRecommendation(accountScope.value.first, accountScope.value.second, recommendation)
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            result.fold(
                 onSuccess = {
                     mutablePlanPicker.value = PlanPickerUiState()
                     refresh()
@@ -277,8 +270,12 @@ class TodayViewModel @Inject constructor(
                         AnalyticsProperty.SelectionType to if (replacing) "replace" else "new",
                     )))
                 },
-                onFailure = {
-                    mutablePlanPicker.value = mutablePlanPicker.value.copy(replacing = false, error = true)
+                onFailure = { error ->
+                    val category = (error as? TodayRepositoryException)?.dataError
+                    if (category in setOf(TodayDataError.RunningScheduleConflict, TodayDataError.ProgrammeTimelineConflict, TodayDataError.ProgrammeConstraintsConflict)) {
+                        android.util.Log.i("Planning", "catalogue_activation_validation category=${category?.javaClass?.simpleName}")
+                    } else android.util.Log.e("Planning", "catalogue_activation_failed category=${category?.javaClass?.simpleName ?: error.javaClass.simpleName}")
+                    mutablePlanPicker.value = mutablePlanPicker.value.copy(replacing = false, error = true, constraintError = (error as? TodayRepositoryException)?.dataError)
                     analytics.record(AnalyticsEvent("training_plan_recommendation_selected", mapOf(
                         AnalyticsProperty.Result to "failure",
                         AnalyticsProperty.SelectionType to if (replacing) "replace" else "new",
@@ -301,20 +298,7 @@ class TodayViewModel @Inject constructor(
         }
     }
 
-    fun launchIntent(suggestion: ActivitySuggestion, source: String): WorkoutLaunchIntent = WorkoutLaunchIntent(
-        suggestionId = suggestion.id,
-        plannedWorkoutId = suggestion.plannedWorkoutId,
-        title = suggestion.title,
-        modality = suggestion.modality,
-        stimulus = suggestion.stimulus,
-        durationSeconds = suggestion.durationMinutes * 60,
-        distanceMeters = suggestion.distanceMeters,
-        targetCalories = suggestion.targetCalories,
-        effortLabel = suggestion.effortLabel,
-        intensityModel = suggestion.intensityModel,
-        steps = suggestion.steps.toList(),
-        source = source,
-    )
+    fun launchIntent(suggestion: ActivitySuggestion, source: String): WorkoutLaunchIntent = suggestion.toWorkoutLaunchIntent(source)
 
     private var pendingWorkoutChange: WorkoutAdjustmentApplyRequest? = null
 
@@ -387,10 +371,38 @@ class TodayViewModel @Inject constructor(
         val result = repository.updateRaceGoal(accountId, localeTag, goalId, request)
         mutationInFlight.value = false
         analytics.record(AnalyticsEvent("race_goal_updated", mapOf(AnalyticsProperty.Result to if (result.isSuccess) "success" else "failure", AnalyticsProperty.SelectionType to if (request.shortRunSessions) "short" else "standard")))
+        if ((result.exceptionOrNull() as? TodayRepositoryException)?.dataError in setOf(TodayDataError.GoalTimelineUnrealistic, TodayDataError.RunningScheduleConflict, TodayDataError.ProgrammeTimelineConflict, TodayDataError.ProgrammeConstraintsConflict)) {
+            android.util.Log.i("Planning", "race_goal_update_validation category=${(result.exceptionOrNull() as? TodayRepositoryException)?.dataError?.javaClass?.simpleName}")
+            throw result.exceptionOrNull()!!
+        }
         if (result.isFailure) android.util.Log.e("Planning", "race_goal_update_failed category=${(result.exceptionOrNull() as? TodayRepositoryException)?.dataError?.javaClass?.simpleName ?: "unknown"}")
         if (result.isSuccess) refresh()
         return result.isSuccess
     }
+
+    suspend fun updateRunningBenchmark(goalId: String, report: com.plainstride.outbound.core.model.RunningBenchmarkReport?): Boolean {
+        if (mutationInFlight.value) return false
+        mutationInFlight.value = true
+        try {
+            val (accountId, localeTag) = accountScope.value
+            val result = repository.updateRunningBenchmark(accountId, localeTag, goalId, com.plainstride.outbound.core.network.RunningBenchmarkUpdateRequest(report))
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to if (report == null) "running_benchmark_removed" else "running_benchmark_saved", AnalyticsProperty.Result to if (result.isSuccess) "success" else "failure")))
+            if ((result.exceptionOrNull() as? TodayRepositoryException)?.dataError == TodayDataError.RunningBenchmarkInvalid) {
+                android.util.Log.i("Planning", "running_benchmark_validation category=invalid_input")
+                throw result.exceptionOrNull()!!
+            }
+            if (result.isFailure) {
+                val failure = result.exceptionOrNull()
+                val category = (failure as? TodayRepositoryException)?.dataError?.javaClass?.simpleName ?: failure?.javaClass?.simpleName ?: "unknown"
+                android.util.Log.e("Planning", "running_benchmark_update_failed category=$category")
+            }
+            if (result.isSuccess) refresh()
+            return result.isSuccess
+        } finally { mutationInFlight.value = false }
+    }
+
+    fun trackRunningBenchmarkOpened() = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(AnalyticsProperty.SourceType to "running_benchmark", AnalyticsProperty.EntrySource to "plan_details")))
 
     fun trackRaceGoalOpened() = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(AnalyticsProperty.SourceType to "race_goal_edit", AnalyticsProperty.EntrySource to "plan_details")))
 

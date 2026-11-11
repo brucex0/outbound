@@ -283,6 +283,8 @@ fun TodayRoute(
         onSetUpPlan = onSetUpPlan,
         onBuildPlan = onBuildPlan,
         planPicker = planPicker,
+        onRunningBenchmarkOpened = viewModel::trackRunningBenchmarkOpened,
+        onUpdateRunningBenchmark = viewModel::updateRunningBenchmark,
         onUpdateRaceGoal = viewModel::updateRaceGoal,
         onRaceGoalOpened = viewModel::trackRaceGoalOpened,
         onWorkoutChangeOpened = viewModel::trackWorkoutChangeOpened,
@@ -364,6 +366,8 @@ fun TodayScreen(
     onDailyRecommendationDetailsOpened: (String) -> Unit = {},
     onEndPlanConfirmation: () -> Unit = {},
     onUpdateRaceGoal: suspend (String, com.plainstride.outbound.core.network.RaceGoalUpdateRequest) -> Boolean = { _, _ -> false },
+    onRunningBenchmarkOpened: () -> Unit = {},
+    onUpdateRunningBenchmark: suspend (String, com.plainstride.outbound.core.model.RunningBenchmarkReport?) -> Boolean = { _, _ -> false },
     onRaceGoalOpened: () -> Unit = {},
     onWorkoutChangeOpened: () -> Unit = {},
     onDismissPlanPicker: () -> Unit = {},
@@ -715,6 +719,8 @@ fun TodayScreen(
         ActivePlanDetailsSheet(
             units = unitSystem,
             onRaceGoalOpened = onRaceGoalOpened,
+            onRunningBenchmarkOpened = onRunningBenchmarkOpened,
+            onUpdateRunningBenchmark = onUpdateRunningBenchmark,
             onUpdateRaceGoal = onUpdateRaceGoal,
             planning = planning,
             suggestion = (state.suggestion as? CachedResource.Available)?.value,
@@ -833,8 +839,13 @@ private fun PlanPickerDialog(
 ) {
     var confirmingReplacement by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    LaunchedEffect(picker.error) {
-        if (picker.error) Toast.makeText(context, context.getString(if (picker.loadingError) R.string.plan_picker_load_error else R.string.plan_picker_activation_error), Toast.LENGTH_SHORT).show()
+    LaunchedEffect(picker.error, picker.constraintError) {
+        if (picker.error) Toast.makeText(context, context.getString(when (picker.constraintError) {
+            TodayDataError.RunningScheduleConflict -> R.string.planning_running_schedule_conflict
+            TodayDataError.ProgrammeTimelineConflict -> R.string.planning_programme_timeline_conflict
+            TodayDataError.ProgrammeConstraintsConflict -> R.string.planning_programme_constraints_conflict
+            else -> if (picker.loadingError) R.string.plan_picker_load_error else R.string.plan_picker_activation_error
+        }), Toast.LENGTH_SHORT).show()
     }
     val selected = picker.selected
     val recommendation = selected

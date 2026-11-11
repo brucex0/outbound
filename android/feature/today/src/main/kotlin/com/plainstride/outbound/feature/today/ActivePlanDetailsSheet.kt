@@ -74,6 +74,8 @@ internal fun ActivePlanDetailsSheet(
     onEndConfirmation: () -> Unit,
     onRefresh: () -> Unit,
     onChangeWorkout: (() -> Unit)? = null,
+    onRunningBenchmarkOpened: () -> Unit = {},
+    onUpdateRunningBenchmark: suspend (String, com.plainstride.outbound.core.model.RunningBenchmarkReport?) -> Boolean = { _, _ -> false },
 ) {
     val plan = planning.plan ?: return
     val week = planning.planWeekSnapshot()
@@ -97,6 +99,7 @@ internal fun ActivePlanDetailsSheet(
                 }
             },
         )
+        planning.currentVersion?.engineDecision?.takeIf { it.programme != null }?.let { RunningProgrammeNotice(it) }
         if (stale) Text(stringResource(R.string.plan_details_cached), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
         if (week != null) {
             val stats = listOfNotNull(
@@ -110,6 +113,7 @@ internal fun ActivePlanDetailsSheet(
                 Text(stringResource(R.string.plan_details_preferred, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        planning.goal?.takeIf { com.plainstride.outbound.core.model.Modality.run in it.activities }?.let { RunningBenchmarkManagementRow(it, onUpdateRunningBenchmark, onRunningBenchmarkOpened) }
         if (planning.goal?.type == "eventPreparation") RaceGoalCard(planning, units, onRaceGoalOpened, onUpdateRaceGoal)
         if (week == null) {
             Text(stringResource(R.string.plan_details_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -175,6 +179,7 @@ internal fun ActivePlanDetailsSheet(
                         )
                         Text(stringResource(statusLabel(workout.status)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         workoutDescription(workout)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+                        BenchmarkPhasePaces(workout, units)
                     }
                 }
             }
@@ -439,3 +444,15 @@ internal fun PlanDetailsSyncingSheet(onDismiss: () -> Unit, onRefresh: () -> Uni
         }
     }
 }
+
+/** Developer fixture adapter; the app exposes it only through its DEBUG launch flag. */
+@Composable
+fun DebugRunningPlanDetails(planning: PlanningState, suggestion: ActivitySuggestionEnvelope?, onDismiss: () -> Unit, onUpdateRunningBenchmark: suspend (String, com.plainstride.outbound.core.model.RunningBenchmarkReport?) -> Boolean = { _, _ -> false }) {
+    ActivePlanDetailsSheet(planning, suggestion, false,
+        com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,
+        onRaceGoalOpened = {}, onUpdateRaceGoal = { _, _ -> false }, busy = false, stale = false,
+        onDismiss = onDismiss, onChangePlan = {}, onEndPlan = {}, onEndConfirmation = {}, onRefresh = {}, onUpdateRunningBenchmark = onUpdateRunningBenchmark)
+}
+
+fun debugLocalizeRunningSuggestion(context: android.content.Context, value: ActivitySuggestionEnvelope): ActivitySuggestionEnvelope =
+    StructuredWorkoutText(context, Locale.getDefault().toLanguageTag()).envelope(value)

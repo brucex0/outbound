@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 6,
-    "identityHash": "6b58b955b93e5cdff0538cb3bbfead3a",
+    "version": 8,
+    "identityHash": "badeba00c686c9f8af3f046fe2b18c6e",
     "entities": [
       {
         "tableName": "account_cache",
@@ -254,7 +254,7 @@
       },
       {
         "tableName": "activities",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activityId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `serverActivityId` TEXT, `type` TEXT NOT NULL, `title` TEXT NOT NULL, `guideNudge` TEXT NOT NULL, `reflectionJson` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER NOT NULL, `endedAtEpochMs` INTEGER NOT NULL, `durationSecs` INTEGER NOT NULL, `distanceM` REAL NOT NULL, `averagePaceSecsPerKm` REAL, `elevationGainM` REAL, `walkingStepCount` INTEGER, `averageHeartRateBpm` INTEGER, `maximumHeartRateBpm` INTEGER, `heartRateSampleCount` INTEGER, `energyKilocalories` INTEGER, `sourceJson` TEXT NOT NULL, `gearJson` TEXT, `goalJson` TEXT, `indoorJson` TEXT, `cadenceJson` TEXT, `heartRateZonesJson` TEXT, `activityEventId` TEXT, `followedRouteId` TEXT, `followedRouteCompleted` INTEGER NOT NULL, `recognitionBadgeIdsJson` TEXT NOT NULL, `localUpdatedAtEpochMs` INTEGER NOT NULL, `serverUpdatedAtEpochMs` INTEGER, `deletedAtEpochMs` INTEGER, `companionType` TEXT, `elevationMetadataJson` TEXT, PRIMARY KEY(`activityId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activityId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `serverActivityId` TEXT, `type` TEXT NOT NULL, `title` TEXT NOT NULL, `guideNudge` TEXT NOT NULL, `reflectionJson` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER NOT NULL, `endedAtEpochMs` INTEGER NOT NULL, `durationSecs` INTEGER NOT NULL, `distanceM` REAL NOT NULL, `averagePaceSecsPerKm` REAL, `elevationGainM` REAL, `walkingStepCount` INTEGER, `averageHeartRateBpm` INTEGER, `maximumHeartRateBpm` INTEGER, `heartRateSampleCount` INTEGER, `energyKilocalories` INTEGER, `sourceJson` TEXT NOT NULL, `gearJson` TEXT, `goalJson` TEXT, `indoorJson` TEXT, `cadenceJson` TEXT, `heartRateZonesJson` TEXT, `activityEventId` TEXT, `followedRouteId` TEXT, `followedRouteCompleted` INTEGER NOT NULL, `recognitionBadgeIdsJson` TEXT NOT NULL, `localUpdatedAtEpochMs` INTEGER NOT NULL, `serverUpdatedAtEpochMs` INTEGER, `deletedAtEpochMs` INTEGER, `companionType` TEXT, `elevationMetadataJson` TEXT, `sessionEffortRating` INTEGER, `performedWorkoutReferenceJson` TEXT, `plannedWorkoutCompletionQuality` TEXT, PRIMARY KEY(`activityId`))",
         "fields": [
           {
             "fieldPath": "activityId",
@@ -438,6 +438,21 @@
           {
             "fieldPath": "elevationMetadataJson",
             "columnName": "elevationMetadataJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sessionEffortRating",
+            "columnName": "sessionEffortRating",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "performedWorkoutReferenceJson",
+            "columnName": "performedWorkoutReferenceJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "plannedWorkoutCompletionQuality",
+            "columnName": "plannedWorkoutCompletionQuality",
             "affinity": "TEXT"
           }
         ],
@@ -988,7 +1003,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6b58b955b93e5cdff0538cb3bbfead3a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'badeba00c686c9f8af3f046fe2b18c6e')"
     ]
   }
 }
