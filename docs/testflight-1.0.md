@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.14 Submission Sheet
+# TestFlight and App Store 1.7.15 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.14`
-- Build: `68`
+- Version: `1.7.15`
+- Build: `69`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -80,12 +80,12 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Compact plan management actions
-- [iOS] Show and edit saved race goals with phase roadmap
-- [iOS] Complete rebuilt plan setup in Today without reopening
-- [iOS] Show personal weekly run goals on Me
-- [iOS] Clarify plan week targets and confirm visible end action
-- Plus 1 more fixes and improvements
+- [iOS] Use complete live map control height after collapse
+- [iOS] Improve warm-up row visibility and touch target
+- [iOS] Reset stale live card drag height
+- [iOS] Preserve account goals while statistics load
+- [iOS] Record repository reconciliation runtime checks
+- Plus 13 more fixes and improvements
 
 ### App Store What's New
 
@@ -207,6 +207,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.14 (68)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.15 (69)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
