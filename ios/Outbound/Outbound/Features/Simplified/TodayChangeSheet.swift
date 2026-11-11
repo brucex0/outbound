@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 struct TodayWorkoutEditPresentation: Identifiable {
     let id = UUID()
@@ -13,6 +14,7 @@ struct TodayWorkoutChangeSelection {
 }
 
 struct TodayChangeSheet: View {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.plainstride.outbound", category: "workout-edit")
     @Environment(\.dismiss) private var dismiss
     @Environment(\.outboundTheme) private var theme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -226,6 +228,19 @@ struct TodayChangeSheet: View {
             goalKind = currentDistance == nil ? "time" : "distance"
             resetTarget()
             effortPreset = displayedOverride == nil ? context?.currentEffortPreset ?? "unchanged" : "unchanged"
+            if context?.canEditTarget == false || context?.canEditEffort == false || context?.canConvertGoal == false {
+                let limitation: String
+                switch context?.limitation {
+                case .some("structuredWorkout"): limitation = "structuredWorkout"
+                case .some("unsupportedTargets"): limitation = "unsupportedTargets"
+                case nil: limitation = "none"
+                default: limitation = "other"
+                }
+                let slotPrescriptionDiffers = original.map { primary in
+                    primary.plannedWorkoutId.map { primary.id != "planned-\($0)" } ?? false
+                } ?? false
+                Self.logger.info("Workout edit capability restricted limitation=\(limitation, privacy: .public) target=\(context?.canEditTarget ?? false, privacy: .public) effort=\(context?.canEditEffort ?? false, privacy: .public) goal=\(context?.canConvertGoal ?? false, privacy: .public) planned=\(original?.plannedWorkoutId != nil, privacy: .public) slotPrescriptionDiffers=\(slotPrescriptionDiffers, privacy: .public)")
+            }
         }
         .task(id: failed) {
             guard failed else { return }
@@ -257,14 +272,21 @@ struct TodayChangeSheet: View {
         return String(format: String(localized: "today.edit.distance_range", defaultValue: "Enter %@–%@ %@."),
             String(format: "%.2f", locale: .autoupdatingCurrent, lower), String(format: "%.2f", locale: .autoupdatingCurrent, upper), distanceUnit)
     }
-    private var goalMenu: some View {
-        Menu {
-            Button(String(localized: "today.edit.time", defaultValue: "Time")) { goalKind = "time"; resetTarget() }
-            Button(String(localized: "today.edit.distance", defaultValue: "Distance")) { goalKind = "distance"; resetTarget() }
-        } label: {
-            Label(goalKind == "time" ? String(localized: "today.edit.time", defaultValue: "Time") : String(localized: "today.edit.distance", defaultValue: "Distance"), systemImage: "chevron.down")
-                .font(.body).frame(minHeight: 44).fixedSize(horizontal: false, vertical: true)
-        }.disabled(displayedOverride != nil || !(context?.canConvertGoal ?? true)).accessibilityIdentifier("todayEditGoal")
+    private var goalTitle: String {
+        goalKind == "time" ? String(localized: "today.edit.time", defaultValue: "Time") : String(localized: "today.edit.distance", defaultValue: "Distance")
+    }
+    @ViewBuilder private var goalMenu: some View {
+        if displayedOverride == nil && (context?.canConvertGoal ?? true) {
+            Menu {
+                Button(String(localized: "today.edit.time", defaultValue: "Time")) { goalKind = "time"; resetTarget() }
+                Button(String(localized: "today.edit.distance", defaultValue: "Distance")) { goalKind = "distance"; resetTarget() }
+            } label: {
+                selectorLabel(goalTitle)
+            }.accessibilityIdentifier("todayEditGoal")
+        } else {
+            Text(goalTitle).font(.body).frame(minHeight: 44)
+                .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("todayEditGoal")
+        }
     }
     private var targetField: some View {
         let layout = dynamicTypeSize.isAccessibilitySize
@@ -293,8 +315,7 @@ struct TodayChangeSheet: View {
                     Button(effortTitle(id)) { effortPreset = id }
                 }
             } label: {
-                Label(effortPreset == "unchanged" ? currentEffortLabel : effortTitle(effortPreset), systemImage: "chevron.down")
-                    .font(.body).frame(minHeight: 44).fixedSize(horizontal: false, vertical: true)
+                selectorLabel(effortPreset == "unchanged" ? currentEffortLabel : effortTitle(effortPreset))
             }.disabled(!canEditEffort).accessibilityIdentifier("todayEditEffort")
         }
     }
@@ -317,7 +338,16 @@ struct TodayChangeSheet: View {
         }
     }
     private var reasonMenuLabel: some View {
-        Label(reasonTitle(reason), systemImage: "chevron.down").font(.body).frame(minHeight: 44).foregroundStyle(theme.accentColor)
+        selectorLabel(reasonTitle(reason)).foregroundStyle(theme.accentColor)
+    }
+    private func selectorLabel(_ title: String) -> some View {
+        HStack(spacing: OutboundSpacing.compact) {
+            Text(title).font(.body).fixedSize(horizontal: false, vertical: true)
+            Image(systemName: "chevron.down").font(.caption.weight(.semibold)).accessibilityHidden(true)
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityLabel(title)
     }
     private func reasonTitle(_ value: String) -> String {
         switch value {
