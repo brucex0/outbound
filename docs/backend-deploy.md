@@ -480,6 +480,13 @@ Coaching preplanning adds `LiveCoachPreparation` and `LiveCoachSession.preparati
 - Verified 2026-10-20 (America/Los_Angeles): revision `outbound-api-00235-dum` serves 100% of traffic; all prior environment/secret bindings were preserved, exact-image schema job `outbound-db-push-6m5fn` succeeded, planning maintenance uses the same image, and production `/health` returned 200. The affected missing profile was persisted with a usable pace reference.
 - Synthetic runtime calls through the configured `gpt-6-luna` succeeded on their first attempts: Simplified Chinese activity analysis in 4.64 seconds and English weekly review in 4.78 seconds. Backend build and focused recovery/task-isolation/provider/locale checks passed; no test suite ran. Phone audio alerts have not been reverified. The temporary repair job and candidate tag were removed.
 
+## Effective workout prescription follow-up — 2026-11-10
+
+- Deployed backend source from commit `e32cd9c2` as candidate `outbound-api-00193-hwp`, image `us-central1-docker.pkg.dev/outbound-494602/cloud-run-source-deploy/outbound-api@sha256:1ebf47ffc00fd6f71050e7004985a4fff79f48e9fc01a9969c035d9a328aedcc`.
+- Candidate `/health` returned `{"status":"ok","version":"0.1.0"}` before promotion. The revision now serves 100% of traffic and production `/health` returned the same result. Previous revision `outbound-api-00192-2bs` remains available for rollback.
+- The prior and candidate revisions had identical environment configuration (66 entries, including Secret Manager references), service account, CPU/memory, concurrency, timeout, Cloud SQL attachment, VPC egress, and scaling settings. No Prisma schema delta was present; no schema or seed job ran. `outbound-planning-maintenance` was pinned to the candidate image without execution.
+- No test suite ran. The iOS device build and installation are recorded in `workout-edits.md`.
+
 ## Per-user live location consent guard
 
 `PATCH /v1/live/group-runs/:id/participants/me/location` updates only an active/stale membership through one conditional database write. A checkpoint arriving after Leave or Finish returns `409` and cannot reactivate that participant. Only an explicit join can enable sharing again. `group_live_location_update` logs bounded rejection result/reason/status without identifiers or location. No schema migration or data reset is required.
