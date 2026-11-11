@@ -75,7 +75,7 @@ struct DebugActivityRepositoryHarness: View {
             .safeAreaInset(edge: .bottom) {
                 VStack {
                     GlobalConnectivityBanner().environmentObject(connectivity).environmentObject(activities)
-                    Text(status).font(.caption).padding(8)
+                    Text(status).font(.caption).dynamicTypeSize(.large).lineLimit(2).padding(8)
                 }.background(.bar)
             }
         }.task { await run() }

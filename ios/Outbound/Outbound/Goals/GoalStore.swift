@@ -47,6 +47,12 @@ final class GoalStore: ObservableObject {
         phase: MotivationPhase,
         now: Date = Date()
     ) {
+        // Until the account's calendar arrives with complete statistics, device-local
+        // week boundaries cannot expire an authenticated goal or alter its draft.
+        if AuthStore.currentUserId != nil && statistics == nil {
+            progress = nil
+            return
+        }
         let weekStart = startOfWeek(for: now)
 
         if let activeGoal, activeGoal.weekStart != weekStart {

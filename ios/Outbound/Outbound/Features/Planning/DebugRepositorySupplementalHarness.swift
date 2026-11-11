@@ -128,9 +128,9 @@ struct DebugRepositorySupplementalHarness: View {
                         Button("Blocked sync") { surface = "blocked" }
                         Button("Allow retry") { DebugActivityRepositoryTransport.rejectUpload = false; status = "Fixture now accepts retry" }
                         Button("Open details → no plan") { showsDetails = true; Task { await transitionNoPlan() } }
-                    }.buttonStyle(.borderless)
+                    }.buttonStyle(.borderless).font(.caption).dynamicTypeSize(.large)
                 }
-                Text(status).font(.caption)
+                Text(status).font(.caption).dynamicTypeSize(.large).lineLimit(2)
             }.padding(8).background(.bar)
         }
         .sheet(isPresented: $showsDetails) {
@@ -177,6 +177,7 @@ struct DebugRepositorySupplementalHarness: View {
             try await verifyReminderRace()
             try await verifyAuthentication()
             try verifyPlurals()
+            try await verifyGoalTravelWithoutStatistics()
             try await verifyFanoutAndMe()
             try await prepareBlockedPhase()
             status = "Supplemental checks passed · normal Me and blocked sync ready"
@@ -404,6 +405,38 @@ struct DebugRepositorySupplementalHarness: View {
             scheduler: scheduler, goals: goals, personalization: personalization)
         await value.activateAccount()
     }
+    private func verifyGoalTravelWithoutStatistics() async throws {
+        let data = try Data(contentsOf: URL.documentsDirectory.appendingPathComponent("me-statistics.json"))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let value = try decoder.singleValueContainer().decode(String.self)
+            let fractional = ISO8601DateFormatter(); fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value) { return date }
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        let statistics = try decoder.decode(AccountStatisticsSnapshot.self, from: data)
+        let suite = "RepositoryGoalTravelFixture"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let goal = GoalDefinition(id: UUID(), kind: .weeklySessions, theme: .consistency, targetValue: 5,
+            weekStart: statistics.weekStart, createdAt: Date(), status: .active)
+        let conversation = GoalConversationState(step: .chooseTarget, draft: .init(kind: .weeklySessions, theme: .consistency, targetValue: 5), dismissedWeekStart: nil)
+        let key = "goal_store_active_goal_v1.\(ActivityAccountBoundary.current.owner)"
+        let conversationKey = "goal_store_conversation_v1.\(ActivityAccountBoundary.current.owner)"
+        let goalData = try JSONEncoder().encode(goal), conversationData = try JSONEncoder().encode(conversation)
+        defaults.set(goalData, forKey: key); defaults.set(conversationData, forKey: conversationKey)
+        let model = GoalStore(defaults: defaults, calendar: PlanningCalendarContext.accountCalendar(timeZone: "Asia/Tokyo"))
+        model.updateStatistics(nil, activities: [])
+        try expect(model.activeGoal == goal && model.progress == nil && model.conversation.step == .chooseTarget,
+            "Tokyo_device_nil_account_statistics_preserves_LA_goal_and_conversation")
+        try expect(defaults.data(forKey: key) == goalData && defaults.data(forKey: conversationKey) == conversationData,
+            "nil_account_statistics_does_not_expire_or_rewrite_persisted_LA_goal")
+        model.updateStatistics(statistics, activities: [])
+        try expect(model.progress?.currentValue == 4 && model.progress?.targetValue == 5 && model.activeGoal == goal,
+            "canonical_LA_statistics_restore_four_of_five_progress_after_Tokyo_nil_state")
+    }
+
     private func verifyFanoutAndMe() async throws {
         AuthStore.activateRepositoryFixture("repository-supplemental-fanout")
         try await ActivityPersistence.shared.deleteAll()
