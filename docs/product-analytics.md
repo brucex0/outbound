@@ -487,3 +487,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Durable iOS/Android performed-workout save uses `feature_exposed` with only `feature=performed_workout_saved` after local persistence. Receipt/plan/workout identifiers, revisions, hashes, exact effort and suitability are excluded. Backend reconciliation retains its bounded recorded/replayed categories.
 
 - Opening running programme progress that needs review emits only `feature_exposed` with `feature=running_programme_review`. Source-week indices, calendar estimates, constraint details, prescriptions and identifiers are excluded. Expected schedule/programme validation logs only bounded operation/category.
+
+- Existing-plan `running_plan_review` operational diagnostics use only `result=entered|cleared` and the bounded validation category. They exclude plan/version/workout/issuance identifiers, exact volume/caps/dates, ratings and private engine content. Repeated unchanged review does not emit a new entry. Generic running review reuses `feature=running_programme_review`; no new personal-data property is added.
