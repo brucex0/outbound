@@ -465,7 +465,15 @@ private fun SignedInApp(
     val trustedContacts by cheerPickerViewModel.trustedContacts.collectAsStateWithLifecycle()
     val sharesWithTrustedContactsByDefault by cheerPickerViewModel.sharesWithTrustedContactsByDefault.collectAsStateWithLifecycle()
     val selectedCheerIds by cheerPickerViewModel.selectedRecipientIds.collectAsStateWithLifecycle()
-    val selectedCheerIdSet = selectedCheerIds.toSet()
+    val acceptedCheerIdSet = remember(integration.connections) {
+        integration.connections.asSequence()
+            .filter { it.relationship in setOf("accepted", "connected") }
+            .map { it.id }
+            .toSet()
+    }
+    val selectedCheerIdSet = remember(selectedCheerIds, acceptedCheerIdSet) {
+        selectedCheerIds.toSet().intersect(acceptedCheerIdSet)
+    }
     val activeCheerShare by cheerPickerViewModel.activeShare.collectAsStateWithLifecycle()
     val recordingSafetyViewModel: RecordingSafetyViewModel = hiltViewModel()
     val sharedLiveGroupRun by recordingSafetyViewModel.coordinator.group.collectAsStateWithLifecycle()
@@ -1428,7 +1436,7 @@ private fun SignedInApp(
             CheerInvitationPickerDialog(
                 connections = integration.connections,
                 trustedContacts = trustedContacts,
-                currentSelection = selectedCheerIdSet,
+                currentSelection = selectedCheerIds.toSet(),
                 onDismiss = { cheerPickerVisible = false },
                 onSetUpTrustedContacts = {
                     cheerPickerVisible = false

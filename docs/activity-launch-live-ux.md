@@ -118,7 +118,7 @@ The confirmed Finish handoff stays inside the existing full-screen activity surf
 
 ## Feedback and Measurement
 
-Use temporary toasts for setup changes and learned-default confirmation. Overlays dismiss with their close action, outside tap, or Escape in the web reference. Selection uses text/checkmarks or state labels in addition to color. Android’s Today `Cheer me on` pill reflects the saved recipient selection: selected while at least one recipient is configured, and unselected after all recipients are removed.
+Use temporary toasts for setup changes and learned-default confirmation. Overlays dismiss with their close action, outside tap, or Escape in the web reference. Selection uses text/checkmarks or state labels in addition to color. Android’s Today `Cheer me on` pill reflects saved recipients who remain accepted connections. Its picker seeds the selection once per opening, defaults to trusted accepted connections when no saved recipient remains valid, and preserves edits across roster refreshes while pruning removed connections. Trusted defaults may arrive after the connections roster; they apply only while no valid initial selection or user edit has resolved the choice.
 
 Production analytics reuse the typed activity funnel in `docs/product-analytics.md`: setup exposure/configuration, `activity_started`, pause/resume/finish, and save/discard. `calories` is a bounded `goal_type`, `activity_type` distinguishes walking from running without exposing workout facts, and calorie targets use coarse target buckets. Do not emit an event for every mode tap or include exact targets, contact names, playlist names, or shoe names.
 

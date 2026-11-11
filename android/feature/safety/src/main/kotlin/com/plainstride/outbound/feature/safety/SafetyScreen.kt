@@ -204,8 +204,21 @@ fun CheerInvitationPickerDialog(
     val trustedIds = remember(trustedContacts, accepted) {
         trustedContacts.map(TrustedContact::id).toSet().intersect(accepted.map(SocialPerson::id).toSet())
     }
-    var selected by remember(currentSelection, trustedIds) {
-        mutableStateOf(if (currentSelection.isNotEmpty()) currentSelection.intersect(accepted.map(SocialPerson::id).toSet()) else trustedIds)
+    val acceptedIds = remember(accepted) { accepted.map(SocialPerson::id).toSet() }
+    // Seed once per opening: roster refreshes also change the parent's filtered selection.
+    var selected by remember { mutableStateOf(currentSelection) }
+    var selectionInitialized by remember { mutableStateOf(false) }
+    var selectionEdited by remember { mutableStateOf(false) }
+    LaunchedEffect(acceptedIds, trustedIds) {
+        if (!selectionInitialized && acceptedIds.isEmpty()) return@LaunchedEffect
+        val retainedSelection = selected.intersect(acceptedIds)
+        selected = if (!selectionInitialized && !selectionEdited && retainedSelection.isEmpty()) {
+            trustedIds
+        } else {
+            retainedSelection
+        }
+        // Empty trusted contacts may still be loading; a choice or edit resolves defaults.
+        selectionInitialized = selectionInitialized || selectionEdited || selected.isNotEmpty()
     }
     val trusted = accepted.filter { it.id in trustedIds }
     val others = accepted.filterNot { it.id in trustedIds }
@@ -226,7 +239,7 @@ fun CheerInvitationPickerDialog(
                 ) {
                     Text(stringResource(R.string.cheer_picker_title), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     TextButton(onDismiss) { Text(stringResource(R.string.cheer_picker_cancel)) }
-                    TextButton(onClick = { onDone(selected) }) { Text(stringResource(R.string.cheer_picker_done)) }
+                    TextButton(onClick = { onDone(selected.intersect(acceptedIds)) }) { Text(stringResource(R.string.cheer_picker_done)) }
                 }
                 HorizontalDivider()
                 LazyColumn(
@@ -246,11 +259,11 @@ fun CheerInvitationPickerDialog(
                             }
                         }
                     } else {
-                        items(trusted, key = SocialPerson::id) { person -> CheerInvitationRow(person, person.id in selected) { selected = selected.toggle(person.id) } }
+                        items(trusted, key = SocialPerson::id) { person -> CheerInvitationRow(person, person.id in selected) { selectionEdited = true; selected = selected.toggle(person.id) } }
                     }
                     if (others.isNotEmpty()) {
                         item { Text(stringResource(R.string.cheer_picker_others), Modifier.padding(start = 4.dp, top = 16.dp, bottom = 8.dp), style = MaterialTheme.typography.titleSmall) }
-                        items(others, key = SocialPerson::id) { person -> CheerInvitationRow(person, person.id in selected) { selected = selected.toggle(person.id) } }
+                        items(others, key = SocialPerson::id) { person -> CheerInvitationRow(person, person.id in selected) { selectionEdited = true; selected = selected.toggle(person.id) } }
                     }
                     item {
                         Text(
