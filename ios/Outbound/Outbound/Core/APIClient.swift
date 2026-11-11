@@ -461,6 +461,18 @@ final class APIClient {
         return state.trainingPlanState(readiness: readiness)
     }
 
+    func updateRunningBenchmark(goalID: String, report: RunningBenchmarkReport?, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        let state: PlanningAPIStateResponse = try await patch("/planning/goals/\(goalID)/running-benchmark", body: RunningBenchmarkUpdateRequest(runningBenchmark: report))
+        let suggestion: ActivitySuggestionResponse?
+        do { suggestion = try await fetchActivitySuggestion() }
+        catch is CancellationError { throw CancellationError() }
+        catch {
+            ActivityDiagnosticLog.error(.sync, "running_benchmark_suggestion_refresh_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+            suggestion = nil
+        }
+        return state.trainingPlanState(readiness: readiness, activitySuggestion: suggestion)
+    }
+
     func clearActiveTrainingPlan(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
         let state: PlanningAPIStateResponse = try await delete("/planning/plan")
         let activitySuggestion = try? await fetchActivitySuggestion()
@@ -1237,13 +1249,28 @@ nonisolated enum APIError: LocalizedError, Sendable {
 
     var errorDescription: String? {
         switch self {
-        case let .http(statusCode, message, _):
+        case let .http(statusCode, message, code):
+            if code == "running_schedule_conflict" { return String(localized: "planning.running_schedule_conflict") }
+            if code == "programme_timeline_conflict" { return String(localized: "planning.programme_timeline_conflict") }
+            if code == "programme_constraints_conflict" { return String(localized: "planning.programme_constraints_conflict") }
+            if code == "goal_timeline_unrealistic" {
+                return String(localized: "planning.goal_timeline_unrealistic", defaultValue: "This goal isn’t realistic from your current starting point. Choose a later race or start with a shorter-distance plan.")
+            }
             return "HTTP \(statusCode): \(message)"
         }
     }
 }
 
 extension Error {
+    /// Only known actionable plan validation is displayed; unrelated HTTP bodies stay hidden.
+    nonisolated var planningValidationMessage: String? {
+        guard let apiError = self as? APIError,
+              case let .http(_, _, code) = apiError,
+              let code,
+              ["running_schedule_conflict", "programme_timeline_conflict", "programme_constraints_conflict", "goal_timeline_unrealistic"].contains(code) else { return nil }
+        return apiError.errorDescription
+    }
+
     /// True when the server rejected the request's credentials (401). Used by
     /// callers that can safely wait out a transient auth blip and retry once.
     nonisolated var isAuthenticationRejected: Bool {
@@ -1356,7 +1383,11 @@ private extension PlanningAPIStateResponse {
         let sport = goal.activities.count > 1
             ? TrainingPlanSport.mixed
             : TrainingPlanSport.apiSport(from: goal.activities.first ?? "run")
-        let planWorkouts = workouts ?? upcoming
+        var workoutsByID: [String: PlanningAPIWorkout] = [:]
+        for workout in (workouts ?? []) + upcoming where workoutsByID[workout.id] == nil {
+            workoutsByID[workout.id] = workout
+        }
+        let planWorkouts = workoutsByID.values.sorted { $0.scheduledDate < $1.scheduledDate }
         let currentWeekIndex = Self.currentWeekIndex(createdAt: createdAt, calendar: calendar)
         let weekWorkouts = planWeekWorkouts(
             inPlanWeek: currentWeekIndex,
@@ -1365,6 +1396,11 @@ private extension PlanningAPIStateResponse {
             planWorkouts: planWorkouts
         )
         let scheduledWorkouts = weekWorkouts.map { $0.trainingPlanWorkout() }
+        let weekAnchor = calendar.date(byAdding: .day, value: (currentWeekIndex - 1) * 7, to: calendar.startOfDay(for: createdAt)) ?? calendar.startOfDay(for: createdAt)
+        let planSchedule = planWorkouts.filter { workout in
+            guard let date = APIDateParser.planningDate(from: workout.scheduledDate), date >= weekAnchor else { return false }
+            return !["cancelled", "canceled", "superseded", "rest"].contains(workout.status.lowercased())
+        }.map { $0.trainingPlanWorkout() }
         let notificationWorkouts = upcoming.compactMap { workout -> ScheduledWorkoutReminder? in
             guard !["completed", "cancelled", "canceled", "skipped", "rest"].contains(workout.status.lowercased()),
                   let scheduledDate = APIDateParser.planningDate(from: workout.scheduledDate) else { return nil }
@@ -1382,7 +1418,8 @@ private extension PlanningAPIStateResponse {
             max(1, Int(ceil(Double((calendar.dateComponents([.day], from: calendar.startOfDay(for: createdAt), to: $0).day ?? 0) + 1) / 7.0)))
         }
         let goalDurationWeeks = plan.source == "generated" ? goal.reviewHorizonWeeks ?? eventWeeks : nil
-        let durationWeeks = fallbackRecommendation?.durationWeeks
+        let durationWeeks = currentVersion?.engineDecision?.nominalSourceWeeks
+            ?? fallbackRecommendation?.durationWeeks
             ?? goalDurationWeeks
             ?? Self.estimatedDurationWeeks(createdAt: createdAt, workouts: planWorkouts, calendar: calendar)
         let sessionsPerWeek = goal.daysPerWeekTarget
@@ -1407,7 +1444,10 @@ private extension PlanningAPIStateResponse {
             longSessionMinutes: longSessionMinutes,
             createdAt: createdAt,
             raceGoal: goal.type == "eventPreparation" ? SavedRaceGoal(id: goal.id, targetDate: goal.targetDate, targetDistanceMeters: goal.targetDistanceMeters, eventIntent: goal.eventIntent ?? "finish", targetTimeSeconds: goal.targetTimeSeconds, daysPerWeekTarget: sessionsPerWeek, maxSessionMinutes: longSessionMinutes, shortRunSessions: goal.shortRunSessions ?? false, optionalMobility: goal.optionalMobility ?? false, editable: plan.source == "generated") : nil,
-            roadmap: roadmap
+            runningBenchmark: goal.activities.contains("run") ? RunningBenchmarkContext(goalID: goal.id, fitness: goal.currentRunningFitness) : nil,
+            roadmap: roadmap,
+            plannedSchedule: planSchedule,
+            programmeProgress: goal.activities.contains("run") ? currentVersion?.engineDecision : nil
         )
 
         let completedWorkouts = weekWorkouts.filter { $0.status == "completed" }
@@ -1423,7 +1463,7 @@ private extension PlanningAPIStateResponse {
             )
         )
         let weekSnapshot = TrainingPlanWeekSnapshot(
-            currentWeekIndex: min(currentWeekIndex, durationWeeks),
+            currentWeekIndex: currentVersion?.engineDecision?.programme != nil ? currentWeekIndex : min(currentWeekIndex, durationWeeks),
             totalWeeks: durationWeeks,
             completedSessions: completedSessions,
             targetSessions: targetSessions,
@@ -1543,7 +1583,8 @@ private extension PlanningAPIStateResponse {
             allowsCalorieGoal: ["easyAerobic", "recovery"].contains(apiWorkout.stimulus),
             plannedWorkoutID: apiWorkout.id,
             routeName: nil,
-            workoutSteps: workout.sessionIntentSteps
+            workoutSteps: workout.sessionIntentSteps,
+            performedWorkoutReference: apiWorkout.performedWorkoutReference
         )
 
         return TodayTrainingSuggestion(
@@ -1609,12 +1650,24 @@ private extension PlanningAPIWorkout {
             distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
             targetCalories: targetCalories,
             steps: targetCalories == nil ? steps : [],
-            isOptional: prescription?.optional ?? false
+            isOptional: prescription?.optional ?? false,
+            status: status
         )
     }
 }
 
 private struct PlanningWorkoutPrescription: Decodable { let optional: Bool? }
+
+private func planStepKind(_ phase: String?, stimulus: String) -> TrainingPlanWorkoutStepKind {
+    if phase == "work" {
+        switch stimulus {
+        case "threshold": return .tempo
+        case "speed": return .interval
+        default: return .run
+        }
+    }
+    return (phase ?? stimulus).stepKind
+}
 
 private extension PlanningAPIWorkoutBlock {
     func trainingPlanSteps(workoutID: String) -> [TrainingPlanWorkoutStep] {
@@ -1636,7 +1689,10 @@ private extension PlanningAPIWorkoutBlock {
                 kind: step.kind.stepKind,
                 label: BuiltinWorkoutText.localized(step.label),
                 durationSeconds: step.durationSeconds ?? durationSeconds ?? 0,
-                detail: step.detail.map(BuiltinWorkoutText.localized) ?? step.kind.stepDetail
+                detail: step.detail.map(BuiltinWorkoutText.localized) ?? step.kind.stepDetail,
+                rpeMin: step.target?.rpe?.first,
+                rpeMax: step.target?.rpe?.last,
+                estimatedPace: step.target?.paceEstimatePolicy == "reported-maximal-running-v1" ? step.target?.pace : nil
             )
         }
     }
@@ -1953,6 +2009,7 @@ struct PlannedWorkoutCompletionRequest: Encodable {
     let energyKilocalories: Int?
     let avgPace: Double?
     let avgHeartRate: Int?
+    var perceivedEffort: Int? = nil
     let completionQuality: String
 }
 
@@ -1983,6 +2040,7 @@ struct ActivitySuggestionPayload: Codable, Equatable, Identifiable {
     var durationSeconds: Int? = nil
     var workoutEditId: String? = nil
     var workoutRevision: String? = nil
+    var performedWorkoutReference: PerformedWorkoutReference? = nil
     let optional: Bool
 }
 
@@ -2037,10 +2095,34 @@ extension ActivitySuggestionPayload {
     func todayTrainingSuggestion(guideLine: String) -> TodayTrainingSuggestion? {
         guard let sport = SportType.apiSport(from: modality) else { return nil }
         let catalog = (effectiveWorkout ?? catalogWorkout).map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) }
-        let catalogEfforts = catalog?.guideInstructions.segments.map(\.effort)
-        let displayEffort = catalogEfforts.map { efforts in
-            String(format: String(localized: "today.change.rpe_range", defaultValue: "RPE %1$d–%2$d"), locale: .autoupdatingCurrent, efforts.map(\.rpeMin).min() ?? 1, efforts.map(\.rpeMax).max() ?? 2)
-        } ?? BuiltinWorkoutText.localized(effortLabel)
+        let structuredEfforts = catalog.map { workout -> (work: SessionWorkoutCue.Effort?, recovery: SessionWorkoutCue.Effort?) in
+            let cuesByID = workout.guideInstructions.segments.reduce(into: [String: SessionWorkoutCue.Effort]()) { result, cue in
+                if result[cue.id] == nil { result[cue.id] = cue.effort }
+            }
+            let phases = workout.steps.compactMap { step -> (String, SessionWorkoutCue.Effort)? in
+                guard let phase = step.coachingTarget?.phase.rawValue, let effort = cuesByID[step.id] else { return nil }
+                return (phase, effort)
+            }
+            func aggregate(_ phase: String) -> SessionWorkoutCue.Effort? {
+                let values = phases.filter { $0.0 == phase }.map(\.1)
+                guard let min = values.map(\.rpeMin).min(), let max = values.map(\.rpeMax).max() else { return nil }
+                return SessionWorkoutCue.Effort(rpeMin: min, rpeMax: max, feel: "")
+            }
+            return (aggregate("work"), aggregate("recovery"))
+        }
+        let displayEffort: String = {
+            if let work = structuredEfforts?.work, let recovery = structuredEfforts?.recovery {
+                let rangeFormat = String(localized: "plan.details.rpe_range", defaultValue: "RPE %1$d–%2$d")
+                let workRange = String(format: rangeFormat, work.rpeMin, work.rpeMax)
+                let recoveryRange = String(format: rangeFormat, recovery.rpeMin, recovery.rpeMax)
+                return String(format: String(localized: "plan.details.work_recovery_effort", defaultValue: "Work %@ · Recovery %@"), workRange, recoveryRange)
+            }
+            if let efforts = catalog?.guideInstructions.segments.map(\.effort),
+               let min = efforts.map(\.rpeMin).min(), let max = efforts.map(\.rpeMax).max() {
+                return String(format: String(localized: "today.change.rpe_range", defaultValue: "RPE %1$d–%2$d"), locale: .autoupdatingCurrent, min, max)
+            }
+            return BuiltinWorkoutText.localized(effortLabel)
+        }()
         let durationSeconds = self.durationSeconds ?? durationMinutes * 60
         let durationText = durationSeconds % 60 == 0
             ? String(format: String(localized: "activity.completed.duration.format", defaultValue: "%d min"), locale: .autoupdatingCurrent, durationSeconds / 60)
@@ -2077,7 +2159,9 @@ extension ActivitySuggestionPayload {
         }
         let stepDuration = max(60, durationSeconds / max(1, steps.count))
         let workoutSteps = catalog?.steps.map { step in
-            TrainingPlanWorkoutStep(id: step.id, kind: stimulus.stepKind, label: step.label, durationSeconds: step.durationSeconds, detail: step.detail ?? "")
+            let effort = catalog?.guideInstructions.segments.first(where: { $0.id == step.id })?.effort
+            return TrainingPlanWorkoutStep(id: step.id, kind: planStepKind(step.coachingTarget?.phase.rawValue, stimulus: stimulus), label: step.label, durationSeconds: step.durationSeconds, detail: step.detail ?? "", rpeMin: effort?.rpeMin, rpeMax: effort?.rpeMax,
+                estimatedPace: step.coachingTarget?.paceEstimatePolicy == "reported-maximal-running-v1" ? step.coachingTarget?.pace.map { RunningPhasePace(targetSecondsPerKilometer: $0.targetSecondsPerKilometer, fasterToleranceSeconds: $0.fasterToleranceSeconds, slowerToleranceSeconds: $0.slowerToleranceSeconds) } : nil)
         } ?? steps.enumerated().map { index, step in
             TrainingPlanWorkoutStep(
                 id: "\(id)-step-\(index)",
@@ -2131,12 +2215,13 @@ extension ActivitySuggestionPayload {
             plannedWorkoutID: plannedWorkoutId,
             catalogWorkout: catalogWorkout.map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) },
             effectiveWorkout: effectiveWorkout.map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) },
-            workoutEditID: workoutEditId, workoutRevision: workoutRevision
+            workoutEditID: workoutEditId, workoutRevision: workoutRevision,
+            performedWorkoutReference: performedWorkoutReference
         )
 
         return TodayTrainingSuggestion(
             title: catalog?.title ?? BuiltinWorkoutText.localized(title),
-            detail: catalogDetail ?? calorieDetail ?? "\(String(localized: "\(durationMinutes) min")) • \(displayEffort)",
+            detail: calorieDetail ?? catalogDetail ?? "\(String(localized: "\(durationMinutes) min")) • \(displayEffort)",
             guideLine: catalog?.guideLine ?? guideLine,
             adjustmentLine: optional ? "Optional" : nil,
             suggestedSession: suggestion,
@@ -2385,6 +2470,7 @@ private struct PlanningAPIGoal: Decodable {
     let reviewHorizonWeeks: Int?
     let eventIntent: String?
     let targetTimeSeconds: Int?
+    let currentRunningFitness: RunningBenchmarkFitness?
     let shortRunSessions: Bool?
     let optionalMobility: Bool?
     let daysPerWeekTarget: Int?
@@ -2403,6 +2489,7 @@ private struct PlanningAPIVersion: Decodable {
     let versionNumber: Int
     let reason: String
     let summary: String
+    let engineDecision: RunningProgrammeProgress?
 }
 
 private struct PlanningAPIWorkout: Decodable {
@@ -2417,6 +2504,7 @@ private struct PlanningAPIWorkout: Decodable {
     let isKeyWorkout: Bool
     let status: String
     let prescription: PlanningWorkoutPrescription?
+    let performedWorkoutReference: PerformedWorkoutReference?
     let blocks: [PlanningAPIWorkoutBlock]
 }
 
@@ -2436,6 +2524,13 @@ private struct PlanningAPIWorkoutStep: Decodable {
     let durationSeconds: Int?
     let distanceMeters: Double?
     let detail: String?
+    let target: PlanningAPIStepTarget?
+}
+
+private struct PlanningAPIStepTarget: Decodable {
+    let rpe: [Int]?
+    let pace: RunningPhasePace?
+    let paceEstimatePolicy: String?
 }
 
 private struct PlanningAPIAthleteState: Decodable {
@@ -2792,3 +2887,70 @@ private struct WorkoutEditApplyResponseDTO: Decodable {
     let activitySuggestion: ActivitySuggestionResponse
     struct Receipt: Decodable { let plannedWorkoutId: String?; let workoutEditId: String; let revision: String }
 }
+
+#if DEBUG
+/// Loads only developer-supplied synthetic JSON from this simulator's Documents.
+enum DebugRunningPlanFixture {
+    private struct Envelope: Decodable {
+        let planning: PlanningAPIStateResponse
+        let suggestion: ActivitySuggestionResponse
+    }
+    /// Uses production DTO conversion, launch recovery, durable storage and private wire encoding only.
+    /// Never uploads or touches a recorder; removes only the new synthetic local row.
+    static func verifyReceiptTransport() async {
+        guard let session = load()?.todaySuggestion?.suggestedSession, let issued = session.performedWorkoutReference else {
+            print("[planning_debug] receipt_transport_unavailable category=missing_synthetic_receipt")
+            return
+        }
+        for modified in [false, true] {
+            var saved: SavedActivity?
+            do {
+                let original = session.intent
+                let intent = modified ? original.replacingGoal(.timeSeconds((original.targetDurationSeconds ?? 1800) + 60), unitSystem: .metric) : original
+                let data = try JSONEncoder().encode(SessionWorkoutRecoverySnapshot(intent))
+                let restored = try JSONDecoder().decode(SessionWorkoutRecoverySnapshot.self, from: data).intent(preparedRoute: nil, activityEvent: nil)
+                let reference = restored.workoutReference?.performedWorkoutReference
+                let end = Date(), duration = restored.targetDurationSeconds ?? 1800
+                let activity = try await ActivityPersistence.shared.save(
+                    summary: ActivitySummary(startedAt: end.addingTimeInterval(-Double(duration)), endedAt: end, durationSecs: duration, distanceM: 3000, avgPace: 420, elevationGainM: 0, trackPoints: []),
+                    photos: [], activityType: .running, title: "Synthetic retained receipt", guideNudge: "", reflection: nil, goal: restored.activityGoal,
+                    energyKilocalories: nil, source: .outboundRecorded, gear: nil, manualEdits: nil, indoor: nil, cadence: nil, heartRateZones: nil,
+                    recordingSession: nil, activityEventID: nil, followedRoute: nil, recognitionBadgeIDs: [], companionType: nil,
+                    sessionEffortRating: 4, performedWorkoutReference: reference, plannedWorkoutCompletionQuality: "completed")
+                saved = activity
+                let loaded = try await ActivityPersistence.shared.load().first { $0.id == activity.id }
+                let copied = loaded?.withRoute(loaded?.route)
+                let extras = copied.map(ActivityClientExtras.init(from:))
+                let wire = try extras.map { try JSONEncoder().encode($0) }
+                let reloaded = try wire.map { try JSONDecoder().decode(ActivityClientExtras.self, from: $0) }
+                let exact = reference.map { value in
+                    value.policyVersion == issued.policyVersion && value.issuanceId == issued.issuanceId
+                        && value.revision == issued.revision && value.plannedWorkoutId == issued.plannedWorkoutId
+                        && value.planVersionId == issued.planVersionId && value.workoutEditId == issued.workoutEditId
+                        && value.workoutRevision == issued.workoutRevision
+                } ?? false
+                print("[planning_debug] receipt_transport local_variant=\(modified) same_issued_reference=\(exact) as_issued=\(reference?.performedAsIssued == true) persisted=\(reloaded?.performedWorkoutReference == reference) rating=\(reloaded?.sessionEffortRating == 4)")
+                try await ActivityPersistence.shared.delete(activity)
+                saved = nil
+            } catch {
+                print("[planning_debug] receipt_transport_failed category=local_serialization_or_persistence")
+                if let saved {
+                    do { try await ActivityPersistence.shared.delete(saved) }
+                    catch { print("[planning_debug] receipt_cleanup_failed category=local_persistence") }
+                }
+            }
+        }
+    }
+    static func load(filename: String = "planning-fixture.json") -> TrainingPlanStateResponse? {
+        guard let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
+        do {
+            let data = try Data(contentsOf: directory.appendingPathComponent(filename))
+            let fixture = try JSONDecoder().decode(Envelope.self, from: data)
+            return fixture.planning.trainingPlanState(readiness: nil, activitySuggestion: fixture.suggestion)
+        } catch {
+            print("[planning_debug] fixture_load_failed category=invalid_or_missing_fixture")
+            return nil
+        }
+    }
+}
+#endif

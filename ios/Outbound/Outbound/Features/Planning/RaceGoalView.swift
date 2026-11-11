@@ -33,7 +33,7 @@ struct RaceGoalUpdateRequest: Encodable {
 }
 
 private func raceText(_ key: String) -> String { String(localized: String.LocalizationValue("today.race_goal." + key)) }
-private func raceDate(_ value: String?) -> Date? {
+func raceDate(_ value: String?) -> Date? {
     guard let value else { return nil }
     let parts = value.prefix(10).split(separator: "-").compactMap { Int($0) }
     guard parts.count == 3 else { return nil }
@@ -45,7 +45,6 @@ struct RaceGoalCard: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @Environment(\.analyticsManager) private var analytics
     let goal: SavedRaceGoal
-    let roadmap: RaceGoalRoadmap?
     @State private var editing = false
 
     var body: some View {
@@ -60,31 +59,57 @@ struct RaceGoalCard: View {
                     Text(String(format: raceText("countdown"), max(0, Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: date).day ?? 0))).font(.subheadline)
                 }
                 Text(goal.eventIntent == "targetTime" ? "\(raceText("finish_time")): \(raceClock(goal.targetTimeSeconds ?? 0))" : raceText(goal.eventIntent == "perform" ? "perform" : "finish"))
-                if let roadmap {
-                    Text(String(format: raceText("phase"), raceText(roadmap.currentPhase))).font(.subheadline.bold())
-                    Text(raceText("roadmap")).font(.headline).padding(.top, OutboundSpacing.compact)
-                    ForEach(roadmap.phases, id: \.phase) { phase in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(raceText(phase.phase)).font(.subheadline.weight(phase.phase == roadmap.currentPhase ? .bold : .regular))
-                            if let start = raceDate(phase.startDate), let end = raceDate(phase.endDate) {
-                                Text("\(start.formatted(date: .abbreviated, time: .omitted)) – \(end.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    if let through = raceDate(roadmap.detailedThroughDate) {
-                        Text(String(format: raceText("window"), through.formatted(date: .abbreviated, time: .omitted))).font(.subheadline)
-                    }
-                    Text(raceText("rolling")).font(.caption).foregroundStyle(.secondary)
-                }
+                Text(String(format: raceText("days"), goal.daysPerWeekTarget))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 if goal.editable {
                     Button(raceText("edit")) {
                         editing = true
                         Task { await analytics?.track(.init(.planningSurfaceOpened, properties: [.sourceType: .string("race_goal_edit"), .entrySource: .string("plan_details")])) }
-                    }.buttonStyle(.bordered)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                    .frame(minHeight: 44, alignment: .leading)
                 }
             }
         }
         .sheet(isPresented: $editing) { NavigationStack { RaceGoalEditor(goal: goal) } }
+    }
+}
+
+struct TrainingPlanRoadmapSection: View {
+    let roadmap: RaceGoalRoadmap
+
+    var body: some View {
+        OutboundCard {
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                Text(String(localized: "plan.details.training_roadmap", defaultValue: "Training roadmap"))
+                    .font(.headline)
+                Text(String(format: raceText("phase"), raceText(roadmap.currentPhase)))
+                    .font(.subheadline.weight(.semibold))
+                    .accessibilityLabel(String(format: raceText("phase"), raceText(roadmap.currentPhase)))
+                ForEach(roadmap.phases, id: \.phase) { phase in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            if phase.phase == roadmap.currentPhase {
+                                Image(systemName: "location.fill")
+                                    .accessibilityHidden(true)
+                            }
+                            Text(raceText(phase.phase))
+                                .font(.subheadline.weight(phase.phase == roadmap.currentPhase ? .bold : .regular))
+                        }
+                        if let start = raceDate(phase.startDate), let end = raceDate(phase.endDate) {
+                            Text("\(start.formatted(date: .abbreviated, time: .omitted)) – \(end.formatted(date: .abbreviated, time: .omitted))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                Text(String(localized: "plan.details.future_outline", defaultValue: "This roadmap shows broad race phases. Detailed workouts are scheduled separately."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
@@ -168,9 +193,13 @@ private struct RaceGoalEditor: View {
                 try? await Task.sleep(for: .seconds(1))
                 dismiss()
             } catch {
-                ActivityDiagnosticLog.error(.sync, "[planning] race_goal_update_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+                if error.planningValidationMessage != nil {
+                    ActivityDiagnosticLog.notice(.sync, "[planning] race_goal_update_validation category=\(ActivityDiagnosticLog.errorCategory(error))")
+                } else {
+                    ActivityDiagnosticLog.error(.sync, "[planning] race_goal_update_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+                }
                 await analytics?.track(.init(.raceGoalUpdated, properties: [.result: .string("failure"), .selectionType: .string(short ? "short" : "standard")]))
-                toast = raceText("failed")
+                toast = error.planningValidationMessage ?? raceText("failed")
                 try? await Task.sleep(for: .seconds(4))
                 toast = nil
             }

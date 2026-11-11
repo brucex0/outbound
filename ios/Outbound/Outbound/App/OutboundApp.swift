@@ -142,6 +142,11 @@ struct OutboundApp: App {
             DebugCommunityRouteLibraryHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugGroupMark") {
             DebugGroupMarkReviewHarness()
+        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugRunningPlan") {
+            DebugRunningPlanHarness()
+                .environmentObject(trainingPlanStore)
+                .environmentObject(measurementPreferences)
+                .environmentObject(guideCatalogStore)
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugPostRunSummary") {
             DebugPostRunSummaryHarness()
                 .environmentObject(measurementPreferences)
@@ -845,9 +850,17 @@ struct TrainingPlanWorkoutStep: Identifiable, Codable, Hashable {
     let label: String
     let durationSeconds: Int
     let detail: String?
+    var rpeMin: Int? = nil
+    var rpeMax: Int? = nil
+    var estimatedPace: RunningPhasePace? = nil
 
     var durationLabel: String {
         Self.formatDuration(durationSeconds)
+    }
+
+    var rpeLabel: String? {
+        guard let rpeMin, let rpeMax else { return nil }
+        return String(format: String(localized: "plan.details.rpe_range", defaultValue: "RPE %1$d–%2$d"), rpeMin, rpeMax)
     }
 
     private static func formatDuration(_ seconds: Int) -> String {
@@ -873,6 +886,7 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
     let targetCalories: Int?
     let steps: [TrainingPlanWorkoutStep]
     let isOptional: Bool
+    var status: String? = nil
 
     init(
         id: String,
@@ -888,7 +902,8 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
         distanceLabel: String?,
         targetCalories: Int? = nil,
         steps: [TrainingPlanWorkoutStep],
-        isOptional: Bool
+        isOptional: Bool,
+        status: String? = nil
     ) {
         self.id = id
         self.scheduledDate = scheduledDate
@@ -904,6 +919,7 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
         self.targetCalories = targetCalories
         self.steps = steps
         self.isOptional = isOptional
+        self.status = status
     }
 
     var durationMinutesRounded: Int {
@@ -919,11 +935,28 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
 
     var stepSummary: [String] {
         steps.map { step in
+            let effort = step.rpeLabel.map { " • \($0)" } ?? ""
             if let detail = step.detail, !detail.isEmpty {
-                return "\(step.label) • \(step.durationLabel) • \(detail)"
+                return "\(step.label) • \(step.durationLabel) • \(detail)\(effort)"
             }
-            return "\(step.label) • \(step.durationLabel)"
+            return "\(step.label) • \(step.durationLabel)\(effort)"
         }
+    }
+
+    var intervalEffortLabel: String? {
+        func range(for kind: TrainingPlanWorkoutStepKind) -> String? {
+            let values = steps.filter { $0.kind == kind }
+            let efforts = values.compactMap { step -> (Int, Int)? in
+                guard let min = step.rpeMin, let max = step.rpeMax else { return nil }
+                return (min, max)
+            }
+            guard !efforts.isEmpty else { return nil }
+            let min = efforts.map(\.0).min()!
+            let max = efforts.map(\.1).max()!
+            return String(format: String(localized: "plan.details.rpe_range", defaultValue: "RPE %1$d–%2$d"), min, max)
+        }
+        guard let work = range(for: .interval) ?? range(for: .tempo), let recovery = range(for: .recovery) else { return nil }
+        return String(format: String(localized: "plan.details.work_recovery_effort", defaultValue: "Work %@ · Recovery %@"), work, recovery)
     }
 
     var targetDistanceMeters: Double? {
@@ -1003,7 +1036,10 @@ struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
     let createdAt: Date
 
     var raceGoal: SavedRaceGoal? = nil
+    var runningBenchmark: RunningBenchmarkContext? = nil
     var roadmap: RaceGoalRoadmap? = nil
+    var plannedSchedule: [TrainingPlanWorkout]? = nil
+    var programmeProgress: RunningProgrammeProgress? = nil
 
     var localizedTitle: String {
         String(localized: String.LocalizationValue(titleKey))
@@ -1248,6 +1284,13 @@ final class TrainingPlanStore: ObservableObject {
     func updateRaceGoal(_ goal: SavedRaceGoal, request: RaceGoalUpdateRequest) async throws {
         refreshTask?.cancel()
         let state = try await api.updateRaceGoal(goalID: goal.id, request: request, readiness: lastReadiness)
+        try Task.checkCancellation()
+        applyServerState(state, now: Date())
+    }
+
+    func updateRunningBenchmark(goalID: String, report: RunningBenchmarkReport?) async throws {
+        refreshTask?.cancel()
+        let state = try await api.updateRunningBenchmark(goalID: goalID, report: report, readiness: lastReadiness)
         try Task.checkCancellation()
         applyServerState(state, now: Date())
     }

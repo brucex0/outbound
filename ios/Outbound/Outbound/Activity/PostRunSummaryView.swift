@@ -19,7 +19,7 @@ struct PostRunSummaryView: View {
     let workoutID: String
     let onGuidanceFeedback: (LiveGuidanceFeedback) -> Void
     let onDiscardPrompted: () -> Void
-    let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
+    let onSave: ([(UIImage, PhotoMetadata)], FinishReflection, Int?, String?) async -> Bool
     let onDiscard: () -> Void
     @State private var draftPhotos: [PostRunPhoto]
     @State private var selectedPhotoIDs: Set<UUID> = []
@@ -27,6 +27,7 @@ struct PostRunSummaryView: View {
     @State private var isCameraPresented = false
     @State private var importedPhotoItems: [PhotosPickerItem] = []
     @State private var isFeedbackPresented = false
+    @State private var sessionEffortRating: Int?
     @State private var selectedEffort: RunEffort?
     @State private var continuationCapacity: ContinuationCapacity?
     @State private var selectedGuidanceFeedback: LiveGuidanceFeedback?
@@ -46,7 +47,7 @@ struct PostRunSummaryView: View {
         workoutID: String = "freestyle-run",
         onGuidanceFeedback: @escaping (LiveGuidanceFeedback) -> Void = { _ in },
         onDiscardPrompted: @escaping () -> Void = {},
-        onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool,
+        onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection, Int?, String?) async -> Bool,
         onDiscard: @escaping () -> Void
     ) {
         self.summary = summary
@@ -118,6 +119,8 @@ struct PostRunSummaryView: View {
         .ignoresSafeArea(edges: .top)
         .sheet(isPresented: $isFeedbackPresented) {
             WorkoutFeedbackView(
+                sessionEffortRating: $sessionEffortRating,
+                showsSessionEffort: activityType == .running,
                 selectedEffort: $selectedEffort,
                 continuationCapacity: $continuationCapacity,
                 selectedGuidanceFeedback: $selectedGuidanceFeedback,
@@ -417,7 +420,7 @@ struct PostRunSummaryView: View {
                 Label(String(localized: "workout.feedback.title", defaultValue: "Feedback"), systemImage: "bubble.left")
                     .font(.subheadline.weight(.semibold))
                 Spacer()
-                if selectedEffort != nil || selectedGuidanceFeedback != nil {
+                if sessionEffortRating != nil || selectedEffort != nil || selectedGuidanceFeedback != nil {
                     Image(systemName: "checkmark.circle.fill")
                         .accessibilityLabel(String(localized: "workout.feedback.added", defaultValue: "Feedback added"))
                 }
@@ -663,7 +666,7 @@ struct PostRunSummaryView: View {
                 onGuidanceFeedback(selectedGuidanceFeedback)
             }
             Task {
-                let didSave = await onSave(draftPhotos.map { ($0.image, $0.metadata) }, reflection)
+                let didSave = await onSave(draftPhotos.map { ($0.image, $0.metadata) }, reflection, activityType == .running ? sessionEffortRating : nil, selectedEffort.map { $0 == .tooHard ? "tooHard" : $0 == .easy ? "feltEasy" : "completed" })
                 if !didSave {
                     isSubmitting = false
                 }
@@ -819,6 +822,8 @@ struct PostRunCameraView: View {
 #if DEBUG
 struct DebugPostRunSummaryHarness: View {
     @State private var savedPhotoCount: Int?
+    @State private var saveAttempts = 0
+    @State private var effortRoundtripVerified = false
 
     var body: some View {
         PostRunSummaryView(
@@ -831,15 +836,48 @@ struct DebugPostRunSummaryHarness: View {
                 progressNote: nil
             ),
             recognitionPreviews: [],
-            onSave: { selectedPhotos, _ in
-                savedPhotoCount = selectedPhotos.count
-                return true
+            onSave: { selectedPhotos, reflection, rating, quality in
+                saveAttempts += 1
+                if ProcessInfo.processInfo.arguments.contains("-OutboundDebugFailFirstEffortSave"), saveAttempts == 1 { return false }
+                let receipt = ProcessInfo.processInfo.arguments.contains("-OutboundDebugReceiptRoundtrip")
+                    ? PerformedWorkoutReference(policyVersion: "performed-workout-v1", issuanceId: "synthetic-issued", revision: String(repeating: "a", count: 64), plannedWorkoutId: "synthetic-slot", planVersionId: "synthetic-version", performedAsIssued: true, workoutEditId: nil, workoutRevision: nil) : nil
+                var savedForCleanup: SavedActivity?
+                do {
+                    let saved = try await ActivityPersistence.shared.save(summary: Self.summary, photos: [], activityType: .running,
+                        title: "Synthetic effort roundtrip", guideNudge: "", reflection: reflection, goal: nil, energyKilocalories: nil,
+                        source: .outboundRecorded, gear: nil, manualEdits: nil, indoor: nil, cadence: nil, heartRateZones: nil,
+                        recordingSession: nil, activityEventID: nil, followedRoute: nil, recognitionBadgeIDs: [], companionType: nil,
+                        sessionEffortRating: rating, performedWorkoutReference: receipt, plannedWorkoutCompletionQuality: quality)
+                    savedForCleanup = saved
+                    let loaded = try await ActivityPersistence.shared.load().first { $0.id == saved.id }
+                    let copied = saved.withRoute(saved.route)
+                    let encoded = try JSONEncoder().encode(copied)
+                    let decoded = try JSONDecoder().decode(SavedActivity.self, from: encoded)
+                    let privateExtras = ActivityClientExtras(from: decoded)
+                    effortRoundtripVerified = loaded != nil && loaded?.sessionEffortRating == rating && copied.sessionEffortRating == rating
+                        && decoded.sessionEffortRating == rating && privateExtras.sessionEffortRating == rating
+                        && loaded?.performedWorkoutReference == receipt && copied.performedWorkoutReference == receipt
+                        && decoded.performedWorkoutReference == receipt && privateExtras.performedWorkoutReference == receipt
+                        && privateExtras.plannedWorkoutCompletionQuality == quality
+                    print("[planning_debug] saved_metadata_roundtrip verified=\(effortRoundtripVerified) receipt=\(receipt != nil) suitability=\(quality != nil)")
+                    try await ActivityPersistence.shared.delete(saved)
+                    savedForCleanup = nil
+                    savedPhotoCount = selectedPhotos.count
+                    return effortRoundtripVerified
+                } catch {
+                    print("[planning_debug] session_effort_roundtrip_failed category=local_persistence")
+                    if let saved = savedForCleanup {
+                        do { try await ActivityPersistence.shared.delete(saved) }
+                        catch { print("[planning_debug] session_effort_cleanup_failed category=local_persistence") }
+                    }
+                    return false
+                }
             },
             onDiscard: {}
         )
         .overlay(alignment: .topTrailing) {
             if let savedPhotoCount {
-                Text("Saved \(savedPhotoCount)")
+                Text("Saved \(savedPhotoCount) · effort persisted \(effortRoundtripVerified)")
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)

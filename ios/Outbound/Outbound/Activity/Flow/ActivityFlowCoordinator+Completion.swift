@@ -7,7 +7,9 @@ extension ActivityFlowCoordinator {
     func savePendingActivity(
         _ activity: PendingFinishedActivity,
         photos: [(UIImage, PhotoMetadata)],
-        reflection: FinishReflection
+        reflection: FinishReflection,
+        sessionEffortRating: Int?,
+        completionQuality: String? = nil
     ) async -> Bool {
         guard self.review.pendingActivity?.id == activity.id,
               self.sessionController.beginSaving() else { return false }
@@ -76,7 +78,10 @@ extension ActivityFlowCoordinator {
                 activityEventID: self.activeIntent?.activityEvent?.id,
                 followedRoute: followedRoute,
                 recognitionBadgeIDs: resolvedActivity.recognitionPreviews.map(\.badgeID),
-                companionType: self.isCompanionContextEligible ? self.setup.companionType : nil
+                companionType: self.isCompanionContextEligible ? self.setup.companionType : nil,
+                sessionEffortRating: sessionEffortRating,
+                performedWorkoutReference: self.activeIntent?.workoutReference?.performedWorkoutReference,
+                plannedWorkoutCompletionQuality: completionQuality
             )
         } catch {
             ActivityDiagnosticLog.error(
@@ -85,6 +90,12 @@ extension ActivityFlowCoordinator {
             )
             self.sessionController.saveFailed()
             return false
+        }
+        if savedActivity.sessionEffortRating != nil {
+            self.track(.init(.featureExposed, properties: [.feature: .string("session_effort_saved")]))
+        }
+        if savedActivity.performedWorkoutReference != nil {
+            self.track(.init(.featureExposed, properties: [.feature: .string("performed_workout_saved")]))
         }
         AppReviewRequestPolicy.recordSuccessfulSave(id: savedActivity.id)
         ActivityDiagnosticLog.notice(.persistence, "Post-run save completed local_state=durable")
@@ -141,34 +152,8 @@ extension ActivityFlowCoordinator {
             }
         }
 
-        if let workoutReference = self.activeIntent?.workoutReference,
-           workoutReference.source == "planned_workout" {
-            let completionRequest = PlannedWorkoutCompletionRequest(
-                workoutEditId: workoutReference.workoutEditId,
-                workoutRevision: workoutReference.workoutRevision,
-                activityId: savedActivity.sync?.serverActivityId,
-                completedAt: resolvedActivity.summary.endedAt,
-                durationSeconds: resolvedActivity.summary.durationSecs,
-                distanceMeters: resolvedActivity.summary.distanceM,
-                targetCalories: self.activeIntent?.targetCalories,
-                energyKilocalories: energyKilocalories,
-                avgPace: resolvedActivity.summary.avgPace,
-                avgHeartRate: resolvedActivity.summary.healthMetrics?.averageHeartRateBPM,
-                completionQuality: "completed"
-            )
-            Task {
-                do {
-                    _ = try await APIClient.shared.completePlannedWorkout(
-                        id: workoutReference.id, request: completionRequest
-                    )
-                } catch is CancellationError {
-                    // A canceled background completion does not undo a local save.
-                } catch {
-                    ActivityDiagnosticLog.error(.sync,
-                        "Planned workout completion failed error=\(ActivityDiagnosticLog.errorCategory(error))")
-                }
-            }
-        }
+        // The existing activity outbox atomically reconciles the retained receipt on upload.
+        // A separate best-effort completion would lose offline saves or duplicate their receipt.
 
         _ = self.dependencies.recognitionStore.recordSavedActivity(
             savedActivity,
