@@ -78,7 +78,15 @@ internal fun RunningBenchmarkEditor(goal: TrainingGoal, onDismiss: () -> Unit, o
                 else Toast.makeText(context, context.getString(R.string.benchmark_failed), Toast.LENGTH_LONG).show()
             } catch (error: CancellationException) { throw error }
             catch (error: TodayRepositoryException) {
-                Toast.makeText(context, context.getString(if (error.dataError == TodayDataError.RunningBenchmarkInvalid) R.string.benchmark_validation else R.string.benchmark_failed), Toast.LENGTH_LONG).show()
+                val message = when (error.dataError) {
+                    TodayDataError.RunningBenchmarkInvalid -> R.string.benchmark_validation
+                    TodayDataError.RunningScheduleConflict -> R.string.planning_running_schedule_conflict
+                    TodayDataError.ProgrammeTimelineConflict -> R.string.planning_programme_timeline_conflict
+                    TodayDataError.ProgrammeConstraintsConflict -> R.string.planning_programme_constraints_conflict
+                    TodayDataError.GoalTimelineUnrealistic -> R.string.planning_goal_timeline_unrealistic
+                    else -> R.string.benchmark_failed
+                }
+                Toast.makeText(context, context.getString(message), Toast.LENGTH_LONG).show()
             } catch (error: Exception) {
                 android.util.Log.e("Planning", "running_benchmark_editor_save_failed category=${error.javaClass.simpleName}")
                 Toast.makeText(context, context.getString(R.string.benchmark_failed), Toast.LENGTH_LONG).show()

@@ -99,7 +99,7 @@ internal fun ActivePlanDetailsSheet(
                 }
             },
         )
-        planning.currentVersion?.engineDecision?.takeIf { it.programme != null }?.let { RunningProgrammeNotice(it) }
+        planning.currentVersion?.engineDecision?.takeIf { it.programme != null || it.programmeDoseStatus == "needs_review" || it.programmeTimelineStatus == "needs_review" }?.let { RunningProgrammeNotice(it) }
         if (stale) Text(stringResource(R.string.plan_details_cached), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
         if (week != null) {
             val stats = listOfNotNull(

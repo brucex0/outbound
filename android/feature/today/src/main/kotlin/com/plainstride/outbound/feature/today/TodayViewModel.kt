@@ -388,8 +388,9 @@ class TodayViewModel @Inject constructor(
             val result = repository.updateRunningBenchmark(accountId, localeTag, goalId, com.plainstride.outbound.core.network.RunningBenchmarkUpdateRequest(report))
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to if (report == null) "running_benchmark_removed" else "running_benchmark_saved", AnalyticsProperty.Result to if (result.isSuccess) "success" else "failure")))
-            if ((result.exceptionOrNull() as? TodayRepositoryException)?.dataError == TodayDataError.RunningBenchmarkInvalid) {
-                android.util.Log.i("Planning", "running_benchmark_validation category=invalid_input")
+            val validationError = (result.exceptionOrNull() as? TodayRepositoryException)?.dataError
+            if (validationError in setOf(TodayDataError.RunningBenchmarkInvalid, TodayDataError.RunningScheduleConflict, TodayDataError.ProgrammeTimelineConflict, TodayDataError.ProgrammeConstraintsConflict, TodayDataError.GoalTimelineUnrealistic)) {
+                android.util.Log.i("Planning", "running_benchmark_validation category=${validationError?.javaClass?.simpleName}")
                 throw result.exceptionOrNull()!!
             }
             if (result.isFailure) {
