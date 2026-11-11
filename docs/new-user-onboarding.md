@@ -105,6 +105,12 @@ Only confirmed answers satisfy validation. A displayed suggestion may initialize
 
 The objective controls progression and tradeoffs. Do not collect secondary objectives until the planner can genuinely reconcile multiple competing outcomes.
 
+Plan creation compares a semantic intake version derived from planning body fields, activity evidence and its recency classification. Updating unrelated profile preferences or successfully creating a plan does not invalidate the same reviewed answers. A genuine evidence change returns `409 planning_context_changed` before replacement. iOS keeps the active plan and draft, presents `Refresh and review`, shows refreshed evidence separately from edited answers, and requires the runner to review the starting point and week before manually creating again. Complete unchanged private details are not repeated; changed or missing private details remain reviewable. Failed refresh preserves the draft and provides a retry.
+
+The result screen's `Change days`, `Make it easier`, and `Change activity mix` actions reuse the current draft to create a replacement. Existing drafts and profile-save context refreshes preserve explicit baseline, schedule and body edits; they do not reapply an active-plan schedule over those answers. The active plan changes only after successful generation and transactional replacement.
+
+For this rollout only, Bruce's 2026-11-11 instruction to “install and deploy and then verify” authorizes merging, deploying and installing before the remaining native runtime verification. Independent UX QA remains `Incomplete`; this order exception is not a QA pass or a blanket waiver. Native verification remains pending and must be reported separately.
+
 ### 2. Activities
 
 When recent evidence is not established, ask which activities the plan should use:
@@ -133,8 +139,12 @@ When recent evidence is not established or the runner chooses `Adjust it`, ask w
 - `1–6 sessions per week`
 - typical time available
 - preferred days when the user cares about scheduling
-- let the planner place the long session automatically when the plan needs one
+- optional `Long-run days`, shown below preferred weekdays for running plans and again on final review; each selected weekday requests its own longer easy run, stays within selected training days and survives result-screen edits; changing the parent training days removes only no-longer-available selections
+
+- let the planner place the long session automatically when no long-run days are selected
 - optional injury, illness, travel, or schedule constraints
+
+The backend validates whether history, weekly time and selected activities support all requested long runs. It returns an actionable reason when they do not fit; it does not silently drop a chosen day or increase weekly dose. Recovery and tapering can still shorten a requested long run. See `docs/adaptive-planning-engine.md` for the allocation and persistence contract.
 
 One session per week is valid. Create one meaningful anchor session and label any mobility or recovery additions as optional. Never inflate the commitment to make the plan look fuller.
 

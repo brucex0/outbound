@@ -84,6 +84,7 @@ struct PlanBuilderDraft: Codable, Equatable {
     var shortRunSessions: Bool?
     var optionalMobility: Bool?
     var preferredDays: [String] = []
+    var preferredLongRunDays: [String]?
     var eventDistanceMeters: Double?
     var eventDistanceConfirmed: Bool?
     var eventDistanceFromGoalText: Bool?

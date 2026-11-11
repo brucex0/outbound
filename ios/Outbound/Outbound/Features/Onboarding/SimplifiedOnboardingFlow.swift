@@ -26,6 +26,9 @@ struct SimplifiedOnboardingFlow: View {
     @State private var savedTrainingProfile: TrainingProfileDTO?
     @State private var intakeContext: PlanIntakeContextDTO?
     @State private var isLoadingIntakeContext = false
+    @State private var needsContextRefresh = false
+    @State private var isReviewingRefreshedContext = false
+    @State private var refreshedBodyChanged = false
     @State private var goalMessage = ""
     @State private var interpretationReply: String?
     @State private var isInterpretingGoal = false
@@ -93,6 +96,9 @@ struct SimplifiedOnboardingFlow: View {
         .sheet(isPresented: $isEventDatePickerPresented) { eventDatePickerSheet }
         .onAppear { configure() }
         .onChange(of: draft) { _, value in onboardingStore.savePlanBuilderDraft(value) }
+        .onChange(of: draft.preferredDays) { _, days in
+            draft.preferredLongRunDays = draft.preferredLongRunDays?.filter(days.contains)
+        }
         .onChange(of: step) { _, value in
             if value == .profile {
                 restoreTrainingProfileStep()
@@ -307,6 +313,27 @@ struct SimplifiedOnboardingFlow: View {
                 String(localized: "plan_builder.baseline.title", defaultValue: "Where are you starting from?"),
                 detail: String(localized: "plan_builder.baseline.subtitle", defaultValue: "A rough starting point is enough. Your first three relevant sessions will refine it.")
             )
+            if isReviewingRefreshedContext {
+                OutboundCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(String(localized: "plan_builder.context.refreshed", defaultValue: "Training context refreshed"))
+                            .font(.headline)
+                        Text(String(localized: "plan_builder.context.review", defaultValue: "Your answers are unchanged. Check the updated training evidence and review your starting point and schedule."))
+                            .font(.subheadline)
+                        if refreshedBodyChanged, let body = intakeContext?.bodyProfile {
+                            Text(String(localized: "plan_builder.context.private_changed", defaultValue: "Your saved private details also changed. You’ll review them before creating your plan."))
+                                .font(.subheadline)
+                            Text(refreshedBodySummary(body)).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        if let baseline = intakeContext?.observedBaseline {
+                            Text(observedBaselineSummary(baseline)).font(.subheadline).foregroundStyle(.secondary)
+                        } else {
+                            Text(String(localized: "plan_builder.context.no_history", defaultValue: "There is no recent training history. Your starting-point answers will guide the plan."))
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
             if intakeContext?.suggestedSetup == nil,
                let baseline = intakeContext?.observedBaseline,
                baseline.confidence == "high" {
@@ -367,9 +394,39 @@ struct SimplifiedOnboardingFlow: View {
                     toggleChip(day.label, selected: draft.preferredDays.contains(day.code)) { togglePreferredDay(day.code) }
                 }
             }
+            longRunDaysPicker
             TextField(String(localized: "plan_builder.week.constraints", defaultValue: "Injury, illness, travel, or schedule constraints (optional)"), text: $draft.constraints, axis: .vertical)
                 .focused($focusedInput, equals: "draft_constraints")
                 .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    @ViewBuilder
+    private var longRunDaysPicker: some View {
+        if draft.activities.contains(.run) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(String(localized: "plan_builder.long_days.title", defaultValue: "Long-run days (optional)"))
+                    .font(.headline)
+                Text(String(localized: "plan_builder.long_days.detail", defaultValue: "Each selected day requests a longer easy run. Your training history and weekly time must support them; recovery and tapering may shorten them."))
+                    .font(.caption).foregroundStyle(.secondary)
+                if draft.preferredDays.isEmpty {
+                    Text(String(localized: "plan_builder.long_days.choose_days", defaultValue: "Choose preferred training days first."))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                } else {
+                    LazyVGrid(columns: Self.dayColumns, alignment: .leading, spacing: 8) {
+                        ForEach(Self.weekdays.filter { draft.preferredDays.contains($0.code) }, id: \.code) { day in
+                            let selected = draft.preferredLongRunDays?.contains(day.code) == true
+                            toggleChip(day.label, selected: selected, minimumHeight: 44) {
+                                var days = draft.preferredLongRunDays ?? []
+                                if selected { days.removeAll { $0 == day.code } } else { days.append(day.code) }
+                                draft.preferredLongRunDays = days
+                                trackAnswerEdit("long_run_days")
+                            }
+                            .accessibilityAddTraits(selected ? .isSelected : [])
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -486,6 +543,11 @@ struct SimplifiedOnboardingFlow: View {
             summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), draft.activities.map(\.title).joined(separator: " · "))
             summaryRow(String(localized: "plan_builder.review.week", defaultValue: "Realistic week"), String(format: String(localized: "plan_builder.review.week_value", defaultValue: "%1$d sessions · about %2$d min each"), locale: .autoupdatingCurrent, draft.sessionsPerWeek, draft.availableMinutes))
             planPreferences
+            longRunDaysPicker
+            if needsContextRefresh {
+                Text(String(localized: "planning.context_changed", defaultValue: "Your training context changed. Refresh and review your answers before creating your plan."))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -557,6 +619,7 @@ struct SimplifiedOnboardingFlow: View {
         switch step {
         case .profile where isSavingTrainingProfile:
             return String(localized: "onboarding.identity.saving", defaultValue: "Saving…")
+        case .review where needsContextRefresh: return String(localized: "plan_builder.context.refresh", defaultValue: "Refresh and review")
         case .welcome, .review: return String(localized: "plan_builder.create", defaultValue: "Create my plan")
         case .result: return String(localized: "plan_builder.go_today", defaultValue: "Go to Today")
         default: return String(localized: "onboarding.action.continue", defaultValue: "Continue")
@@ -568,6 +631,7 @@ struct SimplifiedOnboardingFlow: View {
             || isResolvingSkip
             || isConnectingHealth
             || isSavingTrainingProfile
+            || isLoadingIntakeContext
             || (step == .profile && !trainingMeasurementsAreValid)
             || (step == .profile && !requiredBodyProfileComplete)
             || (step == .baseline && intakeContext?.suggestedSetup == nil && intakeContext?.observedBaseline?.confidence == "high" && draft.observedBaselineConfirmed == nil)
@@ -582,7 +646,8 @@ struct SimplifiedOnboardingFlow: View {
         switch step {
         case .welcome: step = .objective
         case .profile: Task { await saveTrainingProfileAndContinue() }
-        case .review: createPlan()
+        case .review:
+            if needsContextRefresh { refreshPlanningContext() } else { createPlan() }
         case .result:
             trackBuilderExit(result: "completed")
             onboardingStore.finishLater()
@@ -606,7 +671,11 @@ struct SimplifiedOnboardingFlow: View {
                 async let contextRequest = try? APIClient.shared.fetchPlanIntakeContext()
                 let (profile, context) = await (profileRequest, contextRequest)
                 if let profile { savedTrainingProfile = profile; restoreDraftFromSavedTrainingProfile() }
-                if let context { applyIntakeContext(context) }
+                if let context {
+                    let hadDraft = draft.intakeContextVersion != nil
+                    if hadDraft, draft.intakeContextVersion != context.contextVersion { needsContextRefresh = true }
+                    applyIntakeContext(context, preserveAnswers: hadDraft, acceptVersion: !needsContextRefresh)
+                }
                 isLoadingIntakeContext = false
             }
         }
@@ -635,6 +704,7 @@ struct SimplifiedOnboardingFlow: View {
     }
 
     private func createPlan() {
+        guard !needsContextRefresh, !isLoadingIntakeContext else { return }
         toastMessage = nil
         creationStartedAt = Date()
         step = .creating
@@ -652,6 +722,12 @@ struct SimplifiedOnboardingFlow: View {
             } catch {
                 trackCreation(result: "failure", errorCategory: planningErrorCategory(error))
                 step = .review
+                ActivityDiagnosticLog.error(.sync, "plan_create_failed category=\(ActivityDiagnosticLog.errorCategory(error)) code=\(error.isPlanningContextChanged ? "planning_context_changed" : "other")")
+                if error.isPlanningContextChanged {
+                    needsContextRefresh = true
+                    onboardingStore.savePlanBuilderDraft(draft)
+                    return
+                }
                 showToast(
                     error.planningValidationMessage ?? String(localized: "plan_builder.create_error", defaultValue: "We couldn’t create your plan. Your answers are saved."),
                     retry: .create
@@ -677,7 +753,52 @@ struct SimplifiedOnboardingFlow: View {
         case .skip: exploreFirst()
         case .create: createPlan()
         case .profile: Task { await saveTrainingProfileAndContinue() }
+        case .context: refreshPlanningContext()
         case nil: break
+        }
+    }
+
+    private func refreshedBodySummary(_ body: PlanIntakeBodyProfileDTO) -> String {
+        var values: [String] = []
+        if let birthDate = body.birthDate.flatMap(Self.birthDateFormatter.date(from:)) {
+            values.append(birthDate.formatted(date: .abbreviated, time: .omitted))
+        }
+        if let sex = body.sexAtBirth { values.append(sex.title) }
+        if let weight = body.weightKilograms {
+            values.append("\(weightLabel): \(formattedMeasurement(usesMetric ? weight : weight / 0.45359237))")
+        }
+        if let height = body.heightCentimeters {
+            values.append("\(heightLabel): \(formattedMeasurement(usesMetric ? height : height / 2.54))")
+        }
+        return values.joined(separator: " · ")
+    }
+
+    private func refreshPlanningContext() {
+        guard !isLoadingIntakeContext else { return }
+        toastMessage = nil
+        isLoadingIntakeContext = true
+        Task {
+            defer { isLoadingIntakeContext = false }
+            do {
+                let context = try await APIClient.shared.fetchPlanIntakeContext(objective: draft.objective.rawValue)
+                let body = context.bodyProfile
+                let currentBody = trainingProfileRequest
+                refreshedBodyChanged = currentBody.sexAtBirth != body.sexAtBirth
+                    || currentBody.birthDate != body.birthDate
+                    || abs((currentBody.weightKilograms ?? 0) - (body.weightKilograms ?? 0)) > 0.1
+                    || abs((currentBody.heightCentimeters ?? 0) - (body.heightCentimeters ?? 0)) > 0.2
+                applyIntakeContext(context, preserveAnswers: true)
+                needsContextRefresh = false
+                isReviewingRefreshedContext = true
+                // Force an explicit review without replacing edited baseline or schedule values.
+                draft.observedBaselineConfirmed = false
+                track(.planIntakeContextLoaded, [.sourceType: .string("refresh"), .result: .string("success")])
+                step = .baseline
+            } catch {
+                ActivityDiagnosticLog.error(.sync, "plan_context_refresh_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+                track(.planIntakeContextLoaded, [.sourceType: .string("refresh"), .result: .string("failure"), .errorCategory: .string(planningErrorCategory(error))])
+                showToast(String(localized: "plan_builder.context.refresh_error", defaultValue: "We couldn’t refresh your training context. Your answers are saved."), retry: .context)
+            }
         }
     }
 
@@ -699,6 +820,7 @@ struct SimplifiedOnboardingFlow: View {
             daysPerWeekTarget: boundedSessionsPerWeek(draft.sessionsPerWeek),
             maxSessionMinutes: draft.availableMinutes,
             riskTolerance: draft.baselineContext == .returningAfterBreak ? "conservative" : "balanced",
+            preferredLongRunDays: draft.activities.contains(.run) ? draft.preferredLongRunDays ?? [] : [],
             constraints: ["notes": draft.constraints, "shortRunSessions": String(draft.shortRunSessions == true), "optionalMobility": String(draft.optionalMobility == true)].filter { !$0.value.isEmpty }
         )
     }
@@ -751,14 +873,14 @@ struct SimplifiedOnboardingFlow: View {
     private func restoreDraftFromSavedTrainingProfile() {
         guard let profile = savedTrainingProfile else { return }
         let usesMetric = measurementPreferences.unitSystem == .metric
-        if let heightCentimeters = profile.heightCentimeters {
+        if draft.heightText.isEmpty, let heightCentimeters = profile.heightCentimeters {
             draft.heightText = formattedMeasurement(usesMetric ? heightCentimeters : heightCentimeters / 2.54)
         }
-        if let weightKilograms = profile.weightKilograms {
+        if draft.weightText.isEmpty, let weightKilograms = profile.weightKilograms {
             draft.weightText = formattedMeasurement(usesMetric ? weightKilograms : weightKilograms / 0.45359237)
         }
         if draft.sexAtBirth == nil { draft.sexAtBirth = profile.sexAtBirth }
-        if let birthDate = profile.birthDate.flatMap(Self.birthDateFormatter.date(from:)) {
+        if draft.birthDate == nil, let birthDate = profile.birthDate.flatMap(Self.birthDateFormatter.date(from:)) {
             draft.birthDate = birthDate
         }
     }
@@ -818,8 +940,14 @@ struct SimplifiedOnboardingFlow: View {
             let profile = try await APIClient.shared.updateTrainingProfile(trainingProfileRequest)
             onboardingStore.applyTrainingProfile(profile)
             savedTrainingProfile = profile
-            if let context = try? await APIClient.shared.fetchPlanIntakeContext(objective: draft.objective.rawValue) {
-                applyIntakeContext(context)
+            do {
+                let context = try await APIClient.shared.fetchPlanIntakeContext(objective: draft.objective.rawValue)
+                applyIntakeContext(context, preserveAnswers: true)
+                needsContextRefresh = false
+                refreshedBodyChanged = false
+            } catch {
+                needsContextRefresh = true
+                ActivityDiagnosticLog.error(.sync, "plan_context_after_profile_refresh_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
             }
             isSavingTrainingProfile = false
             await trackTrainingProfileCompletion(result: "saved", source: didConnectHealth ? "health" : "manual")
@@ -1311,6 +1439,7 @@ struct SimplifiedOnboardingFlow: View {
     }
 
     private func planningErrorCategory(_ error: Error) -> String {
+        if error.isPlanningContextChanged { return "planning_context_changed" }
         if let apiError = error as? APIError {
             switch apiError {
             case let .http(statusCode, _, _):
@@ -1436,12 +1565,12 @@ struct SimplifiedOnboardingFlow: View {
         .presentationDetents([.medium])
     }
 
-    private func applyIntakeContext(_ context: PlanIntakeContextDTO) {
+    private func applyIntakeContext(_ context: PlanIntakeContextDTO, preserveAnswers: Bool = false, acceptVersion: Bool = true) {
         isLoadingIntakeContext = false
         intakeContext = context
-        draft.intakeContextVersion = context.contextVersion
+        if acceptVersion { draft.intakeContextVersion = context.contextVersion }
         track(.planIntakeContextLoaded, [.sourceType: .string(context.dataTier)])
-        if let setup = context.suggestedSetup,
+        if !preserveAnswers, let setup = context.suggestedSetup,
            setup.confidence == "high",
            draft.observedBaselineConfirmed != false {
             let inferredActivities = PlanActivity.availableInBuilder.filter { setup.activities.contains($0.rawValue) }
@@ -1455,7 +1584,7 @@ struct SimplifiedOnboardingFlow: View {
             if let comfortable = context.observedBaseline?.comfortableMinutes {
                 draft.comfortableMinutes = comfortable
             }
-        } else if let baseline = context.observedBaseline,
+        } else if !preserveAnswers, let baseline = context.observedBaseline,
                   baseline.confidence == "high",
                   draft.observedBaselineConfirmed == nil {
             draft.recentSessionsPerWeek = min(max(baseline.sessionsPerWeek, 0), 6)
@@ -1463,7 +1592,7 @@ struct SimplifiedOnboardingFlow: View {
             let inferredActivities = PlanActivity.availableInBuilder.filter { baseline.activityMix.contains($0.rawValue) }
             if !inferredActivities.isEmpty { draft.activities = inferredActivities }
         }
-        if context.suggestedSetup == nil, let schedule = context.previousSchedule {
+        if !preserveAnswers, context.suggestedSetup == nil, let schedule = context.previousSchedule {
             draft.sessionsPerWeek = boundedSessionsPerWeek(schedule.sessionsPerWeek)
             draft.availableMinutes = max(draft.shortRunSessions == true ? 10 : 25, schedule.maxSessionMinutes)
             draft.preferredDays = Array(schedule.preferredDays.prefix(draft.sessionsPerWeek))
@@ -1599,7 +1728,7 @@ struct SimplifiedOnboardingFlow: View {
         switch step {
         case .activities where draft.observedBaselineConfirmed == true && intakeContext?.suggestedSetup?.confidence == "high":
             step = intakeContext?.bodyProfile.completeForPlanning == true || requiredBodyProfileComplete ? .review : .profile
-        case .week where intakeContext?.bodyProfile.completeForPlanning == true || requiredBodyProfileComplete:
+        case .week where !refreshedBodyChanged && (intakeContext?.bodyProfile.completeForPlanning == true || requiredBodyProfileComplete):
             step = .review
         default:
             step = step.next
@@ -1772,7 +1901,7 @@ struct SimplifiedOnboardingFlow: View {
         Button(action: action) { HStack { Text(title); Spacer(); Image(systemName: selected ? "checkmark.circle.fill" : "circle") }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }
             .buttonStyle(.bordered).tint(selected ? OutboundPalette.companion : .secondary)
     }
-    private func toggleChip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func toggleChip(_ title: String, selected: Bool, minimumHeight: CGFloat = 40, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Text(title)
@@ -1780,8 +1909,9 @@ struct SimplifiedOnboardingFlow: View {
             }
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 12)
-            .frame(minHeight: 40)
+            .frame(minHeight: minimumHeight)
             .background(selected ? OutboundPalette.companion.opacity(0.18) : Color(.secondarySystemBackground), in: Capsule())
+            .contentShape(Rectangle())
         }
             .buttonStyle(.plain)
     }
@@ -1844,6 +1974,7 @@ private extension SimplifiedOnboardingFlow {
         case skip
         case create
         case profile
+        case context
     }
 
     enum Step: Int, CaseIterable {

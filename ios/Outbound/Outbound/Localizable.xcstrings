@@ -1,6 +1,351 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "plan_builder.context.private_changed": {
+      "comment": "Stale planning context recovery. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your saved private details also changed. You’ll review them before creating your plan."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus datos privados guardados también han cambiado. Los revisarás antes de crear el plan."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存的个人资料也有变化。创建计划前，你将有机会核对。"
+          }
+        }
+      }
+    },
+    "planning.context_changed": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your training context changed. Refresh and review your answers before creating your plan."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu contexto de entrenamiento ha cambiado. Actualízalo y revisa tus respuestas antes de crear el plan."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的训练情况已发生变化。请刷新并核对答案后再创建计划。"
+          }
+        }
+      }
+    },
+    "plan_builder.context.refresh": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh and review"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar y revisar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新并核对"
+          }
+        }
+      }
+    },
+    "plan_builder.context.refreshed": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Training context refreshed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contexto de entrenamiento actualizado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "训练情况已刷新"
+          }
+        }
+      }
+    },
+    "plan_builder.context.review": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answers are unchanged. Check the updated training evidence and review your starting point and schedule."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus respuestas se conservan. Comprueba los entrenamientos actualizados y revisa tu punto de partida y horario."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的答案已保留。请查看更新后的训练记录，并核对当前基础和每周安排。"
+          }
+        }
+      }
+    },
+    "plan_builder.context.no_history": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no recent training history. Your starting-point answers will guide the plan."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay entrenamientos recientes. Usaremos tus respuestas sobre el punto de partida para preparar el plan."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无近期训练记录。计划将参考你填写的当前基础。"
+          }
+        }
+      }
+    },
+    "plan_builder.context.refresh_error": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn’t refresh your training context. Your answers are saved."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No pudimos actualizar tu contexto de entrenamiento. Tus respuestas están guardadas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法刷新训练情况。你的答案已保存。"
+          }
+        }
+      }
+    },
+    "plan_builder.long_days.title": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long-run days (optional)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Días de tirada larga (opcional)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "长跑日（可选）"
+          }
+        }
+      }
+    },
+    "plan_builder.long_days.detail": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each selected day requests a longer easy run. Your training history and weekly time must support them; recovery and tapering may shorten them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada día elegido tendrá una carrera suave más larga, si tu historial y tiempo semanal lo permiten. La recuperación y la puesta a punto pueden acortarlas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个选中的日期都将安排一次更长的轻松跑，前提是你的训练基础和每周时间能够支持。恢复或赛前减量期间可能会缩短。"
+          }
+        }
+      }
+    },
+    "plan_builder.long_days.choose_days": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose preferred training days first."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige primero tus días de entrenamiento."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先选择每周训练日。"
+          }
+        }
+      }
+    },
+    "planning.long_days.selection": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose long-run days from your selected training days, leaving at least one ordinary run."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige las tiradas largas entre tus días de entrenamiento y deja al menos una carrera de duración normal."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请从已选训练日中选择长跑日，并至少保留一次普通跑。"
+          }
+        }
+      }
+    },
+    "planning.long_days.capacity": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your current running history and weekly time cannot support every selected long run. Select fewer long-run days or a different schedule."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu historial actual y tiempo semanal no permiten todas las tiradas largas elegidas. Elige menos días de tirada larga o cambia el horario."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前跑步基础和每周时间无法支持所有选中的长跑。请减少长跑日，或调整每周安排。"
+          }
+        }
+      }
+    },
+    "planning.long_days.modalities": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These long-run days leave no room for an ordinary run and each selected activity. Select fewer long-run days or more weekly sessions."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con estas tiradas largas no queda espacio para una carrera normal y todas las actividades elegidas. Reduce las tiradas largas o añade sesiones semanales."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些长跑日会挤占普通跑或其他已选运动的时间。请减少长跑日，或增加每周训练次数。"
+          }
+        }
+      }
+    },
+    "planning.long_days.programme": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long-run days are not available during a starting-out or return-to-running programme. Remove them to continue with the programme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las tiradas largas no están disponibles en un programa de iniciación o vuelta a correr. Quítalas para continuar con el programa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入门或恢复跑步方案暂不支持指定长跑日。请取消长跑日后继续。"
+          }
+        }
+      }
+    },
+    "planning.long_days.catalog": {
+      "comment": "Plan setup recovery or explicit long-run preference. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom long-run days are available for personalized plans. Choose a personalized plan or remove the long-run days."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los días de tirada larga personalizados están disponibles en los planes a medida. Elige uno o quita los días de tirada larga."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有个性化计划支持自选长跑日。请选择个性化计划，或取消指定的长跑日。"
+          }
+        }
+      }
+    },
     "planning.running_schedule_conflict": {
       "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
       "localizations": {

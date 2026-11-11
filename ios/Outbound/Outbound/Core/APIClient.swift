@@ -1250,6 +1250,15 @@ nonisolated enum APIError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case let .http(statusCode, message, code):
+            switch code {
+            case "long_run_days_selection": return String(localized: "planning.long_days.selection")
+            case "long_run_days_capacity": return String(localized: "planning.long_days.capacity")
+            case "long_run_days_modalities": return String(localized: "planning.long_days.modalities")
+            case "long_run_days_programme": return String(localized: "planning.long_days.programme")
+            case "long_run_days_catalog": return String(localized: "planning.long_days.catalog")
+            default: break
+            }
+            if code == "planning_context_changed" { return String(localized: "planning.context_changed", defaultValue: "Your training context changed. Refresh and review your answers before creating your plan.") }
             if code == "running_schedule_conflict" { return String(localized: "planning.running_schedule_conflict") }
             if code == "programme_timeline_conflict" { return String(localized: "planning.programme_timeline_conflict") }
             if code == "programme_constraints_conflict" { return String(localized: "planning.programme_constraints_conflict") }
@@ -1267,8 +1276,13 @@ extension Error {
         guard let apiError = self as? APIError,
               case let .http(_, _, code) = apiError,
               let code,
-              ["running_schedule_conflict", "programme_timeline_conflict", "programme_constraints_conflict", "goal_timeline_unrealistic"].contains(code) else { return nil }
+              ["running_schedule_conflict", "programme_timeline_conflict", "programme_constraints_conflict", "goal_timeline_unrealistic", "long_run_days_selection", "long_run_days_capacity", "long_run_days_modalities", "long_run_days_programme", "long_run_days_catalog"].contains(code) else { return nil }
         return apiError.errorDescription
+    }
+
+    nonisolated var isPlanningContextChanged: Bool {
+        guard let apiError = self as? APIError, case let .http(_, _, code) = apiError else { return false }
+        return code == "planning_context_changed"
     }
 
     /// True when the server rejected the request's credentials (401). Used by
@@ -2231,6 +2245,27 @@ extension ActivitySuggestionPayload {
     }
 }
 
+/// Preserve typed array preferences in the canonical constraints JSON.
+struct PlanningGoalConstraints: Encodable {
+    let values: [String: String]
+    let preferredLongRunDays: [String]
+
+    private struct Key: CodingKey {
+        let stringValue: String
+        var intValue: Int? { nil }
+        init(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) { return nil }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: Key.self)
+        for (key, value) in values { try container.encode(value, forKey: Key(stringValue: key)) }
+        if !preferredLongRunDays.isEmpty {
+            try container.encode(preferredLongRunDays, forKey: Key(stringValue: "preferredLongRunDays"))
+        }
+    }
+}
+
 struct PlanningGoalRequest: Encodable {
     let type: String
     let activities: [String]
@@ -2248,7 +2283,7 @@ struct PlanningGoalRequest: Encodable {
     let daysPerWeekTarget: Int
     let maxSessionMinutes: Int
     let riskTolerance: String
-    let constraints: [String: String]
+    let constraints: PlanningGoalConstraints
 
     init(
         type: String,
@@ -2267,6 +2302,7 @@ struct PlanningGoalRequest: Encodable {
         daysPerWeekTarget: Int,
         maxSessionMinutes: Int,
         riskTolerance: String,
+        preferredLongRunDays: [String] = [],
         constraints: [String: String]
     ) {
         self.type = type
@@ -2285,7 +2321,7 @@ struct PlanningGoalRequest: Encodable {
         self.daysPerWeekTarget = daysPerWeekTarget
         self.maxSessionMinutes = maxSessionMinutes
         self.riskTolerance = riskTolerance
-        self.constraints = constraints
+        self.constraints = PlanningGoalConstraints(values: constraints, preferredLongRunDays: preferredLongRunDays)
     }
 
     init(recommendation: TrainingPlanRecommendation) {
@@ -2307,7 +2343,7 @@ struct PlanningGoalRequest: Encodable {
         daysPerWeekTarget = recommendation.sessionsPerWeek
         maxSessionMinutes = recommendation.longSessionMinutes
         riskTolerance = "balanced"
-        constraints = ["candidateID": recommendation.id, "templateID": recommendation.template.id]
+        constraints = PlanningGoalConstraints(values: ["candidateID": recommendation.id, "templateID": recommendation.template.id], preferredLongRunDays: [])
     }
 }
 

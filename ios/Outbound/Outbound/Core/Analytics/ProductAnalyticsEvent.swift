@@ -629,7 +629,7 @@ enum ProductAnalyticsSchema {
         .planBuilderOpened: [.entrySource],
         .planBuilderExited: [.stepName, .entrySource, .result],
         .planCreationCompleted: [.result, .latencyBucket, .goalType, .countBucket, .errorCategory],
-        .planIntakeContextLoaded: [.sourceType],
+        .planIntakeContextLoaded: [.sourceType, .result, .errorCategory],
         .planIntakeGoalInterpreted: [.result, .sourceType, .errorCategory],
         .planIntakeAnswerEdited: [.selectionType, .sourceType],
         .planIntakeBaselineConfirmed: [.result, .sourceType],
