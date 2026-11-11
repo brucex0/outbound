@@ -1598,6 +1598,35 @@ private struct SimplifiedTodayView: View {
                         CompactIntervalPreview(phases: todayPhases)
                     }
 
+                    if activitySessionState == .idle, !isActivityFullscreenVisible, activeRunIntent.resolvedActivityType == .running {
+                        Button {
+                            Task {
+                                await analyticsManager?.track(.init(.featureExposed, properties: [
+                                    .feature: .string("planned_workout_warmup"),
+                                    .result: .string("opened")
+                                ]))
+                            }
+                            showsStretch = true
+                        } label: {
+                            HStack(spacing: OutboundSpacing.compact) {
+                                Text(String(localized: "record.planned_warmup.title", defaultValue: "Warm-up exercises"))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(theme.accentColor)
+                                Spacer(minLength: 8)
+                                Text(plannedWorkoutWarmupRoutine.calculatedDuration)
+                                    .font(.caption.weight(.semibold).monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(String(localized: "record.planned_warmup.hint", defaultValue: "Opens the warm-up routine without starting your workout."))
+                    }
+
                     HStack(spacing: 0) {
                         Button(action: onOpenPlan) {
                             Label(String(localized: "Plan"), systemImage: "calendar")
@@ -1622,6 +1651,11 @@ private struct SimplifiedTodayView: View {
             }
             .animation(.snappy, value: isPlannedWorkoutCardMinimized)
         }
+    }
+
+    private var plannedWorkoutWarmupRoutine: StretchRoutine {
+        let routines = StretchCatalog.routines(entryPoint: .today)
+        return StretchCatalog.initial(routines, isIndoor: false, last: nil, lastStanding: nil, sport: nil, entryPoint: .today)
     }
 
     private func togglePlannedWorkoutCard() {

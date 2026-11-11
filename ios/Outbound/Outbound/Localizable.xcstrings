@@ -37612,7 +37612,21 @@
         }
       }
     },
-    "record.workout_plan.title": {
+      "record.planned_warmup.hint": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Opens the warm-up routine without starting your workout." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "打开热身动作，不会开始训练。" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Abre la rutina de calentamiento sin iniciar el entrenamiento." } }
+      }
+    },
+    "record.planned_warmup.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Warm-up exercises" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "热身动作" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Ejercicios de calentamiento" } }
+      }
+    },
+  "record.workout_plan.title": {
       "extractionState": "extracted_with_value",
       "localizations": {
         "en": {

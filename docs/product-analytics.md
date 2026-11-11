@@ -423,6 +423,8 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 ## Stretch customization
 
+- Opening the optional warm-up from a planned workout card emits `feature_exposed` with only `feature=planned_workout_warmup` and `result=opened`. Existing stretch funnel events continue to use the `today` source and actual stable routine ID; no workout or plan identifiers are sent.
+
 - `stretch_routine_edited` records `result=opened|add|remove|replace|reorder|duration|undo|saved|reset`, with stable built-in `routine_id`, optional `activity_type`, `source_type=post_save|today|standalone`, and `stretch_customized` indicating whether the selected routine is customized. Draft actions describe editor interactions, not persisted changes; only saved/reset changes persistence.
 - Existing stretch funnel events also include bounded source and customized status. Existing hold-time count buckets remain unchanged. No free text, custom IDs, posture sequences, selected body areas or health conditions are sent.
 
