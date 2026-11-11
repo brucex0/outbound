@@ -16,7 +16,7 @@ Set `ANDROID_HOME` or create an untracked `android/local.properties` with the lo
 
 ## Unreleased Android Data Policy
 
-Android remains unreleased until Bruce explicitly confirms release. Follow `AGENTS.md`: use only current models, with no app-version migration or historical-payload compatibility code. Room opens `plainstride-v<schema-version>.db`; a schema change creates clean local data and does not copy an older database. Only the current schema export is retained. Activity photo ordering uses schema v6 (`plainstride-v6.db`); upgrading a development install resets its local database, including unsynced rows, rather than copying v5 data. Rebuild with `cd android && ./gradlew :app:assembleDebug`.
+Android remains unreleased until Bruce explicitly confirms release. Follow `AGENTS.md`: use only current models, with no app-version migration or historical-payload compatibility code. Room opens `plainstride-v<schema-version>.db`; a schema change creates clean local data and does not copy an older database. Only the current schema export is retained. Private effort and issued-workout attribution use schema v8 (`plainstride-v8.db`), with nullable activity fields independent of reflection prose. Upgrading a development install opens clean local data, including a fresh outbox; unsynced older rows are not copied. Only the current v8 schema export is retained. Rebuild with `cd android && ./gradlew :app:assembleDebug`.
 
 For an explicit full development reset (also clears login/preferences/media):
 
