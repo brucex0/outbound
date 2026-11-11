@@ -16,11 +16,18 @@ private enum SessionCoordinatorError: Error {
     case missingSession
 }
 
+nonisolated struct AuthenticationSessionBoundary: Sendable {
+    let userID: String?
+    let epoch: UInt64
+}
+
 actor SessionCoordinator {
     static let shared = SessionCoordinator()
     private let repository: SessionPersisting
     private var session: AuthSession?
     private var refreshTask: Task<AuthSession, Error>?
+    private var sessionEpoch: UInt64 = 0
+    private var refreshTaskID: UUID?
 
     init(repository: SessionPersisting = KeychainSessionRepository()) {
         self.repository = repository
@@ -29,9 +36,23 @@ actor SessionCoordinator {
     }
 
     func storedSession() -> AuthSession? { session }
+    func boundarySnapshot() -> AuthenticationSessionBoundary { .init(userID: session?.user.id, epoch: sessionEpoch) }
+    @discardableResult
+    func clear(expected: AuthenticationSessionBoundary) -> Bool {
+        guard expected.userID == session?.user.id, expected.epoch == sessionEpoch else { return false }
+        clear()
+        return true
+    }
     func replace(_ value: AuthSession) throws {
         try repository.replace(value)
+        // Explicit credential replacement owns a new refresh flight. An expired new
+        // account must never coalesce onto the previous account's network task.
+        refreshTask?.cancel()
+        refreshTask = nil
+        refreshTaskID = nil
+        sessionEpoch &+= 1
         session = value
+        ActivityAccountBoundary.activate(value.user.id)
     }
     func markOnboardingResolved(_ status: OnboardingStatus) throws {
         guard let session else { return }
@@ -42,18 +63,26 @@ actor SessionCoordinator {
         try replace(session.withTermsAccepted(version: version))
     }
     func clear(notify: Bool = false) {
+        sessionEpoch &+= 1
+        refreshTask?.cancel()
+        refreshTask = nil
+        refreshTaskID = nil
         session = nil; try? repository.delete()
+        ActivityAccountBoundary.activate(nil)
         if notify { Task { @MainActor in NotificationCenter.default.post(name: .outboundAuthenticationExpired, object: nil) } }
     }
 
     func accessToken() async throws -> String? {
         guard let session else { return nil }
+        guard ActivityAccountBoundary.context.owner == "account:\(session.user.id)" else { throw CancellationError() }
         if session.hasUsableAccessToken() { return session.accessToken }
         return try await refresh(using: session)
     }
 
     func refreshAfterUnauthorized(rejectedAccessToken: String?) async throws -> String? {
+        try ActivityAccountBoundary.validate()
         guard let session else { return nil }
+        guard ActivityAccountBoundary.context.owner == "account:\(session.user.id)" else { throw CancellationError() }
         if let rejectedAccessToken,
            rejectedAccessToken != session.accessToken,
            session.hasUsableAccessToken(leeway: 0) {
@@ -71,17 +100,38 @@ actor SessionCoordinator {
     }
 
     private func refresh(using snapshot: AuthSession) async throws -> String {
-        if let refreshTask { return try await refreshTask.value.accessToken }
+        let epoch = sessionEpoch
+        let accountContext = ActivityAccountBoundary.context
+        if let refreshTask {
+            let value = try await refreshTask.value
+            guard sessionEpoch == epoch else { throw CancellationError() }
+            try ActivityAccountBoundary.validate(accountContext)
+            return value.accessToken
+        }
         let attemptedRefreshToken = snapshot.refreshToken
         let task = Task { try await APIClient.shared.refreshSession(refreshToken: attemptedRefreshToken) }
-        refreshTask = task; defer { refreshTask = nil }
+        let taskID = UUID()
+        refreshTask = task
+        refreshTaskID = taskID
+        defer {
+            if refreshTaskID == taskID { refreshTask = nil; refreshTaskID = nil }
+        }
         do {
             let replacement = try await task.value
-            try replace(replacement)
+            guard sessionEpoch == epoch else { throw CancellationError() }
+            try ActivityAccountBoundary.validate(accountContext)
+            guard replacement.user.id == snapshot.user.id else { throw CancellationError() }
+            // Token rotation is the same account session. Public replace/clear alone
+            // invalidate callers; coalesced refresh waiters all receive this token.
+            try repository.replace(replacement)
+            session = replacement
             if replacement.refreshRecovery == true { notifyRecovery(.rotationRace) }
             return replacement.accessToken
         } catch {
+            guard sessionEpoch == epoch else { throw CancellationError() }
+            try ActivityAccountBoundary.validate(accountContext)
             if let persisted = try? repository.load(),
+               persisted.user.id == snapshot.user.id,
                persisted.refreshToken != attemptedRefreshToken,
                persisted.isRefreshUsable {
                 // A newer session was persisted by another in-process refresh

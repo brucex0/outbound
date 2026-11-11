@@ -1,0 +1,139 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "plan.calendar.partial_week": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partial first week · starts on your plan start date"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primera semana parcial · comienza en la fecha de inicio del plan"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首周为不完整周 · 从计划开始日算起"
+          }
+        }
+      }
+    },
+    "plan.calendar.progress": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d of %#@target@ · %3$d of %4$d planned min"
+          },
+          "substitutions": {
+            "target": {
+              "argNum": 2,
+              "formatSpecifier": "d",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg scheduled workout completed"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg scheduled workouts completed"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d de %#@target@ · %3$d de %4$d min previstos"
+          },
+          "substitutions": {
+            "target": {
+              "argNum": 2,
+              "formatSpecifier": "d",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg entrenamiento programado completado"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg entrenamientos programados completados"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成 %1$d/%2$d 次计划训练 · 已完成 %3$d/%4$d 分钟计划时长"
+          }
+        }
+      },
+      "comment": "Second numeric argument is target scheduled workout count and selects singular/plural; first is completed count. Minutes are planned-prescription progress."
+    },
+    "plan.calendar.no_scheduled": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No scheduled workouts this week"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay entrenamientos programados esta semana"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周没有安排训练"
+          }
+        }
+      }
+    },
+    "plan.calendar.plan_week": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · Week %2$d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · Semana %2$d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · 第 %2$d 周"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -83,3 +83,8 @@ The implementation worktree uses a private generated Prisma client (`node_module
 ## Companion issuance concurrency verification
 
 `/tmp/plainstride-companion-lock-demo.mjs` replays the real assembly/companion interleaving using a disposable localhost55472 PostgreSQL database. It observes the companion waiting on the advisory lock while assembly is paused, commits the response/receipt, then awaits the mutation. Output `/tmp/plainstride-companion-lock-output.jsonl` records matching1800-second outgoing phases/receipt, next1200-second shortened phases/receipt and an immutable original receipt. The calorie variant checks post-wait estimate inputs and retained400cal receipt; injected database failures restore the original row/blocks/steps and leave the action proposed without accepted outcome/evidence. Build log: `/tmp/plainstride-companion-issuance-lock-build.log`. No production configuration, provider, GUI or existing test suite is used.
+
+## Repository acceptance checkpoint
+
+- iOS activity ownership, mutation generations, terminal receipt conflicts, exact pending/confirmed slot overlays and app-lifetime retry now follow `activity-repository.md`. Receipt/privacy and server progression semantics above are preserved.
+- Activity upload acknowledgements capture canonical completion disposition and planning/statistics watermarks in the accepted transaction. Planning snapshot revisions order serialized observations independently of plan versions.

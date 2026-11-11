@@ -11,6 +11,7 @@ struct OutboundApp: App {
     @StateObject private var guideStore = GuideStore()
     @StateObject private var guideCatalogStore = GuideCatalogStore()
     @StateObject private var activityStore: ActivityStore
+    @StateObject private var activitySyncCoordinator = ActivitySyncCoordinator()
     @StateObject private var goalStore = GoalStore()
     @StateObject private var trainingPlanStore = TrainingPlanStore()
     @StateObject private var assistantStore = AssistantStore()
@@ -90,7 +91,13 @@ struct OutboundApp: App {
                 .task(id: authStore.user?.id) {
                     await analyticsManager.setUserId(userId: authStore.user?.id)
                     subscriptionStore.activate(userID: authStore.user?.id)
-                    await activityStore.refreshAccountStatistics()
+                    if !ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") {
+                        activitySyncCoordinator.configure(activities: activityStore, planning: trainingPlanStore,
+                            checkIn: dailyCheckInStore, connectivity: connectivityStore,
+                            preferences: workoutReminderPreferences, scheduler: workoutNotificationScheduler,
+                            goals: goalStore, personalization: personalizationStore)
+                        await activitySyncCoordinator.activateAccount()
+                    }
                 }
                 .onChange(of: authStore.user?.id, initial: true) { _, userID in
                     togetherStore.activate(userID: userID)
@@ -142,6 +149,15 @@ struct OutboundApp: App {
             DebugCommunityRouteLibraryHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugGroupMark") {
             DebugGroupMarkReviewHarness()
+        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") {
+            if ProcessInfo.processInfo.arguments.contains("-OutboundRepositorySupplemental") {
+                DebugRepositorySupplementalHarness()
+                    .environmentObject(appNavigationStore).environmentObject(authStore).environmentObject(recognitionStore)
+                    .environmentObject(measurementPreferences).environmentObject(cycleAwareStore).environmentObject(onboardingStore)
+                    .environmentObject(gearStore).environmentObject(healthAuthorizationStore).environmentObject(healthImportStore)
+                    .environmentObject(togetherStore).environmentObject(situationalWeatherStore).environmentObject(guideCatalogStore)
+                    .environmentObject(subscriptionStore).environmentObject(tooltipCoordinator)
+            } else { DebugActivityRepositoryHarness() }
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugRunningPlan") {
             DebugRunningPlanHarness()
                 .environmentObject(trainingPlanStore)
@@ -277,7 +293,7 @@ struct OutboundApp: App {
                     )
                 }
                 await guideStore.syncIfNeeded()
-                await activityStore.syncPendingActivitiesIfNeeded()
+                activitySyncCoordinator.requestSync()
                 if authStore.user != nil {
                     await recognitionStore.refresh()
                     await socialRecognitionStore.refresh()
@@ -286,7 +302,6 @@ struct OutboundApp: App {
                 await healthImportStore.refreshRecentWorkouts()
                 await refreshTrainingProfile()
                 await musicStore.refresh()
-                await personalizationStore.refresh()
                 async let socialHomeRefresh: Void = togetherStore.refresh()
                 async let socialConnectionsRefresh: Void = togetherStore.refreshConnections()
                 async let groupRefresh: Void = groupStore.refresh()
@@ -314,7 +329,7 @@ struct OutboundApp: App {
                 HomeWorkoutWidgetStore.refreshTimeline()
                 Task {
                     await userPreferencesSyncStore.refresh()
-                    await activityStore.syncPendingActivitiesIfNeeded()
+                    activitySyncCoordinator.requestSync()
                     await recognitionStore.refresh()
                     await socialRecognitionStore.refresh()
                     await groupStore.refresh()
@@ -337,30 +352,7 @@ struct OutboundApp: App {
                     )
                 }
             }
-            .onChange(of: trainingPlanStore.scheduledWorkouts) { _, workouts in
-                Task {
-                    await workoutNotificationScheduler.reschedule(
-                        preferences: workoutReminderPreferences,
-                        activities: activityStore.activities,
-                        workouts: workouts,
-                        reason: "plan_changed"
-                    )
-                }
-            }
-            .onReceive(activityStore.$accountStatistics) { statistics in
-                goalStore.updateStatistics(statistics, activities: activityStore.activities)
-            }
-            .onChange(of: activityStore.activities) { _, activities in
-                Task {
-                    await workoutNotificationScheduler.reschedule(
-                        preferences: workoutReminderPreferences,
-                        activities: activities,
-                        workouts: trainingPlanStore.scheduledWorkouts,
-                        reason: "activity_saved"
-                    )
-                    await personalizationStore.refresh()
-                }
-            }
+
     }
 
     private var onboardingRoot: some View {
@@ -874,6 +866,10 @@ struct TrainingPlanWorkoutStep: Identifiable, Codable, Hashable {
 struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
     let id: String
     let scheduledDate: Date?
+    var scheduledDateKey: String? = nil
+    var logicalScheduledDate: Date? {
+        scheduledDateKey.flatMap { PlanningCalendarContext.logicalDate($0, calendar: PlanningCalendarContext.accountCalendar()) } ?? scheduledDate
+    }
     let title: String
     let kind: TrainingPlanWorkoutKind
     let dayLabel: String
@@ -903,10 +899,12 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
         targetCalories: Int? = nil,
         steps: [TrainingPlanWorkoutStep],
         isOptional: Bool,
-        status: String? = nil
+        status: String? = nil,
+        scheduledDateKey: String? = nil
     ) {
         self.id = id
         self.scheduledDate = scheduledDate
+        self.scheduledDateKey = scheduledDateKey
         self.title = title
         self.kind = kind
         self.dayLabel = dayLabel
@@ -1035,6 +1033,7 @@ struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
     let longSessionMinutes: Int
     let createdAt: Date
 
+    var calendar: PlanningCalendarContext? = nil
     var raceGoal: SavedRaceGoal? = nil
     var runningBenchmark: RunningBenchmarkContext? = nil
     var roadmap: RaceGoalRoadmap? = nil
@@ -1047,6 +1046,13 @@ struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
 }
 
 struct TrainingPlanWeekSnapshot: Codable, Equatable {
+    var pendingSessions: Int? = nil
+    var weekCoverageUnknown: Bool? = nil
+    static func progressSummary(completedSessions: Int, targetSessions: Int, completedMinutes: Int, targetMinutes: Int) -> String {
+        guard targetSessions > 0 else { return String(localized: "plan.calendar.no_scheduled", defaultValue: "No scheduled workouts this week", table: "PlanningCalendar") }
+        return String.localizedStringWithFormat(NSLocalizedString("plan.calendar.progress", tableName: "PlanningCalendar", bundle: .main, value: "%1$d of %2$d scheduled workouts completed · %3$d of %4$d planned min", comment: "Completed and target scheduled workouts; target selects plural. Planned minutes, not actual activity duration."), completedSessions, targetSessions, completedMinutes, targetMinutes)
+    }
+    var calendar: PlanningCalendarContext? = nil
     let currentWeekIndex: Int
     let totalWeeks: Int
     let completedSessions: Int
@@ -1082,21 +1088,26 @@ final class TrainingPlanStore: ObservableObject {
     @Published private(set) var activitySuggestion: ActivitySuggestionResponse?
     @Published private(set) var scheduledWorkouts: [ScheduledWorkoutReminder] = []
     @Published private(set) var isRefreshingPlanRecommendations = false
+    @Published private(set) var acceptedCommandGeneration: UInt64 = 0
 
     private let defaults: UserDefaults
-    private let calendar: Calendar
+    private var calendar: Calendar
     private let api: APIClient
-    private let activePlanKey = "training_plan_store_active_plan_v2"
-    private let stateCacheKey = "training_plan_store_state_v3"
-    private let recommendationCacheKey = "training_plan_store_recommendations_cache_v2"
-    private let cacheLocaleKey = "training_plan_store_cache_locale_v1"
-    private let dismissedWeekKey = "training_plan_store_dismissed_week_v1"
-    private let readinessSyncKey = "training_plan_store_readiness_sync_v1"
+    private var activePlanKey: String { "training_plan_store_active_plan_v2.\(accountContext.owner)" }
+    private var stateCacheKey: String { "training_plan_store_state_v3.\(accountContext.owner)" }
+    private var recommendationCacheKey: String { "training_plan_store_recommendations_cache_v2.\(accountContext.owner)" }
+    private var cacheLocaleKey: String { "training_plan_store_cache_locale_v1.\(accountContext.owner)" }
+    private var dismissedWeekKey: String { "training_plan_store_dismissed_week_v1.\(accountContext.owner)" }
+    private var readinessSyncKey: String { "training_plan_store_readiness_sync_v1.\(accountContext.owner)" }
     private var dismissedRecommendationWeekStart: Date?
     private var lastSubmittedReadinessSignature: String?
     private var lastActivities: [SavedActivity] = []
     private var lastReadiness: DailyReadiness?
     private var lastPhase: MotivationPhase = .firstSession
+    private var accountContext = ActivityAccountBoundary.current
+    private var authoritativeState: TrainingPlanStateResponse?
+    private var repositoryProjection = ActivityRepositoryProjection()
+    private(set) var serverRevision: Int?
     private var refreshTask: Task<Void, Never>?
     private var recommendationRefreshTask: Task<Void, Never>?
 
@@ -1119,12 +1130,14 @@ final class TrainingPlanStore: ObservableObject {
         self.dismissedRecommendationWeekStart = Self.decode(Date.self, from: defaults.data(forKey: dismissedWeekKey))
         self.lastSubmittedReadinessSignature = defaults.string(forKey: readinessSyncKey)
 
-        let cacheMatchesLocale = defaults.string(forKey: cacheLocaleKey) == AppLanguage.currentIdentifier
+        let cacheMatchesLocale = accountContext.owner == "guest" && defaults.string(forKey: cacheLocaleKey) == AppLanguage.currentIdentifier
         let persistedActivePlan = cacheMatchesLocale
             ? Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
             : nil
         if cacheMatchesLocale,
            let cachedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
+            authoritativeState = cachedState
+            serverRevision = cachedState.revision
             let cachedActivitySuggestion = cachedState.activitySuggestion?.isValid(now: Date()) == true
                 ? cachedState.activitySuggestion
                 : nil
@@ -1141,6 +1154,114 @@ final class TrainingPlanStore: ObservableObject {
         }
         updatePlanOptions(activities: [], phase: .firstSession, now: Date())
     }
+
+    #if DEBUG
+    func applyRepositoryFixture(_ state: TrainingPlanStateResponse) {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") else { return }
+        applyServerState(state, now: Date())
+    }
+    #endif
+
+    func activateAccount() {
+        refreshTask?.cancel()
+        recommendationRefreshTask?.cancel()
+        accountContext = ActivityAccountBoundary.current
+        HomeWorkoutWidgetStore.clear()
+        authoritativeState = nil
+        serverRevision = nil
+        repositoryProjection = .init()
+        activePlan = nil
+        currentWeek = nil
+        recommendations = []
+        planOptions = []
+        todaySuggestion = nil
+        activitySuggestion = nil
+        scheduledWorkouts = []
+        lastActivities = []
+        lastReadiness = nil
+        lastSubmittedReadinessSignature = defaults.string(forKey: readinessSyncKey)
+        dismissedRecommendationWeekStart = Self.decode(Date.self, from: defaults.data(forKey: dismissedWeekKey))
+        if accountContext.owner == "guest", defaults.string(forKey: cacheLocaleKey) == AppLanguage.currentIdentifier,
+           let state = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
+            applyServerState(state, now: Date())
+        }
+        if accountContext.owner == "guest" {
+            activePlan = Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
+        }
+    }
+
+    func loadDurableAccountState() async {
+        let context = accountContext
+        await ActivityAccountBoundary.$operation.withValue(context) {
+            do {
+                guard let data = try await ActivityPersistence.shared.planningSnapshot() else { return }
+                let state = try JSONDecoder().decode(TrainingPlanStateResponse.self, from: data)
+                try ActivityAccountBoundary.validate()
+                applyServerState(state, now: Date())
+            } catch is CancellationError { }
+            catch { ActivityDiagnosticLog.error(.persistence, "Durable planning cache load failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
+        }
+    }
+
+    func applyRepositoryProjection(_ projection: ActivityRepositoryProjection, activities: [SavedActivity], now: Date = Date()) {
+        guard accountContext == ActivityAccountBoundary.current else { return }
+        repositoryProjection = projection
+        lastActivities = activities
+        if let authoritativeState {
+            let state = ActivityPlanProjector.project(authoritativeState, repository: projection)
+            activePlan = state.activePlan
+            currentWeek = state.currentWeek
+            todaySuggestion = state.todaySuggestion
+            activitySuggestion = state.activitySuggestion
+            scheduledWorkouts = state.scheduledWorkouts
+            persistState()
+        } else if accountContext.owner == "guest" {
+            applyLocalFallback(activities: activities, readiness: lastReadiness, phase: lastPhase, now: now)
+        }
+    }
+
+    private func commitServerState(_ state: TrainingPlanStateResponse, now: Date, invalidateStatistics: Bool = false) async throws -> Int? {
+        let committed = try await ActivityPersistence.shared.storePlanningSnapshot(try JSONEncoder().encode(state), revision: state.revision, invalidateStatistics: invalidateStatistics)
+        try ActivityAccountBoundary.validate()
+        let durable = try JSONDecoder().decode(TrainingPlanStateResponse.self, from: committed.data)
+        applyServerState(durable, now: now)
+        return committed.revision
+    }
+
+    func reconcileRepository() async throws -> Int? {
+        let context = accountContext
+        return try await ActivityAccountBoundary.$operation.withValue(context) {
+            try ActivityAccountBoundary.validate()
+            let state = try await api.fetchTrainingPlanState(readiness: lastReadiness)
+            return try await commitServerState(state, now: Date())
+        }
+    }
+
+    private func checkpointAcceptedCommand(_ state: TrainingPlanStateResponse) async throws {
+        try ActivityAccountBoundary.validate()
+        _ = try await commitServerState(state, now: Date(), invalidateStatistics: true)
+        try ActivityAccountBoundary.validate()
+        acceptedCommandGeneration &+= 1
+    }
+
+    private func accountTask(_ body: @escaping @MainActor () async -> Void) -> Task<Void, Never> {
+        let context = accountContext
+        return Task {
+            await ActivityAccountBoundary.$operation.withValue(context) {
+                guard context == ActivityAccountBoundary.current else { return }
+                await body()
+            }
+        }
+    }
+
+    var hasAuthoritativeNoPlan: Bool { authoritativeState != nil && activePlan == nil }
+
+    #if DEBUG
+    func commitRepositoryFixture(_ state: TrainingPlanStateResponse) async throws -> Int? {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") else { return nil }
+        return try await commitServerState(state, now: Date())
+    }
+    #endif
 
     var shouldShowRecommendations: Bool {
         activePlan == nil && !recommendations.isEmpty
@@ -1160,8 +1281,12 @@ final class TrainingPlanStore: ObservableObject {
         updateLocalRecommendationsIfNeeded(activities: activities, phase: phase, now: now)
         updatePlanOptions(activities: activities, phase: phase, now: now)
 
+        if accountContext.owner == "guest" {
+            applyLocalFallback(activities: activities, readiness: readiness, phase: phase, now: now)
+            return
+        }
         refreshTask?.cancel()
-        refreshTask = Task {
+        refreshTask = accountTask { [self] in
             do {
                 let readinessSignature = readiness.map {
                     Self.readinessSignature(for: $0, calendar: calendar, now: now)
@@ -1177,23 +1302,30 @@ final class TrainingPlanStore: ObservableObject {
                     state = try await api.fetchTrainingPlanState(readiness: readiness)
                 }
                 guard !Task.isCancelled else { return }
-                applyServerState(state, now: now)
+                _ = try await commitServerState(state, now: now)
             } catch {
                 guard !Task.isCancelled else { return }
-                print("[TrainingPlanStore] server refresh failed: \(error.localizedDescription)")
+                ActivityDiagnosticLog.error(.sync, "Planning refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 applyLocalFallback(activities: activities, readiness: readiness, phase: phase, now: now)
             }
         }
     }
 
     func applyWorkoutChange(_ request: WorkoutEditApplyRequestDTO, now: Date = Date()) async throws {
+        let context = accountContext
+        return try await ActivityAccountBoundary.$operation.withValue(context) {
         refreshTask?.cancel()
         let state = try await api.applyWorkoutEdit(request, readiness: lastReadiness)
         try Task.checkCancellation()
-        applyServerState(state, now: now)
+        try await checkpointAcceptedCommand(state)
+                _ = try await commitServerState(state, now: now)
+
+        }
     }
 
     func refreshWorkoutEditSuggestion(now: Date = Date()) async throws -> ActivitySuggestionResponse {
+        let context = accountContext
+        return try await ActivityAccountBoundary.$operation.withValue(context) {
         refreshTask?.cancel()
         let suggestion = try await api.fetchActivitySuggestion()
         try Task.checkCancellation()
@@ -1203,13 +1335,19 @@ final class TrainingPlanStore: ObservableObject {
             persistState()
         }
         return suggestion
+
+        }
     }
 
     func refetchAfterWorkoutMutation(now: Date = Date()) async throws {
+        let context = accountContext
+        return try await ActivityAccountBoundary.$operation.withValue(context) {
         refreshTask?.cancel()
         let state = try await api.fetchTrainingPlanState(readiness: lastReadiness)
         try Task.checkCancellation()
-        applyServerState(state, now: now)
+        _ = try await commitServerState(state, now: now)
+
+        }
     }
 
     func prepareRecommendations(
@@ -1259,11 +1397,12 @@ final class TrainingPlanStore: ObservableObject {
         )
         applyLocalFallback(activities: lastActivities, readiness: lastReadiness, phase: lastPhase, now: now)
 
-        refreshTask = Task {
+        refreshTask = accountTask { [self] in
             do {
                 let state = try await api.createTrainingPlan(from: recommendation, readiness: lastReadiness)
                 guard !Task.isCancelled else { return }
-                applyServerState(state, now: now)
+                try await checkpointAcceptedCommand(state)
+                _ = try await commitServerState(state, now: now)
             } catch {
                 guard !Task.isCancelled else { return }
                 print("[TrainingPlanStore] active plan sync failed: \(error.localizedDescription)")
@@ -1273,26 +1412,41 @@ final class TrainingPlanStore: ObservableObject {
     }
 
     func createPersonalizedPlan(_ request: PlanningGoalRequest, now: Date = Date()) async throws {
+        let context = accountContext
+        return try await ActivityAccountBoundary.$operation.withValue(context) {
         refreshTask?.cancel()
         recommendationRefreshTask?.cancel()
         isRefreshingPlanRecommendations = false
         let state = try await api.createPersonalizedTrainingPlan(request, readiness: lastReadiness)
         try Task.checkCancellation()
-        applyServerState(state, now: now)
+        try await checkpointAcceptedCommand(state)
+                _ = try await commitServerState(state, now: now)
+
+        }
     }
 
     func updateRaceGoal(_ goal: SavedRaceGoal, request: RaceGoalUpdateRequest) async throws {
+        let context = accountContext
+        return try await ActivityAccountBoundary.$operation.withValue(context) {
         refreshTask?.cancel()
         let state = try await api.updateRaceGoal(goalID: goal.id, request: request, readiness: lastReadiness)
         try Task.checkCancellation()
-        applyServerState(state, now: Date())
+        try await checkpointAcceptedCommand(state)
+                _ = try await commitServerState(state, now: Date())
+
+        }
     }
 
     func updateRunningBenchmark(goalID: String, report: RunningBenchmarkReport?) async throws {
+        let context = accountContext
+        return try await ActivityAccountBoundary.$operation.withValue(context) {
         refreshTask?.cancel()
         let state = try await api.updateRunningBenchmark(goalID: goalID, report: report, readiness: lastReadiness)
         try Task.checkCancellation()
-        applyServerState(state, now: Date())
+        try await checkpointAcceptedCommand(state)
+                _ = try await commitServerState(state, now: Date())
+
+        }
     }
 
     func clearActivePlan(now: Date = Date()) {
@@ -1305,11 +1459,12 @@ final class TrainingPlanStore: ObservableObject {
         activitySuggestion = nil
         applyLocalFallback(activities: lastActivities, readiness: lastReadiness, phase: lastPhase, now: now)
 
-        refreshTask = Task {
+        refreshTask = accountTask { [self] in
             do {
                 let state = try await api.clearActiveTrainingPlan(readiness: lastReadiness)
                 guard !Task.isCancelled else { return }
-                applyServerState(state, now: now)
+                try await checkpointAcceptedCommand(state)
+                _ = try await commitServerState(state, now: now)
             } catch {
                 guard !Task.isCancelled else { return }
                 print("[TrainingPlanStore] clear active plan sync failed: \(error.localizedDescription)")
@@ -1337,15 +1492,21 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
-    private func applyServerState(_ state: TrainingPlanStateResponse, now: Date) {
+    private func applyServerState(_ incoming: TrainingPlanStateResponse, now: Date) {
+        guard accountContext == ActivityAccountBoundary.current,
+              ActivityAccountBoundary.context == accountContext else { return }
+        if let revision = incoming.revision, revision < (serverRevision ?? 0) { return }
+        if incoming.revision == nil, serverRevision != nil { return }
+        serverRevision = incoming.revision
+        authoritativeState = incoming
+        if let context = incoming.calendar { calendar = context.calendar }
+        let state = ActivityPlanProjector.project(incoming, repository: repositoryProjection)
         resetDismissedRecommendationIfNeeded(now: now)
 
         let validActivitySuggestion = state.activitySuggestion?.isValid(now: now) == true
             ? state.activitySuggestion
             : nil
-        let previousActivePlan = activePlan
         activePlan = state.activePlan
-            ?? (validActivitySuggestion?.isPlanLinkedToPlan == true ? previousActivePlan : nil)
 
         if activePlan == nil, state.recommendations.isEmpty {
             updateLocalRecommendationsIfNeeded(activities: lastActivities, phase: lastPhase, now: now)
@@ -1380,6 +1541,10 @@ final class TrainingPlanStore: ObservableObject {
         phase: MotivationPhase,
         now: Date
     ) {
+        if accountContext.owner != "guest" {
+            applyRepositoryProjection(repositoryProjection, activities: activities, now: now)
+            return
+        }
         resetDismissedRecommendationIfNeeded(now: now)
         if activitySuggestion?.isValid(now: now) != true {
             activitySuggestion = nil
@@ -1419,6 +1584,7 @@ final class TrainingPlanStore: ObservableObject {
     }
 
     private func persistState() {
+        guard accountContext == ActivityAccountBoundary.current else { return }
         defaults.set(AppLanguage.currentIdentifier, forKey: cacheLocaleKey)
         let state = TrainingPlanStateResponse(
             activePlan: activePlan,
@@ -1429,7 +1595,7 @@ final class TrainingPlanStore: ObservableObject {
             scheduledWorkouts: scheduledWorkouts
         )
 
-        if let data = try? JSONEncoder().encode(state) {
+        if let data = try? JSONEncoder().encode(authoritativeState ?? state) {
             defaults.set(data, forKey: stateCacheKey)
         }
 
@@ -1471,7 +1637,7 @@ final class TrainingPlanStore: ObservableObject {
     ) {
         recommendationRefreshTask?.cancel()
         isRefreshingPlanRecommendations = true
-        recommendationRefreshTask = Task {
+        recommendationRefreshTask = accountTask { [self] in
             do {
                 let response = try await api.fetchPlanRecommendations()
                 guard !Task.isCancelled else { return }
@@ -1754,6 +1920,7 @@ private extension TrainingPlanStore {
     }
 
     static func makeWeekSnapshot(plan: ActiveTrainingPlan, activities: [SavedActivity], calendar: Calendar, now: Date) -> TrainingPlanWeekSnapshot {
+        let calendar = plan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar(timeZone: calendar.timeZone.identifier)
         let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
         let planWeekStart = calendar.dateInterval(of: .weekOfYear, for: plan.createdAt)?.start ?? plan.createdAt
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) ?? now
@@ -1780,7 +1947,7 @@ private extension TrainingPlanStore {
             completedMinutes: completedMinutes,
             targetMinutes: targetMinutes,
             progressPercent: progressPercent,
-            summaryLine: "\(completedSessions) of \(targetSessions) sessions, \(completedMinutes) of \(targetMinutes) min this week",
+            summaryLine: TrainingPlanWeekSnapshot.progressSummary(completedSessions: completedSessions, targetSessions: targetSessions, completedMinutes: completedMinutes, targetMinutes: targetMinutes),
             guideLine: guideLine(for: plan, completedSessions: completedSessions, completedMinutes: completedMinutes),
             focus: scheduledWeek?.focus ?? "Settle into the week",
             weekSummary: scheduledWeek?.summary ?? plan.subtitle,

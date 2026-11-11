@@ -57,6 +57,76 @@ actor ActivityPersistence {
         )
     }
 
+    #if DEBUG
+    func failNextPlanningWriteForRepositoryFixture() {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") else { return }
+        LocalActivityStore.failNextPlanningFixtureWrite = true
+    }
+    func failNextWriteForRepositoryFixture() {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") else { return }
+        LocalActivityStore.failNextFixtureWrite = true
+    }
+    #endif
+
+    func snapshot() throws -> ActivityRepositorySnapshot {
+        try ActivityRepositorySnapshot(activities: LocalActivityStore.load().sorted { $0.startedAt > $1.startedAt }, projection: LocalActivityStore.projection())
+    }
+
+    func reject(_ id: UUID, generation: UInt64, category: String) throws {
+        try LocalActivityStore.reject(id, generation: generation, category: category)
+    }
+
+    func retryRejected() throws { try LocalActivityStore.retryRejected() }
+    func invalidateReadModels() throws { try LocalActivityStore.invalidateReadModels() }
+    func statisticsSnapshot() throws -> Data? { try LocalActivityStore.statisticsSnapshot() }
+    func storeStatisticsSnapshot(_ data: Data, revision: Int, ticket: UInt64) throws -> Bool {
+        try LocalActivityStore.storeStatisticsSnapshot(data, revision: revision, ticket: ticket)
+    }
+    func planningSnapshot() throws -> Data? { try LocalActivityStore.planningSnapshot() }
+    @discardableResult
+    func storePlanningSnapshot(_ data: Data, revision: Int?, invalidateStatistics: Bool = false) throws -> ActivityReadModelSnapshot {
+        try LocalActivityStore.storePlanningSnapshot(data, revision: revision, invalidateStatistics: invalidateStatistics)
+    }
+    func statisticsReadTicket() throws -> UInt64 { try LocalActivityStore.statisticsReadTicket() }
+
+    func retainAcceptance(_ receipt: ActivityReconciliationReceipt) throws {
+        try LocalActivityStore.retainAcceptance(receipt)
+    }
+
+    func projection() throws -> ActivityRepositoryProjection {
+        try LocalActivityStore.projection()
+    }
+
+    func uploadSnapshot(for id: UUID) throws -> ActivityUploadSnapshot? { try LocalActivityStore.uploadSnapshot(for: id) }
+    func updateSyncState(_ state: SavedActivitySyncState, for id: UUID, expectedGeneration: UInt64) throws {
+        try LocalActivityStore.updateSyncState(state, for: id, expectedGeneration: expectedGeneration)
+    }
+    func applyRemoteBaseline(_ activity: SavedActivity, expectedGeneration: UInt64?) throws -> Bool {
+        try LocalActivityStore.applyRemoteBaseline(activity, expectedGeneration: expectedGeneration)
+    }
+    func mergePhotoMetadata(_ photos: [SavedPhoto], for id: UUID, appendIfGeneration: UInt64? = nil) throws {
+        try LocalActivityStore.mergePhotoMetadata(photos, for: id, appendIfGeneration: appendIfGeneration)
+    }
+    func generation(for id: UUID) throws -> UInt64? {
+        try LocalActivityStore.generation(for: id)
+    }
+
+    func acknowledge(_ activity: SavedActivity, generation: UInt64, receipt: ActivityReconciliationReceipt) throws -> SavedActivity? {
+        try LocalActivityStore.acknowledge(activity, generation: generation, receipt: receipt)
+    }
+
+    func finishReconciliation(planning: Int?, statistics: Int?, statisticsTicket: UInt64?) throws {
+        try LocalActivityStore.finishReconciliation(planning: planning, statistics: statistics, statisticsTicket: statisticsTicket)
+    }
+
+    func adoptCanonical(_ canonical: SavedActivity, replacing source: SavedActivity, generation: UInt64, canonicalGeneration: UInt64?, receipt: ActivityReconciliationReceipt) throws -> SavedActivity? {
+        try LocalActivityStore.adoptCanonical(canonical, replacing: source, generation: generation, canonicalGeneration: canonicalGeneration, receipt: receipt)
+    }
+
+    func verifiedLegacyActivity(serverID: String, clientID: UUID) throws -> SavedActivity? {
+        try LocalActivityStore.verifiedLegacyActivity(serverID: serverID, clientID: clientID)
+    }
+
     func copyPhotos(_ photos: [SavedPhoto], into activityID: UUID) throws -> [SavedPhoto] {
         try LocalActivityStore.copyPhotos(photos, into: activityID)
     }
@@ -73,8 +143,8 @@ actor ActivityPersistence {
         try LocalActivityStore.preserveOriginalElevationRoute(route, for: activityID)
     }
 
-    func replace(_ activity: SavedActivity) throws {
-        try LocalActivityStore.replace(activity)
+    func replace(_ activity: SavedActivity, mutation: Bool = true) throws {
+        try LocalActivityStore.replace(activity, mutation: mutation)
     }
 
     func replaceOrInsert(_ activity: SavedActivity) throws {
@@ -109,6 +179,10 @@ actor ActivityPersistence {
 
 private nonisolated enum LocalActivityStore {
     private static let manifestFileName = "activities.json"
+    #if DEBUG
+    nonisolated(unsafe) static var failNextFixtureWrite = false
+    nonisolated(unsafe) static var failNextPlanningFixtureWrite = false
+    #endif
 
     @discardableResult
     static func save(
@@ -227,10 +301,9 @@ private nonisolated enum LocalActivityStore {
     }
 
     static func load() throws -> [SavedActivity] {
-        let manifest = try manifestURL()
-        guard FileManager.default.fileExists(atPath: manifest.path) else { return [] }
-        let data = try Data(contentsOf: manifest)
-        let manifestActivities = try decoder.decode([SavedActivity].self, from: data)
+        try ActivityAccountBoundary.validate()
+        let manifestActivities = try readManifest().records
+            .filter { $0.owner == ActivityAccountBoundary.context.owner }.map(\.activity)
         return try manifestActivities.map { activity in
             guard activity.route == nil else {
                 try? saveRoute(activity.route!, for: activity.id)
@@ -244,16 +317,20 @@ private nonisolated enum LocalActivityStore {
         var activities = try load()
         activities.removeAll { $0.id == activity.id }
         try saveManifest(activities)
-        let activityDir = try activitiesDirectory().appendingPathComponent(activity.id.uuidString)
-        try? FileManager.default.removeItem(at: activityDir)
+        removeMediaIfUnreferenced(activity.id, manifest: try readManifest())
     }
 
-    static func replace(_ activity: SavedActivity) throws {
-        var activities = try load()
-        guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { return }
-        activities[index] = activity.withRoute(nil)
-        try saveRoute(activity.route, for: activity.id)
-        try saveManifest(activities)
+    static func replace(_ activity: SavedActivity, mutation: Bool = true) throws {
+        var manifest = try readManifest()
+        guard let index = manifest.records.firstIndex(where: { $0.owner == ActivityAccountBoundary.context.owner && $0.activity.id == activity.id }) else { return }
+        let nextGeneration = manifest.records[index].generation + (mutation ? 1 : 0)
+        let journal = mutation ? try prepareCanonicalJournal(sourceID: activity.id, targetID: activity.id, generation: nextGeneration) : nil
+        if mutation { try saveRoute(activity.route, for: activity.id) }
+        manifest.records[index].activity = activity.withRoute(nil)
+        manifest.records[index].generation = nextGeneration
+        if mutation { manifest.records[index].rejection = nil }
+        try writeManifest(manifest)
+        if let journal { try FileManager.default.removeItem(at: journal) }
     }
 
     static func updatePhotos(
@@ -262,14 +339,12 @@ private nonisolated enum LocalActivityStore {
         adding captures: [(UIImage, PhotoMetadata)],
         photoOrder: [Int]? = nil
     ) throws -> SavedActivity {
-        let keptIDs = Set(photos.map(\.id))
-        for removed in activity.photos where !keptIDs.contains(removed.id) {
-            let url = imageURL(for: removed)
-            if FileManager.default.fileExists(atPath: url.path) {
-                try FileManager.default.removeItem(at: url)
-            }
-        }
-
+        let baselineIDs = Set(activity.photos.map(\.id))
+        guard let current = try load().first(where: { $0.id == activity.id }) else { throw CocoaError(.fileNoSuchFile) }
+        let currentByID = Dictionary(current.photos.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
+        let concurrent = current.photos.filter { candidate in !baselineIDs.contains(candidate.id) && !photos.contains(where: { $0.id == candidate.id }) }
+        let photos = photos.map { currentByID[$0.id] ?? $0 }
+        let activity = current
         let photoDirectory = try directory(for: activity.id).appendingPathComponent("photos", isDirectory: true)
         try FileManager.default.createDirectory(at: photoDirectory, withIntermediateDirectories: true)
         let addedPhotos = try captures.compactMap { capture -> SavedPhoto? in
@@ -331,7 +406,7 @@ private nonisolated enum LocalActivityStore {
             followedRoute: activity.followedRoute,
             recognitionBadgeIDs: activity.recognitionBadgeIDs,
             route: activity.route,
-            photos: orderedPhotos,
+            photos: orderedPhotos + concurrent,
             sync: SavedActivitySyncState(
                 clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
                 serverActivityId: activity.sync?.serverActivityId,
@@ -346,22 +421,31 @@ private nonisolated enum LocalActivityStore {
     }
 
     static func replaceOrInsert(_ activity: SavedActivity) throws {
-        var activities = try load()
-        if let index = activities.firstIndex(where: { $0.id == activity.id }) {
-            activities[index] = activity.withRoute(nil)
-        } else {
-            activities.append(activity.withRoute(nil))
-        }
+        var manifest = try readManifest()
+        let owner = ActivityAccountBoundary.context.owner
+        let index = manifest.records.firstIndex { $0.owner == owner && $0.activity.id == activity.id }
+        let generation = (index.map { manifest.records[$0].generation } ?? 0) + 1
+        let journal = try prepareCanonicalJournal(sourceID: activity.id, targetID: activity.id, generation: generation)
         try saveRoute(activity.route, for: activity.id)
-        activities.sort { $0.startedAt > $1.startedAt }
-        try saveManifest(activities)
+        let record = ActivityRepositoryRecord(owner: owner, generation: generation, activity: activity.withRoute(nil))
+        if let index { manifest.records[index] = record } else { manifest.records.append(record) }
+        try writeManifest(manifest)
+        try FileManager.default.removeItem(at: journal)
     }
 
     static func deleteAll() throws {
-        let directory = try activitiesDirectory()
-        if FileManager.default.fileExists(atPath: directory.path) {
-            try FileManager.default.removeItem(at: directory)
-        }
+        try ActivityAccountBoundary.validate()
+        let owner = ActivityAccountBoundary.context.owner
+        var manifest = try readManifest()
+        let removed = manifest.records.filter { $0.owner == owner }.map(\.activity)
+        manifest.records.removeAll { $0.owner == owner }
+        manifest.reconciliation.removeValue(forKey: owner)
+        manifest.confirmedCompletions.removeValue(forKey: owner)
+        manifest.readInvalidationGenerations?.removeValue(forKey: owner)
+        manifest.planningSnapshots?.removeValue(forKey: owner)
+        manifest.statisticsSnapshots?.removeValue(forKey: owner)
+        try writeManifest(manifest)
+        for activity in removed { removeMediaIfUnreferenced(activity.id, manifest: manifest) }
     }
 
     static func imageURL(for photo: SavedPhoto) -> URL {
@@ -449,9 +533,353 @@ private nonisolated enum LocalActivityStore {
         return SavedRoute(points: points, elevationMetadata: metadata)
     }
 
-    private static func saveManifest(_ activities: [SavedActivity]) throws {
-        let data = try encoder.encode(activities)
-        try data.write(to: try manifestURL(), options: .atomic)
+    private static func readManifest() throws -> ActivityRepositoryManifest {
+        try ActivityAccountBoundary.validate()
+        try recoverCanonicalJournals()
+        return try readManifestWithoutRecovery()
+    }
+
+    private static func readManifestWithoutRecovery() throws -> ActivityRepositoryManifest {
+        let url = try manifestURL()
+        guard FileManager.default.fileExists(atPath: url.path) else { return .init() }
+        let data = try Data(contentsOf: url)
+        if let manifest = try? decoder.decode(ActivityRepositoryManifest.self, from: data) { return manifest }
+        // Ownership cannot be reconstructed from a global file. Retain originals until the
+        // authenticated server verifies a matching canonical identity; never claim guest work.
+        let legacy = try decoder.decode([SavedActivity].self, from: data)
+        return ActivityRepositoryManifest(records: legacy.map { .init(owner: "legacy-unverified", generation: 1, activity: $0) })
+    }
+
+    private struct CanonicalJournal: Codable {
+        let owner: String
+        let sourceID: UUID
+        let targetID: UUID
+        let generation: UInt64
+        let before: [String: Data]
+    }
+    private static let canonicalSidecars = ["route.bin", "route.meta.json", "route.original.bin"]
+
+    private static func prepareCanonicalJournal(sourceID: UUID, targetID: UUID, generation: UInt64) throws -> URL {
+        var before: [String: Data] = [:]
+        let target = try directory(for: targetID)
+        for name in canonicalSidecars {
+            let url = target.appendingPathComponent(name)
+            if FileManager.default.fileExists(atPath: url.path) { before[name] = try Data(contentsOf: url) }
+        }
+        let journal = CanonicalJournal(owner: ActivityAccountBoundary.context.owner, sourceID: sourceID, targetID: targetID, generation: generation, before: before)
+        let url = try activitiesDirectory().appendingPathComponent("canonical-journal-\(UUID().uuidString).json")
+        try encoder.encode(journal).write(to: url, options: .atomic)
+        return url
+    }
+
+    private static func recoverCanonicalJournals() throws {
+        let root = try activitiesDirectory()
+        for url in try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) where url.lastPathComponent.hasPrefix("canonical-journal-") {
+            let journal = try decoder.decode(CanonicalJournal.self, from: Data(contentsOf: url))
+            let manifest = try readManifestWithoutRecovery()
+            let target = manifest.records.first { $0.owner == journal.owner && $0.activity.id == journal.targetID }
+            let committed = target?.generation == journal.generation && (journal.sourceID == journal.targetID || !manifest.records.contains { $0.owner == journal.owner && $0.activity.id == journal.sourceID })
+            if !committed {
+                let directory = try self.directory(for: journal.targetID)
+                for name in canonicalSidecars {
+                    let file = directory.appendingPathComponent(name)
+                    if let data = journal.before[name] { try data.write(to: file, options: .atomic) }
+                    else if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }
+                }
+            }
+            try FileManager.default.removeItem(at: url)
+        }
+    }
+
+    private static func writeManifest(_ manifest: ActivityRepositoryManifest) throws {
+        try ActivityAccountBoundary.validate()
+        try Task.checkCancellation()
+        #if DEBUG
+        if failNextFixtureWrite {
+            failNextFixtureWrite = false
+            throw CocoaError(.fileWriteOutOfSpace)
+        }
+        #endif
+        try encoder.encode(manifest).write(to: try manifestURL(), options: .atomic)
+    }
+
+    private static func saveManifest(_ activities: [SavedActivity], mutatedIDs: Set<UUID> = []) throws {
+        try ActivityAccountBoundary.validate()
+        let owner = ActivityAccountBoundary.context.owner
+        var manifest = try readManifest()
+        let old = Dictionary(uniqueKeysWithValues: manifest.records.filter { $0.owner == owner }.map { ($0.activity.id, $0) })
+        manifest.records.removeAll { $0.owner == owner }
+        manifest.records += activities.map { activity in
+            let prior = old[activity.id]
+            let changed = mutatedIDs.contains(activity.id)
+            return ActivityRepositoryRecord(owner: owner, generation: (prior?.generation ?? 0) + (prior == nil || changed ? 1 : 0), activity: activity, rejection: changed ? nil : prior?.rejection)
+        }
+        try writeManifest(manifest)
+    }
+
+    static func projection() throws -> ActivityRepositoryProjection {
+        try ActivityAccountBoundary.validate()
+        let manifest = try readManifest(), owner = ActivityAccountBoundary.context.owner
+        let pending = manifest.records.filter { $0.owner == owner && $0.activity.sync?.isSynced != true && $0.rejection == nil }
+            .compactMap { $0.activity.performedWorkoutReference?.plannedWorkoutId }
+        let rejected = manifest.records.filter { $0.owner == owner && $0.rejection != nil }
+        return .init(pendingWorkoutIDs: Set(pending), conflictedWorkoutIDs: Set(rejected.compactMap { $0.activity.performedWorkoutReference?.plannedWorkoutId }),
+            blockedActivityIDs: Set(rejected.map { $0.activity.id }), confirmedCompletions: manifest.confirmedCompletions[owner] ?? [], reconciliation: manifest.reconciliation[owner])
+    }
+
+    static func reject(_ id: UUID, generation: UInt64, category: String) throws {
+        try ActivityAccountBoundary.validate()
+        var manifest = try readManifest()
+        guard let index = manifest.records.firstIndex(where: { $0.owner == ActivityAccountBoundary.context.owner && $0.activity.id == id }),
+              manifest.records[index].generation == generation else { return }
+        manifest.records[index].rejection = category
+        try writeManifest(manifest)
+    }
+
+    static func retryRejected() throws {
+        try ActivityAccountBoundary.validate()
+        var manifest = try readManifest()
+        for index in manifest.records.indices where manifest.records[index].owner == ActivityAccountBoundary.context.owner {
+            manifest.records[index].rejection = nil
+        }
+        try writeManifest(manifest)
+    }
+
+    static func uploadSnapshot(for id: UUID) throws -> ActivityUploadSnapshot? {
+        try ActivityAccountBoundary.validate()
+        guard let record = try readManifest().records.first(where: { $0.owner == ActivityAccountBoundary.context.owner && $0.activity.id == id }) else { return nil }
+        return .init(activity: record.activity.withRoute(try loadRoute(for: id)), generation: record.generation)
+    }
+
+    static func updateSyncState(_ state: SavedActivitySyncState, for id: UUID, expectedGeneration: UInt64) throws {
+        var manifest = try readManifest()
+        guard let index = manifest.records.firstIndex(where: { $0.owner == ActivityAccountBoundary.context.owner && $0.activity.id == id }),
+              manifest.records[index].generation == expectedGeneration else { return }
+        manifest.records[index].activity = manifest.records[index].activity.withSync(state)
+        try writeManifest(manifest)
+    }
+
+    static func applyRemoteBaseline(_ activity: SavedActivity, expectedGeneration: UInt64?) throws -> Bool {
+        var manifest = try readManifest()
+        let owner = ActivityAccountBoundary.context.owner
+        let index = manifest.records.firstIndex { $0.owner == owner && $0.activity.id == activity.id }
+        if let index {
+            guard manifest.records[index].generation == expectedGeneration,
+                  manifest.records[index].activity.sync?.isSynced == true else { return false }
+        } else if expectedGeneration != nil { return false }
+        // Route preparation is journaled too: a remote baseline must not corrupt a
+        // still-referenced sidecar if its manifest publication fails.
+        let journal = try prepareCanonicalJournal(sourceID: activity.id, targetID: activity.id, generation: (index.map { manifest.records[$0].generation } ?? 0) + 1)
+        try saveRoute(activity.route, for: activity.id)
+        let baseline = index.map { activity.withPhotos(manifest.records[$0].activity.photos) } ?? activity
+        let record = ActivityRepositoryRecord(owner: owner, generation: (index.map { manifest.records[$0].generation } ?? 0) + 1, activity: baseline.withRoute(nil))
+        if let index { manifest.records[index] = record } else { manifest.records.append(record) }
+        try writeManifest(manifest)
+        try FileManager.default.removeItem(at: journal)
+        return true
+    }
+
+    static func mergePhotoMetadata(_ photos: [SavedPhoto], for id: UUID, appendIfGeneration: UInt64?) throws {
+        var manifest = try readManifest()
+        guard let index = manifest.records.firstIndex(where: { $0.owner == ActivityAccountBoundary.context.owner && $0.activity.id == id }) else { return }
+        let current = manifest.records[index].activity
+        let incoming = Dictionary(photos.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
+        var merged = current.photos.map { photo -> SavedPhoto in
+            guard let remote = incoming[photo.id] else { return photo }
+            return SavedPhoto(id: photo.id, takenAt: photo.takenAt, paceAtShot: photo.paceAtShot, hrAtShot: photo.hrAtShot,
+                distAtShot: photo.distAtShot, coordinate: photo.coordinate, captureContext: photo.captureContext,
+                relativePath: photo.relativePath, remotePhotoId: remote.remotePhotoId ?? photo.remotePhotoId,
+                remoteUploadedAt: remote.remoteUploadedAt ?? photo.remoteUploadedAt,
+                remoteThumbnailURL: remote.remoteThumbnailURL ?? photo.remoteThumbnailURL, isImported: photo.isImported)
+        }
+        if appendIfGeneration == manifest.records[index].generation {
+            merged += photos.filter { candidate in !merged.contains(where: { $0.id == candidate.id }) }.sorted { $0.takenAt < $1.takenAt }
+        }
+        manifest.records[index].activity = current.withPhotos(merged)
+        try writeManifest(manifest)
+    }
+
+    static func generation(for id: UUID) throws -> UInt64? {
+        try ActivityAccountBoundary.validate()
+        return try readManifest().records.first { $0.owner == ActivityAccountBoundary.context.owner && $0.activity.id == id }?.generation
+    }
+
+    private static func retain(_ receipt: ActivityReconciliationReceipt, in manifest: inout ActivityRepositoryManifest) {
+        let owner = ActivityAccountBoundary.context.owner
+        let old = manifest.reconciliation[owner]
+        manifest.reconciliation[owner] = .init(planningRevision: max(old?.planningRevision ?? 0, receipt.planningRevision),
+            statisticsRevision: max(old?.statisticsRevision ?? 0, receipt.statisticsRevision), completion: nil,
+            requiresStatisticsRead: old?.requiresStatisticsRead == true || receipt.requiresStatisticsRead == true)
+        if let completion = receipt.completion {
+            var completions = manifest.confirmedCompletions[owner] ?? []
+            completions.removeAll { $0.plannedWorkoutId == completion.plannedWorkoutId || $0.activityId == completion.activityId }
+            completions.append(completion)
+            manifest.confirmedCompletions[owner] = completions
+        }
+    }
+
+    static func retainAcceptance(_ receipt: ActivityReconciliationReceipt) throws {
+        try ActivityAccountBoundary.validate()
+        var manifest = try readManifest()
+        retain(receipt, in: &manifest)
+        try writeManifest(manifest)
+    }
+
+    static func acknowledge(_ activity: SavedActivity, generation: UInt64, receipt: ActivityReconciliationReceipt) throws -> SavedActivity? {
+        try ActivityAccountBoundary.validate()
+        var manifest = try readManifest()
+        retain(receipt, in: &manifest)
+        let index = manifest.records.firstIndex { $0.owner == ActivityAccountBoundary.context.owner && $0.activity.id == activity.id }
+        if let index, manifest.records[index].generation == generation {
+            manifest.records[index].activity = manifest.records[index].activity.withSync(activity.sync)
+            manifest.records[index].rejection = nil
+        }
+        try writeManifest(manifest)
+        guard let index, manifest.records[index].generation == generation else { return nil }
+        return activity
+    }
+
+    private static func invalidateStatistics(in manifest: inout ActivityRepositoryManifest) {
+        let owner = ActivityAccountBoundary.context.owner
+        var generations = manifest.readInvalidationGenerations ?? [:]
+        generations[owner] = (generations[owner] ?? 0) &+ 1
+        manifest.readInvalidationGenerations = generations
+        retain(.init(planningRevision: 0, statisticsRevision: 0, completion: nil, requiresStatisticsRead: true), in: &manifest)
+    }
+
+    static func invalidateReadModels() throws {
+        try ActivityAccountBoundary.validate()
+        var manifest = try readManifest()
+        invalidateStatistics(in: &manifest)
+        try writeManifest(manifest)
+    }
+
+    static func statisticsSnapshot() throws -> Data? {
+        try ActivityAccountBoundary.validate()
+        return try readManifest().statisticsSnapshots?[ActivityAccountBoundary.context.owner]?.data
+    }
+
+    static func storeStatisticsSnapshot(_ data: Data, revision: Int, ticket: UInt64) throws -> Bool {
+        try ActivityAccountBoundary.validate()
+        let owner = ActivityAccountBoundary.context.owner
+        var manifest = try readManifest()
+        guard ticket == (manifest.readInvalidationGenerations?[owner] ?? 0) else { return false }
+        var snapshots = manifest.statisticsSnapshots ?? [:]
+        guard revision >= (snapshots[owner]?.revision ?? 0) else { return false }
+        snapshots[owner] = .init(revision: revision, data: data)
+        manifest.statisticsSnapshots = snapshots
+        try writeManifest(manifest)
+        return true
+    }
+
+    static func planningSnapshot() throws -> Data? {
+        try ActivityAccountBoundary.validate()
+        return try readManifest().planningSnapshots?[ActivityAccountBoundary.context.owner]?.data
+    }
+
+    static func storePlanningSnapshot(_ data: Data, revision: Int?, invalidateStatistics: Bool) throws -> ActivityReadModelSnapshot {
+        try ActivityAccountBoundary.validate()
+        let owner = ActivityAccountBoundary.context.owner
+        var manifest = try readManifest()
+        var snapshots = manifest.planningSnapshots ?? [:]
+        let existing = snapshots[owner]
+        let selected = existing.map { ($0.revision ?? -1) > (revision ?? -1) ? $0 : ActivityReadModelSnapshot(revision: revision, data: data) }
+            ?? ActivityReadModelSnapshot(revision: revision, data: data)
+        #if DEBUG
+        if failNextPlanningFixtureWrite {
+            failNextPlanningFixtureWrite = false
+            throw CocoaError(.fileWriteOutOfSpace)
+        }
+        #endif
+        snapshots[owner] = selected
+        manifest.planningSnapshots = snapshots
+        if invalidateStatistics { self.invalidateStatistics(in: &manifest) }
+        try writeManifest(manifest)
+        return selected
+    }
+
+    static func statisticsReadTicket() throws -> UInt64 {
+        try ActivityAccountBoundary.validate()
+        return try readManifest().readInvalidationGenerations?[ActivityAccountBoundary.context.owner] ?? 0
+    }
+
+    static func finishReconciliation(planning: Int?, statistics: Int?, statisticsTicket: UInt64?) throws {
+        try ActivityAccountBoundary.validate()
+        var manifest = try readManifest(), owner = ActivityAccountBoundary.context.owner
+        guard let cursor = manifest.reconciliation[owner] else { return }
+        let p = planning.map { $0 >= cursor.planningRevision } == true ? 0 : cursor.planningRevision
+        let s = statistics.map { $0 >= cursor.statisticsRevision } == true ? 0 : cursor.statisticsRevision
+        let needsStatisticsRead = cursor.requiresStatisticsRead == true
+            && (statistics == nil || statisticsTicket != (manifest.readInvalidationGenerations?[owner] ?? 0))
+        manifest.reconciliation[owner] = p == 0 && s == 0 && !needsStatisticsRead ? nil
+            : .init(planningRevision: p, statisticsRevision: s, completion: nil, requiresStatisticsRead: needsStatisticsRead)
+        try writeManifest(manifest)
+    }
+
+    static func verifiedLegacyActivity(serverID: String, clientID: UUID) throws -> SavedActivity? {
+        try ActivityAccountBoundary.validate()
+        guard ActivityAccountBoundary.context.owner.hasPrefix("account:") else { return nil }
+        var manifest = try readManifest()
+        guard let index = manifest.records.firstIndex(where: { $0.owner == "legacy-unverified" && $0.activity.id == clientID && $0.activity.sync?.serverActivityId == serverID }) else { return nil }
+        manifest.records[index].owner = ActivityAccountBoundary.context.owner
+        try writeManifest(manifest)
+        return manifest.records[index].activity.withRoute(try loadRoute(for: clientID))
+    }
+
+    static func adoptCanonical(_ canonical: SavedActivity, replacing source: SavedActivity, generation: UInt64, canonicalGeneration: UInt64?, receipt: ActivityReconciliationReceipt) throws -> SavedActivity? {
+        try ActivityAccountBoundary.validate()
+        var manifest = try readManifest(), owner = ActivityAccountBoundary.context.owner
+        retain(receipt, in: &manifest)
+        let target = manifest.records.first { $0.owner == owner && $0.activity.id == canonical.id }
+        guard let original = manifest.records.first(where: { $0.owner == owner && $0.activity.id == source.id }),
+              original.generation == generation, target?.generation == canonicalGeneration,
+              (target == nil || target?.activity.sync?.isSynced == true) else {
+            try writeManifest(manifest)
+            return nil
+        }
+        // Metadata-only photo updates do not change the user mutation generation.
+        // Merge them from the current actor rows rather than dropping late cloud metadata.
+        let copiedCurrentSource = try copyPhotos(original.activity.photos, into: canonical.id)
+        var photos = canonical.photos
+        for latest in (target?.activity.photos ?? []) + copiedCurrentSource {
+            if let index = photos.firstIndex(where: { $0.id == latest.id }) {
+                let prepared = photos[index]
+                photos[index] = SavedPhoto(id: prepared.id, takenAt: prepared.takenAt, paceAtShot: prepared.paceAtShot,
+                    hrAtShot: prepared.hrAtShot, distAtShot: prepared.distAtShot, coordinate: prepared.coordinate,
+                    captureContext: prepared.captureContext, relativePath: prepared.relativePath,
+                    remotePhotoId: latest.remotePhotoId ?? prepared.remotePhotoId, remoteUploadedAt: latest.remoteUploadedAt ?? prepared.remoteUploadedAt,
+                    remoteThumbnailURL: latest.remoteThumbnailURL ?? prepared.remoteThumbnailURL, isImported: prepared.isImported)
+            } else { photos.append(latest) }
+        }
+        let canonical = canonical.withPhotos(photos)
+        // Prepare every referenced sidecar before atomically switching both identities.
+        // Failed preparation leaves the source intact; orphaned prepared files are harmless.
+        let journal = try prepareCanonicalJournal(sourceID: source.id, targetID: canonical.id, generation: generation)
+        try saveRoute(canonical.route, for: canonical.id)
+        let sourceDirectory = try directory(for: source.id)
+        let targetDirectory = try directory(for: canonical.id)
+        let originalRoute = sourceDirectory.appendingPathComponent("route.original.bin")
+        let targetOriginal = targetDirectory.appendingPathComponent("route.original.bin")
+        if FileManager.default.fileExists(atPath: originalRoute.path), !FileManager.default.fileExists(atPath: targetOriginal.path) {
+            try FileManager.default.copyItem(at: originalRoute, to: targetOriginal)
+        }
+        manifest.records.removeAll { $0.owner == owner && ($0.activity.id == source.id || $0.activity.id == canonical.id) }
+        manifest.records.append(.init(owner: owner, generation: generation, activity: canonical.withRoute(nil)))
+        retain(receipt, in: &manifest)
+        try writeManifest(manifest)
+        try FileManager.default.removeItem(at: journal)
+        removeMediaIfUnreferenced(source.id, manifest: manifest)
+        return canonical
+    }
+
+    private static func removeMediaIfUnreferenced(_ id: UUID, manifest: ActivityRepositoryManifest) {
+        guard !manifest.records.contains(where: { $0.activity.id == id }) else { return }
+        do {
+            let directory = try activitiesDirectory().appendingPathComponent(id.uuidString)
+            if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
+        } catch {
+            ActivityDiagnosticLog.error(.persistence, "Unreferenced activity media cleanup failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+        }
     }
 
     private static func directory(for activityId: UUID) throws -> URL {
@@ -491,7 +919,10 @@ private nonisolated enum LocalActivityStore {
 }
 
 nonisolated extension SavedActivity {
-    func withRoute(_ replacement: SavedRoute?) -> SavedActivity {
+    func withRoute(_ replacement: SavedRoute?) -> SavedActivity { copied(route: replacement, photos: photos, sync: sync) }
+    func withSync(_ replacement: SavedActivitySyncState?) -> SavedActivity { copied(route: route, photos: photos, sync: replacement) }
+    func withPhotos(_ replacement: [SavedPhoto]) -> SavedActivity { copied(route: route, photos: replacement, sync: sync) }
+    private func copied(route replacement: SavedRoute?, photos: [SavedPhoto], sync: SavedActivitySyncState?) -> SavedActivity {
         SavedActivity(
             id: id, activityType: activityType, title: title, guideNudge: guideNudge,
             reflection: reflection, sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality, createdAt: createdAt, startedAt: startedAt, endedAt: endedAt,

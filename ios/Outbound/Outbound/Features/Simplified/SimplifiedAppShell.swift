@@ -406,27 +406,8 @@ struct SimplifiedAppShell: View {
         }
         .sheet(isPresented: $showsPlanDetails) {
             NavigationStack {
-                if let activePlan = trainingPlanStore.activePlan {
-                    if let week = trainingPlanStore.currentWeek {
-                        ActiveTrainingPlanDetailView(
-                            activePlan: activePlan,
-                            week: week,
-                            todaySuggestion: trainingPlanStore.todaySuggestion,
-                            accentColor: theme.accentColor,
-                            onChangePlan: changePlanFromDetails,
-                            onEndPlan: endPlanFromDetails
-                        )
-                    } else {
-                        ActiveTrainingPlanPendingDetailView(
-                            activePlan: activePlan,
-                            accentColor: theme.accentColor,
-                            onChangePlan: changePlanFromDetails,
-                            onEndPlan: endPlanFromDetails
-                        )
-                    }
-                } else {
-                    ActiveTrainingPlanSyncingDetailView(accentColor: theme.accentColor)
-                }
+                ActiveTrainingPlanDetailsProjectionView(store: trainingPlanStore, accentColor: theme.accentColor,
+                    onChangePlan: changePlanFromDetails, onEndPlan: endPlanFromDetails)
             }
         }
         .sheet(isPresented: $showsPlanPicker) {
@@ -473,28 +454,7 @@ struct SimplifiedAppShell: View {
         } message: {
             Text("This replaces your current multi-week schedule with the selected plan. Completed activities stay in your history.")
         }
-        .onAppear {
-            weatherStore.refreshForToday()
-            trainingPlanStore.refresh(
-                activities: activityStore.activities,
-                readiness: dailyCheckInStore.readiness,
-                phase: DailyMotivationEngine.phase(for: activityStore.activities)
-            )
-        }
-        .onChange(of: activityStore.activities) { _, activities in
-            trainingPlanStore.refresh(
-                activities: activities,
-                readiness: dailyCheckInStore.readiness,
-                phase: DailyMotivationEngine.phase(for: activities)
-            )
-        }
-        .onChange(of: dailyCheckInStore.readiness) { _, readiness in
-            trainingPlanStore.refresh(
-                activities: activityStore.activities,
-                readiness: readiness,
-                phase: DailyMotivationEngine.phase(for: activityStore.activities)
-            )
-        }
+        .onAppear { weatherStore.refreshForToday() }
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
             guard let target else { return }
             switch target.destination {
@@ -2566,7 +2526,7 @@ private struct SimplifiedMeView: View {
                                     Text(String(localized: "me.week.statistics_unavailable", defaultValue: "Connect to load statistics for this week."))
                                         .font(.subheadline).foregroundStyle(.secondary)
                                     Button(String(localized: "common.retry", defaultValue: "Retry")) {
-                                        Task { await activityStore.refreshAccountStatistics() }
+                                        activityStore.retrySynchronization()
                                     }
                                 } else {
                                 HStack {
@@ -2773,7 +2733,6 @@ private struct SimplifiedMeView: View {
             .onAppear {
                 handlePendingAssistantTarget(appNavigationStore.pendingAssistantTarget)
                 trackCalorieExposureIfNeeded()
-                Task { await activityStore.refreshAccountStatistics() }
             }
             .onChange(of: activityStore.activities) { _, _ in trackCalorieExposureIfNeeded() }
             .onChange(of: onboardingStore.latestWeightKilograms) { _, _ in trackCalorieExposureIfNeeded() }
@@ -3102,6 +3061,9 @@ private struct SimplifiedMeView: View {
     private var planTitle: String {
         guard let plan = trainingPlanStore.activePlan else { return String(localized: "Building your running rhythm") }
         let week = trainingPlanStore.currentWeek?.currentWeekIndex ?? 1
+        if week > plan.durationWeeks {
+            return String(format: String(localized: "plan.calendar.plan_week", defaultValue: "%1$@ · Week %2$d", table: "PlanningCalendar"), plan.localizedTitle, week)
+        }
         return String(localized: "\(plan.localizedTitle) · Week \(week) of \(plan.durationWeeks)")
     }
 
@@ -3113,8 +3075,7 @@ private struct SimplifiedMeView: View {
         guard let snapshot = activityStore.accountStatistics else { return false }
         let now = Date()
         return snapshot.weekStart <= now && now < snapshot.weekEnd
-            && snapshot.timeZone == TimeZone.current.identifier
-            && snapshot.firstWeekday == Calendar.current.firstWeekday
+            && snapshot.firstWeekday == 2
     }
     private var weeklyRunProgress: AccountStatisticsSnapshot.WeeklyRunGoal? {
         if AuthStore.currentUserId != nil { return activityStore.accountStatistics?.weeklyRunGoal }
@@ -3153,7 +3114,7 @@ private struct SimplifiedMeView: View {
     }
     private var currentWeekActivities: [SavedActivity] {
         let now = Date()
-        guard let interval = Calendar.current.dateInterval(of: .weekOfYear, for: now) else { return [] }
+        guard let interval = PlanningCalendarContext.accountCalendar().dateInterval(of: .weekOfYear, for: now) else { return [] }
         return activityStore.activities.filter { $0.startedAt >= interval.start && $0.startedAt < interval.end && $0.startedAt <= now }
     }
     private var recognitionSection: some View {
@@ -4491,3 +4452,10 @@ private extension RunnerConfidence {
         .environmentObject(MeasurementPreferences())
         .environmentObject(CycleAwareStore())
 }
+
+#if DEBUG
+/// Renders the production Me surface without duplicating its data formulas or weekly card.
+struct DebugRepositoryMeSurface: View {
+    var body: some View { SimplifiedMeView(onOpenPlan: {}) }
+}
+#endif

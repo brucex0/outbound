@@ -79,6 +79,16 @@ struct WorkoutNotificationDiagnostics: Sendable {
 }
 #endif
 
+#if DEBUG
+@MainActor
+protocol WorkoutNotificationFixtureClient: AnyObject {
+    func authorizationStatus() async -> UNAuthorizationStatus
+    func requests() async -> [UNNotificationRequest]
+    func add(_ request: UNNotificationRequest) async throws
+    func remove(_ identifiers: [String])
+}
+#endif
+
 @MainActor
 final class WorkoutNotificationScheduler: ObservableObject {
     static let shared = WorkoutNotificationScheduler()
@@ -96,6 +106,42 @@ final class WorkoutNotificationScheduler: ObservableObject {
     private var analyticsManager: AnalyticsManager?
     private var currentAccountID: String?
     private var cachedWorkouts: [ScheduledWorkoutReminder] = []
+    private var schedulingGeneration: UInt64 = 0
+    #if DEBUG
+    private var fixtureClient: WorkoutNotificationFixtureClient?
+    func useRepositoryFixtureClient(_ client: WorkoutNotificationFixtureClient) {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") else { return }
+        fixtureClient = client
+    }
+    #endif
+
+    private func valid(_ context: ActivityAccountContext, _ generation: UInt64, _ accountID: String?) -> Bool {
+        context == ActivityAccountBoundary.current && generation == schedulingGeneration && accountID == currentAccountID
+    }
+    private func authorizationStatus() async -> UNAuthorizationStatus {
+        #if DEBUG
+        if let fixtureClient { return await fixtureClient.authorizationStatus() }
+        #endif
+        return await center.notificationSettings().authorizationStatus
+    }
+    private func requests() async -> [UNNotificationRequest] {
+        #if DEBUG
+        if let fixtureClient { return await fixtureClient.requests() }
+        #endif
+        return await center.pendingNotificationRequests()
+    }
+    private func add(_ request: UNNotificationRequest) async throws {
+        #if DEBUG
+        if let fixtureClient { try await fixtureClient.add(request); return }
+        #endif
+        try await center.add(request)
+    }
+    private func remove(_ identifiers: [String]) {
+        #if DEBUG
+        if let fixtureClient { fixtureClient.remove(identifiers); return }
+        #endif
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
 
     init(
         center: UNUserNotificationCenter = .current(),
@@ -105,11 +151,12 @@ final class WorkoutNotificationScheduler: ObservableObject {
         self.center = center
         self.defaults = defaults
         self.calendar = calendar
-        cachedWorkouts = Self.decode([ScheduledWorkoutReminder].self, from: defaults.data(forKey: Self.scheduleKey)) ?? []
+        cachedWorkouts = []
     }
 
     func configure(analyticsManager: AnalyticsManager?, accountID: String?) async {
-        self.analyticsManager = analyticsManager
+        guard ActivityAccountBoundary.context == ActivityAccountBoundary.current else { return }
+        if let analyticsManager { self.analyticsManager = analyticsManager }
         if currentAccountID != accountID || accountID == nil {
             currentAccountID = accountID
             await cancelAll(reason: "account_changed")
@@ -121,11 +168,15 @@ final class WorkoutNotificationScheduler: ObservableObject {
         activities: [SavedActivity],
         workouts: [ScheduledWorkoutReminder]
     ) async -> Bool {
+        let context = ActivityAccountBoundary.context, accountID = currentAccountID, generation = schedulingGeneration
+        guard valid(context, generation, accountID) else { return false }
         let settings = await center.notificationSettings()
+        guard valid(context, generation, accountID) else { return false }
         let status: UNAuthorizationStatus
         if settings.authorizationStatus == .notDetermined {
             do {
                 let granted = try await center.requestAuthorization(options: [.alert, .sound])
+                guard valid(context, generation, accountID) else { return false }
                 status = granted ? .authorized : .denied
             } catch {
                 status = .denied
@@ -134,6 +185,7 @@ final class WorkoutNotificationScheduler: ObservableObject {
             status = settings.authorizationStatus
         }
 
+        guard valid(context, generation, accountID) else { return false }
         let enabled = status == .authorized || status == .provisional
         preferences.isEnabled = enabled
         track(.workoutReminderSettingChanged, properties: [
@@ -154,6 +206,7 @@ final class WorkoutNotificationScheduler: ObservableObject {
     }
 
     func disable(preferences: WorkoutReminderPreferences) async {
+        guard ActivityAccountBoundary.context == ActivityAccountBoundary.current else { return }
         preferences.isEnabled = false
         track(.workoutReminderSettingChanged, properties: [.selectionType: .string("disabled")])
         await cancelAll(reason: "setting_disabled")
@@ -165,13 +218,18 @@ final class WorkoutNotificationScheduler: ObservableObject {
         workouts: [ScheduledWorkoutReminder]? = nil,
         reason: String
     ) async {
+        let context = ActivityAccountBoundary.context, accountID = currentAccountID
+        guard context == ActivityAccountBoundary.current else { return }
+        schedulingGeneration &+= 1
+        let generation = schedulingGeneration
+        let requestPrefix = Self.identifierPrefix + UUID().uuidString + "."
         guard preferences.isEnabled else {
             await cancelAll(reason: "setting_disabled")
             return
         }
 
-        let settings = await center.notificationSettings()
-        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+        let status = await authorizationStatus()
+        guard valid(context, generation, accountID), status == .authorized || status == .provisional else {
             return
         }
 
@@ -187,11 +245,12 @@ final class WorkoutNotificationScheduler: ObservableObject {
             }
             .sorted { $0.date < $1.date })
 
-        let identifiers = Set(resolvedWorkouts.map(Self.identifier(for:)))
+        let identifiers = Set(resolvedWorkouts.map { requestPrefix + $0.id })
         let existingIdentifiers = await pendingWorkoutIdentifiers()
+        guard valid(context, generation, accountID) else { return }
         let obsolete = existingIdentifiers.filter { !identifiers.contains($0) }
         if !obsolete.isEmpty {
-            center.removePendingNotificationRequests(withIdentifiers: Array(obsolete))
+            remove(Array(obsolete))
         }
 
         var scheduled = 0
@@ -214,17 +273,26 @@ final class WorkoutNotificationScheduler: ObservableObject {
                 repeats: false
             )
             do {
-                try await center.add(UNNotificationRequest(
-                    identifier: Self.identifier(for: reminder),
+                let identifier = requestPrefix + reminder.id
+                try await add(UNNotificationRequest(
+                    identifier: identifier,
                     content: content,
                     trigger: trigger
                 ))
+                guard valid(context, generation, accountID) else {
+                    remove([identifier]) // This generation owns this unique identifier; never remove a new account's request.
+                    return
+                }
                 scheduled += 1
-            } catch {
+            } catch is CancellationError { return }
+            catch {
+                guard valid(context, generation, accountID) else { return }
+                ActivityDiagnosticLog.error(.sync, "Workout reminder add failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 continue
             }
         }
 
+        guard valid(context, generation, accountID) else { return }
         cachedWorkouts = resolvedWorkouts
         persistSchedule()
         pendingReminderCount = scheduled
@@ -235,6 +303,7 @@ final class WorkoutNotificationScheduler: ObservableObject {
     }
 
     func updateCachedWorkouts(_ workouts: [ScheduledWorkoutReminder]) {
+        guard ActivityAccountBoundary.context == ActivityAccountBoundary.current else { return }
         cachedWorkouts = deduplicated(workouts)
         persistSchedule()
     }
@@ -248,8 +317,15 @@ final class WorkoutNotificationScheduler: ObservableObject {
         let day = calendar.startOfDay(for: activity.startedAt)
         let matches = cachedWorkouts.filter { calendar.isDate($0.date, inSameDayAs: day) }
         guard !matches.isEmpty else { return }
-        let identifiers = matches.map(Self.identifier(for:))
-        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        let context = ActivityAccountBoundary.context, accountID = currentAccountID
+        guard context == ActivityAccountBoundary.current else { return }
+        schedulingGeneration &+= 1
+        let generation = schedulingGeneration
+        let reminderIDs = Set(matches.map(\.id))
+        let pending = await requests()
+        guard valid(context, generation, accountID) else { return }
+        let identifiers = pending.filter { reminderIDs.contains($0.content.userInfo["reminderID"] as? String ?? "") }.map(\.identifier)
+        remove(identifiers)
         cachedWorkouts.removeAll { calendar.isDate($0.date, inSameDayAs: day) }
         persistSchedule()
         pendingReminderCount = max(0, pendingReminderCount - identifiers.count)
@@ -260,9 +336,14 @@ final class WorkoutNotificationScheduler: ObservableObject {
     }
 
     func cancelAll(reason: String) async {
+        let context = ActivityAccountBoundary.context, accountID = currentAccountID
+        guard context == ActivityAccountBoundary.current else { return }
+        schedulingGeneration &+= 1
+        let generation = schedulingGeneration
         let identifiers = await pendingWorkoutIdentifiers()
+        guard valid(context, generation, accountID) else { return }
         if !identifiers.isEmpty {
-            center.removePendingNotificationRequests(withIdentifiers: Array(identifiers))
+            remove(Array(identifiers))
         }
         cachedWorkouts = []
         pendingReminder = nil
@@ -366,8 +447,8 @@ final class WorkoutNotificationScheduler: ObservableObject {
     }
 
     private func pendingWorkoutIdentifiers() async -> Set<String> {
-        let requests = await center.pendingNotificationRequests()
-        return Set(requests.map(\.identifier).filter { $0.hasPrefix(Self.identifierPrefix) })
+        let pending = await requests()
+        return Set(pending.map(\.identifier).filter { $0.hasPrefix(Self.identifierPrefix) })
     }
 
     private func isCompleted(_ reminder: ScheduledWorkoutReminder, activities: [SavedActivity]) -> Bool {
@@ -379,7 +460,7 @@ final class WorkoutNotificationScheduler: ObservableObject {
 
     private func persistSchedule() {
         guard let data = try? JSONEncoder().encode(cachedWorkouts) else { return }
-        defaults.set(data, forKey: Self.scheduleKey)
+        defaults.set(data, forKey: Self.scheduleKey + "." + (currentAccountID ?? "guest"))
     }
 
     private func track(_ name: ProductEventName, properties: [ProductPropertyKey: AnalyticsValue] = [:]) {

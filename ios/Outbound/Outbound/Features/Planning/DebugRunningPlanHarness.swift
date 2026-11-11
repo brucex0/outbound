@@ -12,6 +12,8 @@ struct DebugRunningPlanHarness: View {
     @State private var showsLongRouteName = true
     @State private var simulatesCachedUndatedSchedule = false
 
+    private var calendarOnly: Bool { ProcessInfo.processInfo.arguments.contains("-OutboundDebugCalendarOnly") }
+
     private var phases: [SessionIntentStep] {
         fixture?.todaySuggestion?.suggestedSession.intent.workoutSteps ?? []
     }
@@ -47,11 +49,14 @@ struct DebugRunningPlanHarness: View {
                             todaySuggestion: fixture?.todaySuggestion, accentColor: theme.accentColor, benchmarkSaveOverride: saveSyntheticBenchmark)
                             .safeAreaInset(edge: .bottom) {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Toggle("Fail next benchmark save (synthetic)", isOn: $failsNextBenchmarkSave)
+                                    if !calendarOnly {
+                                        Toggle("Fail next benchmark save (synthetic)", isOn: $failsNextBenchmarkSave)
+                                    }
                                     Button {
                                         guideCatalogStore.setTheme(guideCatalogStore.selectedTheme == .victoryGold ? .neonPulse : .victoryGold)
                                     } label: {
-                                        Text("Theme: \(guideCatalogStore.selectedTheme.displayName)")
+                                        Text(calendarOnly ? "Theme" : "Theme: \(guideCatalogStore.selectedTheme.displayName)")
+                                            .font(calendarOnly ? .caption : .body)
                                             .fixedSize(horizontal: false, vertical: true)
                                             .frame(minHeight: 44, alignment: .leading)
                                     }
@@ -114,6 +119,7 @@ struct DebugRunningPlanHarness: View {
             )
         }
         return TrainingPlanWeekSnapshot(
+            calendar: value.calendar,
             currentWeekIndex: value.currentWeekIndex,
             totalWeeks: value.totalWeeks,
             completedSessions: value.completedSessions,

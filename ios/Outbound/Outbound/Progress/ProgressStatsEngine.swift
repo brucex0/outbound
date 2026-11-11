@@ -320,7 +320,7 @@ enum ProgressStatsEngine {
     static func snapshot(
         from activities: [ProgressActivity],
         now: Date = Date(),
-        calendar: Calendar = .current
+        calendar: Calendar = PlanningCalendarContext.accountCalendar()
     ) -> ProgressStatsSnapshot {
         let eligible = activities
             .filter { $0.durationSeconds > minimumDurationSeconds }

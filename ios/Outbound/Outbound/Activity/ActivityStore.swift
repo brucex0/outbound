@@ -5,7 +5,100 @@ import UIKit
 
 @MainActor
 final class ActivityStore: ObservableObject {
-    @Published private(set) var activities: [SavedActivity] = []
+    @Published private(set) var activityRows: [SavedActivity] = []
+    private(set) var activities: [SavedActivity] {
+        get { activityRows }
+        set {
+            guard ActivityAccountBoundary.context == ActivityAccountBoundary.current else { return }
+            activityRows = newValue
+        }
+    }
+    @Published private(set) var repositoryProjection = ActivityRepositoryProjection()
+    @Published private(set) var repositorySnapshot = ActivityRepositorySnapshot()
+    private var uploadingActivityIDs: Set<UUID> = []
+    var synchronizationRequested: (() -> Void)?
+    func retrySynchronization() {
+        let context = ActivityAccountBoundary.current
+        Task {
+            await ActivityAccountBoundary.$operation.withValue(context) {
+                do {
+                    try await persistence.retryRejected()
+                    await refreshRepositoryProjection()
+                    synchronizationRequested?()
+                } catch is CancellationError { }
+                catch { ActivityDiagnosticLog.error(.persistence, "Explicit sync retry checkpoint failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
+            }
+        }
+    }
+
+    var retryablePendingActivityCount: Int {
+        activities.filter { $0.sync?.isSynced != true && !repositoryProjection.blockedActivityIDs.contains($0.id) }.count
+    }
+
+    func activateAccount() async {
+        return await ActivityAccountBoundary.withAccount {
+            activityRevision += 1
+            activities = []
+            repositoryProjection = .init()
+            repositorySnapshot = .init()
+            accountStatistics = nil
+            statisticsAccountKey = nil
+            remoteHistoryTask?.cancel()
+            remoteHistoryTask = nil
+            remoteHistoryCursor = nil
+            remoteHistoryOffset = 0
+            hasMoreRemoteActivities = true
+            pendingRemotePhotos = [:]
+            invalidatedRoutes = []
+            resolvedRouteVersions = []
+            hasLoadedActivities = false
+            await loadActivities()
+            await loadStatisticsBaseline()
+            await refreshRepositoryProjection()
+        }
+    }
+
+    private func loadStatisticsBaseline() async {
+        do {
+            guard let userID = AuthStore.currentUserId,
+                  let data = try await persistence.statisticsSnapshot() else { return }
+            let snapshot = try JSONDecoder().decode(AccountStatisticsSnapshot.self, from: data)
+            try ActivityAccountBoundary.validate()
+            guard snapshot.algorithmVersion == 1, snapshot.status == "complete", snapshot.firstWeekday == 2 else { return }
+            statisticsAccountKey = "statistics.monday-v1.\(userID)"
+            accountStatistics = snapshot
+            statisticsAreCached = true
+        } catch is CancellationError { }
+        catch { ActivityDiagnosticLog.error(.persistence, "Durable statistics cache load failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
+    }
+
+    private func refreshRepositoryProjection() async {
+        return await ActivityAccountBoundary.withAccount {
+            do {
+                let snapshot = try await persistence.snapshot()
+                try ActivityAccountBoundary.validate()
+                repositoryProjection = snapshot.projection
+                activities = snapshot.activities
+                repositorySnapshot = snapshot
+            } catch is CancellationError { /* Account transition intentionally discards the old projection. */ }
+            catch { ActivityDiagnosticLog.error(.persistence, "Repository projection failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
+        }
+    }
+
+    func finishReconciliation(planning: Int?, statistics: Int?) async {
+        return await ActivityAccountBoundary.withAccount {
+            do {
+                try await persistence.finishReconciliation(planning: planning, statistics: statistics, statisticsTicket: lastStatisticsReadTicket)
+                await refreshRepositoryProjection()
+                await analyticsManager?.track(.init(.featureExposed, properties: [
+                    .feature: .string("activity_reconciliation"),
+                    .result: .string(repositoryProjection.reconciliation == nil ? "complete" : "pending")
+                ]))
+            } catch is CancellationError { /* The new account owns its own cursor. */ }
+            catch { ActivityDiagnosticLog.error(.persistence, "Reconciliation checkpoint failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
+        }
+    }
+
     @Published private(set) var isSyncing = false
     @Published private(set) var hasLoadedActivities = false
     @Published private(set) var photoAlbumNotice: ActivityPhotoAlbumNotice?
@@ -21,6 +114,9 @@ final class ActivityStore: ObservableObject {
     @Published private(set) var accountStatistics: AccountStatisticsSnapshot?
     @Published private(set) var statisticsAreCached = true
     @Published private(set) var statisticsIsLoading = false
+    private(set) var statisticsReadGeneration: UInt64 = 0
+    private(set) var lastStatisticsReadTicket: UInt64?
+    var planningCalendarTimeZone: String?
     private var statisticsAccountKey: String?
     private var statisticsRequestsInFlight: Set<String> = []
     private var knownRemoteImportIDs: [String: Set<String>] = [:]
@@ -46,7 +142,7 @@ final class ActivityStore: ObservableObject {
 
     init(analyticsManager: AnalyticsManager? = nil) {
         self.analyticsManager = analyticsManager
-        Task { await loadActivities() }
+        Task { await loadActivities(); await refreshRepositoryProjection() }
     }
 
     @discardableResult
@@ -73,54 +169,55 @@ final class ActivityStore: ObservableObject {
         performedWorkoutReference: PerformedWorkoutReference? = nil,
         plannedWorkoutCompletionQuality: String? = nil
     ) async throws -> SavedActivity {
-        let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
-        ActivityDiagnosticLog.notice(
-            .persistence,
-            "Local activity save started type=\(activityType.rawValue) source=\(source.kind.rawValue) duration=\(ActivityDiagnosticLog.durationBucket(seconds: summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: summary.distanceM)) photos=\(ActivityDiagnosticLog.countBucket(photos.count))"
-        )
-        let activity: SavedActivity
-        do {
-            activity = try await persistence.save(
-                summary: summary,
-                photos: photos,
-                activityType: activityType,
-                title: resolvedTitle,
-                guideNudge: "",
-                reflection: reflection,
-                goal: goal,
-                energyKilocalories: energyKilocalories,
-                source: source,
-                gear: gear,
-                manualEdits: manualEdits,
-                indoor: indoor,
-                cadence: cadence,
-                heartRateZones: heartRateZones,
-                recordingSession: recordingSession,
-                activityEventID: activityEventID,
-                followedRoute: followedRoute,
-                recognitionBadgeIDs: recognitionBadgeIDs,
-                companionType: companionType,
-                sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality
-            )
-            } catch {
-            ActivityDiagnosticLog.error(
+        return try await ActivityAccountBoundary.withAccount {
+            let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
+            ActivityDiagnosticLog.notice(
                 .persistence,
-                "Local activity save failed type=\(activityType.rawValue) source=\(source.kind.rawValue) error=\(ActivityDiagnosticLog.errorCategory(error))"
+                "Local activity save started type=\(activityType.rawValue) source=\(source.kind.rawValue) duration=\(ActivityDiagnosticLog.durationBucket(seconds: summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: summary.distanceM)) photos=\(ActivityDiagnosticLog.countBucket(photos.count))"
             )
-            throw error
+            let activity: SavedActivity
+            do {
+                activity = try await persistence.save(
+                    summary: summary,
+                    photos: photos,
+                    activityType: activityType,
+                    title: resolvedTitle,
+                    guideNudge: "",
+                    reflection: reflection,
+                    goal: goal,
+                    energyKilocalories: energyKilocalories,
+                    source: source,
+                    gear: gear,
+                    manualEdits: manualEdits,
+                    indoor: indoor,
+                    cadence: cadence,
+                    heartRateZones: heartRateZones,
+                    recordingSession: recordingSession,
+                    activityEventID: activityEventID,
+                    followedRoute: followedRoute,
+                    recognitionBadgeIDs: recognitionBadgeIDs,
+                    companionType: companionType,
+                    sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality
+                )
+                } catch {
+                ActivityDiagnosticLog.error(
+                    .persistence,
+                    "Local activity save failed type=\(activityType.rawValue) source=\(source.kind.rawValue) error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
+                throw error
+            }
+            try ActivityAccountBoundary.validate()
+            await refreshRepositoryProjection()
+            try ActivityAccountBoundary.validate()
+            activityRevision += 1
+            activities = repositorySnapshot.activities
+            ActivityDiagnosticLog.notice(
+                .persistence,
+                "Local activity save completed history_count=\(ActivityDiagnosticLog.countBucket(activities.count)) sync_pending=true"
+            )
+            await exportPhotosToAlbumIfNeeded(activity)
+            return activity
         }
-        activityRevision += 1
-        activities.append(activity)
-        sortActivitiesByStartTime()
-        ActivityDiagnosticLog.notice(
-            .persistence,
-            "Local activity save completed history_count=\(ActivityDiagnosticLog.countBucket(activities.count)) sync_pending=true"
-        )
-        await exportPhotosToAlbumIfNeeded(activity)
-        Task {
-            await syncActivityIfPossible(id: activity.id)
-        }
-        return activity
     }
 
     func clearPhotoAlbumNotice() {
@@ -128,106 +225,108 @@ final class ActivityStore: ObservableObject {
     }
 
     func importHealthWorkouts(_ workouts: [ImportedWorkout]) async -> Set<String> {
-        guard !healthImportInFlight else { return [] }
-        healthImportInFlight = true
-        defer { healthImportInFlight = false }
-        if !hasLoadedActivities { await loadActivities() }
-        ActivityDiagnosticLog.notice(
-            .healthKit,
-            "Health import persistence started candidates=\(ActivityDiagnosticLog.countBucket(workouts.count))"
-        )
-        _ = await checkRemoteImportIdentities(workouts.map(\.id), sourceKind: "appleHealth")
-        var canReconcileRemoteSessions = true
-        if AuthStore.currentUserId != nil {
-            do {
-                let sessionIDs = workouts.compactMap { $0.plainstrideSessionUUID?.uuidString }
-                let serverIDs = try await api.ownedSessionActivities(sessionIDs)
-                for start in stride(from: 0, to: serverIDs.count, by: 200) {
-                    let response = try await api.fetchActivities(ids: Array(serverIDs[start..<min(start + 200, serverIDs.count)]), includeRoute: false)
-                    _ = try await applyRemoteActivities(response.activities, preserveCachedRoutes: true)
-                }
-            } catch {
-                ActivityDiagnosticLog.error(.sync, "Health session identity check failed error=\(ActivityDiagnosticLog.errorCategory(error))")
-                canReconcileRemoteSessions = false
-            }
-        }
-        var importedIDs: Set<String> = []
-        for workout in workouts where !importedHealthExternalIDs.contains(workout.id) {
-            // Only an exact Plainstride session UUID proves these are the same
-            // workout. External Apple workouts use the normal import flow.
-            let matches = activities.filter { activity in
-                guard let uuid = workout.plainstrideSessionUUID else { return false }
-                return activity.recordingSession?.sessionUUID == uuid
-            }
-            if matches.count == 1, let uuid = matches.first?.recordingSession?.sessionUUID {
-                await attachHealthKitWorkoutReference(sessionUUID: uuid, externalReference: workout.id)
-                if importedHealthExternalIDs.contains(workout.id) {
-                    await reconcileHealthDetails(id: workout.id, energy: workout.energyBurnedKilocalories.map { Int($0.rounded()) })
-                    importedIDs.insert(workout.id)
-                }
-                continue
-            }
-            // An owned session absent from the cache needs an exact server match before import.
-            // External workouts without a Plainstride session UUID can still be imported offline.
-            if workout.plainstrideSessionUUID != nil && !canReconcileRemoteSessions { continue }
-            let details: HealthWorkoutDetails
-            do { details = try await HealthKitService().workoutDetails(id: workout.id) }
-            catch {
-                ActivityDiagnosticLog.error(.healthKit, "Health workout details failed error=\(ActivityDiagnosticLog.errorCategory(error))")
-                // Keep the candidate retryable; do not persist a silently incomplete import.
-                continue
-            }
-            let distance = max(0, workout.distanceMeters ?? 0)
-            let duration = max(1, workout.durationSeconds)
-            let summary = ActivitySummary(
-                startedAt: workout.startedAt,
-                endedAt: workout.endedAt,
-                durationSecs: duration,
-                distanceM: distance,
-                avgPace: workout.activityType.plausibleAveragePace(
-                    durationSeconds: Double(duration),
-                    distanceMeters: distance
-                ),
-                healthMetrics: details.health,
-                sessionMetadata: workout.plainstrideSessionUUID.map {
-                    ActivityRecordingSessionMetadata(sessionUUID: $0, origin: .appleWatch,
-                        recordingDevice: .appleWatch, healthKitOwnership: .appleWatchPrimary,
-                        healthKitWorkoutExternalReference: workout.id)
-                },
-                trackPoints: details.locations,
-                trackSegmentStartIndices: details.segmentStarts
+        return await ActivityAccountBoundary.withAccount {
+            guard !healthImportInFlight else { return [] }
+            healthImportInFlight = true
+            defer { healthImportInFlight = false }
+            if !hasLoadedActivities { await loadActivities() }
+            ActivityDiagnosticLog.notice(
+                .healthKit,
+                "Health import persistence started candidates=\(ActivityDiagnosticLog.countBucket(workouts.count))"
             )
-            do {
-                _ = try await save(
-                    summary: summary,
-                    photos: [],
-                    activityType: workout.activityType,
-                    reflection: nil,
-                    energyKilocalories: workout.energyBurnedKilocalories.map { Int($0.rounded()) },
-                    title: workout.activityType.healthImportTitle,
-                    source: ActivitySourceMetadata(
-                        kind: .appleHealth,
-                        displayName: workout.sourceName,
-                        deviceName: nil,
-                        externalID: workout.id,
-                        importedAt: Date()
-                    ),
-                    recordingSession: summary.sessionMetadata
-                )
-                importedIDs.insert(workout.id)
-            } catch {
-                ActivityDiagnosticLog.error(
-                    .healthKit,
-                    "Health import persistence failed error=\(ActivityDiagnosticLog.errorCategory(error))"
-                )
-                continue
+            _ = await checkRemoteImportIdentities(workouts.map(\.id), sourceKind: "appleHealth")
+            var canReconcileRemoteSessions = true
+            if AuthStore.currentUserId != nil {
+                do {
+                    let sessionIDs = workouts.compactMap { $0.plainstrideSessionUUID?.uuidString }
+                    let serverIDs = try await api.ownedSessionActivities(sessionIDs)
+                    for start in stride(from: 0, to: serverIDs.count, by: 200) {
+                        let response = try await api.fetchActivities(ids: Array(serverIDs[start..<min(start + 200, serverIDs.count)]), includeRoute: false)
+                        _ = try await applyRemoteActivities(response.activities, preserveCachedRoutes: true)
+                    }
+                } catch {
+                    ActivityDiagnosticLog.error(.sync, "Health session identity check failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                    canReconcileRemoteSessions = false
+                }
             }
+            var importedIDs: Set<String> = []
+            for workout in workouts where !importedHealthExternalIDs.contains(workout.id) {
+                // Only an exact Plainstride session UUID proves these are the same
+                // workout. External Apple workouts use the normal import flow.
+                let matches = activities.filter { activity in
+                    guard let uuid = workout.plainstrideSessionUUID else { return false }
+                    return activity.recordingSession?.sessionUUID == uuid
+                }
+                if matches.count == 1, let uuid = matches.first?.recordingSession?.sessionUUID {
+                    await attachHealthKitWorkoutReference(sessionUUID: uuid, externalReference: workout.id)
+                    if importedHealthExternalIDs.contains(workout.id) {
+                        await reconcileHealthDetails(id: workout.id, energy: workout.energyBurnedKilocalories.map { Int($0.rounded()) })
+                        importedIDs.insert(workout.id)
+                    }
+                    continue
+                }
+                // An owned session absent from the cache needs an exact server match before import.
+                // External workouts without a Plainstride session UUID can still be imported offline.
+                if workout.plainstrideSessionUUID != nil && !canReconcileRemoteSessions { continue }
+                let details: HealthWorkoutDetails
+                do { details = try await HealthKitService().workoutDetails(id: workout.id) }
+                catch {
+                    ActivityDiagnosticLog.error(.healthKit, "Health workout details failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                    // Keep the candidate retryable; do not persist a silently incomplete import.
+                    continue
+                }
+                let distance = max(0, workout.distanceMeters ?? 0)
+                let duration = max(1, workout.durationSeconds)
+                let summary = ActivitySummary(
+                    startedAt: workout.startedAt,
+                    endedAt: workout.endedAt,
+                    durationSecs: duration,
+                    distanceM: distance,
+                    avgPace: workout.activityType.plausibleAveragePace(
+                        durationSeconds: Double(duration),
+                        distanceMeters: distance
+                    ),
+                    healthMetrics: details.health,
+                    sessionMetadata: workout.plainstrideSessionUUID.map {
+                        ActivityRecordingSessionMetadata(sessionUUID: $0, origin: .appleWatch,
+                            recordingDevice: .appleWatch, healthKitOwnership: .appleWatchPrimary,
+                            healthKitWorkoutExternalReference: workout.id)
+                    },
+                    trackPoints: details.locations,
+                    trackSegmentStartIndices: details.segmentStarts
+                )
+                do {
+                    _ = try await save(
+                        summary: summary,
+                        photos: [],
+                        activityType: workout.activityType,
+                        reflection: nil,
+                        energyKilocalories: workout.energyBurnedKilocalories.map { Int($0.rounded()) },
+                        title: workout.activityType.healthImportTitle,
+                        source: ActivitySourceMetadata(
+                            kind: .appleHealth,
+                            displayName: workout.sourceName,
+                            deviceName: nil,
+                            externalID: workout.id,
+                            importedAt: Date()
+                        ),
+                        recordingSession: summary.sessionMetadata
+                    )
+                    importedIDs.insert(workout.id)
+                } catch {
+                    ActivityDiagnosticLog.error(
+                        .healthKit,
+                        "Health import persistence failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                    )
+                    continue
+                }
+            }
+            ActivityDiagnosticLog.notice(
+                .healthKit,
+                "Health import persistence completed imported=\(ActivityDiagnosticLog.countBucket(importedIDs.count))"
+            )
+            return importedIDs
         }
-        ActivityDiagnosticLog.notice(
-            .healthKit,
-            "Health import persistence completed imported=\(ActivityDiagnosticLog.countBucket(importedIDs.count))"
-        )
-        return importedIDs
     }
 
     private func markHealthUpdatePending(_ activity: SavedActivity) -> SavedActivity {
@@ -238,48 +337,54 @@ final class ActivityStore: ObservableObject {
     }
 
     private func reconcileHealthDetails(id: String, energy: Int?) async {
-        do {
-            let details = try await HealthKitService().workoutDetails(id: id)
-            guard let index = activities.firstIndex(where: { $0.recordingSession?.healthKitWorkoutExternalReference == id }) else { return }
-            let changed = activities[index].withImportedHealth(health: details.health, energy: energy,
-                route: details.route, distance: details.distanceMeters)
-            let updated = markHealthUpdatePending(changed)
-            try await persistence.replace(updated)
-            activities[index] = updated
-            activityRevision += 1
-            Task { await syncActivityIfPossible(id: updated.id) }
-        } catch {
-            ActivityDiagnosticLog.error(.healthKit, "Linked Health metrics reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))")
-        }
-    }
-
-    /// Health routes may sync after their workout. Revisit recent linked records
-    /// without a route; UUID ownership prevents creating a second activity.
-    func refreshPendingHealthRoutes() async {
-        guard !healthRouteRefreshInFlight else { return }
-        healthRouteRefreshInFlight = true
-        defer { healthRouteRefreshInFlight = false }
-        let cutoff = Date().addingTimeInterval(-8 * 7 * 24 * 60 * 60)
-        let pending = activities.filter {
-            $0.startedAt > cutoff && ($0.routePoints.isEmpty || $0.healthMetrics?.hasHeartRateData != true ||
-                $0.recordingSession?.healthKitOwnership == .appleWatchPrimary) &&
-                ($0.source.kind == .appleHealth || $0.recordingSession?.healthKitWorkoutExternalReference != nil)
-        }
-        for activity in pending {
-            guard let id = activity.recordingSession?.healthKitWorkoutExternalReference ?? activity.source.externalID else { continue }
+        return await ActivityAccountBoundary.withAccount {
+            defer { Task { await self.refreshRepositoryProjection() } }
             do {
                 let details = try await HealthKitService().workoutDetails(id: id)
-                guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { continue }
-                let changed = activities[index].withImportedHealth(health: details.health, energy: nil,
+                guard let index = activities.firstIndex(where: { $0.recordingSession?.healthKitWorkoutExternalReference == id }) else { return }
+                let changed = activities[index].withImportedHealth(health: details.health, energy: energy,
                     route: details.route, distance: details.distanceMeters)
-                guard changed.route != activities[index].route || changed.healthMetrics != activities[index].healthMetrics else { continue }
                 let updated = markHealthUpdatePending(changed)
                 try await persistence.replace(updated)
                 activities[index] = updated
                 activityRevision += 1
                 Task { await syncActivityIfPossible(id: updated.id) }
             } catch {
-                ActivityDiagnosticLog.error(.healthKit, "Delayed Health route reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                ActivityDiagnosticLog.error(.healthKit, "Linked Health metrics reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            }
+        }
+    }
+
+    /// Health routes may sync after their workout. Revisit recent linked records
+    /// without a route; UUID ownership prevents creating a second activity.
+    func refreshPendingHealthRoutes() async {
+        return await ActivityAccountBoundary.withAccount {
+            defer { Task { await self.refreshRepositoryProjection() } }
+            guard !healthRouteRefreshInFlight else { return }
+            healthRouteRefreshInFlight = true
+            defer { healthRouteRefreshInFlight = false }
+            let cutoff = Date().addingTimeInterval(-8 * 7 * 24 * 60 * 60)
+            let pending = activities.filter {
+                $0.startedAt > cutoff && ($0.routePoints.isEmpty || $0.healthMetrics?.hasHeartRateData != true ||
+                    $0.recordingSession?.healthKitOwnership == .appleWatchPrimary) &&
+                    ($0.source.kind == .appleHealth || $0.recordingSession?.healthKitWorkoutExternalReference != nil)
+            }
+            for activity in pending {
+                guard let id = activity.recordingSession?.healthKitWorkoutExternalReference ?? activity.source.externalID else { continue }
+                do {
+                    let details = try await HealthKitService().workoutDetails(id: id)
+                    guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { continue }
+                    let changed = activities[index].withImportedHealth(health: details.health, energy: nil,
+                        route: details.route, distance: details.distanceMeters)
+                    guard changed.route != activities[index].route || changed.healthMetrics != activities[index].healthMetrics else { continue }
+                    let updated = markHealthUpdatePending(changed)
+                    try await persistence.replace(updated)
+                    activities[index] = updated
+                    activityRevision += 1
+                    Task { await syncActivityIfPossible(id: updated.id) }
+                } catch {
+                    ActivityDiagnosticLog.error(.healthKit, "Delayed Health route reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                }
             }
         }
     }
@@ -292,73 +397,75 @@ final class ActivityStore: ObservableObject {
     /// same export never duplicates history. They are saved as ordinary local activities and then
     /// synchronized like any other, but they are never treated as a just-recorded session.
     func importStravaActivities(_ candidates: [StravaImportCandidate]) async -> StravaImportOutcome {
-        ActivityDiagnosticLog.notice(
-            .persistence,
-            "Strava import persistence started candidates=\(ActivityDiagnosticLog.countBucket(candidates.count))"
-        )
-        var importedIDs: Set<String> = []
-        var failedIDs: Set<String> = []
-        _ = await checkRemoteImportIdentities(candidates.map(\.externalID), sourceKind: "strava")
-        var knownExternalIDs = (knownRemoteImportIDs["strava"] ?? []).union(activities.compactMap { $0.source.kind == .strava ? $0.source.externalID : nil })
-
-        for candidate in candidates {
-            guard !knownExternalIDs.contains(candidate.externalID) else {
-                failedIDs.insert(candidate.externalID)
-                continue
-            }
-            knownExternalIDs.insert(candidate.externalID)
-
-            let activityType = candidate.sport.activityType
-            let duration = max(1, candidate.durationSeconds)
-            let distance = max(0, candidate.distanceMeters ?? 0)
-            let endedAt = candidate.startedAt.addingTimeInterval(TimeInterval(duration))
-            let locations = Self.importedLocations(for: candidate)
-            let summary = ActivitySummary(
-                startedAt: candidate.startedAt,
-                endedAt: endedAt,
-                durationSecs: duration,
-                distanceM: distance,
-                avgPace: activityType.plausibleAveragePace(
-                    durationSeconds: Double(duration),
-                    distanceMeters: distance
-                ),
-                elevationGainM: candidate.elevationGainMeters ?? 0,
-                healthMetrics: Self.importedHeartRateMetrics(for: candidate),
-                trackPoints: locations.points,
-                trackSegmentStartIndices: locations.segmentStarts
+        return await ActivityAccountBoundary.withAccount {
+            ActivityDiagnosticLog.notice(
+                .persistence,
+                "Strava import persistence started candidates=\(ActivityDiagnosticLog.countBucket(candidates.count))"
             )
+            var importedIDs: Set<String> = []
+            var failedIDs: Set<String> = []
+            _ = await checkRemoteImportIdentities(candidates.map(\.externalID), sourceKind: "strava")
+            var knownExternalIDs = (knownRemoteImportIDs["strava"] ?? []).union(activities.compactMap { $0.source.kind == .strava ? $0.source.externalID : nil })
 
-            do {
-                _ = try await save(
-                    summary: summary,
-                    photos: [],
-                    activityType: activityType,
-                    reflection: nil,
-                    title: candidate.resolvedTitle(for: activityType),
-                    source: ActivitySourceMetadata(
-                        kind: .strava,
-                        displayName: Self.stravaSourceDisplayName,
-                        deviceName: nil,
-                        externalID: candidate.externalID,
-                        importedAt: Date()
+            for candidate in candidates {
+                guard !knownExternalIDs.contains(candidate.externalID) else {
+                    failedIDs.insert(candidate.externalID)
+                    continue
+                }
+                knownExternalIDs.insert(candidate.externalID)
+
+                let activityType = candidate.sport.activityType
+                let duration = max(1, candidate.durationSeconds)
+                let distance = max(0, candidate.distanceMeters ?? 0)
+                let endedAt = candidate.startedAt.addingTimeInterval(TimeInterval(duration))
+                let locations = Self.importedLocations(for: candidate)
+                let summary = ActivitySummary(
+                    startedAt: candidate.startedAt,
+                    endedAt: endedAt,
+                    durationSecs: duration,
+                    distanceM: distance,
+                    avgPace: activityType.plausibleAveragePace(
+                        durationSeconds: Double(duration),
+                        distanceMeters: distance
+                    ),
+                    elevationGainM: candidate.elevationGainMeters ?? 0,
+                    healthMetrics: Self.importedHeartRateMetrics(for: candidate),
+                    trackPoints: locations.points,
+                    trackSegmentStartIndices: locations.segmentStarts
+                )
+
+                do {
+                    _ = try await save(
+                        summary: summary,
+                        photos: [],
+                        activityType: activityType,
+                        reflection: nil,
+                        title: candidate.resolvedTitle(for: activityType),
+                        source: ActivitySourceMetadata(
+                            kind: .strava,
+                            displayName: Self.stravaSourceDisplayName,
+                            deviceName: nil,
+                            externalID: candidate.externalID,
+                            importedAt: Date()
+                        )
                     )
-                )
-                importedIDs.insert(candidate.externalID)
-            } catch {
-                failedIDs.insert(candidate.externalID)
-                ActivityDiagnosticLog.error(
-                    .persistence,
-                    "Strava import persistence failed error=\(ActivityDiagnosticLog.errorCategory(error))"
-                )
-                continue
+                    importedIDs.insert(candidate.externalID)
+                } catch {
+                    failedIDs.insert(candidate.externalID)
+                    ActivityDiagnosticLog.error(
+                        .persistence,
+                        "Strava import persistence failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                    )
+                    continue
+                }
             }
-        }
 
-        ActivityDiagnosticLog.notice(
-            .persistence,
-            "Strava import persistence completed imported=\(ActivityDiagnosticLog.countBucket(importedIDs.count)) failed=\(ActivityDiagnosticLog.countBucket(failedIDs.count))"
-        )
-        return StravaImportOutcome(importedIDs: importedIDs, failedIDs: failedIDs)
+            ActivityDiagnosticLog.notice(
+                .persistence,
+                "Strava import persistence completed imported=\(ActivityDiagnosticLog.countBucket(importedIDs.count)) failed=\(ActivityDiagnosticLog.countBucket(failedIDs.count))"
+            )
+            return StravaImportOutcome(importedIDs: importedIDs, failedIDs: failedIDs)
+        }
     }
 
     /// External identifiers already present locally, used to exclude known duplicates from review.
@@ -420,19 +527,22 @@ final class ActivityStore: ObservableObject {
     }
 
     func attachHealthKitWorkoutReference(sessionUUID: UUID, externalReference: String) async {
-        guard let index = activities.firstIndex(where: {
-            $0.recordingSession?.sessionUUID == sessionUUID
-        }), activities[index].recordingSession?.healthKitWorkoutExternalReference != externalReference else { return }
-        let updated = activities[index].withHealthKitWorkoutReference(externalReference)
-        do {
-            try await persistence.replace(updated)
-            activityRevision += 1
-            activities[index] = updated
-        } catch {
-            ActivityDiagnosticLog.error(
-                .persistence,
-                "Watch workout reference reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))"
-            )
+        return await ActivityAccountBoundary.withAccount {
+            defer { Task { await self.refreshRepositoryProjection() } }
+            guard let index = activities.firstIndex(where: {
+                $0.recordingSession?.sessionUUID == sessionUUID
+            }), activities[index].recordingSession?.healthKitWorkoutExternalReference != externalReference else { return }
+            let updated = activities[index].withHealthKitWorkoutReference(externalReference)
+            do {
+                try await persistence.replace(updated)
+                activityRevision += 1
+                activities[index] = updated
+            } catch {
+                ActivityDiagnosticLog.error(
+                    .persistence,
+                    "Watch workout reference reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
+            }
         }
     }
 
@@ -445,102 +555,110 @@ final class ActivityStore: ObservableObject {
         finalMetrics: PlainstrideFinalWorkoutMetrics,
         externalReference: String?
     ) async -> SavedActivity? {
-        if !hasLoadedActivities {
-            await loadActivities()
-        }
-        guard !activities.contains(where: { $0.recordingSession?.sessionUUID == sessionUUID }) else {
-            return activities.first { $0.recordingSession?.sessionUUID == sessionUUID }
-        }
-        guard watchAutoSaveInFlight.insert(sessionUUID).inserted else { return nil }
-        defer { watchAutoSaveInFlight.remove(sessionUUID) }
+        return await ActivityAccountBoundary.withAccount {
+            if !hasLoadedActivities {
+                await loadActivities()
+            }
+            guard !activities.contains(where: { $0.recordingSession?.sessionUUID == sessionUUID }) else {
+                return activities.first { $0.recordingSession?.sessionUUID == sessionUUID }
+            }
+            guard watchAutoSaveInFlight.insert(sessionUUID).inserted else { return nil }
+            defer { watchAutoSaveInFlight.remove(sessionUUID) }
 
-        let startedAt = identity.canonicalStartDate ?? Date().addingTimeInterval(-finalMetrics.elapsedTime)
-        let endedAt = startedAt.addingTimeInterval(max(0, finalMetrics.elapsedTime))
-        let distance = max(0, finalMetrics.distanceMeters ?? 0)
-        let activityType: ActivityType = switch identity.activity {
-        case .running: .running
-        case .walking: .walking
-        case .cycling: .cycling
-        case .hiking: .hiking
-        case .swimming: .swimming
-        case .strength: .strengthTraining
-        case .mobility: .mobility
-        }
-        let summary = ActivitySummary(
-            startedAt: startedAt,
-            endedAt: endedAt,
-            durationSecs: max(0, Int(finalMetrics.elapsedTime.rounded())),
-            distanceM: distance,
-            avgPace: activityType.plausibleAveragePace(
-                durationSeconds: finalMetrics.elapsedTime,
-                distanceMeters: distance
-            ),
-            elevationGainM: 0,
-            walkingStepCount: nil,
-            healthMetrics: ActivityHealthMetrics(
-                averageHeartRateBPM: finalMetrics.averageBPM,
-                maxHeartRateBPM: finalMetrics.maximumBPM,
-                heartRateSampleCount: finalMetrics.averageBPM == nil && finalMetrics.maximumBPM == nil ? 0 : 1
-            ),
-            heartRateZones: nil,
-            sessionMetadata: ActivityRecordingSessionMetadata(
-                sessionUUID: sessionUUID,
-                origin: .appleWatch,
-                recordingDevice: .appleWatch,
-                healthKitOwnership: externalReference == nil ? .phoneWriteBack : .appleWatchPrimary,
-                healthKitWorkoutExternalReference: externalReference
-            ),
-            routeGuidance: nil,
-            trackPoints: [],
-            trackSegmentStartIndices: []
-        )
-        guard ActivitySaveEligibility.evaluate(
-            durationSecs: summary.durationSecs,
-            distanceM: summary.distanceM
-        ) == .eligible else {
-            ActivityDiagnosticLog.notice(.persistence, "Watch workout auto-save skipped because it was too short")
-            return nil
-        }
+            let startedAt = identity.canonicalStartDate ?? Date().addingTimeInterval(-finalMetrics.elapsedTime)
+            let endedAt = startedAt.addingTimeInterval(max(0, finalMetrics.elapsedTime))
+            let distance = max(0, finalMetrics.distanceMeters ?? 0)
+            let activityType: ActivityType = switch identity.activity {
+            case .running: .running
+            case .walking: .walking
+            case .cycling: .cycling
+            case .hiking: .hiking
+            case .swimming: .swimming
+            case .strength: .strengthTraining
+            case .mobility: .mobility
+            }
+            let summary = ActivitySummary(
+                startedAt: startedAt,
+                endedAt: endedAt,
+                durationSecs: max(0, Int(finalMetrics.elapsedTime.rounded())),
+                distanceM: distance,
+                avgPace: activityType.plausibleAveragePace(
+                    durationSeconds: finalMetrics.elapsedTime,
+                    distanceMeters: distance
+                ),
+                elevationGainM: 0,
+                walkingStepCount: nil,
+                healthMetrics: ActivityHealthMetrics(
+                    averageHeartRateBPM: finalMetrics.averageBPM,
+                    maxHeartRateBPM: finalMetrics.maximumBPM,
+                    heartRateSampleCount: finalMetrics.averageBPM == nil && finalMetrics.maximumBPM == nil ? 0 : 1
+                ),
+                heartRateZones: nil,
+                sessionMetadata: ActivityRecordingSessionMetadata(
+                    sessionUUID: sessionUUID,
+                    origin: .appleWatch,
+                    recordingDevice: .appleWatch,
+                    healthKitOwnership: externalReference == nil ? .phoneWriteBack : .appleWatchPrimary,
+                    healthKitWorkoutExternalReference: externalReference
+                ),
+                routeGuidance: nil,
+                trackPoints: [],
+                trackSegmentStartIndices: []
+            )
+            guard ActivitySaveEligibility.evaluate(
+                durationSecs: summary.durationSecs,
+                distanceM: summary.distanceM
+            ) == .eligible else {
+                ActivityDiagnosticLog.notice(.persistence, "Watch workout auto-save skipped because it was too short")
+                return nil
+            }
 
-        do {
-            let saved = try await save(
-                summary: summary,
-                photos: [],
-                activityType: activityType,
-                reflection: nil,
-                energyKilocalories: finalMetrics.activeEnergyKilocalories.map { Int($0.rounded()) },
-                title: "Apple Watch \(activityType.rawValue)",
-                source: .outboundRecorded,
-                recordingSession: summary.sessionMetadata,
-                companionType: ActivityCompanionType(safeDecoding: identity.companionType)
-            )
-            ActivityDiagnosticLog.notice(.persistence, "Watch workout auto-saved session=\(sessionUUID.uuidString)")
-            return saved
-        } catch {
-            ActivityDiagnosticLog.error(
-                .persistence,
-                "Watch workout auto-save failed error=\(ActivityDiagnosticLog.errorCategory(error))"
-            )
-            return nil
+            do {
+                let saved = try await save(
+                    summary: summary,
+                    photos: [],
+                    activityType: activityType,
+                    reflection: nil,
+                    energyKilocalories: finalMetrics.activeEnergyKilocalories.map { Int($0.rounded()) },
+                    title: "Apple Watch \(activityType.rawValue)",
+                    source: .outboundRecorded,
+                    recordingSession: summary.sessionMetadata,
+                    companionType: ActivityCompanionType(safeDecoding: identity.companionType)
+                )
+                ActivityDiagnosticLog.notice(.persistence, "Watch workout auto-saved session=\(sessionUUID.uuidString)")
+                return saved
+            } catch {
+                ActivityDiagnosticLog.error(
+                    .persistence,
+                    "Watch workout auto-save failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
+                return nil
+            }
         }
     }
 
     func delete(_ activity: SavedActivity) async throws {
-        statisticsAreCached = true
-        defer { Task { await refreshAccountStatistics() } }
-        if AuthStore.currentUserId != nil {
-            let remoteID = activity.sync?.serverActivityId ?? activity.sync?.clientActivityId ?? activity.id.uuidString
-            _ = try await api.deleteActivity(id: remoteID)
+        return try await ActivityAccountBoundary.withAccount {
+            defer { Task { await self.refreshRepositoryProjection() } }
+            statisticsAreCached = true
+            defer { Task { await refreshAccountStatistics() } }
+            if AuthStore.currentUserId != nil {
+                let remoteID = activity.sync?.serverActivityId ?? activity.sync?.clientActivityId ?? activity.id.uuidString
+                _ = try await api.deleteActivity(id: remoteID)
+            }
+            try await persistence.delete(activity)
+            WatchWorkoutImportSuppression.remember(activity.recordingSession)
+            activityRevision += 1
+            activities.removeAll { $0.id == activity.id }
         }
-        try await persistence.delete(activity)
-        WatchWorkoutImportSuppression.remember(activity.recordingSession)
-        activityRevision += 1
-        activities.removeAll { $0.id == activity.id }
     }
 
     func delete(_ activitiesToDelete: [SavedActivity]) async throws {
-        for activity in activitiesToDelete {
-            try await delete(activity)
+        return try await ActivityAccountBoundary.withAccount {
+            defer { Task { await self.refreshRepositoryProjection() } }
+            for activity in activitiesToDelete {
+                try await delete(activity)
+            }
         }
     }
 
@@ -560,121 +678,125 @@ final class ActivityStore: ObservableObject {
     }
 
     func exportRoute(for activity: SavedActivity, format: RouteExportFormat) async throws -> URL {
-        try await persistence.exportRoute(for: self.activity(id: activity.id) ?? activity, format: format)
+        return try await ActivityAccountBoundary.withAccount {
+            try await persistence.exportRoute(for: self.activity(id: activity.id) ?? activity, format: format)
+        }
     }
 
     func correctElevationIfNeeded(for activityID: UUID) async {
-        guard AuthStore.currentUserId != nil,
-              !elevationCorrectionIDs.contains(activityID),
-              let activity = activity(id: activityID),
-              activity.source.kind == .outbound,
-              activity.indoor?.isIndoor != true,
-              (activity.route?.elevationMetadata == nil
-                || activity.route?.elevationMetadata?.algorithmVersion == "terrain-v1"),
-              let route = activity.route,
-              route.points.count >= 2
-        else { return }
+        return await ActivityAccountBoundary.withAccount {
+            guard AuthStore.currentUserId != nil,
+                  !elevationCorrectionIDs.contains(activityID),
+                  let activity = activity(id: activityID),
+                  activity.source.kind == .outbound,
+                  activity.indoor?.isIndoor != true,
+                  (activity.route?.elevationMetadata == nil
+                    || activity.route?.elevationMetadata?.algorithmVersion == "terrain-v1"),
+                  let route = activity.route,
+                  route.points.count >= 2
+            else { return }
 
-        elevationCorrectionIDs.insert(activityID)
-        defer { elevationCorrectionIDs.remove(activityID) }
-        let startedAt = Date()
-        let locations = route.points.map { point in
-            CLLocation(
-                coordinate: point.coordinate,
-                altitude: point.altitude ?? 0,
-                horizontalAccuracy: 10,
-                verticalAccuracy: point.verticalAccuracy ?? 50,
-                timestamp: point.timestamp
-            )
-        }
-        let segmentStarts = Set(route.points.indices.filter { route.points[$0].startsNewSegment })
-        let summary = ActivitySummary(
-            startedAt: activity.startedAt,
-            endedAt: activity.endedAt,
-            durationSecs: activity.durationSecs,
-            distanceM: activity.distanceM,
-            avgPace: activity.avgPace,
-            elevationGainM: activity.elevationGainM ?? 0,
-            walkingStepCount: activity.walkingStepCount,
-            healthMetrics: activity.healthMetrics,
-            trackPoints: locations,
-            trackSegmentStartIndices: segmentStarts
-        )
-
-        do {
-            let corrected = try await TerrainElevationCorrector.correct(summary)
-            guard !Task.isCancelled,
-                  let elevationMetadata = corrected.elevationMetadata,
-                  let latest = self.activity(id: activityID),
-                  latest.route == activity.route
-            else { return } // Deleted/replaced routes must not be restored by enrichment.
-            let updated = SavedActivity(
-                id: latest.id,
-                activityType: latest.activityType,
-                title: latest.title,
-                guideNudge: latest.guideNudge,
-                reflection: latest.reflection,
-                sessionEffortRating: latest.sessionEffortRating, performedWorkoutReference: latest.performedWorkoutReference, plannedWorkoutCompletionQuality: latest.plannedWorkoutCompletionQuality,
-                createdAt: latest.createdAt,
-                startedAt: latest.startedAt,
-                endedAt: latest.endedAt,
-                durationSecs: latest.durationSecs,
-                distanceM: latest.distanceM,
-                avgPace: latest.avgPace,
-                elevationGainM: corrected.elevationGainM,
-                walkingStepCount: latest.walkingStepCount,
-                healthMetrics: latest.healthMetrics,
-                goal: latest.goal,
-                companionType: latest.companionType,
-                source: latest.source,
-                gear: latest.gear,
-                manualEdits: latest.manualEdits,
-                indoor: latest.indoor,
-                cadence: latest.cadence,
-                heartRateZones: latest.heartRateZones,
-                recordingSession: latest.recordingSession,
-                activityEventID: latest.activityEventID,
-                followedRoute: latest.followedRoute,
-                recognitionBadgeIDs: latest.recognitionBadgeIDs,
-                route: SavedRoute(
-                    points: SavedRoutePoint.simplified(from: corrected.trackSegments),
-                    elevationMetadata: elevationMetadata
-                ),
-                photos: latest.photos,
-                sync: SavedActivitySyncState(
-                    clientActivityId: latest.sync?.clientActivityId ?? latest.id.uuidString,
-                    serverActivityId: latest.sync?.serverActivityId,
-                    lastAttemptAt: latest.sync?.lastAttemptAt,
-                    syncedAt: nil,
-                    lastError: nil,
-                    localUpdatedAt: Date()
+            elevationCorrectionIDs.insert(activityID)
+            defer { elevationCorrectionIDs.remove(activityID) }
+            let startedAt = Date()
+            let locations = route.points.map { point in
+                CLLocation(
+                    coordinate: point.coordinate,
+                    altitude: point.altitude ?? 0,
+                    horizontalAccuracy: 10,
+                    verticalAccuracy: point.verticalAccuracy ?? 50,
+                    timestamp: point.timestamp
                 )
+            }
+            let segmentStarts = Set(route.points.indices.filter { route.points[$0].startsNewSegment })
+            let summary = ActivitySummary(
+                startedAt: activity.startedAt,
+                endedAt: activity.endedAt,
+                durationSecs: activity.durationSecs,
+                distanceM: activity.distanceM,
+                avgPace: activity.avgPace,
+                elevationGainM: activity.elevationGainM ?? 0,
+                walkingStepCount: activity.walkingStepCount,
+                healthMetrics: activity.healthMetrics,
+                trackPoints: locations,
+                trackSegmentStartIndices: segmentStarts
             )
-            if activity.route?.elevationMetadata == nil, let route = activity.route {
-                try await persistence.preserveOriginalElevationRoute(route, for: activityID)
+
+            do {
+                let corrected = try await TerrainElevationCorrector.correct(summary)
+                guard !Task.isCancelled,
+                      let elevationMetadata = corrected.elevationMetadata,
+                      let latest = self.activity(id: activityID),
+                      latest.route == activity.route
+                else { return } // Deleted/replaced routes must not be restored by enrichment.
+                let updated = SavedActivity(
+                    id: latest.id,
+                    activityType: latest.activityType,
+                    title: latest.title,
+                    guideNudge: latest.guideNudge,
+                    reflection: latest.reflection,
+                    sessionEffortRating: latest.sessionEffortRating, performedWorkoutReference: latest.performedWorkoutReference, plannedWorkoutCompletionQuality: latest.plannedWorkoutCompletionQuality,
+                    createdAt: latest.createdAt,
+                    startedAt: latest.startedAt,
+                    endedAt: latest.endedAt,
+                    durationSecs: latest.durationSecs,
+                    distanceM: latest.distanceM,
+                    avgPace: latest.avgPace,
+                    elevationGainM: corrected.elevationGainM,
+                    walkingStepCount: latest.walkingStepCount,
+                    healthMetrics: latest.healthMetrics,
+                    goal: latest.goal,
+                    companionType: latest.companionType,
+                    source: latest.source,
+                    gear: latest.gear,
+                    manualEdits: latest.manualEdits,
+                    indoor: latest.indoor,
+                    cadence: latest.cadence,
+                    heartRateZones: latest.heartRateZones,
+                    recordingSession: latest.recordingSession,
+                    activityEventID: latest.activityEventID,
+                    followedRoute: latest.followedRoute,
+                    recognitionBadgeIDs: latest.recognitionBadgeIDs,
+                    route: SavedRoute(
+                        points: SavedRoutePoint.simplified(from: corrected.trackSegments),
+                        elevationMetadata: elevationMetadata
+                    ),
+                    photos: latest.photos,
+                    sync: SavedActivitySyncState(
+                        clientActivityId: latest.sync?.clientActivityId ?? latest.id.uuidString,
+                        serverActivityId: latest.sync?.serverActivityId,
+                        lastAttemptAt: latest.sync?.lastAttemptAt,
+                        syncedAt: nil,
+                        lastError: nil,
+                        localUpdatedAt: Date()
+                    )
+                )
+                if activity.route?.elevationMetadata == nil, let route = activity.route {
+                    try await persistence.preserveOriginalElevationRoute(route, for: activityID)
+                }
+                try await persistence.replace(updated)
+                activityRevision += 1
+                if let index = activities.firstIndex(where: { $0.id == updated.id }) {
+                    activities[index] = updated
+                }
+                await analyticsManager?.track(.init(.activityElevationCorrectionCompleted, properties: [
+                    .result: .string("success"),
+                    .sourceType: .string(activity.route?.elevationMetadata == nil ? "mapzen_backfill" : "mapzen_upgrade_v2"),
+                    .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000))
+                ]))
+                Task { await syncActivityIfPossible(id: updated.id) }
+            } catch is CancellationError {
+                // Discard/session replacement intentionally cancels enrichment.
+            } catch {
+                ActivityDiagnosticLog.error(.persistence,
+                    "Saved activity elevation enrichment failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                await analyticsManager?.track(.init(.activityElevationCorrectionCompleted, properties: [
+                    .result: .string("fallback"),
+                    .sourceType: .string("existing_on_device"),
+                    .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000)),
+                    .errorCategory: .string(syncErrorCategory(error))
+                ]))
             }
-            try await persistence.replace(updated)
-            activityRevision += 1
-            if let index = activities.firstIndex(where: { $0.id == updated.id }) {
-                activities[index] = updated
-            }
-            await analyticsManager?.track(.init(.activityElevationCorrectionCompleted, properties: [
-                .result: .string("success"),
-                .sourceType: .string(activity.route?.elevationMetadata == nil ? "mapzen_backfill" : "mapzen_upgrade_v2"),
-                .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000))
-            ]))
-            Task { await syncActivityIfPossible(id: updated.id) }
-        } catch is CancellationError {
-            // Discard/session replacement intentionally cancels enrichment.
-        } catch {
-            ActivityDiagnosticLog.error(.persistence,
-                "Saved activity elevation enrichment failed error=\(ActivityDiagnosticLog.errorCategory(error))")
-            await analyticsManager?.track(.init(.activityElevationCorrectionCompleted, properties: [
-                .result: .string("fallback"),
-                .sourceType: .string("existing_on_device"),
-                .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000)),
-                .errorCategory: .string(syncErrorCategory(error))
-            ]))
         }
     }
 
@@ -686,75 +808,79 @@ final class ActivityStore: ObservableObject {
         durationSecs: Int,
         gear: ActivityGearAttachment?
     ) async throws {
-        // Nested editors may have already committed photos since this editor opened.
-        let activity = self.activity(id: activity.id) ?? activity
-        let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        var editedFields: [String] = []
-        if cleanedTitle != activity.title { editedFields.append("title") }
-        if startedAt != activity.startedAt { editedFields.append("date") }
-        if abs(distanceM - activity.distanceM) > 0.5 { editedFields.append("distance") }
-        if durationSecs != activity.durationSecs { editedFields.append("duration") }
-        if gear != activity.gear { editedFields.append("shoe") }
+        return try await ActivityAccountBoundary.withAccount {
+            defer { Task { await self.refreshRepositoryProjection() } }
+            // Nested editors may have already committed photos since this editor opened.
+            let activity = self.activity(id: activity.id) ?? activity
+            let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            var editedFields: [String] = []
+            if cleanedTitle != activity.title { editedFields.append("title") }
+            if startedAt != activity.startedAt { editedFields.append("date") }
+            if abs(distanceM - activity.distanceM) > 0.5 { editedFields.append("distance") }
+            if durationSecs != activity.durationSecs { editedFields.append("duration") }
+            if gear != activity.gear { editedFields.append("shoe") }
 
-        let avgPace = activity.activityType.plausibleAveragePace(
-            durationSeconds: Double(durationSecs),
-            distanceMeters: distanceM
-        )
-
-        let updated = SavedActivity(
-            id: activity.id,
-            activityType: activity.activityType,
-            title: cleanedTitle.isEmpty ? activity.title : cleanedTitle,
-            guideNudge: activity.guideNudge,
-            reflection: activity.reflection,
-            sessionEffortRating: activity.sessionEffortRating, performedWorkoutReference: activity.performedWorkoutReference, plannedWorkoutCompletionQuality: activity.plannedWorkoutCompletionQuality,
-            createdAt: activity.createdAt,
-            startedAt: startedAt,
-            endedAt: startedAt.addingTimeInterval(TimeInterval(durationSecs)),
-            durationSecs: max(1, durationSecs),
-            distanceM: max(0, distanceM),
-            avgPace: avgPace,
-            elevationGainM: activity.elevationGainM,
-            walkingStepCount: activity.walkingStepCount,
-            healthMetrics: activity.healthMetrics,
-            goal: activity.goal,
-            companionType: activity.companionType,
-            source: editedFields.isEmpty ? activity.source : ActivitySourceMetadata(
-                kind: activity.source.kind == .manual ? .manual : activity.source.kind,
-                displayName: activity.source.displayName,
-                deviceName: activity.source.deviceName,
-                externalID: activity.source.externalID,
-                importedAt: activity.source.importedAt
-            ),
-            gear: gear,
-            manualEdits: editedFields.isEmpty ? activity.manualEdits : ActivityManualEdits(
-                editedAt: Date(),
-                editedFields: Array(Set((activity.manualEdits?.editedFields ?? []) + editedFields)).sorted()
-            ),
-            indoor: activity.indoor,
-            cadence: activity.cadence,
-            heartRateZones: activity.heartRateZones,
-            recordingSession: activity.recordingSession,
-            activityEventID: activity.activityEventID,
-            followedRoute: activity.followedRoute,
-            recognitionBadgeIDs: activity.recognitionBadgeIDs,
-            route: activity.route,
-            photos: activity.photos,
-            sync: SavedActivitySyncState(
-                clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
-                serverActivityId: activity.sync?.serverActivityId,
-                lastAttemptAt: activity.sync?.lastAttemptAt,
-                syncedAt: nil,
-                lastError: nil,
-                localUpdatedAt: Date()
+            let avgPace = activity.activityType.plausibleAveragePace(
+                durationSeconds: Double(durationSecs),
+                distanceMeters: distanceM
             )
-        )
 
-        try await persistence.replace(updated)
-        activityRevision += 1
-        if let index = activities.firstIndex(where: { $0.id == updated.id }) {
-            activities[index] = updated
-            sortActivitiesByStartTime()
+            let updated = SavedActivity(
+                id: activity.id,
+                activityType: activity.activityType,
+                title: cleanedTitle.isEmpty ? activity.title : cleanedTitle,
+                guideNudge: activity.guideNudge,
+                reflection: activity.reflection,
+                sessionEffortRating: activity.sessionEffortRating, performedWorkoutReference: activity.performedWorkoutReference, plannedWorkoutCompletionQuality: activity.plannedWorkoutCompletionQuality,
+                createdAt: activity.createdAt,
+                startedAt: startedAt,
+                endedAt: startedAt.addingTimeInterval(TimeInterval(durationSecs)),
+                durationSecs: max(1, durationSecs),
+                distanceM: max(0, distanceM),
+                avgPace: avgPace,
+                elevationGainM: activity.elevationGainM,
+                walkingStepCount: activity.walkingStepCount,
+                healthMetrics: activity.healthMetrics,
+                goal: activity.goal,
+                energyKilocalories: activity.energyKilocalories,
+                companionType: activity.companionType,
+                source: editedFields.isEmpty ? activity.source : ActivitySourceMetadata(
+                    kind: activity.source.kind == .manual ? .manual : activity.source.kind,
+                    displayName: activity.source.displayName,
+                    deviceName: activity.source.deviceName,
+                    externalID: activity.source.externalID,
+                    importedAt: activity.source.importedAt
+                ),
+                gear: gear,
+                manualEdits: editedFields.isEmpty ? activity.manualEdits : ActivityManualEdits(
+                    editedAt: Date(),
+                    editedFields: Array(Set((activity.manualEdits?.editedFields ?? []) + editedFields)).sorted()
+                ),
+                indoor: activity.indoor,
+                cadence: activity.cadence,
+                heartRateZones: activity.heartRateZones,
+                recordingSession: activity.recordingSession,
+                activityEventID: activity.activityEventID,
+                followedRoute: activity.followedRoute,
+                recognitionBadgeIDs: activity.recognitionBadgeIDs,
+                route: activity.route,
+                photos: activity.photos,
+                sync: SavedActivitySyncState(
+                    clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
+                    serverActivityId: activity.sync?.serverActivityId,
+                    lastAttemptAt: activity.sync?.lastAttemptAt,
+                    syncedAt: nil,
+                    lastError: nil,
+                    localUpdatedAt: Date()
+                )
+            )
+
+            try await persistence.replace(updated)
+            activityRevision += 1
+            if let index = activities.firstIndex(where: { $0.id == updated.id }) {
+                activities[index] = updated
+                sortActivitiesByStartTime()
+            }
         }
     }
 
@@ -764,298 +890,375 @@ final class ActivityStore: ObservableObject {
         adding captures: [(UIImage, PhotoMetadata)],
         photoOrder: [Int]? = nil
     ) async throws {
-        if let photoOrder {
-            let count = photos.count + captures.count
-            guard photoOrder.count == count, Set(photoOrder) == Set(0..<count) else {
-                ActivityDiagnosticLog.error(.persistence, "Activity photo update failed: invalid draft order")
-                throw CocoaError(.fileWriteUnknown)
+        return try await ActivityAccountBoundary.withAccount {
+            defer { Task { await self.refreshRepositoryProjection() } }
+            if let photoOrder {
+                let count = photos.count + captures.count
+                guard photoOrder.count == count, Set(photoOrder) == Set(0..<count) else {
+                    ActivityDiagnosticLog.error(.persistence, "Activity photo update failed: invalid draft order")
+                    throw CocoaError(.fileWriteUnknown)
+                }
             }
-        }
-        let current = self.activity(id: activity.id) ?? activity
-        let keptIDs = Set(photos.map(\.id))
-        for removed in current.photos where !keptIDs.contains(removed.id) {
-            if let remotePhotoID = removed.remotePhotoId {
-                try await api.deleteActivityPhoto(id: remotePhotoID)
+            let current = self.activity(id: activity.id) ?? activity
+            let keptIDs = Set(photos.map(\.id))
+            let baselineIDs = Set(activity.photos.map(\.id))
+            for removed in current.photos where baselineIDs.contains(removed.id) && !keptIDs.contains(removed.id) {
+                if let remotePhotoID = removed.remotePhotoId {
+                    try await api.deleteActivityPhoto(id: remotePhotoID)
+                }
             }
+            let updated = try await persistence.updatePhotos(for: activity, keeping: photos, adding: captures, photoOrder: photoOrder)
+            activityRevision += 1
+            if let index = activities.firstIndex(where: { $0.id == updated.id }) {
+                activities[index] = updated
+            }
+            await exportPhotosToAlbumIfNeeded(updated)
+            Task { await syncActivityIfPossible(id: updated.id) }
         }
-        let updated = try await persistence.updatePhotos(for: current, keeping: photos, adding: captures, photoOrder: photoOrder)
-        activityRevision += 1
-        if let index = activities.firstIndex(where: { $0.id == updated.id }) {
-            activities[index] = updated
-        }
-        await exportPhotosToAlbumIfNeeded(updated)
-        Task { await syncActivityIfPossible(id: updated.id) }
     }
 
     func refreshAccountStatistics() async {
-        guard let userID = AuthStore.currentUserId else {
-            accountStatistics = nil
-            statisticsAccountKey = nil
-            return
-        }
-        let key = "statistics.v1.\(userID).\(TimeZone.current.identifier).\(Calendar.current.firstWeekday)"
-        if statisticsAccountKey != key {
-            statisticsAccountKey = key
-            statisticsAreCached = true
-            statisticsIsLoading = statisticsRequestsInFlight.contains(key)
-            accountStatistics = nil
-            knownRemoteImportIDs.removeAll()
-            if let data = UserDefaults.standard.data(forKey: key) {
-                do { accountStatistics = try JSONDecoder().decode(AccountStatisticsSnapshot.self, from: data) }
-                catch { ActivityDiagnosticLog.error(.sync, "Statistics cache decode failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
-            }
-        }
-        guard statisticsRequestsInFlight.insert(key).inserted else { return }
-        statisticsIsLoading = true
-        defer {
-            statisticsRequestsInFlight.remove(key)
-            statisticsIsLoading = statisticsRequestsInFlight.contains(statisticsAccountKey ?? "")
-        }
-        do {
-            let snapshot = try await api.fetchAccountStatistics()
-            guard statisticsAccountKey == key, AuthStore.currentUserId == userID else { return }
-            guard snapshot.algorithmVersion == 1, snapshot.status == "complete" else {
-                ActivityDiagnosticLog.error(.sync, "Statistics response rejected reason=incomplete_or_unknown_version")
-                statisticsAreCached = true
+        return await ActivityAccountBoundary.withAccount {
+            guard let userID = AuthStore.currentUserId else {
+                accountStatistics = nil
+                statisticsAccountKey = nil
                 return
             }
-            accountStatistics = snapshot
-            statisticsAreCached = false
-            UserDefaults.standard.set(try JSONEncoder().encode(snapshot), forKey: key)
-            await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("server_statistics")]))
-        } catch is CancellationError {
-            statisticsAreCached = true
-        } catch {
-            statisticsAreCached = true
-            ActivityDiagnosticLog.error(.sync, "Account statistics refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            let key = "statistics.monday-v1.\(userID)"
+            if statisticsAccountKey != key {
+                statisticsAccountKey = key
+                statisticsAreCached = true
+                statisticsIsLoading = statisticsRequestsInFlight.contains(key)
+                accountStatistics = nil
+                knownRemoteImportIDs.removeAll()
+                await loadStatisticsBaseline()
+            }
+            guard statisticsRequestsInFlight.insert(key).inserted else { return }
+            statisticsIsLoading = true
+            defer {
+                statisticsRequestsInFlight.remove(key)
+                statisticsIsLoading = statisticsRequestsInFlight.contains(statisticsAccountKey ?? "")
+            }
+            do {
+                let readTicket = try await persistence.statisticsReadTicket()
+                let snapshot = try await api.fetchAccountStatistics()
+                guard try await persistence.statisticsReadTicket() == readTicket else { statisticsAreCached = true; return }
+                guard statisticsAccountKey == key, AuthStore.currentUserId == userID else { return }
+            try ActivityAccountBoundary.validate()
+                guard snapshot.revision >= (accountStatistics?.revision ?? 0) else { return }
+                guard snapshot.algorithmVersion == 1, snapshot.status == "complete", snapshot.firstWeekday == 2,
+                      TimeZone(identifier: snapshot.timeZone) != nil else {
+                    ActivityDiagnosticLog.error(.sync, "Statistics response rejected reason=incomplete_or_unknown_version")
+                    statisticsAreCached = true
+                    return
+                }
+                guard try await persistence.storeStatisticsSnapshot(try JSONEncoder().encode(snapshot), revision: snapshot.revision, ticket: readTicket) else {
+                    statisticsAreCached = true
+                    return
+                }
+                try ActivityAccountBoundary.validate()
+                accountStatistics = snapshot
+                statisticsReadGeneration &+= 1
+                lastStatisticsReadTicket = readTicket
+                statisticsAreCached = false
+                await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("server_statistics")]))
+            } catch is CancellationError {
+                statisticsAreCached = true
+            } catch {
+                statisticsAreCached = true
+                ActivityDiagnosticLog.error(.sync, "Account statistics refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            }
         }
     }
 
     private func checkRemoteImportIdentities(_ ids: [String], sourceKind: String) async -> Bool {
-        guard let userID = AuthStore.currentUserId else { return true }
-        if importIdentityAccountID != userID { knownRemoteImportIDs.removeAll(); importIdentityAccountID = userID }
-        do {
-            let known = try await api.knownImportIdentities(ids, sourceKind: sourceKind)
-            knownRemoteImportIDs[sourceKind, default: []].formUnion(known)
-            return true
-        } catch {
-            ActivityDiagnosticLog.error(.sync, "Import identity check failed error=\(ActivityDiagnosticLog.errorCategory(error))")
-            return false // Offline imports remain local/pending; upload reconciles the canonical source identity.
+        return await ActivityAccountBoundary.withAccount {
+            guard let userID = AuthStore.currentUserId else { return true }
+            if importIdentityAccountID != userID { knownRemoteImportIDs.removeAll(); importIdentityAccountID = userID }
+            do {
+                let known = try await api.knownImportIdentities(ids, sourceKind: sourceKind)
+                knownRemoteImportIDs[sourceKind, default: []].formUnion(known)
+                return true
+            } catch {
+                ActivityDiagnosticLog.error(.sync, "Import identity check failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                return false // Offline imports remain local/pending; upload reconciles the canonical source identity.
+            }
         }
     }
 
     func syncPendingActivitiesIfNeeded() async {
-        guard AuthStore.currentUserId != nil else { return }
-        guard !isSyncing else { return }
-        isSyncing = true
-        defer { isSyncing = false }
-        ActivityDiagnosticLog.notice(
-            .sync,
-            "Activity sync pass started pending=\(ActivityDiagnosticLog.countBucket(pendingActivityCount))"
-        )
-        await loadActivities()
-        await refreshAccountStatistics()
-        await refreshCachedActivityMetadata()
-        _ = await pullRemoteActivities(reset: true)
-        // Register photo metadata for cached records; JPEG bytes load when rendered.
-        await restorePendingRemotePhotos()
-        let pendingIDs = activities
-            .filter { !($0.sync?.isSynced ?? false) }
-            .map(\.id)
+        return await ActivityAccountBoundary.withAccount {
+            guard AuthStore.currentUserId != nil else { return }
+            guard !isSyncing else { return }
+            isSyncing = true
+            defer { isSyncing = false }
+            ActivityDiagnosticLog.notice(
+                .sync,
+                "Activity sync pass started pending=\(ActivityDiagnosticLog.countBucket(pendingActivityCount))"
+            )
+            await loadActivities()
+            await refreshCachedActivityMetadata()
+            _ = await pullRemoteActivities(reset: true)
+            // Register photo metadata for cached records; JPEG bytes load when rendered.
+            await restorePendingRemotePhotos()
+            let pendingIDs = activities
+                .filter { !($0.sync?.isSynced ?? false) && !repositoryProjection.blockedActivityIDs.contains($0.id) }
+                .map(\.id)
 
-        for activityID in pendingIDs {
-            await syncActivityIfPossible(id: activityID)
+            for activityID in pendingIDs {
+                await syncActivityIfPossible(id: activityID)
+            }
+            for activity in activities where activity.sync?.serverActivityId != nil {
+                await syncPhotosIfPossible(activityID: activity.id)
+            }
+            ActivityDiagnosticLog.notice(
+                .sync,
+                "Activity sync pass completed pending=\(ActivityDiagnosticLog.countBucket(pendingActivityCount)) failed=\(ActivityDiagnosticLog.countBucket(failedActivityCount))"
+            )
         }
-        for activity in activities where activity.sync?.serverActivityId != nil {
-            await syncPhotosIfPossible(activityID: activity.id)
-        }
-        await refreshAccountStatistics()
-        ActivityDiagnosticLog.notice(
-            .sync,
-            "Activity sync pass completed pending=\(ActivityDiagnosticLog.countBucket(pendingActivityCount)) failed=\(ActivityDiagnosticLog.countBucket(failedActivityCount))"
-        )
     }
 
     private func loadActivities() async {
-        defer { hasLoadedActivities = true }
+        return await ActivityAccountBoundary.withAccount {
+            defer { hasLoadedActivities = true }
 #if DEBUG && targetEnvironment(simulator)
-        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestPhotoEditing") {
-            do {
-                if !ProcessInfo.processInfo.arguments.contains("-OutboundUITestRestorePhotoEditing") {
-                    for fixture in Self.uiTestActivityFixtures {
-                        try await persistence.replaceOrInsert(fixture)
-                    }
-                    if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedPhotoDraft"),
-                       let fixture = Self.uiTestActivityFixtures.first(where: { $0.title == "Golden Gate Easy Run" }) {
-                        let captures: [(UIImage, PhotoMetadata)] = [1_000.0, 2_000.0].enumerated().map { index, distance in
-                            let image = UIGraphicsImageRenderer(size: CGSize(width: 240, height: 180)).image { context in
-                                (index == 0 ? UIColor.systemBlue : UIColor.systemGreen).setFill()
-                                context.fill(CGRect(x: 0, y: 0, width: 240, height: 180))
-                            }
-                            return (image, PhotoMetadata(takenAt: fixture.startedAt.addingTimeInterval(Double(index + 1) * 300),
-                                paceAtShot: fixture.avgPace, hrAtShot: nil, distAtShot: distance,
-                                coordinate: nil, captureContext: .active))
+            if ProcessInfo.processInfo.arguments.contains("-OutboundUITestPhotoEditing") {
+                do {
+                    if !ProcessInfo.processInfo.arguments.contains("-OutboundUITestRestorePhotoEditing") {
+                        for fixture in Self.uiTestActivityFixtures {
+                            try await persistence.replaceOrInsert(fixture)
                         }
-                        _ = try await persistence.updatePhotos(for: fixture, keeping: [], adding: captures)
+                        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedPhotoDraft"),
+                           let fixture = Self.uiTestActivityFixtures.first(where: { $0.title == "Golden Gate Easy Run" }) {
+                            let captures: [(UIImage, PhotoMetadata)] = [1_000.0, 2_000.0].enumerated().map { index, distance in
+                                let image = UIGraphicsImageRenderer(size: CGSize(width: 240, height: 180)).image { context in
+                                    (index == 0 ? UIColor.systemBlue : UIColor.systemGreen).setFill()
+                                    context.fill(CGRect(x: 0, y: 0, width: 240, height: 180))
+                                }
+                                return (image, PhotoMetadata(takenAt: fixture.startedAt.addingTimeInterval(Double(index + 1) * 300),
+                                    paceAtShot: fixture.avgPace, hrAtShot: nil, distAtShot: distance,
+                                    coordinate: nil, captureContext: .active))
+                            }
+                            _ = try await persistence.updatePhotos(for: fixture, keeping: [], adding: captures)
+                        }
                     }
+                    // Unlike in-memory UI seeds, these fixtures exercise disk writes
+                    // and can be reopened after a fresh app process.
+                    activities = try await persistence.load().sortedByStartTimeDescending()
+                } catch {
+                    ActivityDiagnosticLog.error(.persistence,
+                        "Photo UI fixture load failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 }
-                // Unlike in-memory UI seeds, these fixtures exercise disk writes
-                // and can be reopened after a fresh app process.
-                activities = try await persistence.load().sortedByStartTimeDescending()
-            } catch {
-                ActivityDiagnosticLog.error(.persistence,
-                    "Photo UI fixture load failed error=\(ActivityDiagnosticLog.errorCategory(error))")
-            }
-            return
-        }
-#endif
-        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
-            || ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity")
-        {
-            activities = Self.uiTestActivityFixtures.sortedByStartTimeDescending()
-            return
-        }
-        let revisionAtStart = activityRevision
-        do {
-            let loadedActivities = try await persistence.load()
-            guard activityRevision == revisionAtStart else {
-                ActivityDiagnosticLog.notice(.persistence, "Local activity load ignored because in-memory history changed")
                 return
             }
-            activities = loadedActivities.sortedByStartTimeDescending()
-            ActivityDiagnosticLog.notice(
-                .persistence,
-                "Local activity load completed history_count=\(ActivityDiagnosticLog.countBucket(activities.count))"
-            )
-        } catch {
-            ActivityDiagnosticLog.error(
-                .persistence,
-                "Local activity load failed error=\(ActivityDiagnosticLog.errorCategory(error))"
-            )
+#endif
+            if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+                || ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity")
+            {
+                activities = Self.uiTestActivityFixtures.sortedByStartTimeDescending()
+                return
+            }
+            let revisionAtStart = activityRevision
+            do {
+                let loadedActivities = try await persistence.load()
+                guard activityRevision == revisionAtStart else {
+                    ActivityDiagnosticLog.notice(.persistence, "Local activity load ignored because in-memory history changed")
+                    return
+                }
+                activities = loadedActivities.sortedByStartTimeDescending()
+                ActivityDiagnosticLog.notice(
+                    .persistence,
+                    "Local activity load completed history_count=\(ActivityDiagnosticLog.countBucket(activities.count))"
+                )
+            } catch {
+                ActivityDiagnosticLog.error(
+                    .persistence,
+                    "Local activity load failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
+            }
         }
     }
 
     private func syncActivityIfPossible(id: UUID) async {
-        defer { Task { await refreshAccountStatistics() } }
-        guard AuthStore.currentUserId != nil else { return }
-        guard let activity = activity(id: id) else { return }
-        statisticsAreCached = true
-
-        let priorState = activity.sync ?? SavedActivitySyncState(
-            clientActivityId: activity.id.uuidString,
-            serverActivityId: nil,
-            lastAttemptAt: nil,
-            syncedAt: nil,
-            lastError: nil,
-            localUpdatedAt: activity.createdAt
-        )
-
-        let attemptState = SavedActivitySyncState(
-            clientActivityId: priorState.clientActivityId,
-            serverActivityId: priorState.serverActivityId,
-            lastAttemptAt: Date(),
-            syncedAt: priorState.syncedAt,
-            lastError: nil,
-            localUpdatedAt: priorState.localUpdatedAt ?? activity.createdAt
-        )
-        await persistSyncState(attemptState, for: activity.id)
-        ActivityDiagnosticLog.notice(
-            .sync,
-            "Activity upload started source=\(activity.source.kind.rawValue) existing_remote=\(priorState.serverActivityId != nil) route_included=\(uploadableRoute(for: activity) != nil) photos=\(ActivityDiagnosticLog.countBucket(activity.photos.count))"
-        )
-
-        do {
-            let response = try await api.uploadActivity(
-                ActivityUploadRequest(
-                    clientActivityId: priorState.clientActivityId,
-                    syncSource: "ios-local-store",
-                    type: activity.activityType.rawValue,
-                    title: activity.title,
-                    startedAt: activity.startedAt,
-                    endedAt: activity.endedAt,
-                    durationSecs: activity.durationSecs,
-                    distanceM: activity.distanceM,
-                    elevationM: activity.elevationGainM,
-                    avgPace: activity.avgPace,
-                    avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
-                    energyKilocalories: activity.energyKilocalories,
-                    companionType: activity.companionType?.rawValue,
-                    activityEventId: activity.activityEventID,
-                    followedRouteId: activity.followedRoute?.source == .community ? activity.followedRoute?.routeID : nil,
-                    followedRouteCompleted: activity.followedRoute?.source == .community ? activity.followedRoute?.arrived : nil,
-                    route: uploadableRoute(for: activity),
-                    reflection: activity.reflection,
-                    clientData: ActivityClientExtras(from: activity),
-                    clientUpdatedAt: attemptState.localUpdatedAt ?? activity.createdAt,
-                    recognitionContext: RecognitionContextDTO(
-                        timeZoneIdentifier: TimeZone.current.identifier,
-                        firstWeekday: Calendar.current.firstWeekday
-                    )
-                )
-            )
-
-            if let canonicalID = response.clientActivityId.flatMap(UUID.init(uuidString:)), canonicalID != activity.id {
-                let canonicalResponse = try await api.fetchActivities(ids: [response.id], includeRoute: false)
-                _ = try await applyRemoteActivities(canonicalResponse.activities, preserveCachedRoutes: true)
-                guard var canonical = self.activity(id: canonicalID) else { throw CocoaError(.fileReadCorruptFile) }
-                let existingPhotoIDs = Set(canonical.photos.map(\.id))
-                let copiedPhotos = try await persistence.copyPhotos(activity.photos.filter { !existingPhotoIDs.contains($0.id) }, into: canonicalID)
-                canonical = copy(canonical, photos: canonical.photos + copiedPhotos, sync: canonical.sync)
-                try await persistence.replaceOrInsert(canonical)
-                try await persistence.delete(activity)
-                activities.removeAll { $0.id == activity.id }
-                if let index = activities.firstIndex(where: { $0.id == canonicalID }) { activities[index] = canonical }
-                activityRevision += 1
-                ActivityDiagnosticLog.notice(.sync, "Imported activity reconciled to canonical source identity")
-                await syncPhotosIfPossible(activityID: canonicalID)
+        return await ActivityAccountBoundary.withAccount {
+            guard AuthStore.currentUserId != nil,
+                  ActivityAccountBoundary.context == ActivityAccountBoundary.current,
+                  uploadingActivityIDs.insert(id).inserted else { return }
+            defer { uploadingActivityIDs.remove(id) }
+            guard !repositoryProjection.blockedActivityIDs.contains(id) else { return }
+            let snapshot: ActivityUploadSnapshot
+            do {
+                guard let value = try await persistence.uploadSnapshot(for: id) else { return }
+                snapshot = value
+            } catch is CancellationError { return }
+            catch {
+                ActivityDiagnosticLog.error(.persistence, "Upload snapshot read failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 return
             }
+            let activity = snapshot.activity
+            let generation = snapshot.generation
+            statisticsAreCached = true
 
-            let syncedState = SavedActivitySyncState(
-                clientActivityId: priorState.clientActivityId,
-                serverActivityId: response.id,
-                lastAttemptAt: attemptState.lastAttemptAt,
-                syncedAt: response.serverUpdatedAt,
+            let priorState = activity.sync ?? SavedActivitySyncState(
+                clientActivityId: activity.id.uuidString,
+                serverActivityId: nil,
+                lastAttemptAt: nil,
+                syncedAt: nil,
                 lastError: nil,
-                localUpdatedAt: attemptState.localUpdatedAt
+                localUpdatedAt: activity.createdAt
             )
-            await persistSyncState(syncedState, for: activity.id)
-            await analyticsManager?.track(ProductAnalyticsEvent(
-                .activitySyncCompleted,
-                properties: syncAnalyticsProperties(for: activity)
-            ))
-            if let contributions = response.groupContributions, !contributions.isEmpty {
-                GroupContributionCenter.shared.publish(contributions)
-                for contribution in contributions {
-                    await analyticsManager?.track(.init(.groupActivityContributionReconciled, properties: [
-                        .selectionType: .string(contribution.focusMode),
-                        .participantCountBucket: .string(ProductAnalyticsBucket.count(contribution.memberCount)),
-                        .result: .string(contribution.completed ? "completed" : "contributed")
-                    ]))
-                }
-            }
-            ActivityDiagnosticLog.notice(
-                .sync,
-                "Activity upload completed source=\(activity.source.kind.rawValue) route_included=\(uploadableRoute(for: activity) != nil)"
-            )
-            await syncPhotosIfPossible(activityID: activity.id)
-        } catch {
-            let failedState = SavedActivitySyncState(
+
+            let attemptState = SavedActivitySyncState(
                 clientActivityId: priorState.clientActivityId,
                 serverActivityId: priorState.serverActivityId,
-                lastAttemptAt: attemptState.lastAttemptAt,
+                lastAttemptAt: Date(),
                 syncedAt: priorState.syncedAt,
-                lastError: error.localizedDescription,
+                lastError: nil,
                 localUpdatedAt: priorState.localUpdatedAt ?? activity.createdAt
             )
-            await persistSyncState(failedState, for: activity.id)
-            var properties = syncAnalyticsProperties(for: activity)
-            properties[.errorCategory] = .string(syncErrorCategory(error))
-            await analyticsManager?.track(ProductAnalyticsEvent(.activitySyncFailed, properties: properties))
-            ActivityDiagnosticLog.error(
+            do { try await persistSyncState(attemptState, for: activity.id, expectedGeneration: generation) }
+            catch { return }
+            ActivityDiagnosticLog.notice(
                 .sync,
-                "Activity upload failed source=\(activity.source.kind.rawValue) route_included=\(uploadableRoute(for: activity) != nil) error=\(ActivityDiagnosticLog.errorCategory(error))"
+                "Activity upload started source=\(activity.source.kind.rawValue) existing_remote=\(priorState.serverActivityId != nil) route_included=\(uploadableRoute(for: activity) != nil) photos=\(ActivityDiagnosticLog.countBucket(activity.photos.count))"
             )
+
+            do {
+                let response = try await api.uploadActivity(
+                    ActivityUploadRequest(
+                        clientActivityId: priorState.clientActivityId,
+                        syncSource: "ios-local-store",
+                        type: activity.activityType.rawValue,
+                        title: activity.title,
+                        startedAt: activity.startedAt,
+                        endedAt: activity.endedAt,
+                        durationSecs: activity.durationSecs,
+                        distanceM: activity.distanceM,
+                        elevationM: activity.elevationGainM,
+                        avgPace: activity.avgPace,
+                        avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
+                        energyKilocalories: activity.energyKilocalories,
+                        companionType: activity.companionType?.rawValue,
+                        activityEventId: activity.activityEventID,
+                        followedRouteId: activity.followedRoute?.source == .community ? activity.followedRoute?.routeID : nil,
+                        followedRouteCompleted: activity.followedRoute?.source == .community ? activity.followedRoute?.arrived : nil,
+                        route: uploadableRoute(for: activity),
+                        reflection: activity.reflection,
+                        clientData: ActivityClientExtras(from: activity),
+                        clientUpdatedAt: attemptState.localUpdatedAt ?? activity.createdAt,
+                        recognitionContext: RecognitionContextDTO(
+                            timeZoneIdentifier: accountStatistics?.timeZone ?? planningCalendarTimeZone ?? TimeZone.current.identifier,
+                            firstWeekday: 2
+                        )
+                    )
+                )
+
+                if let canonicalID = response.clientActivityId.flatMap(UUID.init(uuidString:)), canonicalID != activity.id {
+                    try await persistence.retainAcceptance(response.reconciliation)
+                    await refreshRepositoryProjection()
+                    let canonicalResponse = try await api.fetchActivities(ids: [response.id], includeRoute: true)
+                    guard let remote = canonicalResponse.activities.first, let extras = remote.clientData else { throw CocoaError(.fileReadCorruptFile) }
+                    let targetSnapshot = try await persistence.uploadSnapshot(for: canonicalID)
+                    let priorCanonical = targetSnapshot?.activity
+                    let canonicalGeneration = targetSnapshot?.generation
+                let existingPhotoIDs = Set(priorCanonical?.photos.map(\.id) ?? [])
+                    let copiedPhotos = try await persistence.copyPhotos(activity.photos.filter { !existingPhotoIDs.contains($0.id) }, into: canonicalID)
+                    let synced = SavedActivitySyncState(clientActivityId: canonicalID.uuidString, serverActivityId: response.id,
+                        lastAttemptAt: attemptState.lastAttemptAt, syncedAt: response.serverUpdatedAt, lastError: nil,
+                        localUpdatedAt: remote.clientUpdatedAt ?? response.serverUpdatedAt)
+                    var canonical = restoredActivity(remote, id: canonicalID, extras: extras, local: priorCanonical ?? activity,
+                        sync: synced, route: remote.route ?? activity.route ?? priorCanonical?.route)
+                    var canonicalPhotos = (priorCanonical?.photos ?? []) + copiedPhotos
+                for remotePhoto in remote.photos ?? [] {
+                    let photoID = UUID(uuidString: remotePhoto.clientPhotoId) ?? UUID()
+                    guard !canonicalPhotos.contains(where: { $0.id == photoID || $0.remotePhotoId == remotePhoto.id }) else { continue }
+                    canonicalPhotos.append(SavedPhoto(id: photoID, takenAt: remotePhoto.takenAt,
+                        paceAtShot: remotePhoto.paceAtShot, hrAtShot: remotePhoto.hrAtShot, distAtShot: remotePhoto.distAtShot ?? 0,
+                        coordinate: remotePhoto.latitude.flatMap { latitude in remotePhoto.longitude.map { SavedCoordinate(latitude: latitude, longitude: $0) } },
+                        captureContext: PhotoCaptureContext(rawValue: remotePhoto.captureContext ?? "active") ?? .active,
+                        relativePath: "\(canonicalID.uuidString)/photos/\(photoID.uuidString).jpg", remotePhotoId: remotePhoto.id,
+                        remoteUploadedAt: remotePhoto.updatedAt, remoteThumbnailURL: remotePhoto.thumbnailUrl?.absoluteString))
+                }
+                canonical = copy(canonical, photos: canonicalPhotos, sync: synced)
+                    guard let adopted = try await persistence.adoptCanonical(canonical, replacing: activity, generation: generation, canonicalGeneration: canonicalGeneration, receipt: response.reconciliation) else {
+                        await refreshRepositoryProjection()
+                        return // An edit won the race. Keep the original pending and retry its current generation.
+                    }
+                    try ActivityAccountBoundary.validate()
+                    await refreshRepositoryProjection()
+                    try ActivityAccountBoundary.validate()
+                    pendingRemotePhotos[canonicalID] = remote.photos ?? []
+                    await restoreRemotePhotos(remote.photos ?? [], activityID: canonicalID)
+                    try ActivityAccountBoundary.validate()
+                    sortActivitiesByStartTime()
+                    activityRevision += 1
+                    ActivityDiagnosticLog.notice(.sync, "Imported activity reconciled to canonical source identity")
+                    await syncPhotosIfPossible(activityID: canonicalID)
+                    return
+                }
+
+                let syncedState = SavedActivitySyncState(
+                    clientActivityId: priorState.clientActivityId,
+                    serverActivityId: response.id,
+                    lastAttemptAt: attemptState.lastAttemptAt,
+                    syncedAt: response.serverUpdatedAt,
+                    lastError: nil,
+                    localUpdatedAt: attemptState.localUpdatedAt
+                )
+                let accepted = copy(activity, photos: activity.photos, sync: syncedState)
+                let acknowledged = try await persistence.acknowledge(accepted, generation: generation, receipt: response.reconciliation)
+            try ActivityAccountBoundary.validate()
+                await refreshRepositoryProjection()
+            try ActivityAccountBoundary.validate()
+                if acknowledged != nil { activityRevision += 1 }
+                await analyticsManager?.track(ProductAnalyticsEvent(
+                    .activitySyncCompleted,
+                    properties: syncAnalyticsProperties(for: activity)
+                ))
+                if let contributions = response.groupContributions, !contributions.isEmpty {
+                    GroupContributionCenter.shared.publish(contributions)
+                    for contribution in contributions {
+                        await analyticsManager?.track(.init(.groupActivityContributionReconciled, properties: [
+                            .selectionType: .string(contribution.focusMode),
+                            .participantCountBucket: .string(ProductAnalyticsBucket.count(contribution.memberCount)),
+                            .result: .string(contribution.completed ? "completed" : "contributed")
+                        ]))
+                    }
+                }
+                ActivityDiagnosticLog.notice(
+                    .sync,
+                    "Activity upload completed source=\(activity.source.kind.rawValue) route_included=\(uploadableRoute(for: activity) != nil)"
+                )
+                await syncPhotosIfPossible(activityID: activity.id)
+            } catch {
+                if case let APIError.http(statusCode, _, code) = error,
+                   statusCode == 409, code == "performed_workout_conflict" {
+                    do { try await persistence.reject(activity.id, generation: generation, category: "performed_workout_conflict") }
+                    catch is CancellationError { return }
+                    catch { ActivityDiagnosticLog.error(.persistence, "Association conflict checkpoint failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
+                    await refreshRepositoryProjection()
+                }
+                let failedState = SavedActivitySyncState(
+                    clientActivityId: priorState.clientActivityId,
+                    serverActivityId: priorState.serverActivityId,
+                    lastAttemptAt: attemptState.lastAttemptAt,
+                    syncedAt: priorState.syncedAt,
+                    lastError: error.localizedDescription,
+                    localUpdatedAt: priorState.localUpdatedAt ?? activity.createdAt
+                )
+                do {
+                    // Failure must not overwrite an edit made while the request was suspended.
+                    try await persistSyncState(failedState, for: activity.id, expectedGeneration: generation)
+                } catch is CancellationError { return }
+                catch { ActivityDiagnosticLog.error(.persistence, "Sync failure checkpoint failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
+                var properties = syncAnalyticsProperties(for: activity)
+                properties[.errorCategory] = .string(syncErrorCategory(error))
+                await analyticsManager?.track(ProductAnalyticsEvent(.activitySyncFailed, properties: properties))
+                ActivityDiagnosticLog.error(
+                    .sync,
+                    "Activity upload failed source=\(activity.source.kind.rawValue) route_included=\(uploadableRoute(for: activity) != nil) error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
+            }
         }
     }
 
@@ -1082,163 +1285,84 @@ final class ActivityStore: ObservableObject {
         return "unknown"
     }
 
-    private func persistSyncState(_ syncState: SavedActivitySyncState, for activityID: UUID) async {
-        guard let current = activity(id: activityID) else { return }
-        let updated = SavedActivity(
-            id: current.id,
-            activityType: current.activityType,
-            title: current.title,
-            guideNudge: current.guideNudge,
-            reflection: current.reflection,
-            sessionEffortRating: current.sessionEffortRating, performedWorkoutReference: current.performedWorkoutReference, plannedWorkoutCompletionQuality: current.plannedWorkoutCompletionQuality,
-            createdAt: current.createdAt,
-            startedAt: current.startedAt,
-            endedAt: current.endedAt,
-            durationSecs: current.durationSecs,
-            distanceM: current.distanceM,
-            avgPace: current.avgPace,
-            elevationGainM: current.elevationGainM,
-            walkingStepCount: current.walkingStepCount,
-            healthMetrics: current.healthMetrics,
-            goal: current.goal,
-            companionType: current.companionType,
-            source: current.source,
-            gear: current.gear,
-            manualEdits: current.manualEdits,
-            indoor: current.indoor,
-            cadence: current.cadence,
-            heartRateZones: current.heartRateZones,
-            recordingSession: current.recordingSession,
-            activityEventID: current.activityEventID,
-            followedRoute: current.followedRoute,
-            recognitionBadgeIDs: current.recognitionBadgeIDs,
-            route: current.route,
-            photos: current.photos,
-            sync: syncState
-        )
-        do {
-            try await persistence.replace(updated)
-        } catch {
-            ActivityDiagnosticLog.error(
-                .persistence,
-                "Sync-state persistence failed error=\(ActivityDiagnosticLog.errorCategory(error))"
-            )
-            return
-        }
+    private func persistSyncState(_ syncState: SavedActivitySyncState, for activityID: UUID, expectedGeneration: UInt64) async throws {
+        try await persistence.updateSyncState(syncState, for: activityID, expectedGeneration: expectedGeneration)
+        try ActivityAccountBoundary.validate()
+        await refreshRepositoryProjection()
         activityRevision += 1
-        if let index = activities.firstIndex(where: { $0.id == updated.id }) {
-            activities[index] = updated
-        }
     }
 
     func ensureActivityRouteLoaded(_ id: UUID) async {
-        guard let local = activity(id: id), let serverID = local.sync?.serverActivityId else { return }
-        let version = "\(serverID):\(local.sync?.syncedAt?.timeIntervalSince1970 ?? 0)"
-        guard invalidatedRoutes.contains(id) || (local.route == nil && !resolvedRouteVersions.contains(version)) else { return }
-        await refreshActivityDetails(id)
+        return await ActivityAccountBoundary.withAccount {
+            guard let local = activity(id: id), let serverID = local.sync?.serverActivityId else { return }
+            let version = "\(serverID):\(local.sync?.syncedAt?.timeIntervalSince1970 ?? 0)"
+            guard invalidatedRoutes.contains(id) || (local.route == nil && !resolvedRouteVersions.contains(version)) else { return }
+            await refreshActivityDetails(id)
+        }
     }
 
     func refreshActivityDetails(_ id: UUID) async {
-        guard AuthStore.currentUserId != nil, let local = activity(id: id), let serverID = local.sync?.serverActivityId,
-              detailRefreshIDs.insert(id).inserted else { return }
-        defer { detailRefreshIDs.remove(id) }
-        do {
-            let response = try await api.fetchActivities(ids: [serverID])
-            _ = try await applyRemoteActivities(response.activities)
-            invalidatedRoutes.remove(id)
-            if let updated = activity(id: id) {
-                resolvedRouteVersions.insert("\(serverID):\(updated.sync?.syncedAt?.timeIntervalSince1970 ?? 0)")
+        return await ActivityAccountBoundary.withAccount {
+            guard AuthStore.currentUserId != nil, let local = activity(id: id), let serverID = local.sync?.serverActivityId,
+                  detailRefreshIDs.insert(id).inserted else { return }
+            defer { detailRefreshIDs.remove(id) }
+            do {
+                let response = try await api.fetchActivities(ids: [serverID])
+                _ = try await applyRemoteActivities(response.activities)
+                invalidatedRoutes.remove(id)
+                if let updated = activity(id: id) {
+                    resolvedRouteVersions.insert("\(serverID):\(updated.sync?.syncedAt?.timeIntervalSince1970 ?? 0)")
+                }
+                await restorePendingRemotePhotos()
+            } catch is CancellationError {
+                return
+            } catch {
+                ActivityDiagnosticLog.error(.sync, "Activity detail refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
             }
-            await restorePendingRemotePhotos()
-        } catch is CancellationError {
-            return
-        } catch {
-            ActivityDiagnosticLog.error(.sync, "Activity detail refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
         }
     }
 
     func loadMoreRemoteActivities() async -> Bool {
-        guard AuthStore.currentUserId != nil else { return false }
-        let succeeded = await pullRemoteActivities(reset: false)
-        Task { await restorePendingRemotePhotos() }
-        return succeeded
+        return await ActivityAccountBoundary.withAccount {
+            guard AuthStore.currentUserId != nil else { return false }
+            let succeeded = await pullRemoteActivities(reset: false)
+            Task { await restorePendingRemotePhotos() }
+            return succeeded
+        }
     }
 
     private func restorePendingRemotePhotos() async {
-        guard !isRestoringPhotos else { return }
-        isRestoringPhotos = true
-        defer { isRestoringPhotos = false }
-        while let (activityID, photos) = pendingRemotePhotos.first {
-            pendingRemotePhotos.removeValue(forKey: activityID)
-            await restoreRemotePhotos(photos, activityID: activityID)
+        return await ActivityAccountBoundary.withAccount {
+            guard !isRestoringPhotos else { return }
+            isRestoringPhotos = true
+            defer { isRestoringPhotos = false }
+            while let (activityID, photos) = pendingRemotePhotos.first {
+                pendingRemotePhotos.removeValue(forKey: activityID)
+                await restoreRemotePhotos(photos, activityID: activityID)
+            }
         }
     }
 
     private func pullRemoteActivities(reset: Bool) async -> Bool {
-        if let remoteHistoryTask {
-            let succeeded = await remoteHistoryTask.value
-            guard reset else { return succeeded }
-            // A foreground page may have been in flight when the recent-page refresh began.
-            return await pullRemoteActivities(reset: true)
+        return await ActivityAccountBoundary.withAccount {
+            if let remoteHistoryTask {
+                let succeeded = await remoteHistoryTask.value
+                guard reset else { return succeeded }
+                // A foreground page may have been in flight when the recent-page refresh began.
+                return await pullRemoteActivities(reset: true)
+            }
+            let task = Task {
+                let succeeded = await restoreRemoteActivityPage(reset: reset)
+                remoteHistoryTask = nil
+                return succeeded
+            }
+            remoteHistoryTask = task
+            return await task.value
         }
-        let task = Task {
-            let succeeded = await restoreRemoteActivityPage(reset: reset)
-            remoteHistoryTask = nil
-            return succeeded
-        }
-        remoteHistoryTask = task
-        return await task.value
     }
 
-    private func applyRemoteActivities(_ records: [RemoteActivityRecord], preserveCachedRoutes: Bool = false) async throws -> (received: Int, restored: Int, deleted: Int) {
-        var remoteCount = 0, restoredCount = 0, deletedCount = 0
-        for remote in records {
-            remoteCount += 1
-            guard let clientID = remote.clientActivityId,
-                  let activityID = UUID(uuidString: clientID) else { continue }
-
-            if remote.deletedAt != nil {
-                if let local = activity(id: activityID) {
-                    try await persistence.delete(local)
-                    activities.removeAll { $0.id == activityID }
-                    activityRevision += 1
-                    deletedCount += 1
-                }
-                continue
-            }
-
-            guard let clientExtras = remote.clientData else { continue }
-            let local = activity(id: activityID)
-            if let local, remote.clientUpdatedAt == nil {
-                let upgradeState = SavedActivitySyncState(
-                    clientActivityId: clientID,
-                    serverActivityId: remote.id,
-                    lastAttemptAt: local.sync?.lastAttemptAt,
-                    syncedAt: nil,
-                    lastError: nil,
-                    localUpdatedAt: local.sync?.localUpdatedAt ?? local.createdAt
-                )
-                await persistSyncState(upgradeState, for: activityID)
-                continue
-            }
-            let localUpdatedAt = local?.sync?.localUpdatedAt ?? local?.createdAt
-            if local?.sync?.isSynced == false,
-               let localUpdatedAt,
-               let remoteClientUpdatedAt = remote.clientUpdatedAt,
-               localUpdatedAt > remoteClientUpdatedAt {
-                continue
-            }
-
-            if preserveCachedRoutes, let local, remote.updatedAt > (local.sync?.syncedAt ?? .distantPast) { invalidatedRoutes.insert(activityID) }
-            let synced = SavedActivitySyncState(
-                clientActivityId: clientID,
-                serverActivityId: remote.id,
-                lastAttemptAt: local?.sync?.lastAttemptAt,
-                syncedAt: remote.updatedAt,
-                lastError: nil,
-                localUpdatedAt: remote.clientUpdatedAt ?? remote.updatedAt
-            )
-            let restored = SavedActivity(
+    private func restoredActivity(_ remote: RemoteActivityRecord, id activityID: UUID, extras clientExtras: ActivityClientExtras, local: SavedActivity?, sync synced: SavedActivitySyncState, route: SavedRoute?) -> SavedActivity {
+        return SavedActivity(
                 id: activityID,
                 activityType: remote.activityType,
                 title: remote.title,
@@ -1269,82 +1393,134 @@ final class ActivityStore: ObservableObject {
                 activityEventID: clientExtras.activityEventID,
                 followedRoute: clientExtras.followedRoute ?? local?.followedRoute,
                 recognitionBadgeIDs: clientExtras.recognitionBadgeIDs,
-                route: preserveCachedRoutes ? local?.route : remote.route,
+                route: route,
                 photos: local?.photos ?? [],
                 sync: synced
             )
-            try await persistence.replaceOrInsert(restored)
-            if let index = activities.firstIndex(where: { $0.id == activityID }) {
-                activities[index] = restored
-            } else {
-                activities.append(restored)
+    }
+
+    private func applyRemoteActivities(_ records: [RemoteActivityRecord], preserveCachedRoutes: Bool = false) async throws -> (received: Int, restored: Int, deleted: Int) {
+        return try await ActivityAccountBoundary.withAccount {
+            defer { Task { await self.refreshRepositoryProjection() } }
+            var remoteCount = 0, restoredCount = 0, deletedCount = 0
+            for remote in records {
+                remoteCount += 1
+                guard let clientID = remote.clientActivityId,
+                      let activityID = UUID(uuidString: clientID) else { continue }
+
+                if remote.deletedAt != nil {
+                    if let local = activity(id: activityID) {
+                        try await persistence.delete(local)
+                        activities.removeAll { $0.id == activityID }
+                        activityRevision += 1
+                        deletedCount += 1
+                    }
+                    continue
+                }
+
+                guard let clientExtras = remote.clientData else { continue }
+                let legacy = try await persistence.verifiedLegacyActivity(serverID: remote.id, clientID: activityID)
+                let baseline = try await persistence.uploadSnapshot(for: activityID)
+                let local = baseline?.activity ?? legacy
+                if let local, remote.clientUpdatedAt == nil {
+                    guard let baselineGeneration = baseline?.generation else { continue }
+                    let upgradeState = SavedActivitySyncState(
+                        clientActivityId: clientID,
+                        serverActivityId: remote.id,
+                        lastAttemptAt: local.sync?.lastAttemptAt,
+                        syncedAt: nil,
+                        lastError: nil,
+                        localUpdatedAt: local.sync?.localUpdatedAt ?? local.createdAt
+                    )
+                    try await persistSyncState(upgradeState, for: activityID, expectedGeneration: baselineGeneration)
+                    continue
+                }
+                // A remote read never acknowledges a pending mutation generation.
+                if let local, local.sync?.isSynced != true { continue }
+
+                if preserveCachedRoutes, let local, remote.updatedAt > (local.sync?.syncedAt ?? .distantPast) { invalidatedRoutes.insert(activityID) }
+                let synced = SavedActivitySyncState(
+                    clientActivityId: clientID,
+                    serverActivityId: remote.id,
+                    lastAttemptAt: local?.sync?.lastAttemptAt,
+                    syncedAt: remote.updatedAt,
+                    lastError: nil,
+                    localUpdatedAt: remote.clientUpdatedAt ?? remote.updatedAt
+                )
+                let restored = restoredActivity(remote, id: activityID, extras: clientExtras, local: local, sync: synced, route: preserveCachedRoutes ? local?.route : remote.route)
+                guard try await persistence.applyRemoteBaseline(restored, expectedGeneration: baseline?.generation) else { continue }
+                await refreshRepositoryProjection()
+                activityRevision += 1
+                restoredCount += 1
+                pendingRemotePhotos[activityID] = remote.photos ?? []
             }
-            activityRevision += 1
-            restoredCount += 1
-            pendingRemotePhotos[activityID] = remote.photos ?? []
+            return (remoteCount, restoredCount, deletedCount)
         }
-        return (remoteCount, restoredCount, deletedCount)
     }
 
     private func refreshCachedActivityMetadata() async {
-        let records = activities.compactMap { activity -> CachedActivityVersion? in
-            guard let id = activity.sync?.serverActivityId else { return nil }
-            return CachedActivityVersion(id: id, updatedAt: activity.sync?.syncedAt)
-        }
-        do {
-            for start in stride(from: 0, to: records.count, by: 200) {
-                let response = try await api.fetchCachedActivityChanges(Array(records[start..<min(records.count, start + 200)]))
-                _ = try await applyRemoteActivities(response.activities, preserveCachedRoutes: true)
+        return await ActivityAccountBoundary.withAccount {
+            let records = activities.compactMap { activity -> CachedActivityVersion? in
+                guard let id = activity.sync?.serverActivityId else { return nil }
+                return CachedActivityVersion(id: id, updatedAt: activity.sync?.syncedAt)
             }
-            sortActivitiesByStartTime()
-        } catch is CancellationError {
-            return
-        } catch {
-            ActivityDiagnosticLog.error(.sync, "Cached activity metadata refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            do {
+                for start in stride(from: 0, to: records.count, by: 200) {
+                    let response = try await api.fetchCachedActivityChanges(Array(records[start..<min(records.count, start + 200)]))
+                    _ = try await applyRemoteActivities(response.activities, preserveCachedRoutes: true)
+                }
+                sortActivitiesByStartTime()
+            } catch is CancellationError {
+                return
+            } catch {
+                ActivityDiagnosticLog.error(.sync, "Cached activity metadata refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            }
         }
     }
 
     private func restoreRemoteActivityPage(reset: Bool) async -> Bool {
-        if reset {
-            remoteHistoryCursor = nil
-            remoteHistoryOffset = 0
-            hasMoreRemoteActivities = true
-        }
-        guard hasMoreRemoteActivities else { return true }
-        var pageCount = 0
-        do {
-            var remoteCount = 0
-            var restoredCount = 0
-            var deletedCount = 0
-            do {
-                try Task.checkCancellation()
-                let response = try await api.fetchActivities(offset: remoteHistoryOffset, cursor: remoteHistoryCursor)
-                let counts = try await applyRemoteActivities(response.activities, preserveCachedRoutes: true)
-                remoteCount += counts.received
-                restoredCount += counts.restored
-                deletedCount += counts.deleted
-                // Advance only after the complete page is durable; a failure retries it.
-                remoteHistoryOffset += response.activities.count
-                remoteHistoryCursor = response.nextCursor
-                hasMoreRemoteActivities = response.hasMore && !response.activities.isEmpty
-                pageCount += 1
-                sortActivitiesByStartTime()
-                ActivityDiagnosticLog.notice(.sync, "Activity restore page completed received=\(ActivityDiagnosticLog.countBucket(response.activities.count)) has_more=\(hasMoreRemoteActivities)")
+        return await ActivityAccountBoundary.withAccount {
+            if reset {
+                remoteHistoryCursor = nil
+                remoteHistoryOffset = 0
+                hasMoreRemoteActivities = true
             }
-            ActivityDiagnosticLog.notice(
-                .sync,
-                "Activity restore completed received=\(ActivityDiagnosticLog.countBucket(remoteCount)) restored=\(ActivityDiagnosticLog.countBucket(restoredCount)) deleted=\(ActivityDiagnosticLog.countBucket(deletedCount))"
-            )
-            return true
-        } catch is CancellationError {
-            return false
-        } catch {
-            sortActivitiesByStartTime()
-            ActivityDiagnosticLog.error(
-                .sync,
-                "Activity restore failed pages=\(ActivityDiagnosticLog.countBucket(pageCount)) error=\(ActivityDiagnosticLog.errorCategory(error))"
-            )
-            return false
+            guard hasMoreRemoteActivities else { return true }
+            var pageCount = 0
+            do {
+                var remoteCount = 0
+                var restoredCount = 0
+                var deletedCount = 0
+                do {
+                    try Task.checkCancellation()
+                    let response = try await api.fetchActivities(offset: remoteHistoryOffset, cursor: remoteHistoryCursor)
+                    let counts = try await applyRemoteActivities(response.activities, preserveCachedRoutes: true)
+                    remoteCount += counts.received
+                    restoredCount += counts.restored
+                    deletedCount += counts.deleted
+                    // Advance only after the complete page is durable; a failure retries it.
+                    remoteHistoryOffset += response.activities.count
+                    remoteHistoryCursor = response.nextCursor
+                    hasMoreRemoteActivities = response.hasMore && !response.activities.isEmpty
+                    pageCount += 1
+                    sortActivitiesByStartTime()
+                    ActivityDiagnosticLog.notice(.sync, "Activity restore page completed received=\(ActivityDiagnosticLog.countBucket(response.activities.count)) has_more=\(hasMoreRemoteActivities)")
+                }
+                ActivityDiagnosticLog.notice(
+                    .sync,
+                    "Activity restore completed received=\(ActivityDiagnosticLog.countBucket(remoteCount)) restored=\(ActivityDiagnosticLog.countBucket(restoredCount)) deleted=\(ActivityDiagnosticLog.countBucket(deletedCount))"
+                )
+                return true
+            } catch is CancellationError {
+                return false
+            } catch {
+                sortActivitiesByStartTime()
+                ActivityDiagnosticLog.error(
+                    .sync,
+                    "Activity restore failed pages=\(ActivityDiagnosticLog.countBucket(pageCount)) error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
+                return false
+            }
         }
     }
 
@@ -1353,114 +1529,126 @@ final class ActivityStore: ObservableObject {
     }
 
     private func syncPhotosIfPossible(activityID: UUID) async {
-        guard let activity = activity(id: activityID),
-              let serverActivityID = activity.sync?.serverActivityId else { return }
-        let pendingPhotos = activity.photos.filter { $0.remotePhotoId == nil }
-        guard !pendingPhotos.isEmpty else { return }
-        ActivityDiagnosticLog.notice(
-            .sync,
-            "Photo upload started pending=\(ActivityDiagnosticLog.countBucket(pendingPhotos.count))"
-        )
-        var uploadedCount = 0
-        var failedCount = 0
-        for photo in pendingPhotos {
-            do {
-                let data = try await persistence.uploadData(for: photo)
-                let remote = try await api.uploadActivityPhoto(
-                    ActivityPhotoUploadRequest(
-                        activityId: serverActivityID,
-                        clientPhotoId: photo.id.uuidString,
-                        base64: data.base64EncodedString(),
-                        takenAt: photo.takenAt,
-                        paceAtShot: photo.paceAtShot,
-                        hrAtShot: photo.hrAtShot,
-                        distAtShot: photo.distAtShot,
-                        latitude: photo.coordinate?.latitude,
-                        longitude: photo.coordinate?.longitude,
-                        captureContext: photo.captureContext.rawValue
+        return await ActivityAccountBoundary.withAccount {
+            guard let activity = activity(id: activityID),
+                  let serverActivityID = activity.sync?.serverActivityId else { return }
+            let pendingPhotos = activity.photos.filter { $0.remotePhotoId == nil }
+            guard !pendingPhotos.isEmpty else { return }
+            ActivityDiagnosticLog.notice(
+                .sync,
+                "Photo upload started pending=\(ActivityDiagnosticLog.countBucket(pendingPhotos.count))"
+            )
+            var uploadedCount = 0
+            var failedCount = 0
+            for photo in pendingPhotos {
+                do {
+                    let data = try await persistence.uploadData(for: photo)
+                    let remote = try await api.uploadActivityPhoto(
+                        ActivityPhotoUploadRequest(
+                            activityId: serverActivityID,
+                            clientPhotoId: photo.id.uuidString,
+                            base64: data.base64EncodedString(),
+                            takenAt: photo.takenAt,
+                            paceAtShot: photo.paceAtShot,
+                            hrAtShot: photo.hrAtShot,
+                            distAtShot: photo.distAtShot,
+                            latitude: photo.coordinate?.latitude,
+                            longitude: photo.coordinate?.longitude,
+                            captureContext: photo.captureContext.rawValue
+                        )
                     )
-                )
-                await markPhotoUploaded(photo.id, remote: remote, activityID: activityID)
-                ActivityPhotoCache.shared.rememberUploadedPhoto(
-                    photo,
-                    savedAt: ActivityPersistence.imageURL(for: photo)
-                )
-                uploadedCount += 1
-            } catch {
-                failedCount += 1
-                ActivityDiagnosticLog.error(
-                    .sync,
-                    "Photo upload failed error=\(ActivityDiagnosticLog.errorCategory(error))"
-                )
+                    await markPhotoUploaded(photo.id, remote: remote, activityID: activityID)
+                    ActivityPhotoCache.shared.rememberUploadedPhoto(
+                        photo,
+                        savedAt: ActivityPersistence.imageURL(for: photo)
+                    )
+                    uploadedCount += 1
+                } catch {
+                    failedCount += 1
+                    ActivityDiagnosticLog.error(
+                        .sync,
+                        "Photo upload failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                    )
+                }
             }
+            ActivityDiagnosticLog.notice(
+                .sync,
+                "Photo upload completed uploaded=\(ActivityDiagnosticLog.countBucket(uploadedCount)) failed=\(ActivityDiagnosticLog.countBucket(failedCount))"
+            )
         }
-        ActivityDiagnosticLog.notice(
-            .sync,
-            "Photo upload completed uploaded=\(ActivityDiagnosticLog.countBucket(uploadedCount)) failed=\(ActivityDiagnosticLog.countBucket(failedCount))"
-        )
     }
 
     private func restoreRemotePhotos(_ remotePhotos: [RemoteActivityPhoto], activityID: UUID) async {
-        guard let initial = activity(id: activityID) else { return }
-        var photos = initial.photos
-        var changed = false
-        for remote in remotePhotos {
-            if let index = photos.firstIndex(where: { $0.id.uuidString.caseInsensitiveCompare(remote.clientPhotoId) == .orderedSame }) {
-                let local = photos[index]
-                if local.remotePhotoId != remote.id || local.remoteThumbnailURL != remote.thumbnailUrl?.absoluteString {
-                    photos[index] = copy(local, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString)
-                    changed = true
+        return await ActivityAccountBoundary.withAccount {
+            let base: ActivityUploadSnapshot
+            do { guard let value = try await persistence.uploadSnapshot(for: activityID) else { return }; base = value }
+            catch { ActivityDiagnosticLog.error(.persistence, "Photo restore snapshot failed error=\(ActivityDiagnosticLog.errorCategory(error))"); return }
+            let initial = base.activity
+            var photos = initial.photos
+            var changed = false
+            for remote in remotePhotos {
+                if let index = photos.firstIndex(where: { $0.id.uuidString.caseInsensitiveCompare(remote.clientPhotoId) == .orderedSame }) {
+                    let local = photos[index]
+                    if local.remotePhotoId != remote.id || local.remoteThumbnailURL != remote.thumbnailUrl?.absoluteString {
+                        photos[index] = copy(local, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString)
+                        changed = true
+                    }
+                    continue
                 }
-                continue
+                guard let photoID = UUID(uuidString: remote.clientPhotoId) else {
+                    ActivityDiagnosticLog.error(.sync, "Photo metadata restore rejected reason=invalid_client_photo_id")
+                    continue
+                }
+                let coordinate: SavedCoordinate?
+                if let latitude = remote.latitude, let longitude = remote.longitude { coordinate = SavedCoordinate(latitude: latitude, longitude: longitude) }
+                else { coordinate = nil }
+                // The existing photo cache downloads bytes only when a photo is rendered.
+                photos.append(SavedPhoto(id: photoID, takenAt: remote.takenAt, paceAtShot: remote.paceAtShot, hrAtShot: remote.hrAtShot,
+                                         distAtShot: remote.distAtShot ?? 0, coordinate: coordinate,
+                                         captureContext: PhotoCaptureContext(rawValue: remote.captureContext ?? "active") ?? .active,
+                                         relativePath: "\(activityID.uuidString)/photos/\(photoID.uuidString).jpg", remotePhotoId: remote.id,
+                                         remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString))
+                changed = true
             }
-            guard let photoID = UUID(uuidString: remote.clientPhotoId) else {
-                ActivityDiagnosticLog.error(.sync, "Photo metadata restore rejected reason=invalid_client_photo_id")
-                continue
+            guard changed else { return }
+            photos.sort { $0.takenAt < $1.takenAt }
+            // Downloads suspend the actor; retain any edits made while they were in flight.
+            guard let latest = activity(id: activityID) else { return }
+            let initialIDs = Set(initial.photos.map(\.id))
+            let restoredPhotos = photos.filter { !initialIDs.contains($0.id) }
+            let metadataByID = Dictionary(uniqueKeysWithValues: photos.map { ($0.id, $0) })
+            let mergedPhotos = (latest.photos.map { local in
+                guard let remote = metadataByID[local.id] else { return local }
+                return copy(local, remotePhotoId: remote.remotePhotoId, remoteUploadedAt: remote.remoteUploadedAt, remoteThumbnailURL: remote.remoteThumbnailURL)
+            } + restoredPhotos.filter { restored in !latest.photos.contains(where: { $0.id == restored.id }) })
+                .sorted { $0.takenAt < $1.takenAt }
+            let current = copy(latest, photos: mergedPhotos, sync: latest.sync)
+            do {
+                try await persistence.mergePhotoMetadata(current.photos, for: activityID, appendIfGeneration: base.generation)
+                await refreshRepositoryProjection()
+                activityRevision += 1
+            } catch {
+                ActivityDiagnosticLog.error(.sync, "Restored photo metadata save failed error=\(ActivityDiagnosticLog.errorCategory(error))")
             }
-            let coordinate: SavedCoordinate?
-            if let latitude = remote.latitude, let longitude = remote.longitude { coordinate = SavedCoordinate(latitude: latitude, longitude: longitude) }
-            else { coordinate = nil }
-            // The existing photo cache downloads bytes only when a photo is rendered.
-            photos.append(SavedPhoto(id: photoID, takenAt: remote.takenAt, paceAtShot: remote.paceAtShot, hrAtShot: remote.hrAtShot,
-                                     distAtShot: remote.distAtShot ?? 0, coordinate: coordinate,
-                                     captureContext: PhotoCaptureContext(rawValue: remote.captureContext ?? "active") ?? .active,
-                                     relativePath: "\(activityID.uuidString)/photos/\(photoID.uuidString).jpg", remotePhotoId: remote.id,
-                                     remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString))
-            changed = true
-        }
-        guard changed else { return }
-        photos.sort { $0.takenAt < $1.takenAt }
-        // Downloads suspend the actor; retain any edits made while they were in flight.
-        guard let latest = activity(id: activityID) else { return }
-        let initialIDs = Set(initial.photos.map(\.id))
-        let restoredPhotos = photos.filter { !initialIDs.contains($0.id) }
-        let metadataByID = Dictionary(uniqueKeysWithValues: photos.map { ($0.id, $0) })
-        let mergedPhotos = (latest.photos.map { local in
-            guard let remote = metadataByID[local.id] else { return local }
-            return copy(local, remotePhotoId: remote.remotePhotoId, remoteUploadedAt: remote.remoteUploadedAt, remoteThumbnailURL: remote.remoteThumbnailURL)
-        } + restoredPhotos.filter { restored in !latest.photos.contains(where: { $0.id == restored.id }) })
-            .sorted { $0.takenAt < $1.takenAt }
-        let current = copy(latest, photos: mergedPhotos, sync: latest.sync)
-        do {
-            try await persistence.replace(current)
-            activityRevision += 1
-            if let index = activities.firstIndex(where: { $0.id == activityID }) { activities[index] = current }
-        } catch {
-            ActivityDiagnosticLog.error(.sync, "Restored photo metadata save failed error=\(ActivityDiagnosticLog.errorCategory(error))")
         }
     }
 
     private func markPhotoUploaded(_ photoID: UUID, remote: RemoteActivityPhoto, activityID: UUID) async {
-        guard let current = activity(id: activityID) else { return }
-        let photos = current.photos.map { photo in
-            photo.id == photoID
-                ? copy(photo, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString)
-                : photo
+        return await ActivityAccountBoundary.withAccount {
+            guard let current = activity(id: activityID) else { return }
+            let photos = current.photos.map { photo in
+                photo.id == photoID
+                    ? copy(photo, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString)
+                    : photo
+            }
+            let updated = copy(current, photos: photos, sync: current.sync)
+            do {
+                try await persistence.mergePhotoMetadata(updated.photos, for: activityID)
+                await refreshRepositoryProjection()
+                activityRevision += 1
+            } catch is CancellationError { return }
+            catch { ActivityDiagnosticLog.error(.persistence, "Photo upload metadata commit failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
         }
-        let updated = copy(current, photos: photos, sync: current.sync)
-        guard (try? await persistence.replace(updated)) != nil else { return }
-        activityRevision += 1
-        if let index = activities.firstIndex(where: { $0.id == activityID }) { activities[index] = updated }
     }
 
     private func syncSnapshot(for activity: SavedActivity) -> SavedActivity {
@@ -1514,6 +1702,7 @@ final class ActivityStore: ObservableObject {
             walkingStepCount: activity.walkingStepCount,
             healthMetrics: activity.healthMetrics,
             goal: activity.goal,
+            energyKilocalories: activity.energyKilocalories,
             companionType: activity.companionType,
             source: activity.source,
             gear: activity.gear,
@@ -1546,44 +1735,46 @@ final class ActivityStore: ObservableObject {
     }
 
     private func exportPhotosToAlbumIfNeeded(_ activity: SavedActivity) async {
-        let outcome = await ActivityPhotoAlbumExporter.shared.exportPhotos(from: activity)
-        let result: String
-        switch outcome {
-        case .skipped, .alreadySaved:
-            return
-        case .saved:
-            result = "success"
-            photoAlbumNotice = ActivityPhotoAlbumNotice(
-                message: String(
-                    localized: "app.photo.album.saved",
-                    defaultValue: "Photos saved to the Plainstride album"
-                ),
-                isError: false
-            )
-        case .permissionDenied:
-            result = "permission_denied"
-            photoAlbumNotice = ActivityPhotoAlbumNotice(
-                message: String(
-                    localized: "app.photo.album.permission.denied",
-                    defaultValue: "Allow Photos access in Settings to save activity photos"
-                ),
-                isError: true
-            )
-        case .failed:
-            result = "failure"
-            photoAlbumNotice = ActivityPhotoAlbumNotice(
-                message: String(
-                    localized: "app.photo.album.save.failed",
-                    defaultValue: "Activity saved, but photos couldn’t be added to the album"
-                ),
-                isError: true
-            )
+        return await ActivityAccountBoundary.withAccount {
+            let outcome = await ActivityPhotoAlbumExporter.shared.exportPhotos(from: activity)
+            let result: String
+            switch outcome {
+            case .skipped, .alreadySaved:
+                return
+            case .saved:
+                result = "success"
+                photoAlbumNotice = ActivityPhotoAlbumNotice(
+                    message: String(
+                        localized: "app.photo.album.saved",
+                        defaultValue: "Photos saved to the Plainstride album"
+                    ),
+                    isError: false
+                )
+            case .permissionDenied:
+                result = "permission_denied"
+                photoAlbumNotice = ActivityPhotoAlbumNotice(
+                    message: String(
+                        localized: "app.photo.album.permission.denied",
+                        defaultValue: "Allow Photos access in Settings to save activity photos"
+                    ),
+                    isError: true
+                )
+            case .failed:
+                result = "failure"
+                photoAlbumNotice = ActivityPhotoAlbumNotice(
+                    message: String(
+                        localized: "app.photo.album.save.failed",
+                        defaultValue: "Activity saved, but photos couldn’t be added to the album"
+                    ),
+                    isError: true
+                )
+            }
+            await analyticsManager?.track(.init(.photoAlbumExportCompleted, properties: [
+                .result: .string(result),
+                .sourceType: .string("automatic"),
+                .countBucket: .string(ProductAnalyticsBucket.count(activity.photos.filter { !$0.isImported }.count))
+            ]))
         }
-        await analyticsManager?.track(.init(.photoAlbumExportCompleted, properties: [
-            .result: .string(result),
-            .sourceType: .string("automatic"),
-            .countBucket: .string(ProductAnalyticsBucket.count(activity.photos.filter { !$0.isImported }.count))
-        ]))
     }
 
     private static var uiTestActivityFixtures: [SavedActivity] {

@@ -4,12 +4,14 @@ import Foundation
 @MainActor
 final class GoalStore: ObservableObject {
     @Published private(set) var activeGoal: GoalDefinition?
-    @Published private(set) var conversation: GoalConversationState
+    @Published private(set) var conversation: GoalConversationState = .idle
     @Published private(set) var progress: GoalProgressSnapshot?
 
+    private var accountContext = ActivityAccountBoundary.current
     private var statistics: AccountStatisticsSnapshot?
     func updateStatistics(_ snapshot: AccountStatisticsSnapshot?, activities: [SavedActivity]) {
         statistics = snapshot
+        if let snapshot { calendar = PlanningCalendarContext.accountCalendar(timeZone: snapshot.timeZone) }
         refresh(activities: activities, phase: DailyMotivationEngine.phase(for: activities))
     }
     private func completeProgress(_ goal: GoalDefinition, activities: [SavedActivity], summary: ActivitySummary? = nil) -> GoalProgressSnapshot? {
@@ -20,15 +22,24 @@ final class GoalStore: ObservableObject {
         return GoalProgressEngine.makeProgress(goal: goal, activities: activities, addingSummary: summary, calendar: calendar)
     }
     private let defaults: UserDefaults
-    private let calendar: Calendar
-    private let goalKey = "goal_store_active_goal_v1"
-    private let conversationKey = "goal_store_conversation_v1"
+    private var calendar: Calendar
+    private var goalKey: String { "goal_store_active_goal_v1.\(accountContext.owner)" }
+    private var conversationKey: String { "goal_store_conversation_v1.\(accountContext.owner)" }
 
-    init(defaults: UserDefaults = .standard, calendar: Calendar = .current) {
+    init(defaults: UserDefaults = .standard, calendar: Calendar = PlanningCalendarContext.accountCalendar()) {
         self.defaults = defaults
         self.calendar = calendar
         self.activeGoal = Self.decode(GoalDefinition.self, from: defaults.data(forKey: goalKey))
         self.conversation = Self.decode(GoalConversationState.self, from: defaults.data(forKey: conversationKey)) ?? .idle
+    }
+
+    func activateAccount() {
+        accountContext = ActivityAccountBoundary.current
+        statistics = nil
+        progress = nil
+        calendar = PlanningCalendarContext.accountCalendar()
+        activeGoal = Self.decode(GoalDefinition.self, from: defaults.data(forKey: goalKey))
+        conversation = Self.decode(GoalConversationState.self, from: defaults.data(forKey: conversationKey)) ?? .idle
     }
 
     func refresh(

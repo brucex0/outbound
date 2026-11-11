@@ -50,7 +50,10 @@ final class APIClient {
     }
 
     func uploadActivity(_ request: ActivityUploadRequest) async throws -> ActivityUploadResponse {
-        try await post("/activities", body: request)
+        #if DEBUG
+        if DebugActivityRepositoryTransport.enabled { return try await DebugActivityRepositoryTransport.upload(request) }
+        #endif
+        return try await post("/activities", body: request)
     }
 
     func correctTerrainElevation(
@@ -60,9 +63,16 @@ final class APIClient {
     }
 
     func fetchAccountStatistics() async throws -> AccountStatisticsSnapshot {
-        try await get("/statistics", queryItems: [
+        #if DEBUG
+        if DebugActivityRepositoryTransport.enabled {
+            try ActivityAccountBoundary.validate()
+            let data = try DebugRepositorySupplementalTransport.enabled ? DebugRepositorySupplementalTransport.statisticsData() : DebugActivityRepositoryTransport.data("statistics")
+            return try decoder.decode(AccountStatisticsSnapshot.self, from: data)
+        }
+        #endif
+        return try await get("/statistics", queryItems: [
             URLQueryItem(name: "timeZone", value: TimeZone.current.identifier),
-            URLQueryItem(name: "firstWeekday", value: String(Calendar.current.firstWeekday))
+            URLQueryItem(name: "firstWeekday", value: String(2))
         ])
     }
 
@@ -85,11 +95,20 @@ final class APIClient {
     }
 
     func fetchCachedActivityChanges(_ records: [CachedActivityVersion]) async throws -> ActivitySyncListResponse {
-        try await post("/activities/cached-changes", body: CachedActivityVersions(records: records))
+        #if DEBUG
+        if DebugActivityRepositoryTransport.enabled { return .init(activities: [], hasMore: false, nextCursor: nil) }
+        #endif
+        return try await post("/activities/cached-changes", body: CachedActivityVersions(records: records))
     }
 
     func fetchActivities(offset: Int = 0, cursor: String? = nil, ids: [String]? = nil, includeRoute: Bool = true) async throws -> ActivitySyncListResponse {
-        try await get("/activities", queryItems: [
+        #if DEBUG
+        if DebugActivityRepositoryTransport.enabled {
+            let records = DebugRepositorySupplementalTransport.enabled && ids != nil ? DebugRepositorySupplementalTransport.canonicalRecord().map { [$0] } ?? [] : []
+            return .init(activities: records, hasMore: false, nextCursor: nil)
+        }
+        #endif
+        return try await get("/activities", queryItems: [
             URLQueryItem(name: "limit", value: String(ids?.count ?? 20)),
             URLQueryItem(name: "offset", value: String(offset)),
             URLQueryItem(name: "cursor", value: cursor),
@@ -154,7 +173,15 @@ final class APIClient {
     }
 
     func uploadActivityPhoto(_ request: ActivityPhotoUploadRequest) async throws -> RemoteActivityPhoto {
-        try await post("/media/activity-photos", body: request)
+        #if DEBUG
+        if DebugRepositorySupplementalTransport.enabled {
+            return .init(id: "uploaded-\(request.clientPhotoId)", clientPhotoId: request.clientPhotoId, thumbnailUrl: nil,
+                takenAt: request.takenAt, paceAtShot: request.paceAtShot, hrAtShot: request.hrAtShot, distAtShot: request.distAtShot,
+                latitude: request.latitude, longitude: request.longitude, captureContext: request.captureContext,
+                byteSize: 0, sha256: "synthetic", createdAt: Date(), updatedAt: Date())
+        }
+        #endif
+        return try await post("/media/activity-photos", body: request)
     }
 
     func deleteActivityPhoto(id: String) async throws {
@@ -392,6 +419,22 @@ final class APIClient {
     }
 
     func fetchTrainingPlanState(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        #if DEBUG
+        if DebugActivityRepositoryTransport.enabled {
+            try ActivityAccountBoundary.validate()
+            if DebugRepositorySupplementalTransport.enabled, !DebugRepositorySupplementalTransport.planningResponses.isEmpty {
+                let value = DebugRepositorySupplementalTransport.planningResponses.removeFirst()
+                DebugRepositorySupplementalTransport.planningStarted += 1
+                try await Task.sleep(for: value.1)
+                try ActivityAccountBoundary.validate()
+                return value.0
+            }
+            if DebugActivityRepositoryTransport.failPlanning { throw URLError(.notConnectedToInternet) }
+            let state = try decoder.decode(PlanningAPIStateResponse.self, from: DebugActivityRepositoryTransport.data(DebugActivityRepositoryTransport.accepted > 0 ? "confirmedPlanning" : "planning"))
+            let suggestion = try decoder.decode(ActivitySuggestionResponse.self, from: DebugActivityRepositoryTransport.data("suggestion"))
+            return state.trainingPlanState(readiness: readiness, activitySuggestion: suggestion)
+        }
+        #endif
         let state: PlanningAPIStateResponse = try await get("/planning/state")
         let activitySuggestion = try? await fetchActivitySuggestion()
         return state.trainingPlanState(readiness: readiness, activitySuggestion: activitySuggestion)
@@ -492,7 +535,10 @@ final class APIClient {
     }
 
     func fetchPersonalizationSnapshot() async throws -> PersonalizationSnapshotDTO {
-        try await get("/personalization/snapshot")
+        #if DEBUG
+        if DebugRepositorySupplementalTransport.enabled { return try await DebugRepositorySupplementalTransport.personalization() }
+        #endif
+        return try await get("/personalization/snapshot")
     }
 
     func updateRunnerProfile(_ request: RunnerProfileRequestDTO) async throws -> PersonalizationMutationResponseDTO {
@@ -508,7 +554,14 @@ final class APIClient {
     }
 
     func submitPersonalizationReadiness(_ request: ReadinessCheckInRequestDTO) async throws -> PersonalizationMutationResponseDTO {
-        try await post("/personalization/readiness", body: request)
+        #if DEBUG
+        if DebugRepositorySupplementalTransport.enabled {
+            try ActivityAccountBoundary.validate()
+            DebugRepositorySupplementalTransport.queueOwners.append(ActivityAccountBoundary.context.owner)
+            return .init(accepted: true, adjustment: nil, personalization: try await DebugRepositorySupplementalTransport.personalization())
+        }
+        #endif
+        return try await post("/personalization/readiness", body: request)
     }
 
     func applyWorkoutEdit(_ request: WorkoutEditApplyRequestDTO, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
@@ -951,7 +1004,10 @@ final class APIClient {
     }
 
     func refreshSession(refreshToken: String) async throws -> AuthSession {
-        try await unauthenticatedPost("/auth/refresh", body: RefreshSessionRequest(refreshToken: refreshToken))
+        #if DEBUG
+        if DebugRepositorySupplementalTransport.enabled { return try await DebugRepositorySupplementalTransport.refreshSession() }
+        #endif
+        return try await unauthenticatedPost("/auth/refresh", body: RefreshSessionRequest(refreshToken: refreshToken))
     }
 
     func logout(refreshToken: String?) async throws {
@@ -1058,14 +1114,17 @@ final class APIClient {
         _ path: String,
         queryItems: [URLQueryItem] = []
     ) async throws -> T {
-        var req = URLRequest(url: url(for: path, queryItems: queryItems))
-        configureLocale(on: &req)
-        if let token = try await resolvedAuthToken() {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            var req = URLRequest(url: url(for: path, queryItems: queryItems))
+            configureLocale(on: &req)
+            if let token = try await resolvedAuthToken() {
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, response) = try await authenticatedData(for: req)
+            try validate(response: response, data: data)
+            return try decoder.decode(T.self, from: data)
         }
-        let (data, response) = try await authenticatedData(for: req)
-        try validate(response: response, data: data)
-        return try decoder.decode(T.self, from: data)
     }
 
     private func post<T: Decodable, B: Encodable>(
@@ -1073,17 +1132,20 @@ final class APIClient {
         body: B,
         queryItems: [URLQueryItem] = []
     ) async throws -> T {
-        var req = URLRequest(url: url(for: path, queryItems: queryItems))
-        req.httpMethod = "POST"
-        configureLocale(on: &req)
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = try await resolvedAuthToken() {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            var req = URLRequest(url: url(for: path, queryItems: queryItems))
+            req.httpMethod = "POST"
+            configureLocale(on: &req)
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if let token = try await resolvedAuthToken() {
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            req.httpBody = try encoder.encode(body)
+            let (data, response) = try await authenticatedData(for: req)
+            try validate(response: response, data: data)
+            return try decoder.decode(T.self, from: data)
         }
-        req.httpBody = try encoder.encode(body)
-        let (data, response) = try await authenticatedData(for: req)
-        try validate(response: response, data: data)
-        return try decoder.decode(T.self, from: data)
     }
 
     private func unauthenticatedPost<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
@@ -1098,58 +1160,70 @@ final class APIClient {
     }
 
     private func patch<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
-        var req = URLRequest(url: url(for: path))
-        req.httpMethod = "PATCH"
-        configureLocale(on: &req)
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = try await resolvedAuthToken() {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            var req = URLRequest(url: url(for: path))
+            req.httpMethod = "PATCH"
+            configureLocale(on: &req)
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if let token = try await resolvedAuthToken() {
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            req.httpBody = try encoder.encode(body)
+            let (data, response) = try await authenticatedData(for: req)
+            try validate(response: response, data: data)
+            return try decoder.decode(T.self, from: data)
         }
-        req.httpBody = try encoder.encode(body)
-        let (data, response) = try await authenticatedData(for: req)
-        try validate(response: response, data: data)
-        return try decoder.decode(T.self, from: data)
     }
 
     private func put<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
-        var req = URLRequest(url: url(for: path))
-        req.httpMethod = "PUT"
-        configureLocale(on: &req)
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = try await resolvedAuthToken() {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            var req = URLRequest(url: url(for: path))
+            req.httpMethod = "PUT"
+            configureLocale(on: &req)
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if let token = try await resolvedAuthToken() {
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            req.httpBody = try encoder.encode(body)
+            let (data, response) = try await authenticatedData(for: req)
+            try validate(response: response, data: data)
+            return try decoder.decode(T.self, from: data)
         }
-        req.httpBody = try encoder.encode(body)
-        let (data, response) = try await authenticatedData(for: req)
-        try validate(response: response, data: data)
-        return try decoder.decode(T.self, from: data)
     }
 
     private func delete<T: Decodable>(
         _ path: String,
         queryItems: [URLQueryItem] = []
     ) async throws -> T {
-        var req = URLRequest(url: url(for: path, queryItems: queryItems))
-        req.httpMethod = "DELETE"
-        configureLocale(on: &req)
-        if let token = try await resolvedAuthToken() {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            var req = URLRequest(url: url(for: path, queryItems: queryItems))
+            req.httpMethod = "DELETE"
+            configureLocale(on: &req)
+            if let token = try await resolvedAuthToken() {
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, response) = try await authenticatedData(for: req)
+            try validate(response: response, data: data)
+            return try decoder.decode(T.self, from: data)
         }
-        let (data, response) = try await authenticatedData(for: req)
-        try validate(response: response, data: data)
-        return try decoder.decode(T.self, from: data)
     }
 
     private func delete<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
-        var req = URLRequest(url: url(for: path))
-        req.httpMethod = "DELETE"
-        configureLocale(on: &req)
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = try await resolvedAuthToken() { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        req.httpBody = try encoder.encode(body)
-        let (data, response) = try await authenticatedData(for: req)
-        try validate(response: response, data: data)
-        return try decoder.decode(T.self, from: data)
+        return try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            var req = URLRequest(url: url(for: path))
+            req.httpMethod = "DELETE"
+            configureLocale(on: &req)
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if let token = try await resolvedAuthToken() { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+            req.httpBody = try encoder.encode(body)
+            let (data, response) = try await authenticatedData(for: req)
+            try validate(response: response, data: data)
+            return try decoder.decode(T.self, from: data)
+        }
     }
 
     private func url(for path: String, queryItems: [URLQueryItem] = []) -> URL {
@@ -1167,38 +1241,68 @@ final class APIClient {
     }
 
     private func resolvedAuthToken() async throws -> String? {
-        try await SessionCoordinator.shared.accessToken()
+        try ActivityAccountBoundary.validate()
+        let token = try await SessionCoordinator.shared.accessToken()
+        try ActivityAccountBoundary.validate()
+        return token
     }
 
-    private func authenticatedData(for request: URLRequest) async throws -> (Data, URLResponse) {
-        let first = try await URLSession.shared.data(for: request)
-        guard (first.1 as? HTTPURLResponse)?.statusCode == 401,
-              let replacement = try await SessionCoordinator.shared.refreshAfterUnauthorized(
-                rejectedAccessToken: request.bearerToken
-              ) else { return first }
-        var replay = request
-        replay.setValue("Bearer \(replacement)", forHTTPHeaderField: "Authorization")
-        return try await URLSession.shared.data(for: replay)
+    #if DEBUG
+    func verifyRepositoryAuthentication(_ request: URLRequest, coordinator: SessionCoordinator) async throws -> (Data, URLResponse) {
+        try await authenticatedData(for: request, coordinator: coordinator)
+    }
+    #endif
+
+    private func requestData(for request: URLRequest) async throws -> (Data, URLResponse) {
+        #if DEBUG
+        if DebugRepositorySupplementalTransport.enabled, request.url?.host == "repository-auth.invalid" {
+            return await DebugRepositorySupplementalTransport.unauthorizedData(request)
+        }
+        #endif
+        return try await URLSession.shared.data(for: request)
+    }
+
+    private func authenticatedData(for request: URLRequest, coordinator: SessionCoordinator = .shared) async throws -> (Data, URLResponse) {
+        return try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            let first = try await requestData(for: request)
+            try ActivityAccountBoundary.validate()
+            guard (first.1 as? HTTPURLResponse)?.statusCode == 401,
+                  let replacement = try await coordinator.refreshAfterUnauthorized(
+                    rejectedAccessToken: request.bearerToken
+                  ) else { return first }
+            try ActivityAccountBoundary.validate()
+            var replay = request
+            replay.setValue("Bearer \(replacement)", forHTTPHeaderField: "Authorization")
+            let replayed = try await requestData(for: replay)
+            try ActivityAccountBoundary.validate()
+            return replayed
+        }
     }
 
     private func authenticatedBytes(
         for request: URLRequest
     ) async throws -> (URLSession.AsyncBytes, URLResponse) {
-        let first = try await URLSession.shared.bytes(for: request)
-        guard (first.1 as? HTTPURLResponse)?.statusCode == 401,
-              let replacement = try await SessionCoordinator.shared.refreshAfterUnauthorized(
-                rejectedAccessToken: request.bearerToken
-              ) else { return first }
-        var replay = request
-        replay.setValue("Bearer \(replacement)", forHTTPHeaderField: "Authorization")
-        return try await URLSession.shared.bytes(for: replay)
+        return try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            let first = try await URLSession.shared.bytes(for: request)
+            try ActivityAccountBoundary.validate()
+            guard (first.1 as? HTTPURLResponse)?.statusCode == 401,
+                  let replacement = try await SessionCoordinator.shared.refreshAfterUnauthorized(
+                    rejectedAccessToken: request.bearerToken
+                  ) else { return first }
+            try ActivityAccountBoundary.validate()
+            var replay = request
+            replay.setValue("Bearer \(replacement)", forHTTPHeaderField: "Authorization")
+            return try await URLSession.shared.bytes(for: replay)
+        }
     }
 
     private func configureLocale(on request: inout URLRequest) {
         request.setValue(AppLanguage.currentIdentifier, forHTTPHeaderField: "Accept-Language")
         request.setValue(AppLanguage.currentIdentifier, forHTTPHeaderField: "X-Plainstride-Locale")
         request.setValue(TimeZone.current.identifier, forHTTPHeaderField: "X-Plainstride-Time-Zone")
-        request.setValue(String(Calendar.current.firstWeekday), forHTTPHeaderField: "X-Plainstride-First-Weekday")
+        request.setValue(String(2), forHTTPHeaderField: "X-Plainstride-First-Weekday")
     }
 
     private func validate(response: URLResponse, data: Data) throws {
@@ -1378,18 +1482,26 @@ private extension PlanningAPIStateResponse {
         fallbackRecommendation: TrainingPlanRecommendation? = nil,
         activitySuggestion: ActivitySuggestionResponse? = nil
     ) -> TrainingPlanStateResponse {
+        func ordered(_ state: TrainingPlanStateResponse) -> TrainingPlanStateResponse {
+            var result = state
+            result.revision = revision
+            return result
+        }
         guard let goal, let plan else {
-            return TrainingPlanStateResponse(
+            return ordered(TrainingPlanStateResponse(
                 activePlan: nil,
                 recommendations: recommendations ?? [],
                 currentWeek: nil,
                 todaySuggestion: activitySuggestion?.todayTrainingSuggestion(),
                 activitySuggestion: activitySuggestion,
-                scheduledWorkouts: []
-            )
+                scheduledWorkouts: [],
+                calendar: self.calendar
+            ))
         }
 
-        let calendar = Calendar.current
+        // Presentation dates preserve logical labels on a travelling device.
+        let calendar = PlanningCalendarContext.accountCalendar()
+        let context = self.calendar
         let createdAt = APIDateParser.date(from: plan.createdAt)
             ?? APIDateParser.date(from: goal.createdAt)
             ?? Date()
@@ -1402,17 +1514,18 @@ private extension PlanningAPIStateResponse {
             workoutsByID[workout.id] = workout
         }
         let planWorkouts = workoutsByID.values.sorted { $0.scheduledDate < $1.scheduledDate }
-        let currentWeekIndex = Self.currentWeekIndex(createdAt: createdAt, calendar: calendar)
+        let planStart = context?.planStartDate.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) } ?? createdAt
+        let currentWeekIndex = context?.planWeekIndex ?? Self.currentWeekIndex(createdAt: planStart, calendar: calendar)
         let weekWorkouts = planWeekWorkouts(
             inPlanWeek: currentWeekIndex,
-            createdAt: createdAt,
+            createdAt: planStart,
             calendar: calendar,
             planWorkouts: planWorkouts
         )
         let scheduledWorkouts = weekWorkouts.map { $0.trainingPlanWorkout() }
-        let weekAnchor = calendar.date(byAdding: .day, value: (currentWeekIndex - 1) * 7, to: calendar.startOfDay(for: createdAt)) ?? calendar.startOfDay(for: createdAt)
+        let weekAnchor = calendar.date(byAdding: .day, value: (currentWeekIndex - 1) * 7, to: calendar.dateInterval(of: .weekOfYear, for: planStart)?.start ?? calendar.startOfDay(for: planStart)) ?? calendar.startOfDay(for: planStart)
         let planSchedule = planWorkouts.filter { workout in
-            guard let date = APIDateParser.planningDate(from: workout.scheduledDate), date >= weekAnchor else { return false }
+            guard let date = APIDateParser.planningDate(from: workout.scheduledDate, calendar: calendar), date >= weekAnchor else { return false }
             return !["cancelled", "canceled", "superseded", "rest"].contains(workout.status.lowercased())
         }.map { $0.trainingPlanWorkout() }
         let notificationWorkouts = upcoming.compactMap { workout -> ScheduledWorkoutReminder? in
@@ -1429,7 +1542,7 @@ private extension PlanningAPIStateResponse {
             )
         }
         let eventWeeks = goal.targetDate.flatMap { APIDateParser.planningDate(from: $0) }.map {
-            max(1, Int(ceil(Double((calendar.dateComponents([.day], from: calendar.startOfDay(for: createdAt), to: $0).day ?? 0) + 1) / 7.0)))
+            max(1, Int(ceil(Double((calendar.dateComponents([.day], from: calendar.dateInterval(of: .weekOfYear, for: planStart)?.start ?? calendar.startOfDay(for: planStart), to: $0).day ?? 0) + 1) / 7.0)))
         }
         let goalDurationWeeks = plan.source == "generated" ? goal.reviewHorizonWeeks ?? eventWeeks : nil
         let durationWeeks = currentVersion?.engineDecision?.nominalSourceWeeks
@@ -1457,6 +1570,7 @@ private extension PlanningAPIStateResponse {
             targetWeeklyMinutes: targetWeeklyMinutes,
             longSessionMinutes: longSessionMinutes,
             createdAt: createdAt,
+            calendar: context,
             raceGoal: goal.type == "eventPreparation" ? SavedRaceGoal(id: goal.id, targetDate: goal.targetDate, targetDistanceMeters: goal.targetDistanceMeters, eventIntent: goal.eventIntent ?? "finish", targetTimeSeconds: goal.targetTimeSeconds, daysPerWeekTarget: sessionsPerWeek, maxSessionMinutes: longSessionMinutes, shortRunSessions: goal.shortRunSessions ?? false, optionalMobility: goal.optionalMobility ?? false, editable: plan.source == "generated") : nil,
             runningBenchmark: goal.activities.contains("run") ? RunningBenchmarkContext(goalID: goal.id, fitness: goal.currentRunningFitness) : nil,
             roadmap: roadmap,
@@ -1477,14 +1591,15 @@ private extension PlanningAPIStateResponse {
             )
         )
         let weekSnapshot = TrainingPlanWeekSnapshot(
-            currentWeekIndex: currentVersion?.engineDecision?.programme != nil ? currentWeekIndex : min(currentWeekIndex, durationWeeks),
+            calendar: context,
+            currentWeekIndex: context != nil || currentVersion?.engineDecision?.programme != nil ? currentWeekIndex : min(currentWeekIndex, durationWeeks),
             totalWeeks: durationWeeks,
             completedSessions: completedSessions,
             targetSessions: targetSessions,
             completedMinutes: completedMinutes,
             targetMinutes: targetMinutes,
             progressPercent: progressPercent,
-            summaryLine: "\(completedSessions) of \(targetSessions) sessions, \(completedMinutes) of \(targetMinutes) min this week",
+            summaryLine: TrainingPlanWeekSnapshot.progressSummary(completedSessions: completedSessions, targetSessions: targetSessions, completedMinutes: completedMinutes, targetMinutes: targetMinutes),
             guideLine: guideLine(fallbackFocus: focus),
             focus: BuiltinWorkoutText.localized(plan.currentPhase.capitalized),
             weekSummary: currentVersion?.summary ?? "This week is being generated from your current training data.",
@@ -1508,14 +1623,15 @@ private extension PlanningAPIStateResponse {
             todaySuggestion = nil
         }
 
-        return TrainingPlanStateResponse(
+        return ordered(TrainingPlanStateResponse(
             activePlan: activePlan,
             recommendations: [],
             currentWeek: weekSnapshot,
             todaySuggestion: todaySuggestion,
             activitySuggestion: activitySuggestion,
-            scheduledWorkouts: notificationWorkouts
-        )
+            scheduledWorkouts: notificationWorkouts,
+            calendar: context
+        ))
     }
 
     private func planWeekWorkouts(
@@ -1524,13 +1640,13 @@ private extension PlanningAPIStateResponse {
         calendar: Calendar,
         planWorkouts: [PlanningAPIWorkout]
     ) -> [PlanningAPIWorkout] {
-        let planStart = calendar.startOfDay(for: createdAt)
+        let planStart = calendar.dateInterval(of: .weekOfYear, for: createdAt)?.start ?? calendar.startOfDay(for: createdAt)
         guard let weekStart = calendar.date(byAdding: .day, value: (weekIndex - 1) * 7, to: planStart),
               let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) else {
             return planWorkouts
         }
         return planWorkouts.filter { workout in
-            guard let scheduledDate = APIDateParser.planningDate(from: workout.scheduledDate) else { return false }
+            guard let scheduledDate = APIDateParser.planningDate(from: workout.scheduledDate, calendar: calendar) else { return false }
             return scheduledDate >= weekStart && scheduledDate < weekEnd
         }
     }
@@ -1613,7 +1729,7 @@ private extension PlanningAPIStateResponse {
     }
 
     private static func currentWeekIndex(createdAt: Date, calendar: Calendar) -> Int {
-        let planStart = calendar.startOfDay(for: createdAt)
+        let planStart = calendar.dateInterval(of: .weekOfYear, for: createdAt)?.start ?? calendar.startOfDay(for: createdAt)
         let today = calendar.startOfDay(for: Date())
         let elapsedDays = max(0, calendar.dateComponents([.day], from: planStart, to: today).day ?? 0)
         return (elapsedDays / 7) + 1
@@ -1628,7 +1744,7 @@ private extension PlanningAPIStateResponse {
             .compactMap { APIDateParser.planningDate(from: $0.scheduledDate) }
             .max()
         guard let lastWorkoutDate else { return 4 }
-        let planStart = calendar.startOfDay(for: createdAt)
+        let planStart = calendar.dateInterval(of: .weekOfYear, for: createdAt)?.start ?? calendar.startOfDay(for: createdAt)
         let lastWorkoutDay = calendar.startOfDay(for: lastWorkoutDate)
         let coveredDays = max(1, (calendar.dateComponents([.day], from: planStart, to: lastWorkoutDay).day ?? 0) + 1)
         return max(1, Int(ceil(Double(coveredDays) / 7.0)))
@@ -1665,7 +1781,8 @@ private extension PlanningAPIWorkout {
             targetCalories: targetCalories,
             steps: targetCalories == nil ? steps : [],
             isOptional: prescription?.optional ?? false,
-            status: status
+            status: status,
+            scheduledDateKey: String(scheduledDate.prefix(10))
         )
     }
 }
@@ -1887,7 +2004,7 @@ private enum APIDateParser {
         return plainFormatter.date(from: value)
     }
 
-    static func planningDate(from value: String, calendar: Calendar = .current) -> Date? {
+    static func planningDate(from value: String, calendar: Calendar = PlanningCalendarContext.accountCalendar()) -> Date? {
         guard let instant = date(from: value) else { return nil }
         var utcCalendar = Calendar(identifier: .gregorian)
         utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -1951,6 +2068,8 @@ struct AssistantChatResponse: Decodable {
 }
 
 struct TrainingPlanStateResponse: Codable {
+    var revision: Int? = nil
+    var calendar: PlanningCalendarContext? = nil
     let activePlan: ActiveTrainingPlan?
     let recommendations: [TrainingPlanRecommendation]
     let currentWeek: TrainingPlanWeekSnapshot?
@@ -1964,8 +2083,10 @@ struct TrainingPlanStateResponse: Codable {
         currentWeek: TrainingPlanWeekSnapshot?,
         todaySuggestion: TodayTrainingSuggestion?,
         activitySuggestion: ActivitySuggestionResponse?,
-        scheduledWorkouts: [ScheduledWorkoutReminder] = []
+        scheduledWorkouts: [ScheduledWorkoutReminder] = [],
+        calendar: PlanningCalendarContext? = nil
     ) {
+        self.calendar = calendar
         self.activePlan = activePlan
         self.recommendations = recommendations
         self.currentWeek = currentWeek
@@ -1976,6 +2097,8 @@ struct TrainingPlanStateResponse: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        revision = try container.decodeIfPresent(Int.self, forKey: .revision)
+        calendar = try container.decodeIfPresent(PlanningCalendarContext.self, forKey: .calendar)
         activePlan = try container.decodeIfPresent(ActiveTrainingPlan.self, forKey: .activePlan)
         recommendations = try container.decodeIfPresent([TrainingPlanRecommendation].self, forKey: .recommendations) ?? []
         currentWeek = try container.decodeIfPresent(TrainingPlanWeekSnapshot.self, forKey: .currentWeek)
@@ -2484,6 +2607,8 @@ private struct PlanningReadinessRequest: Encodable {
 }
 
 private struct PlanningAPIStateResponse: Decodable {
+    let revision: Int?
+    let calendar: PlanningCalendarContext?
     let goal: PlanningAPIGoal?
     let roadmap: RaceGoalRoadmap?
     let plan: PlanningAPIPlan?
@@ -2619,6 +2744,7 @@ struct ActivityUploadResponse: Decodable {
     let uploadedAt: Date
     let serverUpdatedAt: Date
     let groupContributions: [GroupContributionDTO]?
+    let reconciliation: ActivityReconciliationReceipt
 }
 
 struct TerrainElevationCorrectionRequest: Encodable {
@@ -2981,7 +3107,15 @@ enum DebugRunningPlanFixture {
         guard let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
         do {
             let data = try Data(contentsOf: directory.appendingPathComponent(filename))
-            let fixture = try JSONDecoder().decode(Envelope.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .custom { value in
+                let text = try value.singleValueContainer().decode(String.self)
+                guard let date = APIDateParser.date(from: text) else {
+                    throw DecodingError.dataCorrupted(.init(codingPath: value.codingPath, debugDescription: "Invalid fixture date"))
+                }
+                return date
+            }
+            let fixture = try decoder.decode(Envelope.self, from: data)
             return fixture.planning.trainingPlanState(readiness: nil, activitySuggestion: fixture.suggestion)
         } catch {
             print("[planning_debug] fixture_load_failed category=invalid_or_missing_fixture")

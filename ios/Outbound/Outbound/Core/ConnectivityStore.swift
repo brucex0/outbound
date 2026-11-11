@@ -10,6 +10,9 @@ final class ConnectivityStore: ObservableObject {
     private let queue = DispatchQueue(label: "com.plainstride.connectivity")
 
     init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") { return }
+        #endif
         monitor.pathUpdateHandler = { [weak self] path in
             let isOffline = path.status != .satisfied
             Task { @MainActor [weak self, isOffline] in
@@ -18,6 +21,13 @@ final class ConnectivityStore: ObservableObject {
         }
         monitor.start(queue: queue)
     }
+
+    #if DEBUG
+    func setRepositoryFixtureOffline(_ offline: Bool) {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") else { return }
+        isOffline = offline
+    }
+    #endif
 
     deinit {
         monitor.cancel()
@@ -30,7 +40,17 @@ struct GlobalConnectivityBanner: View {
 
     var body: some View {
         if let presentation {
-            Label(presentation.message, systemImage: presentation.systemImage)
+            HStack(spacing: OutboundSpacing.compact) {
+                Label(presentation.message, systemImage: presentation.systemImage)
+                    .accessibilityLabel(presentation.accessibilityLabel)
+                if !connectivityStore.isOffline, activityStore.failedActivityCount > 0 {
+                    Button { activityStore.retrySynchronization() } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel(String(localized: "activity.sync.retry", defaultValue: "Retry saved activity sync"))
+                }
+            }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(presentation.foreground)
                 .padding(.horizontal, 14)
@@ -40,27 +60,30 @@ struct GlobalConnectivityBanner: View {
                     Capsule().strokeBorder(presentation.foreground.opacity(0.22), lineWidth: 0.8)
                 }
                 .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(presentation.accessibilityLabel)
+                .accessibilityElement(children: .contain)
         }
     }
 
     private var presentation: ConnectivityBannerPresentation? {
         if connectivityStore.isOffline {
             return ConnectivityBannerPresentation(
-                message: "Offline · changes saved on this device",
+                message: String(localized: "activity.sync.offline", defaultValue: "Offline · changes saved on this device"),
                 systemImage: "icloud.slash.fill",
                 foreground: .orange,
-                accessibilityLabel: "Offline. Changes are saved on this device and will sync later."
+                accessibilityLabel: String(localized: "activity.sync.offline.accessibility", defaultValue: "Offline. Changes are saved on this device and will sync later.")
             )
         }
 
         if AuthStore.currentUserId != nil, activityStore.failedActivityCount > 0 {
             return ConnectivityBannerPresentation(
-                message: "Some items still need to sync",
+                message: activityStore.repositoryProjection.blockedActivityIDs.isEmpty
+                    ? String(localized: "activity.sync.pending", defaultValue: "Some items still need to sync")
+                    : String(localized: "activity.sync.conflict", defaultValue: "Saved activity sync needs attention"),
                 systemImage: "exclamationmark.icloud.fill",
                 foreground: .orange,
-                accessibilityLabel: "Some saved items still need to sync. Plainstride will retry automatically."
+                accessibilityLabel: activityStore.repositoryProjection.blockedActivityIDs.isEmpty
+                    ? String(localized: "activity.sync.pending.accessibility", defaultValue: "Some saved items still need to sync. Plainstride will retry automatically.")
+                    : String(localized: "activity.sync.conflict.accessibility", defaultValue: "Your activity is saved on this device. Refresh and retry its plan synchronization.")
             )
         }
 

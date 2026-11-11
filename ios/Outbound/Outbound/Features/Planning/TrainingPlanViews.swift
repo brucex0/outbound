@@ -337,9 +337,22 @@ struct ActiveTrainingPlanDetailView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("This week")
                             .font(.subheadline.weight(.semibold))
+                        if let context = week.calendar {
+                            Text(context.localizedPeriod).font(.caption).foregroundStyle(.secondary)
+                            if context.isPartialWeek {
+                                Text(String(localized: "plan.calendar.partial_week", defaultValue: "Partial first week · starts on your plan start date", table: "PlanningCalendar"))
+                                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                         Text(week.summaryLine)
                             .font(.subheadline)
                         TrainingPlanProgressBar(progress: week.progressPercent, accentColor: accentColor)
+                        if let pending = week.pendingSessions, pending > 0 {
+                            Text(String(format: String(localized: "plan.progress.pending", defaultValue: "%d saved sessions pending sync"), pending))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         if week.weekSummary != activePlan.subtitle {
                             Text(week.weekSummary)
                                 .font(.caption)
@@ -435,7 +448,7 @@ struct ActiveTrainingPlanDetailView: View {
         if activePlan.plannedSchedule != nil, activePlan.raceGoal != nil, let value = activePlan.roadmap?.detailedThroughDate {
             return raceDate(value)
         }
-        return scheduleWorkouts.compactMap(\.scheduledDate).max()
+        return scheduleWorkouts.compactMap(\.logicalScheduledDate).max()
     }
 
     private var scheduleWorkouts: [TrainingPlanWorkout] {
@@ -443,10 +456,11 @@ struct ActiveTrainingPlanDetailView: View {
     }
 
     private var scheduleGroups: [TrainingPlanWorkoutWeekGroup] {
-        let calendar = Calendar.current
-        let anchor = calendar.startOfDay(for: activePlan.createdAt)
+        let calendar = PlanningCalendarContext.accountCalendar()
+        let start = activePlan.calendar?.planStartDate.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) } ?? activePlan.createdAt
+        let anchor = calendar.dateInterval(of: .weekOfYear, for: start)?.start ?? calendar.startOfDay(for: start)
         let dated = scheduleWorkouts.compactMap { workout -> (Int, TrainingPlanWorkout)? in
-            guard let date = workout.scheduledDate,
+            guard let date = workout.logicalScheduledDate,
                   let days = calendar.dateComponents([.day], from: anchor, to: calendar.startOfDay(for: date)).day else { return nil }
             return (max(0, days / 7), workout)
         }
@@ -459,7 +473,7 @@ struct ActiveTrainingPlanDetailView: View {
             let title = String(format: format, index + 1,
                                start.formatted(date: .abbreviated, time: .omitted),
                                end.formatted(date: .abbreviated, time: .omitted))
-            return TrainingPlanWorkoutWeekGroup(index: index, title: title, workouts: entries.sorted { ($0.scheduledDate ?? .distantPast) < ($1.scheduledDate ?? .distantPast) })
+            return TrainingPlanWorkoutWeekGroup(index: index, title: title, workouts: entries.sorted { ($0.logicalScheduledDate ?? .distantPast) < ($1.logicalScheduledDate ?? .distantPast) })
         }
         let undated = scheduleWorkouts.filter { $0.scheduledDate == nil }
         if !undated.isEmpty {
@@ -487,7 +501,7 @@ struct ActiveTrainingPlanDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(workout.scheduledDate?.formatted(date: .complete, time: .omitted) ?? workout.dayLabel)
+                    Text(workout.logicalScheduledDate?.formatted(date: .complete, time: .omitted) ?? workout.dayLabel)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(BuiltinWorkoutText.localized(displayTitle))
@@ -584,6 +598,8 @@ struct ActiveTrainingPlanDetailView: View {
 
     private func workoutStatusLabel(_ status: String) -> String {
         switch status {
+        case "sync_conflict": return String(localized: "plan.details.status.sync_conflict", defaultValue: "Saved · plan sync needs attention")
+        case "pending_sync": return String(localized: "plan.details.status.pending_sync", defaultValue: "Saved on this device · pending sync")
         case "completed": return String(localized: "plan.details.status.completed", defaultValue: "Completed")
         case "skipped": return String(localized: "plan.details.status.skipped", defaultValue: "Skipped")
         case "missed": return String(localized: "plan.details.status.missed", defaultValue: "Missed")
@@ -696,6 +712,42 @@ struct ActiveTrainingPlanPendingDetailView: View {
         }
     }
 
+}
+
+struct ActiveTrainingPlanDetailsProjectionView: View {
+    @ObservedObject var store: TrainingPlanStore
+    let accentColor: Color
+    var onChangePlan: (() -> Void)? = nil
+    var onEndPlan: (() -> Void)? = nil
+
+    var body: some View {
+        if let plan = store.activePlan {
+            if let week = store.currentWeek {
+                ActiveTrainingPlanDetailView(activePlan: plan, week: week, todaySuggestion: store.todaySuggestion,
+                    accentColor: accentColor, onChangePlan: onChangePlan, onEndPlan: onEndPlan)
+            } else {
+                ActiveTrainingPlanPendingDetailView(activePlan: plan, accentColor: accentColor,
+                    onChangePlan: onChangePlan, onEndPlan: onEndPlan)
+            }
+        } else if store.hasAuthoritativeNoPlan {
+            ActiveTrainingPlanEmptyDetailView()
+        } else {
+            ActiveTrainingPlanSyncingDetailView(accentColor: accentColor)
+        }
+    }
+}
+
+struct ActiveTrainingPlanEmptyDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        ContentUnavailableView {
+            Label(String(localized: "settings.no.active.plan"), systemImage: "calendar")
+        } description: {
+            Text(String(localized: "settings.no.active.plan.body"))
+        }
+        .navigationTitle("Plan Details")
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+    }
 }
 
 struct ActiveTrainingPlanSyncingDetailView: View {

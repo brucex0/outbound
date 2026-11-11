@@ -5,7 +5,7 @@ enum GoalProgressEngine {
         goal: GoalDefinition,
         activities: [SavedActivity],
         addingSummary summary: ActivitySummary? = nil,
-        calendar: Calendar = .current,
+        calendar: Calendar = PlanningCalendarContext.accountCalendar(),
         serverWeekTotals: ProgressPeriodTotals? = nil
     ) -> GoalProgressSnapshot {
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: goal.weekStart) ?? goal.weekStart
@@ -55,7 +55,7 @@ enum GoalProgressEngine {
         theme: GoalFocusTheme,
         activities: [SavedActivity],
         phase: MotivationPhase,
-        calendar: Calendar = .current,
+        calendar: Calendar = PlanningCalendarContext.accountCalendar(),
         now: Date = Date(),
         weeklyActivityCount: Int? = nil
     ) -> Int {

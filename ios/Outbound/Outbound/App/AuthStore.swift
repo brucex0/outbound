@@ -39,7 +39,15 @@ final class AuthStore: ObservableObject {
     private let analyticsManager: AnalyticsManager?
 
     static var currentUserId: String? { cachedUserID }
-    private static var cachedUserID: String?
+    #if DEBUG
+    static func activateRepositoryFixture(_ userID: String?) {
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") else { return }
+        cachedUserID = userID
+    }
+    #endif
+    private static var cachedUserID: String? {
+        didSet { ActivityAccountBoundary.activate(cachedUserID) }
+    }
     var currentLoginLabel: String? { user?.email ?? user?.displayName ?? localSessionLabel }
     var connectedProviderLabels: [String] { user == nil ? [] : [String(localized: "Apple")] }
     var isAppleSignInAvailable: Bool { Self.hasAppleSignInEntitlement() }
@@ -108,12 +116,18 @@ final class AuthStore: ObservableObject {
     #endif
 
     func signOut() {
-        Task {
-            let session = await SessionCoordinator.shared.storedSession()
-            try? await APIClient.shared.logout(refreshToken: session?.refreshToken)
-            await SessionCoordinator.shared.clear()
-        }
+        let previousUserID = user?.id
         clearPresentation()
+        let signedOutContext = ActivityAccountBoundary.current
+        Task {
+            let snapshot = await SessionCoordinator.shared.boundarySnapshot()
+            guard snapshot.userID == previousUserID, signedOutContext == ActivityAccountBoundary.current else { return }
+            let session = await SessionCoordinator.shared.storedSession()
+            guard signedOutContext == ActivityAccountBoundary.current else { return }
+            try? await APIClient.shared.logout(refreshToken: session?.refreshToken)
+            guard signedOutContext == ActivityAccountBoundary.current else { return }
+            await SessionCoordinator.shared.clear(expected: snapshot)
+        }
     }
 
     func acceptCurrentTerms() async -> Bool {
@@ -135,13 +149,27 @@ final class AuthStore: ObservableObject {
     }
 
     func deleteAccount() async {
-        await performAuthentication {
-            let credential = try await self.makeAppleCredential()
-            try await APIClient.shared.deleteMyAccount(.init(identityToken: credential.identityToken, authorizationCode: credential.authorizationCode, rawNonce: credential.rawNonce))
-            await SessionCoordinator.shared.clear()
-            try? await ActivityPersistence.shared.deleteAll()
-            for key in UserDefaults.standard.dictionaryRepresentation().keys { UserDefaults.standard.removeObject(forKey: key) }
-            self.clearPresentation()
+        let context = ActivityAccountBoundary.current
+        await ActivityAccountBoundary.$operation.withValue(context) {
+            await performAuthentication {
+                try ActivityAccountBoundary.validate(context)
+                let session = await SessionCoordinator.shared.boundarySnapshot()
+                let credential = try await self.makeAppleCredential()
+                try ActivityAccountBoundary.validate(context)
+                try await APIClient.shared.deleteMyAccount(.init(identityToken: credential.identityToken, authorizationCode: credential.authorizationCode, rawNonce: credential.rawNonce))
+                try ActivityAccountBoundary.validate(context)
+                try await ActivityPersistence.shared.deleteAll()
+                try ActivityAccountBoundary.validate(context)
+                guard await SessionCoordinator.shared.clear(expected: session) else { throw CancellationError() }
+                // Preserve other accounts' retained planning/statistics caches.
+                for key in UserDefaults.standard.dictionaryRepresentation().keys {
+                    if ["personalization_profile_queue_v1", "personalization_readiness_queue_v1", "personalization_feedback_queue_v1"].contains(key) { continue }
+                    if key.contains("account:") && !key.hasSuffix(context.owner) { continue }
+                    if key.hasPrefix("statistics.monday-v1."), key != "statistics.monday-v1.\(session.userID ?? "")" { continue }
+                    UserDefaults.standard.removeObject(forKey: key)
+                }
+                self.clearPresentation()
+            }
         }
     }
 
