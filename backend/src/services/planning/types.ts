@@ -45,6 +45,7 @@ export type PrimaryMotivation = "generalFitness" | "consistency" | "performance"
 export type RunGoalType = "time" | "distance" | "calories";
 
 export interface CreateTrainingGoalInput {
+  runningBenchmark?: unknown;
   type: string;
   activities: Modality[];
   baselineContext?: "startingOut" | "currentlyActive" | "returningAfterBreak";
@@ -80,6 +81,7 @@ export interface SubmitReadinessInput {
 }
 
 export interface CompleteWorkoutInput {
+  performedWorkoutReference?: import("./workoutIssuance.js").PerformedWorkoutReference;
   workoutEditId?: string | null;
   workoutRevision?: string | null;
   activityId?: string | null;
@@ -108,6 +110,8 @@ export interface ActivityForPlanning {
   distanceM: number | null;
   avgPace: number | null;
   avgHeartRate: number | null;
+  sessionEffortRating?: number | null;
+  sessionEffortProvenance?: "activity_report" | "linked_completion_report" | null;
 }
 
 export interface ReadinessForPlanning {
@@ -212,6 +216,8 @@ export interface WorkoutGenerationInput {
   durationMinutes: number;
   allowShortSession?: boolean;
   runWalk?: boolean;
+  runWalkStage?: { runSeconds: number; walkSeconds: number; continuousTrial: boolean };
+  baselineContext?: string;
   distanceMeters?: number | null;
   targetCalories?: number | null;
   isKeyWorkout?: boolean;
@@ -317,6 +323,7 @@ export interface ActivitySuggestion {
   catalogVersion?: number;
   workoutEditId?: string;
   workoutRevision?: string;
+  performedWorkoutReference?: import("./workoutIssuance.js").PerformedWorkoutReference;
   durationSeconds?: number;
   optional: boolean;
 }

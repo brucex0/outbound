@@ -1,3 +1,6 @@
+import { adjustmentBaseline } from "../planning/adjustmentBaseline.js";
+import { resizeTimedRunningWorkout } from "../planning/runningPrescription.js";
+import type { PlannedWorkoutDraft } from "../planning/types.js";
 import { standaloneWorkoutCatalog } from "../../data/standaloneWorkouts.js";
 import type { ActivitySuggestion, TrainingStimulus } from "../planning/types.js";
 import { createHash } from "node:crypto";
@@ -181,7 +184,9 @@ async function currentPreviewWorkout(prisma: Prisma.TransactionClient, userId: s
     },
   });
   if (!workout) throw new WorkoutAdjustmentError(404, "The selected workout is no longer available.");
-  if (workout.planVersion.plan.versions[0]?.id !== workout.planVersionId) {
+  if (workout.planVersion.plan.versions[0]?.id !== workout.planVersionId
+    && (workout.prescription as Record<string, unknown>).source !== "explicitWorkoutChange"
+    && !await prisma.workoutEdit.findFirst({ where: { plannedWorkoutId: workout.id, userId, operation: { not: "skip" } } })) {
     throw new WorkoutAdjustmentError(409, "The plan changed. Refresh before changing this workout.");
   }
   return workout;
@@ -304,10 +309,12 @@ export async function decideAdjustment(userId: string, adjustmentId: string, dec
   const prisma = getPrismaClient();
   const adjustment = await prisma.personalizationAdjustment.findFirst({ where: { id: adjustmentId, userId } });
   if (!adjustment) throw new Error("Adjustment not found.");
+  if (adjustment.status === "stale" && decision === "accept") throw new WorkoutAdjustmentError(409, "The workout changed. Request a new alternative.");
   if (adjustment.status !== "proposed") return adjustmentRecordToDTO(adjustment);
 
   if (adjustment.policyVersion === workoutPreviewPolicy) {
     return prisma.$transaction(async (tx) => {
+      await lockPlanningUser(tx, userId);
       const current = await tx.personalizationAdjustment.findFirst({ where: { id: adjustmentId, userId } });
       if (!current) throw new WorkoutAdjustmentError(404, "Adjustment not found.");
       if (current.status !== "proposed") return adjustmentRecordToDTO(current);
@@ -342,39 +349,61 @@ export async function decideAdjustment(userId: string, adjustmentId: string, dec
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
-  const changes = adjustment.changes as unknown as AdjustmentProposal["changes"];
-  if (decision === "accept") {
-    for (const change of changes) {
-      const minutes = minutesFromTitle(change.afterTitle);
-      if (minutes) await resizePlannedWorkout(userId, change.workoutId, change.afterTitle, minutes * 60);
+  const result = await prisma.$transaction(async (tx) => {
+    await lockPlanningUser(tx, userId);
+    const current = await tx.personalizationAdjustment.findFirst({ where: { id: adjustmentId, userId } });
+    if (!current) throw new WorkoutAdjustmentError(404, "Adjustment not found.");
+    if (current.status === "stale") return { record: current, stale: decision === "accept" };
+    if (current.status !== "proposed") return { record: current, stale: false };
+    const changes = current.changes as unknown as Array<AdjustmentProposal["changes"][number] & {
+      planVersionId?: string; baselineRevision?: string; beforeDurationSeconds?: number; afterDurationSeconds?: number;
+    }>;
+    const validated = [];
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    if (decision === "accept") {
+      // Validate all affected slots before changing any. The same lock is used by
+      // direct edits, plan replacement, completion and rolling refills.
+      for (const change of changes) {
+        const workout = await tx.plannedWorkout.findFirst({ where: { id: change.workoutId, userId, status: "planned", scheduledDate: { gte: today }, planVersion: { plan: { userId, status: "active" } } },
+          include: { blocks: { orderBy: { sortOrder: "asc" }, include: { steps: { orderBy: { sortOrder: "asc" } } } }, edits: { where: { operation: { not: "skip" } }, take: 1 }, planVersion: { include: { plan: { include: { goal: true, versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { id: true } } } } } } } });
+        const seconds = change.afterDurationSeconds;
+        if (!workout || workout.edits.length > 0 || (workout.prescription as Record<string, unknown>).source === "explicitWorkoutChange"
+          || change.planVersionId !== workout.planVersionId || workout.planVersion.plan.versions[0]?.id !== workout.planVersionId || change.beforeTitle !== workout.title || change.beforeDurationSeconds !== workout.durationSeconds
+          || change.baselineRevision !== adjustmentBaseline(workout) || seconds == null || !Number.isInteger(seconds) || seconds <= 0
+          || seconds > workout.planVersion.plan.goal.maxSessionMinutes * 60) {
+          const stale = await tx.personalizationAdjustment.update({ where: { id: current.id }, data: { status: "stale", decidedAt: new Date() } });
+          return { record: stale, stale: true };
+        }
+        validated.push({ workout, change, seconds });
+      }
+      for (const { workout, change, seconds } of validated) await resizeWorkout(tx, workout, change.afterTitle, seconds);
     }
-  }
-
-  const updated = await prisma.personalizationAdjustment.update({
-    where: { id: adjustment.id },
-    data: { status: decision === "accept" ? "applied" : "rejected", decidedAt: new Date() },
-  });
+    const updated = await tx.personalizationAdjustment.update({ where: { id: current.id }, data: { status: decision === "accept" ? "applied" : "rejected", decidedAt: new Date() } });
+    return { record: updated, stale: false };
+  }, { timeout: 30_000 });
+  if (result.stale) throw new WorkoutAdjustmentError(409, "The workout changed. Request a new alternative.");
   await persistModelVersion(userId, decision === "accept" ? "adjustmentApplied" : "adjustmentRejected");
-  return adjustmentRecordToDTO(updated);
-}
-
-async function resizePlannedWorkout(userId: string, workoutId: string, title: string, durationSeconds: number) {
-  const prisma = getPrismaClient();
-  const workout = await prisma.plannedWorkout.findFirst({
-    where: { id: workoutId, userId, status: "planned" },
-    include: { blocks: { include: { steps: true } } },
-  });
-  if (!workout || workout.durationSeconds <= 0) return;
-  await prisma.$transaction((tx) => resizeWorkout(tx, workout, title, durationSeconds));
+  return adjustmentRecordToDTO(result.record);
 }
 
 async function resizeWorkout(
   tx: Prisma.TransactionClient,
-  workout: { id: string; durationSeconds: number; blocks: Array<{ id: string; blockType: string; durationSeconds: number | null; steps: Array<{ id: string; durationSeconds: number | null }> }> },
+  workout: Prisma.PlannedWorkoutGetPayload<{ include: { blocks: { include: { steps: true } } } }>,
   title: string,
   durationSeconds: number,
   minimumMainSeconds = 0,
 ) {
+    if (workout.modality === "run" && workout.targetCalories == null && workout.distanceMeters == null) {
+      const resized = resizeTimedRunningWorkout(workout as unknown as PlannedWorkoutDraft, durationSeconds, false, minimumMainSeconds);
+      for (const [blockIndex, block] of workout.blocks.entries()) {
+        const next = resized.blocks[blockIndex];
+        await tx.workoutBlock.update({ where: { id: block.id }, data: { durationSeconds: next.durationSeconds, repeats: null, restSeconds: null } });
+        for (const [stepIndex, phase] of block.steps.entries()) await tx.workoutStep.update({ where: { id: phase.id }, data: { durationSeconds: next.steps[stepIndex].durationSeconds } });
+      }
+      await tx.plannedWorkout.update({ where: { id: workout.id }, data: { title, durationSeconds, prescription: resized.prescription as Prisma.InputJsonValue } });
+      return;
+    }
     const ratio = durationSeconds / workout.durationSeconds;
     const mainSeconds = workout.blocks.filter((block) => block.blockType === "main").reduce((sum, block) => sum + (block.durationSeconds ?? 0), 0);
     const nextMainSeconds = mainSeconds > 0 ? Math.max(Math.min(minimumMainSeconds, mainSeconds), Math.round(mainSeconds * ratio)) : 0;
@@ -521,7 +550,13 @@ async function createAdjustment(userId: string, reasonCode: AdjustmentProposal["
   const prisma = getPrismaClient();
   const existing = await prisma.personalizationAdjustment.findFirst({ where: { userId, status: "proposed", reasonCode }, orderBy: { createdAt: "desc" } });
   if (existing) return adjustmentRecordToDTO(existing);
-  const created = await prisma.personalizationAdjustment.create({ data: { userId, reasonCode, explanation, requiresConfirmation: true, changes: [{ workoutId, beforeTitle, afterTitle }], policyVersion } });
+  const workout = await prisma.plannedWorkout.findFirst({ where: { id: workoutId, userId, status: "planned", planVersion: { plan: { status: "active", userId } } },
+    include: { blocks: { include: { steps: true } }, edits: { where: { operation: { not: "skip" } }, take: 1 } } });
+  const seconds = minutesFromTitle(afterTitle);
+  if (!workout || workout.title !== beforeTitle || workout.edits.length > 0 || (workout.prescription as Record<string, unknown>).source === "explicitWorkoutChange" || seconds == null) return null;
+  const created = await prisma.personalizationAdjustment.create({ data: { userId, reasonCode, explanation, requiresConfirmation: true,
+    changes: [{ workoutId, beforeTitle, afterTitle, planVersionId: workout.planVersionId, baselineRevision: adjustmentBaseline(workout),
+      beforeDurationSeconds: workout.durationSeconds, afterDurationSeconds: Math.min(workout.durationSeconds, seconds * 60) }], policyVersion } });
   return adjustmentRecordToDTO(created);
 }
 

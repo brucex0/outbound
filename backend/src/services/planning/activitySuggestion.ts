@@ -1,3 +1,5 @@
+import { withSessionEffort } from "./sessionEffort.js";
+import { protectedEditedWorkouts } from "./persistence.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { assessPlanFit } from "./planFit.js";
 import { getPrismaClient } from "../prisma.js";
@@ -108,9 +110,11 @@ export async function buildBaseActivitySuggestion(
     }),
   ]);
 
-  const typedActivities = activities as ActivityForPlanning[];
+  const typedActivities = await withSessionEffort(prisma, userId, activities as ActivityForPlanning[]);
   const latestVersion = plan?.versions[0] ?? null;
-  const workouts = latestVersion?.workouts ?? [];
+  const protectedEdits = plan && latestVersion ? await protectedEditedWorkouts(prisma, userId, plan.id, latestVersion.id, todayStart) : [];
+  const workouts = [...protectedEdits, ...(latestVersion?.workouts ?? [])]
+    .filter((workout) => workout.status !== "superseded").sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
   const plannedWorkouts = workouts.map(plannedWorkoutForState);
   const latestReadiness = readiness ? readinessForPlanning(readiness) : undefined;
   const athleteState = computeAthleteTrainingState({
@@ -412,6 +416,7 @@ function plannedWorkoutSuggestion(
     startLabel: startLabelFor(workout.modality),
     plannedWorkoutId: workout.id,
     archetypeId: null,
+    runWalk: (workout.prescription as Record<string, unknown>)?.runWalk === true,
     optional: (workout.prescription as Record<string, unknown>)?.optional === true,
   };
 }

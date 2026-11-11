@@ -5,10 +5,11 @@ import {
   type TrainingPlanSource,
   type TrainingPlanTemplate,
 } from "./trainingPlans.js";
+import type { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./prisma.js";
 
-export async function loadTrainingPlanCatalog(): Promise<TrainingPlanCatalog> {
-  const records = await getPrismaClient().trainingPlanTemplate.findMany({
+export async function loadTrainingPlanCatalog(db: Prisma.TransactionClient = getPrismaClient()): Promise<TrainingPlanCatalog> {
+  const records = await db.trainingPlanTemplate.findMany({
     orderBy: [{ focus: "asc" }, { titleKey: "asc" }],
     include: {
       weeks: {

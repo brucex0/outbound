@@ -1,4 +1,8 @@
+import { loadRunningPlanningContext } from "./runningContext.js";
+import { parseRunWalkProgramme } from "./runWalkProgramme.js";
+import { withSessionEffort } from "./sessionEffort.js";
 import type { PlanningEvent } from "@prisma/client";
+import { refreshCatalogPlanInTransaction } from "./catalogRefresh.js";
 import { adaptPlan } from "./adaptationEngine.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { claimDuePlanningEvents, failPlanningEvent } from "./events.js";
@@ -93,7 +97,19 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       return result;
     }
 
-    const [activities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
+    // Catalogue plans must never pass through generic stimulus generation. Reads
+    // and rollover also use this source-aware path, under the same user lock.
+    if (plan.source === "catalog" && !["activityCompleted", "planReviewRequested", "dailyReview"].includes(event.type)) {
+      const handled = await prisma.$transaction(async (tx) => {
+        await lockPlanningUser(tx, event.userId);
+        const active = await refreshCatalogPlanInTransaction(tx, event.userId, new Date(), event.type as PlanningEventType, plan.id);
+        await tx.planningEvent.update({ where: { id: event.id }, data: { status: active ? "completed" : "ignored", processedAt: new Date() } });
+        return active;
+      }, { timeout: 30_000 });
+      return { eventId: event.id, status: handled ? "completed" : "ignored", message: handled ? "Reassessed the selected training programme." : "The original training programme is no longer active." };
+    }
+
+    const [rawActivities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
       prisma.activity.findMany({
         where: { userId: event.userId, deletedAt: null, startedAt: { gte: addDays(new Date(), -90) } },
         orderBy: { startedAt: "desc" },
@@ -140,12 +156,13 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       prisma.calibrationProgram.findUnique({ where: { userId: event.userId } }),
     ]);
 
-    const athleteState = computeAthleteTrainingState({
+    const activities = await withSessionEffort(prisma, event.userId, rawActivities);
+    let athleteState = computeAthleteTrainingState({
       activities: activities as ActivityForPlanning[],
       plannedWorkouts: plannedWorkouts as PlannedWorkoutForState[],
       readiness: readiness as ReadinessForPlanning[],
     });
-    const latestReadiness = readiness[0] as ReadinessForPlanning | undefined;
+    let latestReadiness = readiness[0] as ReadinessForPlanning | undefined;
     const activeVersion = plan.versions[0];
     const planFit = assessPlanFit({
       activities: activities as ActivityForPlanning[],
@@ -153,9 +170,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       readiness: latestReadiness,
     });
     const eventType = event.type as PlanningEventType;
-    const adaptation = adaptPlan({
-      eventType,
-      goal: {
+    const goal = {
         type: plan.goal.type,
         activities: plan.goal.activities as import("./types.js").Modality[],
         baselineContext: plan.goal.baselineContext,
@@ -172,18 +187,23 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
         targetTimeSeconds: plan.goal.targetTimeSeconds,
         reviewHorizonWeeks: plan.goal.reviewHorizonWeeks as 4 | 8 | 12 | null,
         constraints: plan.goal.constraints as Record<string, unknown>,
-      },
+      };
+    let adaptation = adaptPlan({
+      eventType,
+      basePlan: plan.source === "catalog" ? { phase: plan.currentPhase as import("./types.js").TrainingPlanPhase, summary: "Catalogue review", workouts: [], engineDecision: (activeVersion?.engineDecision as Record<string, unknown>) ?? {} } : undefined,
+      goal,
+      runWalkProgramme: parseRunWalkProgramme((activeVersion?.engineDecision as Record<string, unknown> | undefined)?.runWalkProgramme),
       athleteState,
       latestReadiness,
     });
-    const adaptedWorkouts = applyCalorieTargets({
+    let adaptedWorkouts = applyCalorieTargets({
       workouts: adaptation.workouts,
       preferredRunGoalType: plan.goal.preferredRunGoalType as "time" | "distance" | "calories",
       weightKilograms: profile?.weightKilograms,
       pace: resolveLearnedRunPace(activities as ActivityForPlanning[], calibration?.status === "completed"),
     });
 
-    if (!adaptation.shouldCreateVersion) {
+    if (!adaptation.shouldCreateVersion || plan.source === "catalog") {
       await prisma.$transaction(async (tx) => {
         await tx.athleteTrainingState.create({
           data: {
@@ -235,6 +255,17 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       if (!current || current.versions[0]?.id !== activeVersion?.id || current.updatedAt.getTime() !== plan.updatedAt.getTime()) {
         await tx.planningEvent.update({ where: { id: event.id }, data: { status: current ? "pending" : "ignored", runAfter: new Date() } });
         return null;
+      }
+      if (goal.activities.includes("run")) {
+        const context = await loadRunningPlanningContext(tx, { userId: event.userId, planId: plan.id, goal,
+          previousProgramme: (current.versions[0]?.engineDecision as Record<string, unknown> | undefined)?.runWalkProgramme,
+          now: new Date(), createdAt: plan.createdAt, enableProgramme: goal.baselineContext !== "currentlyActive" });
+        athleteState = context.athleteState;
+        latestReadiness = context.latestReadiness;
+        adaptation = adaptPlan({ eventType, goal, athleteState, latestReadiness, runWalkProgramme: context.state });
+        adaptedWorkouts = applyCalorieTargets({ workouts: adaptation.workouts,
+          preferredRunGoalType: goal.preferredRunGoalType, weightKilograms: profile?.weightKilograms,
+          pace: resolveLearnedRunPace(context.activities, calibration?.status === "completed") });
       }
       await tx.athleteTrainingState.create({
         data: {

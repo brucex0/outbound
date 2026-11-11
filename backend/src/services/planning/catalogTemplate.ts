@@ -1,3 +1,4 @@
+import { synchronizeRunningPrescription } from "./runningPrescription.js";
 import type { Modality, PlannedWorkoutDraft, TrainingStimulus } from "./types.js";
 import type {
   TrainingPlanFocus,
@@ -47,30 +48,73 @@ export function instantiateCatalogRecommendation(
   recommendation: TrainingPlanRecommendation,
   now: Date = new Date()
 ): PlannedWorkoutDraft[] {
-  const firstDay = startOfDay(now);
-  const monday = startOfWeek(firstDay);
-  const windowEnd = addDays(monday, 14);
-  const workouts = recommendation.template.weeks.slice(0, 2).flatMap((week, weekIndex) =>
-    week.workouts
-      .filter((workout) => !workout.isOptional && workout.durationSeconds > 0)
-      .map((workout) => ({ workout, scheduledDate: dateForWorkout(workout, weekIndex, monday) }))
-      .filter(({ scheduledDate }) => scheduledDate >= firstDay && scheduledDate < windowEnd)
-      .map(({ workout, scheduledDate }) => toPlannedWorkout(workout, recommendation.template.sport, scheduledDate, recommendation.template.id, weekIndex + 1))
-  );
+  const monday = startOfWeek(now);
+  return instantiateCatalogWeek(recommendation.template, 1, monday, now)
+    .concat(instantiateCatalogWeek(recommendation.template, 2, addDays(monday, 7), now));
+}
 
-  if (workouts.length === 0) {
-    throw new Error("The selected catalog plan has no upcoming workouts to schedule.");
+/** Source sequence stays intact; only dates and bounded session durations change. */
+export function instantiateCatalogWeek(
+  template: import("../trainingPlans.js").TrainingPlanTemplate,
+  weekIndex: number,
+  anchor: Date,
+  now: Date,
+  schedule?: { preferredDays: string[]; daysPerWeekTarget: number; maxSessionMinutes: number },
+): PlannedWorkoutDraft[] {
+  const source = template.weeks[weekIndex - 1];
+  if (!source) return [];
+  const required = source.workouts.filter((workout) => !workout.isOptional && workout.durationSeconds > 0);
+  const exposureSchedule = template.sport === "run" && template.weeks[0].workouts.some((row) => !row.isOptional && row.kind === "walkRun");
+  if (schedule && (schedule.daysPerWeekTarget < (exposureSchedule ? 1 : template.minSessionsPerWeek) || schedule.daysPerWeekTarget > template.maxSessionsPerWeek)) {
+    console.info("[planning] catalog_programme_validation", { operation: "schedule", category: "unsupported_frequency" });
+    throw new Error("The selected programme does not support that weekly session frequency.");
   }
-  return workouts;
+  const count = Math.min(required.length, schedule?.daysPerWeekTarget ?? required.length);
+  // On reduced-frequency weeks retain long-easy work and one easy session;
+  // allow a quality session only when at least three days are available.
+  const firstEasy = required.find((workout) => ["easy", "recovery", "walkRun"].includes(workout.kind));
+  const priority = (workout: TrainingPlanWorkout) => ["longRun", "race"].includes(workout.kind) ? 0
+    : workout === firstEasy ? 1
+    : count >= 3 && ["tempo", "interval", "fartlek", "hill", "racePrep", "race"].includes(workout.kind) ? 2 : 3;
+  const chosen = new Set([...required].sort((a, b) => priority(a) - priority(b)).slice(0, count));
+  const preferred = [...new Set((schedule?.preferredDays ?? []).map(weekdayIndex).filter((day): day is number => day != null))].sort((a, b) => a - b);
+  if (preferred.length) {
+    for (const workout of required) {
+      const index = weekdayIndex(workout.dayLabel);
+      if (preferred.length >= count) break;
+      if (index != null && !preferred.includes(index)) preferred.push(index);
+    }
+    for (let index = 0; preferred.length < count && index < 7; index++) if (!preferred.includes(index)) preferred.push(index);
+    preferred.sort((a, b) => a - b);
+  }
+  // Retain the source's ordered workouts rather than inventing catch-up sessions.
+  return required.filter((workout) => chosen.has(workout)).flatMap((workout, index) => {
+    const offset = preferred.length ? preferred[index] : weekdayIndex(workout.dayLabel);
+    if (offset == null) return [];
+    const scheduledDate = addDays(anchor, offset);
+    if (scheduledDate < startOfDay(now)) return [];
+    const draft = toPlannedWorkout(workout, template.sport, scheduledDate, template.id, weekIndex);
+    const cap = (schedule?.maxSessionMinutes ?? 180) * 60;
+    // Scale timed phases together, preserving every walk/run phase and its order.
+    // The source already carries short-session exceptions for beginner run/walk.
+    const total = draft.blocks.flatMap((block) => block.steps).reduce((sum, step) => sum + (step.durationSeconds ?? 0), 0);
+    const target = Math.min(draft.durationSeconds, cap);
+    if (total > 0) {
+      const steps = draft.blocks[0].steps;
+      let allocated = 0;
+      for (const [i, step] of steps.entries()) {
+        step.durationSeconds = i === steps.length - 1 ? target - allocated : Math.max(1, Math.floor((step.durationSeconds ?? 0) * target / total));
+        allocated += step.durationSeconds;
+      }
+      draft.prescription.steps = steps;
+    }
+    draft.durationSeconds = target;
+    draft.blocks[0].durationSeconds = target;
+    return [synchronizeRunningPrescription(draft)];
+  });
 }
 
-function dateForWorkout(workout: TrainingPlanWorkout, weekIndex: number, monday: Date): Date {
-  const dayIndex = weekdayIndex(workout.dayLabel);
-  if (dayIndex == null) throw new Error(`Catalog workout ${workout.id} has an unsupported day label.`);
-  return addDays(monday, weekIndex * 7 + dayIndex);
-}
-
-function toPlannedWorkout(
+export function toPlannedWorkout(
   workout: TrainingPlanWorkout,
   sport: TrainingPlanSport,
   scheduledDate: Date,
@@ -82,9 +126,12 @@ function toPlannedWorkout(
   const isKeyWorkout = ["tempo", "interval", "fartlek", "hill", "longRun", "racePrep", "race"].includes(workout.kind);
   const steps = workout.steps.map((step) => ({
     label: step.label,
-    kind: step.kind,
+    // The source uses steady rows for its explicit fartlek surges; preserve that role.
+    kind: workout.kind === "fartlek" && step.kind === "steady" ? "fartlek" : step.kind,
     durationSeconds: step.durationSeconds,
     detail: step.detail ?? null,
+    target: { rpe: workout.kind === "fartlek" && step.kind === "steady" ? [5, 6] : ["tempo"].includes(step.kind) ? [6, 7] : ["interval"].includes(step.kind) ? [7, 8]
+      : ["walk", "cooldown", "recovery"].includes(step.kind) ? [1, 3] : step.kind === "race" ? [6, 8] : [2, 4] },
   }));
 
   return {
@@ -98,6 +145,8 @@ function toPlannedWorkout(
     intensityTarget: { effortLabel: workout.effortLabel },
     prescription: {
       source: "trainingPlanCatalog",
+      sourceWorkoutKind: workout.kind,
+      runWalk: workout.kind === "walkRun",
       templateID,
       weekIndex,
       workoutID: workout.id,
@@ -153,6 +202,7 @@ function blockTypeFor(kind: TrainingPlanWorkout["kind"]): string {
   switch (kind) {
     case "longRun": return "longEndurance";
     case "crossTrain": return "crossTrain";
+    case "walkRun": return "main";
     default: return kind;
   }
 }
@@ -165,19 +215,19 @@ function weekdayIndex(dayLabel: string): number | null {
 
 function startOfWeek(date: Date): Date {
   const result = startOfDay(date);
-  const mondayOffset = (result.getDay() + 6) % 7;
-  result.setDate(result.getDate() - mondayOffset);
+  const mondayOffset = (result.getUTCDay() + 6) % 7;
+  result.setUTCDate(result.getUTCDate() - mondayOffset);
   return result;
 }
 
 function startOfDay(date: Date): Date {
   const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
+  result.setUTCHours(0, 0, 0, 0);
   return result;
 }
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
-  result.setDate(result.getDate() + days);
+  result.setUTCDate(result.getUTCDate() + days);
   return result;
 }

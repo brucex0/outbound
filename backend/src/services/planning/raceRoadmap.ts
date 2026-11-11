@@ -1,16 +1,24 @@
+/** Original planning timing policy; not a physiological guarantee. */
+export function raceTaperDays(goal: { activities?: unknown; targetDistanceMeters?: number | null }): number {
+  if (!Array.isArray(goal.activities) || !goal.activities.includes("run")) return 21;
+  const distance = goal.targetDistanceMeters ?? 42195;
+  return distance <= 10000 ? 7 : distance <= 21098 ? 10 : 14;
+}
+
 /** Broad race progression is independent from the rolling detailed prescriptions. */
 export function raceRoadmap(
-  goal: { type: string; targetDate: Date | null; createdAt: Date }, currentPhase: string,
+  goal: { type: string; targetDate: Date | null; createdAt: Date; activities?: unknown; targetDistanceMeters?: number | null }, currentPhase: string,
   workouts: { scheduledDate: Date; status: string }[],
 ) {
   if (goal.type !== "eventPreparation" || !goal.targetDate) return null;
   const event = new Date(goal.targetDate.toISOString().slice(0, 10));
   const started = new Date(goal.createdAt.toISOString().slice(0, 10));
+  const taperDays = raceTaperDays(goal);
   const phaseStarts = [
     { phase: "base", start: started, end: offset(event, -113) },
     { phase: "build", start: offset(event, -112), end: offset(event, -50) },
-    { phase: "sharpen", start: offset(event, -49), end: offset(event, -22) },
-    { phase: "taper", start: offset(event, -21), end: event },
+    { phase: "sharpen", start: offset(event, -49), end: offset(event, -(taperDays + 1)) },
+    { phase: "taper", start: offset(event, -taperDays), end: event },
   ];
   const planned = workouts.filter((workout) => workout.status === "planned");
   return {

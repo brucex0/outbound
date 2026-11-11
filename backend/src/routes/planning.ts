@@ -1,3 +1,7 @@
+import { PerformedWorkoutConflictError, performedWorkoutReferenceSchema } from "../services/planning/workoutIssuance.js";
+import { RunningScheduleError, ProgrammeTimelineError, ProgrammeConstraintError } from "../services/planning/runningDosePolicy.js";
+import { GoalFeasibilityError } from "../services/planning/goalFeasibility.js";
+import { RunningBenchmarkError, RunningBenchmarkConflictError } from "../services/planning/runningBenchmark.js";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
@@ -8,6 +12,7 @@ import {
   completeWorkout,
   createGoal,
   updateRaceGoal,
+  updateRunningBenchmark,
   getActivitySuggestion,
   getAdjustments,
   getRecommendations,
@@ -52,6 +57,7 @@ const catalogFocusSchema = z.enum(["consistency", "comeback", "fiveK", "tenK", "
 const goalTypeSchema = z.union([objectiveSchema, catalogFocusSchema]);
 const activitySchema = z.enum(["run", "walk", "bike"]);
 const goalSchema = z.object({
+  runningBenchmark: z.unknown().optional(),
   type: goalTypeSchema,
   activities: z.array(activitySchema).min(1).max(3),
   baselineContext: z.enum(["startingOut", "currentlyActive", "returningAfterBreak"]).optional(),
@@ -87,6 +93,7 @@ const readinessSchema = z.object({
 });
 
 const completionSchema = z.object({
+  performedWorkoutReference: performedWorkoutReferenceSchema.optional(),
   workoutEditId: z.string().max(160).nullable().optional(),
   workoutRevision: z.string().length(64).nullable().optional(),
   activityId: z.string().optional().nullable(),
@@ -184,7 +191,7 @@ const raceGoalUpdateSchema = z.object({
   shortRunSessions: z.boolean(),
   optionalMobility: z.boolean(),
 }).refine((input) => input.eventIntent !== "targetTime" || Boolean(input.targetTimeSeconds), "A target time is required.")
-  .refine((input) => input.shortRunSessions || input.maxSessionMinutes >= 25, "Choose short sessions explicitly for a total under 25 minutes.");
+;
 
 router.patch("/goals/:id", zValidator("json", raceGoalUpdateSchema), async (c) => {
   const user = await requirePlanningUser(c);
@@ -192,6 +199,11 @@ router.patch("/goals/:id", zValidator("json", raceGoalUpdateSchema), async (c) =
   try {
     return c.json(await updateRaceGoal(user.id, c.req.param("id"), c.req.valid("json")));
   } catch (error) {
+    if (error instanceof RunningScheduleError || error instanceof ProgrammeTimelineError || error instanceof ProgrammeConstraintError) {
+      console.info("[planning] running_schedule_validation", { operation: "goal_write", category: error instanceof RunningScheduleError ? error.category : error instanceof ProgrammeTimelineError ? "programme_timeline" : "programme_quality" });
+      return c.json({ error: error.message, code: error.code }, 422);
+    }
+    if (error instanceof GoalFeasibilityError) return c.json({ error: error.message, code: error.code }, 422);
     console.error("[planning] race_goal_update_failed", { errorType: error instanceof Error ? error.name : "unknown" });
     return c.json({ error: "The race goal could not be updated. Refresh the plan and try again." }, 409);
   }
@@ -203,7 +215,35 @@ router.post("/goals", zValidator("json", goalSchema), async (c) => {
   try {
     return c.json(await createGoal(user.id, c.req.valid("json")), 201);
   } catch (error) {
+    if (error instanceof RunningScheduleError || error instanceof ProgrammeTimelineError || error instanceof ProgrammeConstraintError) {
+      console.info("[planning] running_schedule_validation", { operation: "goal_write", category: error instanceof RunningScheduleError ? error.category : error instanceof ProgrammeTimelineError ? "programme_timeline" : "programme_quality" });
+      return c.json({ error: error.message, code: error.code }, 422);
+    }
+    if (error instanceof GoalFeasibilityError) return c.json({ error: error.message, code: error.code }, 422);
+    if (error instanceof RunningBenchmarkError) {
+      console.info("[planning] running_benchmark_validation", { operation: "create", category: error.category });
+      return c.json({ error: error.message, code: error.code }, 422);
+    }
     return c.json({ error: error instanceof Error ? error.message : "Unable to create plan." }, 400);
+  }
+});
+
+router.patch("/goals/:id/running-benchmark", zValidator("json", z.object({ runningBenchmark: z.unknown() })), async (c) => {
+  const user = await requirePlanningUser(c);
+  if (user instanceof Response) return user;
+  try {
+    return c.json(await updateRunningBenchmark(user.id, c.req.param("id"), c.req.valid("json").runningBenchmark));
+  } catch (error) {
+    if (error instanceof RunningBenchmarkError) {
+      console.info("[planning] running_benchmark_validation", { operation: "update", category: error.category });
+      return c.json({ error: error.message, code: error.code }, 422);
+    }
+    if (error instanceof RunningBenchmarkConflictError) {
+      console.info("[planning] running_benchmark_validation", { operation: "update", category: "goal_changed" });
+      return c.json({ error: error.message, code: error.code }, 409);
+    }
+    console.error("[planning] running_benchmark_update_failed", { errorType: error instanceof Error ? error.name : "unknown" });
+    return c.json({ error: "The benchmark could not be updated. Refresh the plan and try again." }, 409);
   }
 });
 
@@ -229,6 +269,10 @@ router.post("/workouts/:id/complete", zValidator("json", completionSchema), asyn
   try {
     return c.json(await completeWorkout(user.id, c.req.param("id"), c.req.valid("json")));
   } catch (error) {
+    if (error instanceof PerformedWorkoutConflictError) {
+      console.info("[planning] performed_workout_validation", { operation: "complete", category: error.category });
+      return c.json({ error: error.message, code: error.code }, 409);
+    }
     return c.json({ error: error instanceof Error ? error.message : "Unable to complete workout." }, 404);
   }
 });
