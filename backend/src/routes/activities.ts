@@ -1,3 +1,6 @@
+import { reconcileUploadedWorkout } from "../services/planning/workoutCompletion.js";
+import { PerformedWorkoutConflictError } from "../services/planning/workoutIssuance.js";
+import { lockPlanningUser } from "../services/planning/persistence.js";
 import { eligibleActivityEvent, startEventParticipation } from "../services/activityEventParticipation.js";
 import { Hono } from "hono";
 import { rebuildGuideProfile } from "../services/guideProfile.js";
@@ -273,7 +276,7 @@ const createSchema = z.object({
     })
     .optional()
     .nullable(),
-  clientData: z.record(z.unknown()).optional(),
+  clientData: z.object({ performedWorkoutReference: z.unknown().optional(), plannedWorkoutCompletionQuality: z.enum(["completed", "feltEasy", "tooHard", "cutShort", "notCompleted"]).optional(), sessionEffortRating: z.number().int().min(1).max(10).nullable().optional() }).passthrough().optional(),
   clientUpdatedAt: z.string().datetime().optional(),
   recognitionContext: z.object({
     timeZoneIdentifier: z.string().trim().max(100),
@@ -386,8 +389,18 @@ router.post("/", zValidator("json", createSchema), async (c) => {
   let activity;
   let wasCreated = false;
   let routeCompletionRecorded = false;
+  let performedPlanId: string | undefined;
+  let performedAssociationChanged = false;
+  const reconcilePerformed = async (transaction: Prisma.TransactionClient, saved: Prisma.ActivityGetPayload<{}>) => {
+    const result = await reconcileUploadedWorkout(transaction, resolvedUserId, saved, body.clientData?.performedWorkoutReference);
+    if (result) { performedPlanId = result.planId; performedAssociationChanged ||= result.changed; }
+    return transaction.activity.findUniqueOrThrow({ where: { id: saved.id } });
+  };
   const createActivityWithSocialPost = () =>
     prisma.$transaction(async (transaction) => {
+      // Lock order is user planning lock, then recording/import identity, then activity rows.
+      await lockPlanningUser(transaction, resolvedUserId);
+      const persist = async () => {
       const source = body.clientData?.source as { kind?: unknown; externalID?: unknown } | undefined;
       if (typeof source?.kind === "string" && typeof source.externalID === "string" && ["strava", "appleHealth", "garminViaHealth", "health_connect", "importedFile"].includes(source.kind)) {
         const sourceKey = `${source.kind}:${source.externalID}`;
@@ -479,10 +492,14 @@ router.post("/", zValidator("json", createSchema), async (c) => {
         created: true,
         routeCompletionRecorded: body.followedRouteCompleted === true && resolvedFollowedRouteId != null,
       };
+      };
+      const result = await persist();
+      return { ...result, activity: await reconcilePerformed(transaction, result.activity) };
     });
 
   const updateExistingActivity = (existingActivityId: string, transaction?: Prisma.TransactionClient) => {
     const update = async (transaction: Prisma.TransactionClient) => {
+      await lockPlanningUser(transaction, resolvedUserId);
       const existing = await transaction.activity.findUniqueOrThrow({
         where: { id: existingActivityId },
       });
@@ -538,6 +555,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       const updatedFacts = activityFact(updatedActivity);
       await transaction.activity.update({ where: { id: updatedActivity.id }, data: { statisticsFacts: updatedFacts as unknown as Prisma.InputJsonValue, ...identityColumns(updatedFacts), updatedAt: updatedActivity.updatedAt } });
       await transaction.user.update({ where: { id: resolvedUserId }, data: { statisticsRevision: { increment: 1 } } });
+      updatedActivity = await reconcilePerformed(transaction, updatedActivity);
       return {
         activity: updatedActivity,
         routeCompletionRecorded: body.followedRouteCompleted === true && resolvedFollowedRouteId != null,
@@ -585,6 +603,10 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       wasCreated = result.created;
     }
   } catch (error) {
+    if (error instanceof PerformedWorkoutConflictError) {
+      console.info("[planning] performed_workout_validation", { operation: "activity_upsert", category: error.category });
+      return c.json({ error: error.message, code: error.code }, 409);
+    }
     if (error instanceof RouteAssociationConflictError || error instanceof RouteCompletionConflictError) {
       return c.json({ error: error.message }, 409);
     }
@@ -594,11 +616,15 @@ router.post("/", zValidator("json", createSchema), async (c) => {
   if (wasCreated) {
     await completeActivity({
       rebuildProfile: () => rebuildGuideProfile(resolvedUserId),
-      enqueuePlanning: () => enqueueActivityCompletedEvent(resolvedUserId, activity.id),
+      enqueuePlanning: () => enqueueActivityCompletedEvent(resolvedUserId, activity.id, performedPlanId),
     });
     await qualifyReferralFromActivity(prisma, resolvedUserId, activity.durationSecs).catch((error) => {
       console.error("[rewards] referral qualification failed", { error });
     });
+  }
+
+  if (!wasCreated && performedAssociationChanged) {
+    await completeActivity({ rebuildProfile: async () => {}, enqueuePlanning: () => enqueueActivityCompletedEvent(resolvedUserId, activity.id, performedPlanId) });
   }
 
   if (body.activityEventId && await eligibleActivityEvent(resolvedUserId, body.activityEventId)) {

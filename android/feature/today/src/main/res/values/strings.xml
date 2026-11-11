@@ -197,4 +197,14 @@
     <string name="today_changed_run_guide">Keep the effort easy. A shorter run still protects the habit.</string>
     <string name="today_changed_run_title">%1$d min easy run</string>
     <string name="today_readiness_saved_offline">Saved offline. Plainstride will sync this check-in later.</string>
+    <string name="planning_running_schedule_conflict">This schedule does not fit the plan’s current running time. Choose fewer running days or explicitly allow shorter sessions.</string>
+    <string name="planning_programme_timeline_conflict">This programme cannot fit your race date with the selected schedule. Choose a later date or a different programme.</string>
+    <string name="planning_programme_constraints_conflict">This programme’s harder workouts do not fit your current running time and recovery spacing. Change training days or choose a different programme.</string>
+    <string name="planning_programme_source_week">Source week %1$d of %2$d</string>
+    <string name="planning_programme_preparation_complete">The prescribed preparation is complete. This does not record a completed race.</string>
+    <string name="planning_programme_minimum_remaining">Minimum remaining time, in calendar weeks: %1$d. It depends on completed prescribed sessions. This is an estimate, not a finish date.</string>
+    <string name="planning_programme_recipe_review">This programme cannot progress with the current session length and maintenance preference. Use Change plan to build a replacement plan and explicitly allow shorter sessions, or choose another programme.</string>
+    <string name="planning_programme_schedule_review">This programme needs a different schedule for training and recovery. Use Change plan to build a replacement plan with different training days, or choose another programme.</string>
+    <string name="planning_programme_timeline_review">The remaining preparation no longer fits the race date. Use Change plan to build a replacement plan with a later date, or choose another programme.</string>
+    <string name="planning_programme_exposure_notice">Source weeks advance through completed prescribed training, not elapsed time. Later workouts remain provisional.</string>
 </resources>

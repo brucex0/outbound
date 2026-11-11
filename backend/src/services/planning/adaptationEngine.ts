@@ -1,3 +1,4 @@
+import { resizeTimedRunningWorkout } from "./runningPrescription.js";
 import { allowsShortRuns, generateNextWindow, type GeneratePlanInput } from "./generator.js";
 import { chooseBestCandidate } from "./scoring.js";
 import type {
@@ -14,6 +15,8 @@ export interface AdaptationInput {
   athleteState: AthleteTrainingStateSnapshot;
   latestReadiness?: ReadinessForPlanning;
   now?: Date;
+  basePlan?: PlanGenerationResult;
+  runWalkProgramme?: GeneratePlanInput["runWalkProgramme"];
 }
 
 export interface AdaptationResult {
@@ -27,8 +30,9 @@ export interface AdaptationResult {
 
 export function adaptPlan(input: AdaptationInput): AdaptationResult {
   const now = input.now ?? new Date();
-  const base = generateNextWindow({
+  const base = input.basePlan ?? generateNextWindow({
     goal: input.goal,
+    runWalkProgramme: input.runWalkProgramme,
     athleteState: input.athleteState,
     now,
     reason: input.eventType,
@@ -71,7 +75,7 @@ function resultForEvent(input: AdaptationInput, base: PlanGenerationResult): Pla
         summary: "Adjusted for today's readiness.",
         workouts: base.workouts.map((workout, index) =>
           index === 0
-            ? softenWorkout(workout, input.latestReadiness?.illnessOrPain === true, allowsShortRuns(input.goal))
+            ? softenWorkout(workout, input.latestReadiness?.illnessOrPain === true, allowsShortRuns(input.goal), input.goal.maxSessionMinutes * 60)
             : workout
         ),
       };
@@ -83,7 +87,7 @@ function resultForEvent(input: AdaptationInput, base: PlanGenerationResult): Pla
       ...base,
       summary: "Replanned after a skipped workout without cramming the missed work.",
       workouts: base.workouts.map((workout, index) =>
-        index === 0 && workout.stimulus !== "recovery" ? softenWorkout(workout, false, allowsShortRuns(input.goal)) : workout
+        index === 0 && workout.stimulus !== "recovery" ? softenWorkout(workout, false, allowsShortRuns(input.goal), input.goal.maxSessionMinutes * 60) : workout
       ),
     };
   }
@@ -96,7 +100,7 @@ function resultForEvent(input: AdaptationInput, base: PlanGenerationResult): Pla
       ...base,
       summary: "Reduced near-term load to protect recovery.",
       workouts: base.workouts.map((workout, index) =>
-        index <= 1 ? softenWorkout(workout, true) : workout
+        index <= 1 ? softenWorkout(workout, true, allowsShortRuns(input.goal), input.goal.maxSessionMinutes * 60) : workout
       ),
     };
   }
@@ -135,11 +139,13 @@ function shouldCreateVersion(input: AdaptationInput): boolean {
     || input.athleteState.fatigueRisk === "high";
 }
 
-function softenWorkout(workout: PlannedWorkoutDraft, recoveryOnly: boolean, allowShortSession = false): PlannedWorkoutDraft {
-  const durationSeconds = recoveryOnly
+function softenWorkout(workout: PlannedWorkoutDraft, recoveryOnly: boolean, allowShortSession = false, capSeconds = Infinity): PlannedWorkoutDraft {
+  const durationSeconds = Math.min(workout.durationSeconds, capSeconds, recoveryOnly
     ? Math.min(workout.durationSeconds, 15 * 60)
-    : Math.max((workout.modality === "run" && !allowShortSession ? 15 : 10) * 60, Math.round(workout.durationSeconds * 0.7));
-  const title = recoveryOnly ? "Recovery reset" : `Lighter ${workout.title}`;
+    : Math.max((workout.modality === "run" && !allowShortSession ? 15 : 10) * 60, Math.round(workout.durationSeconds * 0.7)));
+  if (!recoveryOnly && workout.modality === "run") return resizeTimedRunningWorkout(workout, durationSeconds, true, !allowShortSession && durationSeconds > 900 ? 900 : 0);
+  const title = recoveryOnly ? "Recovery reset" : workout.prescription.source === "trainingPlanCatalog"
+    ? `Lighter ${workout.modality}` : `Lighter ${workout.title}`;
   const stimulus = recoveryOnly ? "mobility" : "recovery";
   const modality = recoveryOnly ? "mobility" : workout.modality;
 
@@ -149,10 +155,13 @@ function softenWorkout(workout: PlannedWorkoutDraft, recoveryOnly: boolean, allo
     modality,
     stimulus,
     durationSeconds,
-    intensityModel: recoveryOnly ? "open" : workout.intensityModel,
+    intensityModel: recoveryOnly ? "open" : workout.prescription.source === "trainingPlanCatalog" ? "rpe" : workout.intensityModel,
     intensityTarget: recoveryOnly ? { effort: "gentle" } : { min: 2, max: 4 },
     prescription: {
       ...workout.prescription,
+      runWalk: false,
+      workoutKind: "recovery", qualitySeconds: 0, intensitySeconds: { threshold: 0, speed: 0 },
+      steps: [{ label: title, kind: stimulus, durationSeconds }],
       blocks: [
         {
           type: recoveryOnly ? "mobility" : "recovery",

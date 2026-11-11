@@ -1330,24 +1330,15 @@ struct SessionStatusCard: View {
     @ViewBuilder
     private var extraCountdownStrip: some View {
         if currentStepProgress != nil || secondaryRouteName != nil {
-            HStack(spacing: 8) {
-                if let stepProgress = currentStepProgress {
-                    SessionStepCountdown(
-                        progressText: String(
-                            localized: "session.step.progress",
-                            defaultValue: "\(stepProgress.index + 1) of \(stepProgress.count)"
-                        ),
-                        title: stepProgress.step.label,
-                        remainingText: stepRemainingText(stepProgress),
-                        tint: theme.accentColor
-                    )
-                }
-
-                if let routeName = secondaryRouteName {
-                    SessionMiniCountdown(symbolName: "map.fill", text: routeName, tint: theme.accentColor)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            SessionCountdownStrip(
+                progressText: currentStepProgress.map { progress in
+                    String(localized: "session.step.progress", defaultValue: "\(progress.index + 1) of \(progress.count)")
+                },
+                title: currentStepProgress?.step.label,
+                remainingText: currentStepProgress.map(stepRemainingText),
+                routeName: secondaryRouteName,
+                tint: theme.accentColor
+            )
         }
     }
 
@@ -1686,35 +1677,58 @@ private struct ExpandedSessionMetric: View {
 }
 
 private struct SessionStepCountdown: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let progressText: String
     let title: String
     let remainingText: String
     let tint: Color
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(progressText)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(tint)
-                .padding(.horizontal, 7)
-                .frame(height: 24)
-                .background(tint.opacity(0.12), in: Capsule())
-
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            Spacer(minLength: 4)
-
-            Label(remainingText, systemImage: "clock")
-                .font(.caption.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        progressBadge
+                        Spacer(minLength: 4)
+                        remainingLabel
+                    }
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                HStack(spacing: 8) {
+                    progressBadge
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
+                    Spacer(minLength: 2)
+                    remainingLabel
+                }
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+
+    private var progressBadge: some View {
+        Text(progressText)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 7)
+            .frame(minHeight: 24)
+            .background(tint.opacity(0.12), in: Capsule())
+    }
+
+    private var remainingLabel: some View {
+        Label(remainingText, systemImage: "clock")
+            .font(.caption.monospacedDigit().weight(.semibold))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: true, vertical: false)
     }
 }
 
@@ -1732,12 +1746,58 @@ private struct SessionMiniCountdown: View {
             Text(text)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 8)
-        .frame(height: 24)
+        .frame(minHeight: 24)
         .background(Color(.systemGroupedBackground), in: Capsule())
+    }
+}
+
+private struct SessionCountdownStrip: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let progressText: String?
+    let title: String?
+    let remainingText: String?
+    let routeName: String?
+    let tint: Color
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    phaseCountdown
+                    routeCountdown
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 8) {
+                        phaseCountdown
+                        routeCountdown
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        phaseCountdown
+                        routeCountdown
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var phaseCountdown: some View {
+        if let progressText, let title, let remainingText {
+            SessionStepCountdown(progressText: progressText, title: title, remainingText: remainingText, tint: tint)
+        }
+    }
+
+    @ViewBuilder
+    private var routeCountdown: some View {
+        if let routeName {
+            SessionMiniCountdown(symbolName: "map.fill", text: routeName, tint: tint)
+        }
     }
 }
 
@@ -1771,3 +1831,17 @@ struct PhotoMetadata {
     let captureContext: PhotoCaptureContext
     var isImported: Bool = false
 }
+
+#if DEBUG
+struct DebugRunningPhaseView: View {
+    let step: SessionIntentStep
+    let index: Int
+    let count: Int
+    var routeName: String? = nil
+    var body: some View {
+        SessionCountdownStrip(progressText: "\(index + 1) of \(count)", title: step.label,
+            remainingText: String(format: "%d:%02d", step.durationSeconds / 60, step.durationSeconds % 60),
+            routeName: routeName, tint: .accentColor)
+    }
+}
+#endif

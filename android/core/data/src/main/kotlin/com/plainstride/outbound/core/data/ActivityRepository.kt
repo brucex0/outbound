@@ -565,6 +565,9 @@ class OfflineFirstActivityRepository(
 private fun SavedActivity.toUploadRequest(): ActivityUploadRequest {
     val clientData = buildJsonObject {
         put("guideNudge", JsonPrimitive(guideNudge))
+        sessionEffortRating?.let { put("sessionEffortRating", JsonPrimitive(it)) }
+        performedWorkoutReference?.let { put("performedWorkoutReference", PlainstrideJson.encodeToJsonElement(com.plainstride.outbound.core.model.PerformedWorkoutReference.serializer(), it)) }
+        plannedWorkoutCompletionQuality?.let { put("plannedWorkoutCompletionQuality", JsonPrimitive(it)) }
         walkingStepCount?.let { put("walkingStepCount", JsonPrimitive(it)) }
         if (averageHeartRateBpm != null || maximumHeartRateBpm != null || heartRateSampleCount != null) {
             put("healthMetrics", buildJsonObject {
@@ -607,6 +610,9 @@ private fun SavedActivity.toEntity() = ActivityEntity(
     followedRouteId, followedRouteCompleted, PlainstrideJson.encodeToString(recognitionBadgeIds), parseEpoch(localUpdatedAt),
     serverUpdatedAt?.let(::parseEpoch), deletedAt?.let(::parseEpoch), companionType?.name,
     elevationMetadata?.let { PlainstrideJson.encodeToString(it) },
+    sessionEffortRating,
+    performedWorkoutReference?.let { PlainstrideJson.encodeToString(it) },
+    plannedWorkoutCompletionQuality,
 )
 
 private fun ActivityTrackPoint.toEntity(activity: SavedActivity, index: Int) = ActivityTrackPointEntity(activity.accountId, activity.id, index, parseEpoch(timestamp), latitude, longitude, altitude, verticalAccuracy, startsNewSegment)
@@ -626,6 +632,9 @@ private fun ActivityWithDetails.toDomain(): SavedActivity = with(activity) {
         instant(localUpdatedAtEpochMs), serverUpdatedAtEpochMs?.let(::instant), deletedAtEpochMs?.let(::instant),
         companionType?.let { value -> runCatching { ActivityCompanionType.valueOf(value) }.getOrNull() },
         elevationMetadata = elevationMetadataJson?.let { PlainstrideJson.decodeFromString<ActivityElevationMetadata>(it) },
+        sessionEffortRating = sessionEffortRating,
+        performedWorkoutReference = performedWorkoutReferenceJson?.let { PlainstrideJson.decodeFromString<com.plainstride.outbound.core.model.PerformedWorkoutReference>(it) },
+        plannedWorkoutCompletionQuality = plannedWorkoutCompletionQuality,
     )
 }
 
@@ -651,6 +660,9 @@ private fun JsonObject.toDomain(accountId: String, remote: RemoteActivityDto): S
         maximumHeartRateBpm = health?.int("maxHeartRateBPM"),
         heartRateSampleCount = health?.int("heartRateSampleCount"),
         energyKilocalories = intValue("energyKilocalories"),
+        sessionEffortRating = intValue("sessionEffortRating")?.takeIf { it in 1..10 },
+        performedWorkoutReference = objectValue("performedWorkoutReference")?.let { PlainstrideJson.decodeFromJsonElement(com.plainstride.outbound.core.model.PerformedWorkoutReference.serializer(), it) },
+        plannedWorkoutCompletionQuality = stringValue("plannedWorkoutCompletionQuality"),
         source = objectValue("source")?.let { ActivitySource(it.string("kind") ?: "outbound", it.string("displayName") ?: "Plainstride", it.string("deviceName"), it.string("externalID"), it.string("importedAt")) } ?: ActivitySource(),
         gearJson = rawValue("gear"), goalJson = rawValue("goal"), indoorJson = rawValue("indoor"), cadenceJson = rawValue("cadence"), heartRateZonesJson = rawValue("heartRateZones"),
         activityEventId = stringValue("activityEventID"), followedRouteId = stringValue("followedRouteId"),

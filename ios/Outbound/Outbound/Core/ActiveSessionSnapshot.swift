@@ -97,15 +97,18 @@ struct SessionCoachingTarget: Codable, Hashable {
     let phase: SessionCoachingPhase
     let pace: SessionPaceTarget?
     let recognizesTargetLock: Bool
+    let paceEstimatePolicy: String?
 
     init(
         phase: SessionCoachingPhase,
         pace: SessionPaceTarget? = nil,
-        recognizesTargetLock: Bool = false
+        recognizesTargetLock: Bool = false,
+        paceEstimatePolicy: String? = nil
     ) {
         self.phase = phase
         self.pace = pace
         self.recognizesTargetLock = recognizesTargetLock
+        self.paceEstimatePolicy = paceEstimatePolicy
     }
 
     static let warmup = SessionCoachingTarget(
@@ -188,12 +191,37 @@ struct SessionIntentStep: Identifiable, Hashable, Codable {
     }
 }
 
+/// Private retained server issuance; persists with the recording and upload outbox.
+nonisolated struct PerformedWorkoutReference: Codable, Hashable {
+    let policyVersion: String
+    let issuanceId: String
+    let revision: String
+    let plannedWorkoutId: String
+    let planVersionId: String
+    var performedAsIssued: Bool
+    let workoutEditId: String?
+    let workoutRevision: String?
+
+    func locallyModified() -> Self {
+        var result = self
+        result.performedAsIssued = false
+        return result
+    }
+}
+
 struct SessionWorkoutReference: Hashable, Codable {
     let source: String
     let id: String
     let version: Int?
     var workoutEditId: String? = nil
     var workoutRevision: String? = nil
+    var performedWorkoutReference: PerformedWorkoutReference? = nil
+
+    func locallyModified() -> Self {
+        var result = self
+        result.performedWorkoutReference = performedWorkoutReference?.locallyModified()
+        return result
+    }
 }
 
 struct SessionWorkoutCueTrigger: Hashable, Codable {

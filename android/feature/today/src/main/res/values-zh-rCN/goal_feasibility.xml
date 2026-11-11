@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planning_goal_timeline_unrealistic">以你目前的基础，这个目标并不现实。请选择更晚的比赛，或先从较短距离的计划开始。</string>
+</resources>

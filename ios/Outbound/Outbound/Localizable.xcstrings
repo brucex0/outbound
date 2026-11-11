@@ -1,6 +1,236 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "planning.running_schedule_conflict": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This schedule does not fit the plan’s current running time. Choose fewer running days or explicitly allow shorter sessions."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este horario no encaja con el tiempo de carrera que admite el plan actualmente. Elige menos días de carrera o permite expresamente sesiones más cortas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前计划的跑步时长无法满足这个安排。请选择更少的跑步天数，或明确允许较短的训练。"
+          }
+        }
+      }
+    },
+    "planning.programme_timeline_conflict": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This programme cannot fit your race date with the selected schedule. Choose a later date or a different programme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este programa no puede completarse antes de tu carrera con el horario elegido. Elige una fecha posterior u otro programa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按照所选安排，无法在比赛日期前完成这个训练方案。请选择更晚的日期或其他方案。"
+          }
+        }
+      }
+    },
+    "planning.programme_constraints_conflict": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This programme’s harder workouts do not fit your current running time and recovery spacing. Change training days or choose a different programme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las sesiones exigentes de este programa no encajan con tu tiempo de carrera actual y el descanso entre entrenamientos. Cambia los días o elige otro programa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个方案的较高强度训练无法兼顾当前跑步时长与恢复间隔。请调整训练日或选择其他方案。"
+          }
+        }
+      }
+    },
+    "planning.programme.source_week": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source week %d of %d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semana %d de %d del programa original"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原方案第 %d 周，共 %d 周"
+          }
+        }
+      }
+    },
+    "planning.programme.preparation_complete": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The prescribed preparation is complete. This does not record a completed race."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has completado la preparación prescrita. Esto no registra una carrera como completada."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成规定的备赛训练。这不表示已完成比赛。"
+          }
+        }
+      }
+    },
+    "planning.programme.minimum_remaining": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimum remaining time, in calendar weeks: %d. It depends on completed prescribed sessions. This is an estimate, not a finish date."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo mínimo restante, en semanas: %d. Depende de las sesiones prescritas que completes. Es una estimación, no una fecha de finalización."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预计至少还需 %d 个日历周，具体取决于规定训练的完成情况。这是估计，并非完成日期。"
+          }
+        }
+      }
+    },
+    "planning.programme.recipe_review": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This programme cannot progress with the current session length and maintenance preference. Use Change plan to build a replacement plan and explicitly allow shorter sessions, or choose another programme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este programa no puede avanzar con la duración actual y la preferencia de mantener la carga. En Cambiar plan, crea un plan que sustituya al actual y permite expresamente sesiones más cortas, o elige otro programa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前单次时长与维持训练量的偏好无法支持此方案继续推进。请通过“更换计划”新建替代计划并明确允许较短训练，或选择其他方案。"
+          }
+        }
+      }
+    },
+    "planning.programme.schedule_review": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This programme needs a different schedule for training and recovery. Use Change plan to build a replacement plan with different training days, or choose another programme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este programa necesita otro horario para las sesiones y la recuperación. En Cambiar plan, crea un plan que sustituya al actual con otros días de entrenamiento, o elige otro programa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此方案需要不同的安排，才能兼顾训练与恢复。请通过“更换计划”新建训练日不同的替代计划，或选择其他方案。"
+          }
+        }
+      }
+    },
+    "planning.programme.timeline_review": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The remaining preparation no longer fits the race date. Use Change plan to build a replacement plan with a later date, or choose another programme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La preparación pendiente ya no cabe antes de la carrera. En Cambiar plan, crea un plan que sustituya al actual con una fecha posterior, o elige otro programa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "剩余备赛训练已无法在比赛日期前完成。请通过“更换计划”新建日期更晚的替代计划，或选择其他方案。"
+          }
+        }
+      }
+    },
+    "planning.programme.exposure_notice": {
+      "comment": "Running programme progress or actionable schedule validation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source weeks advance through completed prescribed training, not elapsed time. Later workouts remain provisional."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las semanas del programa avanzan al completar las sesiones prescritas, no solo por el paso del tiempo. Los entrenamientos posteriores son provisionales."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原方案的周次随规定训练的完成而推进，不会仅因时间流逝而推进。后续训练仍为暂定安排。"
+          }
+        }
+      }
+    },
     "today.change.prompt": {
       "comment": "Prompt in the compact menu before a workout change reason is chosen. [platform:ios]",
       "localizations": {
@@ -73292,6 +73522,666 @@
           "stringUnit": {
             "state": "translated",
             "value": "如需更改已保存训练的目标，请在“今天”选择“更改训练”。"
+          }
+        }
+      }
+    },
+    "Easy recovery": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Easy recovery"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación suave"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松恢复"
+          }
+        }
+      }
+    },
+    "Walk recovery": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk recovery"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación caminando"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行恢复"
+          }
+        }
+      }
+    },
+    "Walk until your breathing settles.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk until your breathing settles."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina hasta recuperar una respiración tranquila."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行至呼吸平稳。"
+          }
+        }
+      }
+    },
+    "Recover easily before the next effort.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recover easily before the next effort."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recupérate con suavidad antes del siguiente esfuerzo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一组开始前，先轻松恢复。"
+          }
+        }
+      }
+    },
+    "Warm up walk": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warm up walk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminata de calentamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行热身"
+          }
+        }
+      }
+    },
+    "planning.goal_timeline_unrealistic": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This goal isn’t realistic from your current starting point. Choose a later race or start with a shorter-distance plan."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta meta no es realista desde tu punto de partida actual. Elige una carrera para más adelante o empieza con un plan para una distancia más corta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以你目前的基础，这个目标并不现实。请选择更晚的比赛，或先从较短距离的计划开始。"
+          }
+        }
+      }
+    },
+    "workout.feedback.fit.header": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Did this workout suit you?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Te resultó adecuado este entrenamiento?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这次训练适合你吗？"
+          }
+        }
+      }
+    },
+    "workout.feedback.session_effort.header": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How hard was the whole session?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Cuánto esfuerzo te supuso la sesión completa?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "整次训练的用力程度如何？"
+          }
+        }
+      }
+    },
+    "workout.feedback.session_effort.detail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional. Rate the whole session, including warm-up and recovery: 1 = very easy, 10 = maximum effort."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcional. Valora la sesión completa, incluido el calentamiento y las recuperaciones: 1 = muy suave, 10 = esfuerzo máximo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可不填。请评价整次训练，包括热身和恢复阶段：1 表示非常轻松，10 表示竭尽全力。"
+          }
+        }
+      }
+    },
+    "workout.feedback.session_effort.accessibility": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effort %d of 10"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzo %d de 10"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用力程度 %d，满分 10"
+          }
+        }
+      }
+    },
+    "workout.feedback.session_effort.selected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whole-session effort: %d/10"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzo de la sesión: %d/10"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "整次训练用力程度：%d/10"
+          }
+        }
+      }
+    },
+    "workout.feedback.session_effort.clear": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear rating"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar valoración"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除评分"
+          }
+        }
+      }
+    },
+    "planning.benchmark.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent race or time trial"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera o contrarreloj reciente"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近期比赛或计时测试"
+          }
+        }
+      }
+    },
+    "planning.benchmark.detail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional. Use a recent maximal running result, not a training run or your desired goal time."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcional. Usa un resultado reciente de carrera a esfuerzo máximo, no un entrenamiento ni tu tiempo objetivo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可不填。请使用近期全力跑步成绩，而非日常训练或期望的目标时间。"
+          }
+        }
+      }
+    },
+    "planning.benchmark.source": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Result type"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo de resultado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成绩类型"
+          }
+        }
+      }
+    },
+    "planning.benchmark.race": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "比赛"
+          }
+        }
+      }
+    },
+    "planning.benchmark.time_trial": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time trial"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contrarreloj"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计时测试"
+          }
+        }
+      }
+    },
+    "planning.benchmark.distance": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distance (km)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distancia (km)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离（公里）"
+          }
+        }
+      }
+    },
+    "planning.benchmark.duration": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish time (H:MM:SS)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo final (H:MM:SS)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成时间（时:分:秒）"
+          }
+        }
+      }
+    },
+    "planning.benchmark.date": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Result date"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha del resultado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成绩日期"
+          }
+        }
+      }
+    },
+    "planning.benchmark.maximal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This was a maximal effort"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fue un esfuerzo máximo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是一次全力跑步"
+          }
+        }
+      }
+    },
+    "planning.benchmark.validation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use 1.5–30 km, a valid H:MM:SS finish time, and a maximal result from the last 12 weeks."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa entre 1,5 y 30 km, un tiempo final válido en H:MM:SS y un resultado a esfuerzo máximo de las últimas 12 semanas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入 1.5–30 公里、有效的时:分:秒完成时间，以及最近 12 周内的全力跑步成绩。"
+          }
+        }
+      }
+    },
+    "planning.benchmark.estimate_detail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paces estimate your current fitness from this result. They are separate from your goal pace. Keep using effort when conditions differ."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los ritmos estiman tu forma actual a partir de este resultado, por separado de tu ritmo objetivo. Guíate por el esfuerzo cuando cambien las condiciones."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配速根据这次成绩估算当前能力，与目标配速分开。环境不同时，请继续以用力程度为准。"
+          }
+        }
+      }
+    },
+    "planning.benchmark.fallback": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional. Add a recent maximal result for estimated paces, or keep using effort guidance."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcional. Añade un resultado reciente a esfuerzo máximo para estimar ritmos, o sigue guiándote por el esfuerzo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可添加近期全力跑步成绩来估算配速，也可继续使用用力程度指引。"
+          }
+        }
+      }
+    },
+    "planning.benchmark.stale": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This result is over 12 weeks old. Update it to restore pace estimates, or keep using effort."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este resultado tiene más de 12 semanas. Actualízalo para volver a estimar ritmos, o sigue guiándote por el esfuerzo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这次成绩已超过 12 周。更新后可恢复配速估算，也可继续以用力程度为准。"
+          }
+        }
+      }
+    },
+    "planning.benchmark.remove": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove benchmark"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar referencia"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除参考成绩"
+          }
+        }
+      }
+    },
+    "planning.benchmark.remove_title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this benchmark?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar esta referencia?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除这次参考成绩？"
+          }
+        }
+      }
+    },
+    "planning.benchmark.remove_detail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New workouts will use effort guidance. Explicit workout edits stay as saved."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los nuevos entrenamientos usarán indicaciones de esfuerzo. Los cambios guardados de cada sesión se conservarán."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新训练将使用用力程度指引。已明确编辑并保存的训练会保留。"
+          }
+        }
+      }
+    },
+    "planning.benchmark.failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t save. Your inputs are still here. Try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar. Tus datos siguen aquí. Inténtalo de nuevo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未能保存。当前输入仍在，请重试。"
+          }
+        }
+      }
+    },
+    "planning.benchmark.pace_range": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated pace: %1$@–%2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo estimado: %1$@–%2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "估算配速：%1$@–%2$@"
           }
         }
       }

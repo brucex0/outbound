@@ -1,3 +1,5 @@
+import { unexpectedRunningEffort } from "./sessionEffort.js";
+import { adjustmentBaseline } from "./adjustmentBaseline.js";
 import { generateStructuredAI } from "../aiReliability/structuredGeneration.js";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
@@ -29,7 +31,7 @@ const responseJsonSchema = {
   },
 } as const;
 
-type UpcomingWorkout = { id: string; title: string; durationSeconds: number; stimulus: string; scheduledDate: Date; isKeyWorkout: boolean };
+type UpcomingWorkout = { id: string; title: string; durationSeconds: number; stimulus: string; scheduledDate: Date; isKeyWorkout: boolean; planVersionId: string; baselineRevision: string };
 type Candidate = { id: typeof candidateIds[number]; factor: number; summary: string };
 
 export async function evaluateAndProposePlanAdjustment(input: {
@@ -52,7 +54,7 @@ export async function evaluateAndProposePlanAdjustment(input: {
     prisma.workoutCompletion.findMany({
       where: { userId: input.userId, completedAt: { gte: addDays(new Date(), -28) } },
       orderBy: { completedAt: "desc" }, take: 12,
-      select: { completedAt: true, durationSeconds: true, perceivedEffort: true, completionQuality: true, plannedWorkout: { select: { durationSeconds: true } } },
+      select: { completedAt: true, durationSeconds: true, perceivedEffort: true, completionQuality: true, plannedWorkout: { select: { durationSeconds: true, stimulus: true } } },
     }),
     prisma.workoutFeedback.findMany({
       where: { userId: input.userId, recordedAt: { gte: addDays(new Date(), -28) } },
@@ -77,7 +79,7 @@ export async function evaluateAndProposePlanAdjustment(input: {
     fatigueRisk: input.athleteState.fatigueRisk,
     requiresRecovery,
     explicitDifficulty: freshFeedback.some((item) => item.effort === "tooHard")
-      || freshCompletions.some((item) => item.completionQuality === "tooHard" || (item.perceivedEffort ?? 0) >= 8),
+      || freshCompletions.some((item) => unexpectedRunningEffort({ ...item, stimulus: item.plannedWorkout.stimulus })),
     partialCompletions: freshCompletions.filter((item) => item.completionQuality === "partial").length,
   });
   const candidates = safeCandidates(input.athleteState, input.eventType, reductionSupported);
@@ -102,6 +104,9 @@ export async function evaluateAndProposePlanAdjustment(input: {
       averageCompletionRatio: average(completions.map((item) => item.durationSeconds && item.plannedWorkout.durationSeconds
         ? item.durationSeconds / item.plannedWorkout.durationSeconds : 1)),
       averagePerceivedEffort: average(completions.flatMap((item) => item.perceivedEffort == null ? [] : [item.perceivedEffort])),
+      reportedEffortSamples: completions.filter((item) => item.perceivedEffort != null).length,
+      reportedEffortProvenance: "runner_reported",
+      unexpectedEffortCount: freshCompletions.filter((item) => unexpectedRunningEffort({ ...item, stimulus: item.plannedWorkout.stimulus })).length,
       partialOrHardCount: completions.filter((item) => ["partial", "tooHard"].includes(item.completionQuality)).length,
     },
     feedback: {
@@ -118,17 +123,20 @@ export async function evaluateAndProposePlanAdjustment(input: {
   const selection = validateSelection(generated ?? fallback, candidates, fallback);
   if (selection.candidateId === "maintain") return { status: "unchanged", provider: generated ? "gemini" : "fallback", candidateId: "maintain", explanation: selection.explanation };
 
-  const goal = await prisma.trainingGoal.findFirst({ where: { userId: input.userId, status: "active" }, select: { constraints: true } });
-  const shortRuns = (goal?.constraints as Record<string, unknown> | undefined)?.shortRunSessions === "true";
+  const goal = await prisma.trainingGoal.findFirst({ where: { userId: input.userId, status: "active" }, select: { constraints: true, maxSessionMinutes: true } });
+  const shortSetting = (goal?.constraints as Record<string, unknown> | undefined)?.shortRunSessions;
+  const shortRuns = shortSetting === "true" || shortSetting === true;
   const candidate = candidates.find((item) => item.id === selection.candidateId)!;
   const changes = workouts.slice(0, 3).map((workout) => {
-    const minutes = Math.max(workout.stimulus === "mobility" || shortRuns ? Math.min(10, workout.durationSeconds / 60) : 25, Math.round((workout.durationSeconds / 60) * candidate.factor / 5) * 5);
+    const seconds = boundedAdjustmentDuration(workout, candidate.factor, goal?.maxSessionMinutes ?? 180, shortRuns);
+    const minutes = seconds / 60;
     return {
       workoutId: workout.id,
       beforeTitle: workout.title,
       afterTitle: replaceDuration(workout.title, minutes),
       beforeDurationSeconds: workout.durationSeconds,
-      afterDurationSeconds: minutes * 60,
+      planVersionId: workout.planVersionId, baselineRevision: workout.baselineRevision,
+      afterDurationSeconds: seconds,
       scheduledDate: workout.scheduledDate.toISOString(),
     };
   }).filter((change) => change.beforeDurationSeconds !== change.afterDurationSeconds);
@@ -151,11 +159,20 @@ async function latestUpcomingWorkouts(userId: string): Promise<UpcomingWorkout[]
   const plan = await getPrismaClient().trainingPlan.findFirst({
     where: { userId, status: "active" }, orderBy: { createdAt: "desc" },
     select: { versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { workouts: {
-      where: { status: "planned", scheduledDate: { gte: startOfDay(new Date()) } }, orderBy: { scheduledDate: "asc" }, take: 6,
-      select: { id: true, title: true, durationSeconds: true, stimulus: true, scheduledDate: true, isKeyWorkout: true },
+      where: { status: "planned", targetCalories: null, distanceMeters: null, edits: { none: { operation: { not: "skip" } } }, scheduledDate: { gte: startOfDay(new Date()) } }, orderBy: { scheduledDate: "asc" }, take: 6,
+      include: { blocks: { orderBy: { sortOrder: "asc" }, include: { steps: { orderBy: { sortOrder: "asc" } } } } },
     } } } },
   });
-  return plan?.versions[0]?.workouts ?? [];
+  return (plan?.versions[0]?.workouts ?? []).filter((workout) => (workout.prescription as Record<string, unknown>).source !== "explicitWorkoutChange")
+    .map((workout) => ({ ...workout, baselineRevision: adjustmentBaseline(workout) }));
+}
+
+/** Round inside the factor/cap ceiling; reductions cannot grow a short workout. */
+export function boundedAdjustmentDuration(workout: { durationSeconds: number; stimulus: string }, factor: number, maxSessionMinutes: number, shortRuns: boolean): number {
+  const cap = Math.max(0, maxSessionMinutes * 60);
+  const minimum = Math.min(workout.durationSeconds, cap, workout.stimulus === "mobility" || shortRuns ? 600 : 1500);
+  const ceiling = Math.min(cap, workout.durationSeconds * factor, factor <= 1 ? workout.durationSeconds : Infinity);
+  return Math.max(minimum, Math.floor(ceiling / 60) * 60);
 }
 
 export function hasPlanReductionEvidence(input: {
@@ -194,6 +211,7 @@ async function chooseWithGemini(context: unknown): Promise<z.infer<typeof output
         task: "Select the safest useful near-term training-plan candidate and explain it without diagnosis. Weigh current safety/readiness, the deterministic plan-fit assessment, repeated recent activity, completion quality, perceived effort, and the upcoming workout sequence together. Do not treat one missed workout, one unusually strong activity, or an old plan prescription as decisive by itself.",
         evidenceRules: [
           "Use only supplied evidence; distinguish measured activity, runner-reported feedback, deterministic assessments, and inferred patterns.",
+          "Reported whole-session effort is subjective input, not inferred fitness. Use duration-times-effort load only with comparable coverage; missing/falling report coverage is unknown, never evidence of reduced load. An8on intended hard work alone is not unexpected difficulty; keep explicit categorical tooHard separate.",
           "Current illness/pain or high fatigue rules out progress. Follow safetyFlags and the deterministic plan-fit action when they indicate recovery.",
           "Prefer maintain when signals are sparse, stale, mixed, or within the runner's established range. Session count alone is not overload; compare running duration and distance with the supplied running baseline.",
           "Choose recover or reduce only when current readiness, repeated load, repeated difficulty, or deterministic plan fit supports it. A missed session alone is not proof of fatigue or poor fitness.",

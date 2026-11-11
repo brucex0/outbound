@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +39,7 @@ fun WorkoutFeedbackEntryPoint(hasFeedback: Boolean, enabled: Boolean, onClick: (
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun WorkoutFeedbackSheet(
     selected: ReflectionChoice?,
@@ -46,18 +47,39 @@ fun WorkoutFeedbackSheet(
     onSelect: (ReflectionChoice) -> Unit,
     onCapacitySelect: (ContinuationCapacity) -> Unit,
     onDismiss: () -> Unit,
+    sessionEffortRating: Int? = null,
+    onSessionEffortRating: (Int?) -> Unit = {},
+    showsSessionEffort: Boolean = true,
     guidanceReport: WorkoutGuidanceReport = WorkoutGuidanceReport(),
     selectedGuidanceFeedback: WorkoutGuidanceFeedback? = null,
     onGuidanceFeedbackSelect: (WorkoutGuidanceFeedback) -> Unit = {},
+    // Only DEBUG fixture callers supply controls for actual app preference review.
+    previewControls: (@Composable () -> Unit)? = null,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), dragHandle = null) {
-        Box(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 12.dp)) {
-            Text(stringResource(R.string.recording_feedback_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Center))
-            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.CenterEnd)) { Text(stringResource(R.string.recording_feedback_done)) }
+        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.recording_feedback_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.recording_feedback_done)) }
         }
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (BuildConfig.DEBUG) previewControls?.invoke()
+            if (showsSessionEffort) FeedbackCard {
+                Text(stringResource(R.string.recording_session_effort_header), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.recording_session_effort_detail), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    (1..10).forEach { rating ->
+                        val description = stringResource(R.string.recording_session_effort_accessibility, rating)
+                        FilterChip(selected = sessionEffortRating == rating, onClick = { onSessionEffortRating(rating) },
+                            label = { Text(rating.toString()) }, modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).semantics { contentDescription = description })
+                    }
+                }
+                sessionEffortRating?.let { rating ->
+                    Text(stringResource(R.string.recording_session_effort_selected, rating), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = { onSessionEffortRating(null) }) { Text(stringResource(R.string.recording_session_effort_clear)) }
+                }
+            }
             FeedbackCard {
-                Text(stringResource(R.string.recording_effort_feedback_header), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.recording_workout_fit_header), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 FeedbackChoiceGroup(
                     labels = ReflectionChoice.entries.map { choice ->
                         stringResource(when (choice) {

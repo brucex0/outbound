@@ -1,6 +1,7 @@
 import rawStandaloneWorkoutCatalog from "./standaloneWorkouts.json" with { type: "json" };
 
 export type StandaloneCoachingTarget = {
+  paceEstimatePolicy?: string;
   phase: "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
   pace?: {
     reference: "athlete_reference" | "absolute";

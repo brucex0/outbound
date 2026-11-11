@@ -468,3 +468,24 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - `race_goal_updated` records only `result=success|failure` and `selection_type=short|standard`. Dates, distances, finish times, frequencies, goal/plan IDs, free text, and body measurements are excluded.
 - Initial short-session and optional-mobility edits reuse `plan_intake_answer_edited` with bounded `selection_type=short_sessions|optional_mobility`, `source_type=conversation`.
 - Backend operational `generated_window_refreshed` records bounded reason (`goal_updated|policy_updated|refill`), phase, and required-session count only. It is a privacy-safe service diagnostic, not a client analytics event.
+- Expanding or collapsing a workout's phases in Plan Details uses `feature_exposed` with fixed `feature=plan_workout_phases` and `result=expanded|collapsed`; workout IDs, phase text, dates, duration and effort targets are excluded.
+
+- Backend `catalog_programme_decision` operational analytics records only bounded `outcome=initial|same_week|advanced|repeated|completed`, existing planning-event trigger or `refill`, and `result=version_created`. It excludes programme/runner/workout IDs, dates, readiness/effort values, activity facts and text. `catalog_programme_failed` diagnostics contain only operation and bounded failure category.
+
+- Structured running generation retains existing operational refresh analytics and adds only `structuredRunning` as a boolean. Workout kind, quality seconds, per-phase effort and durations remain prescription data, not analytics properties.
+
+- Backend `goal_feasibility_decision` records only `result=eligible|blocked`. Goal distance/date, experience, history, runner identifiers and user text are excluded. Expected infeasibility is validation flow, not an error log.
+
+- Reported session-effort planning adds only `reportedEffortLoadAvailable` (boolean) to persisted engine decisions and the existing bounded refresh diagnostic. Ratings, duration×effort values, coverage counts/ratios, activity/completion IDs and private metadata never enter analytics.
+
+- iOS/Android optional session effort uses `feature_exposed` only with bounded `feature=session_effort_optional|session_effort_selected|session_effort_cleared|session_effort_saved`. Selection values, rating, duration×effort, activity IDs and feedback content are excluded; saved exposure follows durable local save. Categorical feedback events stay separate.
+
+- Running benchmarks emit only bounded status/source/presence and operation/category through `running_benchmark_updated`, `running_benchmark_validation`, `running_benchmark_fallback` and version decision metadata. Distance, time, date, pace, performance estimate, goal/activity identifiers and user text are excluded. Expected invalid input is validation flow, not an error log.
+
+- The optional benchmark editor uses `planning_surface_opened` with `source_type=running_benchmark`, `entry_source=plan_details`; `feature_exposed` uses bounded `feature=running_benchmark_saved|running_benchmark_removed|running_benchmark_save` and success/failure only. Report fields, dates, pace estimates, rating, identifiers and entered content are excluded.
+
+- Durable iOS/Android performed-workout save uses `feature_exposed` with only `feature=performed_workout_saved` after local persistence. Receipt/plan/workout identifiers, revisions, hashes, exact effort and suitability are excluded. Backend reconciliation retains its bounded recorded/replayed categories.
+
+- Opening running programme progress that needs review emits only `feature_exposed` with `feature=running_programme_review`. Source-week indices, calendar estimates, constraint details, prescriptions and identifiers are excluded. Expected schedule/programme validation logs only bounded operation/category.
+
+- Existing-plan `running_plan_review` operational diagnostics use only `result=entered|cleared` and the bounded validation category. They exclude plan/version/workout/issuance identifiers, exact volume/caps/dates, ratings and private engine content. Repeated unchanged review does not emit a new entry. Generic running review reuses `feature=running_programme_review`; no new personal-data property is added.

@@ -34,6 +34,19 @@ data class WorkoutBlock(
     val steps: List<WorkoutStep> = emptyList(),
 )
 
+/** Private server issuance retained with the recording and activity outbox. */
+@Serializable
+data class PerformedWorkoutReference(
+    val policyVersion: String,
+    val issuanceId: String,
+    val revision: String,
+    val plannedWorkoutId: String,
+    val planVersionId: String,
+    val performedAsIssued: Boolean,
+    val workoutEditId: String? = null,
+    val workoutRevision: String? = null,
+)
+
 @Serializable
 data class PlannedWorkout(
     val id: String,
@@ -50,6 +63,7 @@ data class PlannedWorkout(
     val isKeyWorkout: Boolean,
     val status: String,
     val blocks: List<WorkoutBlock> = emptyList(),
+    val performedWorkoutReference: PerformedWorkoutReference? = null,
 )
 
 @Serializable
@@ -74,12 +88,27 @@ data class TrainingGoal(
     val primaryMotivation: PrimaryMotivation? = null,
     val preferredRunGoalType: RunGoalType? = null,
     val createdAt: String? = null,
+    val currentRunningFitness: RunningBenchmarkFitness? = null,
 )
 
 @Serializable data class TrainingPlan(val id: String, val currentPhase: String, val source: String, val createdAt: String? = null)
 @Serializable data class RaceGoalPhase(val phase: String, val startDate: String, val endDate: String)
 @Serializable data class RaceGoalRoadmap(val currentPhase: String, val detailedFromDate: String? = null, val detailedThroughDate: String? = null, val phases: List<RaceGoalPhase> = emptyList())
-@Serializable data class PlanVersion(val id: String? = null, val versionNumber: Int, val reason: String, val summary: String)
+@Serializable data class ProgrammeSourceWeek(val weekIndex: Int, val status: String)
+@Serializable data class RunningProgrammeProgress(
+    val programme: ProgrammeSourceWeek? = null,
+    val nominalSourceWeeks: Int? = null,
+    val minimumRemainingCalendarWeeks: Int? = null,
+    val minimumCalendarEstimateCondition: String? = null,
+    val programmeTimelineStatus: String? = null,
+    val programmeDoseStatus: String? = null,
+    val programmeReviewReason: String? = null,
+    val programmeReviewAction: String? = null,
+    val preparationOnly: Boolean? = null,
+    val futureWeeksProvisional: Boolean? = null,
+)
+@Serializable data class PlanVersion(val id: String? = null, val versionNumber: Int, val reason: String, val summary: String,
+    val engineDecision: RunningProgrammeProgress? = null)
 @Serializable data class AthleteTrainingState(val fatigueRisk: String, val adherenceRate: Double, val consistencyScore: Double, val weeklyMinutes: Int, val weeklyDistanceMeters: Double)
 @Serializable data class PlanAdjustment(val id: String? = null, val message: String, val eventType: String, val createdAt: String? = null)
 
@@ -115,6 +144,9 @@ data class ActivitySuggestion(
     val plannedWorkoutId: String? = null,
     val archetypeId: String? = null,
     val optional: Boolean,
+    val durationSeconds: Int? = null,
+    val effectiveWorkout: StandaloneWorkout? = null,
+    val performedWorkoutReference: PerformedWorkoutReference? = null,
 )
 
 @Serializable data class SuggestionPlanContext(val planId: String, val planVersionId: String? = null, val title: String? = null)
@@ -168,7 +200,7 @@ data class TrainingProfile(
 )
 
 @Serializable data class CoachingPaceTarget(val reference: String, val targetSecondsPerKilometer: Double? = null, val athleteReferenceOffsetSeconds: Double, val fasterToleranceSeconds: Double, val slowerToleranceSeconds: Double? = null)
-@Serializable data class CoachingTarget(val phase: String, val pace: CoachingPaceTarget? = null, val recognizesTargetLock: Boolean)
+@Serializable data class CoachingTarget(val phase: String, val pace: CoachingPaceTarget? = null, val recognizesTargetLock: Boolean, val paceEstimatePolicy: String? = null)
 @Serializable data class StandaloneWorkoutStep(val id: String, val label: String, val durationSeconds: Int, val detail: String? = null, val coachingTarget: CoachingTarget? = null)
 @Serializable data class GuideTrigger(val type: String, val startMeters: Double? = null, val endMeters: Double? = null, val startSeconds: Int? = null, val endSeconds: Int? = null)
 @Serializable data class GuideEffort(val rpeMin: Int, val rpeMax: Int, val feel: String)
@@ -195,3 +227,6 @@ data class StandaloneWorkout(
     val sourceRefs: List<String>,
 )
 @Serializable data class StandaloneWorkoutCatalog(val version: Int, val locale: String, val measurementSystem: String, val workouts: List<StandaloneWorkout>)
+
+@Serializable data class RunningBenchmarkReport(val activity: String = "run", val source: String, val maximalEffort: Boolean = true, val distanceMeters: Double, val durationSeconds: Int, val date: String)
+@Serializable data class RunningBenchmarkFitness(val status: String, val source: String? = null, val report: RunningBenchmarkReport? = null)

@@ -197,4 +197,7 @@
     <string name="plan_builder_race_optional">Opcional</string>
     <string name="plan_builder_race_short">Prefiero sesiones más cortas</string>
     <string name="plan_builder_race_short_detail">Permitir menos de 15 minutos de carrera principal cuando el tiempo total que elija sea corto.</string>
+    <string name="planning_running_schedule_conflict">Este horario no encaja con el tiempo de carrera que admite el plan actualmente. Elige menos días de carrera o permite expresamente sesiones más cortas.</string>
+    <string name="planning_programme_timeline_conflict">Este programa no puede completarse antes de tu carrera con el horario elegido. Elige una fecha posterior u otro programa.</string>
+    <string name="planning_programme_constraints_conflict">Las sesiones exigentes de este programa no encajan con tu tiempo de carrera actual y el descanso entre entrenamientos. Cambia los días o elige otro programa.</string>
 </resources>

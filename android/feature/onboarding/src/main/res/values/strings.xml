@@ -197,4 +197,7 @@
     <string name="plan_builder_race_optional">Optional</string>
     <string name="plan_builder_race_short">I prefer shorter sessions</string>
     <string name="plan_builder_race_short_detail">Allow less than 15 minutes of main running when my selected total time is short.</string>
+    <string name="planning_running_schedule_conflict">This schedule does not fit the plan’s current running time. Choose fewer running days or explicitly allow shorter sessions.</string>
+    <string name="planning_programme_timeline_conflict">This programme cannot fit your race date with the selected schedule. Choose a later date or a different programme.</string>
+    <string name="planning_programme_constraints_conflict">This programme’s harder workouts do not fit your current running time and recovery spacing. Change training days or choose a different programme.</string>
 </resources>

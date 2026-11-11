@@ -197,4 +197,14 @@
     <string name="today_changed_run_guide">Mantén un esfuerzo suave. Una carrera más corta también ayuda a mantener el hábito.</string>
     <string name="today_changed_run_title">Carrera suave de %1$d min</string>
     <string name="today_readiness_saved_offline">Guardado sin conexión. Plainstride sincronizará este registro más tarde.</string>
+    <string name="planning_running_schedule_conflict">Este horario no encaja con el tiempo de carrera que admite el plan actualmente. Elige menos días de carrera o permite expresamente sesiones más cortas.</string>
+    <string name="planning_programme_timeline_conflict">Este programa no puede completarse antes de tu carrera con el horario elegido. Elige una fecha posterior u otro programa.</string>
+    <string name="planning_programme_constraints_conflict">Las sesiones exigentes de este programa no encajan con tu tiempo de carrera actual y el descanso entre entrenamientos. Cambia los días o elige otro programa.</string>
+    <string name="planning_programme_source_week">Semana %1$d de %2$d del programa original</string>
+    <string name="planning_programme_preparation_complete">Has completado la preparación prescrita. Esto no registra una carrera como completada.</string>
+    <string name="planning_programme_minimum_remaining">Tiempo mínimo restante, en semanas: %1$d. Depende de las sesiones prescritas que completes. Es una estimación, no una fecha de finalización.</string>
+    <string name="planning_programme_recipe_review">Este programa no puede avanzar con la duración actual y la preferencia de mantener la carga. En Cambiar plan, crea un plan que sustituya al actual y permite expresamente sesiones más cortas, o elige otro programa.</string>
+    <string name="planning_programme_schedule_review">Este programa necesita otro horario para las sesiones y la recuperación. En Cambiar plan, crea un plan que sustituya al actual con otros días de entrenamiento, o elige otro programa.</string>
+    <string name="planning_programme_timeline_review">La preparación pendiente ya no cabe antes de la carrera. En Cambiar plan, crea un plan que sustituya al actual con una fecha posterior, o elige otro programa.</string>
+    <string name="planning_programme_exposure_notice">Las semanas del programa avanzan al completar las sesiones prescritas, no solo por el paso del tiempo. Los entrenamientos posteriores son provisionales.</string>
 </resources>

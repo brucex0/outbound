@@ -68,7 +68,10 @@ final class ActivityStore: ObservableObject {
         activityEventID: String? = nil,
         followedRoute: FollowedRouteMetadata? = nil,
         recognitionBadgeIDs: [RecognitionBadgeID] = [],
-        companionType: ActivityCompanionType? = nil
+        companionType: ActivityCompanionType? = nil,
+        sessionEffortRating: Int? = nil,
+        performedWorkoutReference: PerformedWorkoutReference? = nil,
+        plannedWorkoutCompletionQuality: String? = nil
     ) async throws -> SavedActivity {
         let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
         ActivityDiagnosticLog.notice(
@@ -96,7 +99,8 @@ final class ActivityStore: ObservableObject {
                 activityEventID: activityEventID,
                 followedRoute: followedRoute,
                 recognitionBadgeIDs: recognitionBadgeIDs,
-                companionType: companionType
+                companionType: companionType,
+                sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality
             )
             } catch {
             ActivityDiagnosticLog.error(
@@ -610,6 +614,7 @@ final class ActivityStore: ObservableObject {
                 title: latest.title,
                 guideNudge: latest.guideNudge,
                 reflection: latest.reflection,
+                sessionEffortRating: latest.sessionEffortRating, performedWorkoutReference: latest.performedWorkoutReference, plannedWorkoutCompletionQuality: latest.plannedWorkoutCompletionQuality,
                 createdAt: latest.createdAt,
                 startedAt: latest.startedAt,
                 endedAt: latest.endedAt,
@@ -702,6 +707,7 @@ final class ActivityStore: ObservableObject {
             title: cleanedTitle.isEmpty ? activity.title : cleanedTitle,
             guideNudge: activity.guideNudge,
             reflection: activity.reflection,
+            sessionEffortRating: activity.sessionEffortRating, performedWorkoutReference: activity.performedWorkoutReference, plannedWorkoutCompletionQuality: activity.plannedWorkoutCompletionQuality,
             createdAt: activity.createdAt,
             startedAt: startedAt,
             endedAt: startedAt.addingTimeInterval(TimeInterval(durationSecs)),
@@ -1084,6 +1090,7 @@ final class ActivityStore: ObservableObject {
             title: current.title,
             guideNudge: current.guideNudge,
             reflection: current.reflection,
+            sessionEffortRating: current.sessionEffortRating, performedWorkoutReference: current.performedWorkoutReference, plannedWorkoutCompletionQuality: current.plannedWorkoutCompletionQuality,
             createdAt: current.createdAt,
             startedAt: current.startedAt,
             endedAt: current.endedAt,
@@ -1237,6 +1244,9 @@ final class ActivityStore: ObservableObject {
                 title: remote.title,
                 guideNudge: clientExtras.guideNudge,
                 reflection: remote.reflection,
+                sessionEffortRating: clientExtras.sessionEffortRating ?? local?.sessionEffortRating,
+                performedWorkoutReference: clientExtras.performedWorkoutReference ?? local?.performedWorkoutReference,
+                plannedWorkoutCompletionQuality: clientExtras.plannedWorkoutCompletionQuality ?? local?.plannedWorkoutCompletionQuality,
                 createdAt: remote.createdAt,
                 startedAt: remote.startedAt,
                 endedAt: remote.endedAt,
@@ -1493,6 +1503,7 @@ final class ActivityStore: ObservableObject {
             title: activity.title,
             guideNudge: activity.guideNudge,
             reflection: activity.reflection,
+            sessionEffortRating: activity.sessionEffortRating, performedWorkoutReference: activity.performedWorkoutReference, plannedWorkoutCompletionQuality: activity.plannedWorkoutCompletionQuality,
             createdAt: activity.createdAt,
             startedAt: activity.startedAt,
             endedAt: activity.endedAt,

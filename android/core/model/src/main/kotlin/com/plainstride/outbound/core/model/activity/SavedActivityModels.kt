@@ -84,6 +84,9 @@ data class SavedActivity(
     val deletedAt: String? = null,
     val companionType: ActivityCompanionType? = null,
     val elevationMetadata: ActivityElevationMetadata? = null,
+    val sessionEffortRating: Int? = null,
+    val performedWorkoutReference: com.plainstride.outbound.core.model.PerformedWorkoutReference? = null,
+    val plannedWorkoutCompletionQuality: String? = null,
 ) {
     val elapsedDurationSecs: Int get() = maxOf(durationSecs,
         java.time.Duration.between(java.time.Instant.parse(startedAt), java.time.Instant.parse(endedAt))

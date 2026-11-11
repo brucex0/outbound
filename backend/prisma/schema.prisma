@@ -881,6 +881,7 @@ model PlannedWorkout {
   blocks      WorkoutBlock[]
   completions WorkoutCompletion[]
   edits       WorkoutEdit[]
+  prescriptionRevisions WorkoutPrescriptionRevision[]
 
   @@index([userId, scheduledDate])
   @@index([planVersionId, scheduledDate])
@@ -949,13 +950,32 @@ model WorkoutEdit {
   @@index([userId, validForDate, createdAt])
 }
 
+// Private immutable recipes actually issued in a launchable planning response.
+model WorkoutPrescriptionRevision {
+  id                     String @id @default(cuid())
+  plannedWorkoutId       String
+  plannedWorkout         PlannedWorkout @relation(fields: [plannedWorkoutId], references: [id], onDelete: Cascade)
+  revision               String
+  snapshot               Json
+  stimulus               String
+  sourceExposureEligible Boolean @default(false)
+  programmeExposureEligible Boolean @default(false)
+  workoutEditId          String?
+  workoutRevision        String?
+  createdAt              DateTime @default(now())
+  completions            WorkoutCompletion[]
+
+  @@unique([plannedWorkoutId, revision])
+  @@index([plannedWorkoutId, createdAt])
+}
+
 model WorkoutCompletion {
   id                 String         @id @default(cuid())
   plannedWorkoutId   String
   plannedWorkout     PlannedWorkout @relation(fields: [plannedWorkoutId], references: [id], onDelete: Cascade)
   userId             String
   user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activityId         String?
+  activityId         String?        @unique
   activity           Activity?      @relation(fields: [activityId], references: [id], onDelete: SetNull)
   completedAt        DateTime       @default(now())
   durationSeconds    Int?
@@ -969,13 +989,15 @@ model WorkoutCompletion {
   workoutEditId      String?
   workoutEdit        WorkoutEdit?    @relation(fields: [workoutEditId], references: [id], onDelete: SetNull)
   workoutRevision    String?
+  performedAsIssued Boolean?
+  prescriptionRevisionId String?
+  prescriptionRevision WorkoutPrescriptionRevision? @relation(fields: [prescriptionRevisionId], references: [id], onDelete: SetNull)
   completionQuality  String         @default("completed")
   notes              String?
   createdAt          DateTime       @default(now())
 
   @@index([userId, completedAt])
   @@index([plannedWorkoutId])
-  @@index([activityId])
 }
 
 model ReadinessCheckIn {

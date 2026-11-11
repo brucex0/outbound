@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="benchmark_title">Recent race or time trial</string>
+    <string name="benchmark_detail">Optional. Use a recent maximal running result, not a training run or your desired goal time.</string>
+    <string name="benchmark_source">Result type</string>
+    <string name="benchmark_race">Race</string>
+    <string name="benchmark_time_trial">Time trial</string>
+    <string name="benchmark_distance">Distance (km)</string>
+    <string name="benchmark_duration">Finish time (H:MM:SS)</string>
+    <string name="benchmark_date">Result date</string>
+    <string name="benchmark_maximal">This was a maximal effort</string>
+    <string name="benchmark_validation">Use 1.5–30 km, a valid H:MM:SS finish time, and a maximal result from the last 12 weeks.</string>
+    <string name="benchmark_estimate_detail">Paces estimate your current fitness from this result. They are separate from your goal pace. Keep using effort when conditions differ.</string>
+    <string name="benchmark_fallback">Optional. Add a recent maximal result for estimated paces, or keep using effort guidance.</string>
+    <string name="benchmark_stale">This result is over 12 weeks old. Update it to restore pace estimates, or keep using effort.</string>
+    <string name="benchmark_remove">Remove benchmark</string>
+    <string name="benchmark_remove_title">Remove this benchmark?</string>
+    <string name="benchmark_remove_detail">New workouts will use effort guidance. Explicit workout edits stay as saved.</string>
+    <string name="benchmark_failed">Couldn’t save. Your inputs are still here. Try again.</string>
+    <string name="benchmark_phase_paces">Estimated phase paces</string>
+    <string name="benchmark_phase_range">%1$s · %2$s–%3$s</string>
+    <string name="benchmark_per_km">/km</string>
+    <string name="benchmark_per_mile">/mi</string>
+    <string name="benchmark_phase_effort">Effort RPE %1$s</string>
+</resources>

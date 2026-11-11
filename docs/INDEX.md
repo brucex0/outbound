@@ -25,7 +25,11 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Activity launch dock and live recording UX | `docs/activity-launch-live-ux.md` |
 | Onboarding and plan setup | `docs/new-user-onboarding.md` |
 | Direct iOS workout editing, Apply/audit contract, durable session linkage | `docs/workout-edits.md` |
+| Exact issued-workout receipts, offline activity reconciliation and private completion association | `docs/performed-workout-sync.md` |
 | Guidance plans and adaptation | `docs/guidance-plans.md`, `docs/adaptive-planning-engine.md` |
+| Reproducible synthetic running-plan matrix and bounded AI judging | `docs/running-plan-quality.md` |
+| Explicit running benchmarks, estimated pace policy and correction/removal contract | `docs/running-benchmarks.md` |
+| Five-stage running implementation, decisions and verification | `docs/running-planning-implementation.md` |
 | External reference for Runna training-plan behavior | `docs/runna-training-plan-research.md` — public descriptions and limits of available evidence |
 | Live coaching operations and audio | `docs/live-coach-operations.md` |
 | Stretch catalog, editor, generation | `docs/stretch-routines.md` |

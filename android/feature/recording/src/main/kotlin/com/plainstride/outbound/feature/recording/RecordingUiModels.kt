@@ -46,6 +46,7 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val entrySource: String = "quick_start",
     val suggestionId: String? = null,
     val plannedWorkoutId: String? = null,
+    val performedWorkoutReference: com.plainstride.outbound.core.model.PerformedWorkoutReference? = null,
     val standaloneWorkoutId: String? = null,
     val standaloneWorkoutCatalogVersion: Int? = null,
     val gearId: String? = null,

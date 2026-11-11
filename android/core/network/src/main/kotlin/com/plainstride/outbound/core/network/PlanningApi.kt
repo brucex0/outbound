@@ -52,6 +52,8 @@ data class CreateTrainingGoalRequest(
     val constraints: Map<String, String>? = null,
 )
 
+@Serializable data class RunningBenchmarkUpdateRequest(val runningBenchmark: com.plainstride.outbound.core.model.RunningBenchmarkReport?)
+
 @Serializable data class RaceGoalUpdateRequest(val targetDate: String, val targetDistanceMeters: Double, val eventIntent: String, val targetTimeSeconds: Int? = null, val daysPerWeekTarget: Int, val maxSessionMinutes: Int, val shortRunSessions: Boolean, val optionalMobility: Boolean)
 
 @Serializable data class PlanIntakeBodyProfile(val sexAtBirth:String?=null,val birthDate:String?=null,val heightCentimeters:Double?=null,val weightKilograms:Double?=null,val completeForPlanning:Boolean=false,val source:String="unknown")
@@ -90,6 +92,9 @@ interface PlanningApiService {
     @GET("v1/planning/activity-suggestion") suspend fun activitySuggestion(@Header("Authorization") authorization: String): Response<ActivitySuggestionEnvelope>
     @GET("v1/planning/standalone-workouts") suspend fun standaloneWorkouts(@Header("Authorization") authorization: String): Response<StandaloneWorkoutCatalog>
     @POST("v1/planning/goals") suspend fun createGoal(@Header("Authorization") authorization: String, @Body body: CreateTrainingGoalRequest): Response<PlanningState>
+    @PATCH("v1/planning/goals/{id}/running-benchmark")
+    suspend fun updateRunningBenchmark(@Header("Authorization") authorization: String, @Path("id") goalId: String, @Body request: RunningBenchmarkUpdateRequest): Response<PlanningState>
+
     @PATCH("v1/planning/goals/{id}") suspend fun updateRaceGoal(@Header("Authorization") authorization: String, @Path("id") goalId: String, @Body body: RaceGoalUpdateRequest): Response<PlanningState>
     @GET("v1/planning/intake-context") suspend fun planIntakeContext(@Header("Authorization") authorization: String, @Query("objective") objective: String? = null): Response<PlanIntakeContext>
     @POST("v1/planning/intake/interpret") suspend fun interpretPlanIntake(@Header("Authorization") authorization: String, @Body body: PlanIntakeInterpretRequest): Response<PlanIntakeInterpretation>

@@ -60,8 +60,8 @@ extension ActivityFlowView {
                 properties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(activity.photos.count))
                 model.track(.init(.activityDiscardPrompted, properties: properties))
             },
-            onSave: { selectedPhotos, reflection in
-                await model.savePendingActivity(activity, photos: selectedPhotos, reflection: reflection)
+            onSave: { selectedPhotos, reflection, rating, quality in
+                await model.savePendingActivity(activity, photos: selectedPhotos, reflection: reflection, sessionEffortRating: rating, completionQuality: quality)
             },
             onDiscard: model.discardPendingActivity
         )

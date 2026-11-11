@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.withTransaction
 
-private const val DATABASE_SCHEMA_VERSION = 6
+private const val DATABASE_SCHEMA_VERSION = 8
 
 @Database(
     entities = [

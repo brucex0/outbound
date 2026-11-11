@@ -3,7 +3,7 @@ package com.plainstride.outbound.core.network
 import kotlinx.serialization.json.Json
 
 enum class ApiErrorCode {
-    InvalidRequest, Unauthenticated, Forbidden, NotFound, Conflict, RateLimited,
+    RunningScheduleConflict, ProgrammeTimelineConflict, ProgrammeConstraintsConflict, GoalTimelineUnrealistic, RunningBenchmarkInvalid, InvalidRequest, Unauthenticated, Forbidden, NotFound, Conflict, RateLimited,
     ServerUnavailable, NetworkUnavailable, InvalidResponse, Cancelled, Unknown,
 }
 

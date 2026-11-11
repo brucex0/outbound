@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="structured_easy_recovery">Easy recovery</string>
+    <string name="structured_walk_recovery">Walk recovery</string>
+    <string name="structured_walk_recovery_detail">Walk until your breathing settles.</string>
+    <string name="structured_easy_recovery_detail">Recover easily before the next effort.</string>
+    <string name="structured_warmup_walk">Warm up walk</string>
+</resources>

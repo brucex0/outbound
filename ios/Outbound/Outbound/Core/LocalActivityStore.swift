@@ -28,7 +28,10 @@ actor ActivityPersistence {
         activityEventID: String?,
         followedRoute: FollowedRouteMetadata?,
         recognitionBadgeIDs: [RecognitionBadgeID],
-        companionType: ActivityCompanionType?
+        companionType: ActivityCompanionType?,
+        sessionEffortRating: Int? = nil,
+        performedWorkoutReference: PerformedWorkoutReference? = nil,
+        plannedWorkoutCompletionQuality: String? = nil
     ) throws -> SavedActivity {
         try LocalActivityStore.save(
             summary: summary,
@@ -49,7 +52,8 @@ actor ActivityPersistence {
             activityEventID: activityEventID,
             followedRoute: followedRoute,
             recognitionBadgeIDs: recognitionBadgeIDs,
-            companionType: companionType
+            companionType: companionType,
+            sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality
         )
     }
 
@@ -126,7 +130,10 @@ private nonisolated enum LocalActivityStore {
         activityEventID: String? = nil,
         followedRoute: FollowedRouteMetadata? = nil,
         recognitionBadgeIDs: [RecognitionBadgeID] = [],
-        companionType: ActivityCompanionType? = nil
+        companionType: ActivityCompanionType? = nil,
+        sessionEffortRating: Int? = nil,
+        performedWorkoutReference: PerformedWorkoutReference? = nil,
+        plannedWorkoutCompletionQuality: String? = nil
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -157,6 +164,7 @@ private nonisolated enum LocalActivityStore {
             title: title,
             guideNudge: guideNudge,
             reflection: reflection,
+            sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality,
             createdAt: Date(),
             startedAt: summary.startedAt,
             endedAt: summary.endedAt,
@@ -300,6 +308,7 @@ private nonisolated enum LocalActivityStore {
             title: activity.title,
             guideNudge: activity.guideNudge,
             reflection: activity.reflection,
+            sessionEffortRating: activity.sessionEffortRating, performedWorkoutReference: activity.performedWorkoutReference, plannedWorkoutCompletionQuality: activity.plannedWorkoutCompletionQuality,
             createdAt: activity.createdAt,
             startedAt: activity.startedAt,
             endedAt: activity.endedAt,
@@ -485,7 +494,7 @@ nonisolated extension SavedActivity {
     func withRoute(_ replacement: SavedRoute?) -> SavedActivity {
         SavedActivity(
             id: id, activityType: activityType, title: title, guideNudge: guideNudge,
-            reflection: reflection, createdAt: createdAt, startedAt: startedAt, endedAt: endedAt,
+            reflection: reflection, sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality, createdAt: createdAt, startedAt: startedAt, endedAt: endedAt,
             durationSecs: durationSecs, distanceM: distanceM, avgPace: avgPace,
             elevationGainM: elevationGainM, walkingStepCount: walkingStepCount,
             healthMetrics: healthMetrics, goal: goal, energyKilocalories: energyKilocalories,
@@ -539,6 +548,9 @@ nonisolated struct ActivityRecordingSessionMetadata: Codable, Hashable {
 }
 
 nonisolated struct ActivityClientExtras: Codable, Hashable {
+    let sessionEffortRating: Int?
+    let performedWorkoutReference: PerformedWorkoutReference?
+    let plannedWorkoutCompletionQuality: String?
     let guideNudge: String
     let walkingStepCount: Int?
     let healthMetrics: ActivityHealthMetrics?
@@ -556,6 +568,9 @@ nonisolated struct ActivityClientExtras: Codable, Hashable {
     let recognitionBadgeIDs: [RecognitionBadgeID]
 
     init(from activity: SavedActivity) {
+        sessionEffortRating = activity.sessionEffortRating
+        performedWorkoutReference = activity.performedWorkoutReference
+        plannedWorkoutCompletionQuality = activity.plannedWorkoutCompletionQuality
         guideNudge = activity.guideNudge
         walkingStepCount = activity.walkingStepCount
         healthMetrics = activity.healthMetrics
@@ -582,6 +597,9 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let title: String
     let guideNudge: String
     let reflection: FinishReflection?
+    let sessionEffortRating: Int?
+    let performedWorkoutReference: PerformedWorkoutReference?
+    let plannedWorkoutCompletionQuality: String?
     let createdAt: Date
     let startedAt: Date
     let endedAt: Date
@@ -677,11 +695,14 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         sync = try c.decodeIfPresent(SavedActivitySyncState.self, forKey: .sync)
         guideNudge = (try? c.decodeIfPresent(String.self, forKey: .guideNudge)) ?? ""
         reflection = try c.decodeIfPresent(FinishReflection.self, forKey: .reflection)
+        sessionEffortRating = try c.decodeIfPresent(Int.self, forKey: .sessionEffortRating)
+        performedWorkoutReference = try c.decodeIfPresent(PerformedWorkoutReference.self, forKey: .performedWorkoutReference)
+        plannedWorkoutCompletionQuality = try c.decodeIfPresent(String.self, forKey: .plannedWorkoutCompletionQuality)
         let day = startedAt.formatted(.dateTime.weekday(.wide))
         title = ((try? c.decodeIfPresent(String.self, forKey: .title)) ?? nil) ?? "\(day) Run"
     }
 
-    init(id: UUID, activityType: ActivityType = .running, title: String, guideNudge: String, reflection: FinishReflection?, createdAt: Date,
+    init(id: UUID, activityType: ActivityType = .running, title: String, guideNudge: String, reflection: FinishReflection?, sessionEffortRating: Int? = nil, performedWorkoutReference: PerformedWorkoutReference? = nil, plannedWorkoutCompletionQuality: String? = nil, createdAt: Date,
          startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
          avgPace: Double?, elevationGainM: Double? = nil,
          walkingStepCount: Int? = nil,
@@ -702,6 +723,9 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
          photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.activityType = activityType; self.title = title; self.guideNudge = guideNudge
         self.reflection = reflection
+        self.sessionEffortRating = sessionEffortRating
+        self.performedWorkoutReference = performedWorkoutReference
+        self.plannedWorkoutCompletionQuality = plannedWorkoutCompletionQuality
         self.createdAt = createdAt; self.startedAt = startedAt; self.endedAt = endedAt
         self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
         self.elevationGainM = elevationGainM; self.walkingStepCount = walkingStepCount
@@ -728,6 +752,9 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case title
         case guideNudge
         case reflection
+        case sessionEffortRating
+        case performedWorkoutReference
+        case plannedWorkoutCompletionQuality
         case createdAt
         case startedAt
         case endedAt
@@ -765,6 +792,9 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encode(title, forKey: .title)
         try c.encode(guideNudge, forKey: .guideNudge)
         try c.encodeIfPresent(reflection, forKey: .reflection)
+        try c.encodeIfPresent(sessionEffortRating, forKey: .sessionEffortRating)
+        try c.encodeIfPresent(performedWorkoutReference, forKey: .performedWorkoutReference)
+        try c.encodeIfPresent(plannedWorkoutCompletionQuality, forKey: .plannedWorkoutCompletionQuality)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(startedAt, forKey: .startedAt)
         try c.encode(endedAt, forKey: .endedAt)
@@ -804,6 +834,7 @@ nonisolated extension SavedActivity {
             title: title,
             guideNudge: guideNudge,
             reflection: reflection,
+            sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality,
             createdAt: createdAt,
             startedAt: startedAt,
             endedAt: endedAt,
@@ -840,6 +871,7 @@ nonisolated extension SavedActivity {
             title: title,
             guideNudge: guideNudge,
             reflection: reflection,
+            sessionEffortRating: sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: plannedWorkoutCompletionQuality,
             createdAt: createdAt,
             startedAt: startedAt,
             endedAt: endedAt,

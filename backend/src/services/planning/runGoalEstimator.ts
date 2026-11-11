@@ -132,8 +132,8 @@ export function applyCalorieTargets(input: {
   });
 }
 
-export function isCalorieEligibleWorkout(workout: Pick<PlannedWorkoutDraft, "modality" | "stimulus">): boolean {
-  return workout.modality === "run" && (workout.stimulus === "easyAerobic" || workout.stimulus === "recovery");
+export function isCalorieEligibleWorkout(workout: Pick<PlannedWorkoutDraft, "modality" | "stimulus"> & { prescription?: Record<string, unknown> }): boolean {
+  return workout.modality === "run" && workout.prescription?.runWalk !== true && (workout.stimulus === "easyAerobic" || workout.stimulus === "recovery");
 }
 
 export function roundCalories(value: number): number {

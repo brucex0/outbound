@@ -24,9 +24,14 @@ export async function createPlanVersionWithWorkouts(
     where: { userId: input.userId, planVersion: { planId: input.planId }, status: { in: ["completed", "skipped"] } },
     select: { scheduledDate: true, prescription: true },
   });
-  const protectedDays = new Set(protectedWorkouts.map((workout) => workoutSlotKey(workout)));
+  const edited = await tx.plannedWorkout.findMany({
+    where: { userId: input.userId, planVersion: { planId: input.planId }, status: "planned", scheduledDate: { gte: today },
+      OR: [{ edits: { some: { operation: { not: "skip" } } } }, { prescription: { path: ["source"], equals: "explicitWorkoutChange" } }] },
+    select: { id: true, scheduledDate: true, prescription: true },
+  });
+  const protectedDays = new Set([...protectedWorkouts, ...edited].map(workoutSlotKey));
   await tx.plannedWorkout.updateMany({
-    where: { userId: input.userId, planVersion: { planId: input.planId }, status: "planned", scheduledDate: { gte: today } },
+    where: { userId: input.userId, planVersion: { planId: input.planId }, status: "planned", scheduledDate: { gte: today }, id: { notIn: edited.map((row) => row.id) } },
     data: { status: "superseded" },
   });
   const version = await tx.trainingPlanVersion.create({
@@ -105,4 +110,14 @@ export function isOptionalWorkout(workout: { prescription: unknown }): boolean {
 }
 export function workoutSlotKey(workout: { scheduledDate: Date; prescription: unknown }): string {
   return `${workout.scheduledDate.toISOString().slice(0, 10)}:${isOptionalWorkout(workout) ? "optional" : "required"}`;
+}
+
+/** Still-active explicit edits retain their original version, IDs and phase rows. */
+export async function protectedEditedWorkouts(tx: Prisma.TransactionClient, userId: string, planId: string, versionId: string, since: Date) {
+  return tx.plannedWorkout.findMany({
+    where: { userId, planVersion: { planId }, planVersionId: { not: versionId }, status: "planned", scheduledDate: { gte: since },
+      OR: [{ edits: { some: { operation: { not: "skip" } } } }, { prescription: { path: ["source"], equals: "explicitWorkoutChange" } }] },
+    orderBy: { scheduledDate: "asc" },
+    include: { blocks: { orderBy: { sortOrder: "asc" }, include: { steps: { orderBy: { sortOrder: "asc" } } } } },
+  });
 }

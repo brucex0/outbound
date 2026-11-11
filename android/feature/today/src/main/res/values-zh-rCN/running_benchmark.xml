@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="benchmark_title">近期比赛或计时测试</string>
+    <string name="benchmark_detail">可不填。请使用近期全力跑步成绩，而非日常训练或期望的目标时间。</string>
+    <string name="benchmark_source">成绩类型</string>
+    <string name="benchmark_race">比赛</string>
+    <string name="benchmark_time_trial">计时测试</string>
+    <string name="benchmark_distance">距离（公里）</string>
+    <string name="benchmark_duration">完成时间（时:分:秒）</string>
+    <string name="benchmark_date">成绩日期</string>
+    <string name="benchmark_maximal">这是一次全力跑步</string>
+    <string name="benchmark_validation">请输入 1.5–30 公里、有效的时:分:秒完成时间，以及最近 12 周内的全力跑步成绩。</string>
+    <string name="benchmark_estimate_detail">配速根据这次成绩估算当前能力，与目标配速分开。环境不同时，请继续以用力程度为准。</string>
+    <string name="benchmark_fallback">可添加近期全力跑步成绩来估算配速，也可继续使用用力程度指引。</string>
+    <string name="benchmark_stale">这次成绩已超过 12 周。更新后可恢复配速估算，也可继续以用力程度为准。</string>
+    <string name="benchmark_remove">移除参考成绩</string>
+    <string name="benchmark_remove_title">移除这次参考成绩？</string>
+    <string name="benchmark_remove_detail">新训练将使用用力程度指引。已明确编辑并保存的训练会保留。</string>
+    <string name="benchmark_failed">未能保存。当前输入仍在，请重试。</string>
+    <string name="benchmark_phase_paces">各阶段估算配速</string>
+    <string name="benchmark_phase_range">%1$s · %2$s–%3$s</string>
+    <string name="benchmark_per_km">/公里</string>
+    <string name="benchmark_per_mile">/英里</string>
+    <string name="benchmark_phase_effort">用力程度 RPE %1$s</string>
+</resources>

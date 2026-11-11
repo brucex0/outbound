@@ -32,7 +32,6 @@ import com.plainstride.outbound.feature.social.CachedSocialHome
 import com.plainstride.outbound.feature.social.RecognitionAward
 import com.plainstride.outbound.feature.social.SocialPerson
 import com.plainstride.outbound.feature.social.SocialRepository
-import com.plainstride.outbound.core.network.PlannedWorkoutCompletionRequest
 import com.plainstride.outbound.reminders.PlannedWorkoutReminderCoordinator
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
@@ -437,7 +436,6 @@ data class P0IntegrationState(
         if (selection !in setOf("notification_preview", "notification_dismissed", "envelope_opened")) return
         analytics.record(AnalyticsEvent("fox_companion_action_selected", mapOf(AnalyticsProperty.SelectionType to selection)))
     }
-    fun completePlannedWorkout(launch: RecordingLaunchConfiguration, review: RecordedActivityReview) { val id=accountId?:return; val workoutId=launch.plannedWorkoutId?:return; viewModelScope.launch { today.completeWorkout(id,locale,workoutId,PlannedWorkoutCompletionRequest(completedAt=Instant.now().toString(),durationSeconds=review.snapshot.elapsedSeconds.toInt(),distanceMeters=review.snapshot.distanceMeters,completionQuality="completed")) } }
     private fun observeRoutes(){val id=accountId?:return;routeObservation?.cancel();routeObservation=viewModelScope.launch{routes.observe(id,locale,mutable.value.routeScope).collect{value->mutable.update{s->s.copy(routes=value)}}}}
     private fun registerPush()=viewModelScope.launch(Dispatchers.IO){val preferences=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE);if(!preferences.getBoolean(PUSH_ENABLED,true))return@launch;val cached=preferences.getString(PlainstrideMessagingService.TOKEN,null);val token=cached?:runCatching{Tasks.await(FirebaseMessaging.getInstance().token)}.getOrNull();if(token!=null)safety.registerToken(token,context.packageName,locale)}
     fun setPushEnabled(enabled:Boolean)=viewModelScope.launch(Dispatchers.IO){val preferences=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE);preferences.edit().putBoolean(PUSH_ENABLED,enabled).apply();mutable.update{it.copy(pushEnabled=enabled)};val token=preferences.getString(PlainstrideMessagingService.TOKEN,null)?:return@launch;if(enabled)safety.registerToken(token,context.packageName,locale)else safety.unregisterToken(token)}

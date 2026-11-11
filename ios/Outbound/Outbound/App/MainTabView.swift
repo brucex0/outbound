@@ -757,6 +757,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
     var effectiveWorkout: StandaloneWorkout? = nil
     var workoutEditID: String? = nil
     var workoutRevision: String? = nil
+    var performedWorkoutReference: PerformedWorkoutReference? = nil
     var startedFromWorkoutReminder: Bool
 
     init(
@@ -781,6 +782,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         effectiveWorkout: StandaloneWorkout? = nil,
         workoutEditID: String? = nil,
         workoutRevision: String? = nil,
+        performedWorkoutReference: PerformedWorkoutReference? = nil,
         startedFromWorkoutReminder: Bool = false
     ) {
         self.id = id
@@ -804,6 +806,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         self.effectiveWorkout = effectiveWorkout
         self.workoutEditID = workoutEditID
         self.workoutRevision = workoutRevision
+        self.performedWorkoutReference = performedWorkoutReference
         self.startedFromWorkoutReminder = startedFromWorkoutReminder
     }
 
@@ -817,7 +820,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
                 estimatedDurationSeconds: catalogWorkout.targetDistanceMeters.map { Int(($0 / 1000 * 420).rounded()) },
                 allowsCalorieGoal: effectiveWorkout != nil ? allowsCalorieGoal : catalogWorkout.intent.allowsCalorieGoal,
                 workoutSteps: catalogWorkout.steps, coachingTarget: catalogWorkout.coachingTarget,
-                workoutReference: plannedWorkoutID.map { SessionWorkoutReference(source: "planned_workout", id: $0, version: nil, workoutEditId: workoutEditID, workoutRevision: workoutRevision) } ?? SessionWorkoutReference(source: "standalone_catalog", id: catalogWorkout.id, version: catalogWorkout.catalogVersion, workoutEditId: workoutEditID, workoutRevision: workoutRevision),
+                workoutReference: plannedWorkoutID.map { SessionWorkoutReference(source: "planned_workout", id: $0, version: nil, workoutEditId: workoutEditID, workoutRevision: workoutRevision, performedWorkoutReference: performedWorkoutReference) } ?? SessionWorkoutReference(source: "standalone_catalog", id: catalogWorkout.id, version: catalogWorkout.catalogVersion, workoutEditId: workoutEditID, workoutRevision: workoutRevision),
                 workoutCues: catalogWorkout.guideInstructions.segments,
                 startedFromWorkoutReminder: startedFromWorkoutReminder
             )
@@ -840,7 +843,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
             routeName: routeName,
             workoutSteps: targetCalories == nil ? workoutSteps ?? [] : [],
             workoutReference: plannedWorkoutID.map {
-                SessionWorkoutReference(source: "planned_workout", id: $0, version: nil, workoutEditId: workoutEditID, workoutRevision: workoutRevision)
+                SessionWorkoutReference(source: "planned_workout", id: $0, version: nil, workoutEditId: workoutEditID, workoutRevision: workoutRevision, performedWorkoutReference: performedWorkoutReference)
             },
             startedFromWorkoutReminder: startedFromWorkoutReminder
         )

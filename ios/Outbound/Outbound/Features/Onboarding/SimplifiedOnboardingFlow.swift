@@ -653,7 +653,7 @@ struct SimplifiedOnboardingFlow: View {
                 trackCreation(result: "failure", errorCategory: planningErrorCategory(error))
                 step = .review
                 showToast(
-                    String(localized: "plan_builder.create_error", defaultValue: "We couldn’t create your plan. Your answers are saved."),
+                    error.planningValidationMessage ?? String(localized: "plan_builder.create_error", defaultValue: "We couldn’t create your plan. Your answers are saved."),
                     retry: .create
                 )
             }

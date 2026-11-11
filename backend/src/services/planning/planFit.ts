@@ -27,7 +27,7 @@ export interface PlanFitAssessment {
 export function assessPlanFit(input: {
   activities: ActivityForPlanning[];
   athleteState: AthleteTrainingStateSnapshot;
-  workout?: Pick<PlannedWorkoutForState, "modality" | "stimulus" | "durationSeconds"> | null;
+  workout?: Pick<PlannedWorkoutForState, "modality" | "stimulus" | "durationSeconds" | "prescription"> | null;
   readiness?: ReadinessForPlanning;
   now?: Date;
 }): PlanFitAssessment {
@@ -111,7 +111,10 @@ export function assessPlanFit(input: {
     };
   }
 
-  const staleWalkRun = input.workout?.modality === "run"
+  const prescription = input.workout?.prescription as Record<string, unknown> | undefined;
+  const managedRunning = prescription?.source === "generatedRun" || prescription?.source === "trainingPlanCatalog"
+    || prescription?.templateID != null || prescription?.runWalkProgramme != null || prescription?.issuedRunningDose != null;
+  const staleWalkRun = !managedRunning && input.workout?.modality === "run"
     && input.workout.stimulus === "easyAerobic"
     && input.workout.durationSeconds <= 30 * 60
     && observedAverageRunMinutes >= Math.max(35, Math.round(input.workout.durationSeconds / 60 * 1.5))

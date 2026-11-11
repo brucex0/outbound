@@ -167,6 +167,7 @@ extension SessionIntent {
 
     func replacingGoal(_ goal: ActivityGoal, unitSystem: MeasurementUnitSystem) -> SessionIntent {
         let usesCalories = goal.targetCalories != nil
+        let performedReference = goal == activityGoal ? workoutReference : workoutReference?.locallyModified()
         if preparedRoute != nil {
             return SessionIntent(
                 id: id,
@@ -186,7 +187,7 @@ extension SessionIntent {
                 activityTypeOverride: activityTypeOverride,
                 workoutSteps: usesCalories ? [] : workoutSteps,
                 coachingTarget: coachingTarget,
-                workoutReference: workoutReference,
+                workoutReference: performedReference,
                 workoutCues: usesCalories ? [] : workoutCues,
                 raceIntent: usesCalories ? nil : raceIntent,
                 activityEvent: activityEvent,
@@ -211,7 +212,7 @@ extension SessionIntent {
             activityTypeOverride: activityTypeOverride,
             workoutSteps: usesCalories ? [] : workoutSteps,
             coachingTarget: coachingTarget,
-            workoutReference: workoutReference,
+            workoutReference: performedReference,
             workoutCues: usesCalories ? [] : workoutCues,
             raceIntent: usesCalories ? nil : raceIntent,
             activityEvent: activityEvent,

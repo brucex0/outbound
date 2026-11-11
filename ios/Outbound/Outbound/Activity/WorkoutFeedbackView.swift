@@ -4,6 +4,11 @@ import SwiftUI
 /// Dismissing the sheet retains edits; opening it never submits feedback.
 struct WorkoutFeedbackView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.outboundTheme) private var theme
+    @Environment(\.analyticsManager) private var analyticsManager
+    @ScaledMetric(relativeTo: .body) private var effortColumnMinimumWidth: CGFloat = 72
+    @Binding var sessionEffortRating: Int?
+    var showsSessionEffort = true
     @Binding var selectedEffort: RunEffort?
     @Binding var continuationCapacity: ContinuationCapacity?
     @Binding var selectedGuidanceFeedback: LiveGuidanceFeedback?
@@ -13,6 +18,7 @@ struct WorkoutFeedbackView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
+                    if showsSessionEffort { sessionEffortSection }
                     feedbackSection
                     if guidanceReport.spokenCueCount > 0 {
                         guidanceFeedbackSection
@@ -30,9 +36,49 @@ struct WorkoutFeedbackView: View {
         }
     }
 
+    private var sessionEffortSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(localized: "workout.feedback.session_effort.header", defaultValue: "How hard was the whole session?"))
+                .font(.headline)
+            Text(String(localized: "workout.feedback.session_effort.detail", defaultValue: "Optional. Rate the whole session, including warm-up and recovery: 1 = very easy, 10 = maximum effort."))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: effortColumnMinimumWidth))], spacing: 10) {
+                ForEach(1...10, id: \.self) { rating in
+                    Button { sessionEffortRating = rating } label: {
+                        Text(rating.formatted(.number))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                        .buttonStyle(.bordered)
+                        .tint(sessionEffortRating == rating ? theme.accentColor : .secondary)
+                        .accessibilityLabel(String(format: String(localized: "workout.feedback.session_effort.accessibility", defaultValue: "Effort %d of 10"), rating))
+                        .accessibilityAddTraits(sessionEffortRating == rating ? .isSelected : [])
+                }
+            }
+            if let rating = sessionEffortRating {
+                Text(String(format: String(localized: "workout.feedback.session_effort.selected", defaultValue: "Whole-session effort: %d/10"), rating))
+                    .font(.subheadline.weight(.semibold))
+                Button(String(localized: "workout.feedback.session_effort.clear", defaultValue: "Clear rating")) { sessionEffortRating = nil }
+                    .buttonStyle(.borderless)
+                    .frame(minHeight: 44)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .task { await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("session_effort_optional")])) }
+        .onChange(of: sessionEffortRating) { _, rating in
+            Task { await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string(rating == nil ? "session_effort_cleared" : "session_effort_selected")])) }
+        }
+    }
+
     private var feedbackSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(String(localized: "summary.feedback.header", defaultValue: "How did that feel?"))
+            Text(String(localized: "workout.feedback.fit.header", defaultValue: "Did this workout suit you?"))
                 .font(.headline)
             HStack {
                 effortButton(.easy, title: String(localized: "summary.feedback.easy", defaultValue: "Easy"))

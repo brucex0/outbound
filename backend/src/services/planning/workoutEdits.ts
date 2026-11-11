@@ -1,3 +1,4 @@
+import { issueWorkout, withIssuanceTransaction } from "./workoutIssuance.js";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -52,7 +53,7 @@ async function structure(db: DB, userId: string, primary: ActivitySuggestion | n
       steps: b.steps.map((s) => ({ label: s.label, kind: s.kind, durationSeconds: s.durationSeconds, distanceMeters: s.distanceMeters, target: s.target, detail: s.detail })) })) };
 }
 async function revision(db: DB, userId: string, response: ActivitySuggestionResponse) {
-  const { workoutEditId: _id, workoutRevision: _rev, ...primary } = response.primary ?? {};
+  const { workoutEditId: _id, workoutRevision: _rev, performedWorkoutReference: _issued, ...primary } = response.primary ?? {};
   return hash({ date: response.validForDate, plan: response.planContext, primary, structure: await structure(db, userId, response.primary),
     readiness: await latestReadinessId(db, userId), activity: response.activityWatermark, safety: response.decision.safetyFlags });
 }
@@ -94,7 +95,8 @@ export async function effectiveWorkout(db: DB, userId: string, primary: Activity
     id: `${block.sortOrder}-${index}`, label: step.label, durationSeconds: step.durationSeconds ?? block.durationSeconds ?? 0,
     detail: step.detail ?? undefined,
     coachingTarget: { phase: phase(step.kind, block.blockType), recognizesTargetLock: false,
-      ...(readPace(step.target) ? { pace: readPace(step.target)! } : {}) },
+      ...(readPace(step.target) ? { pace: readPace(step.target)!,
+        ...((step.target as Record<string, unknown> | null)?.paceEstimatePolicy === "reported-maximal-running-v1" ? { paceEstimatePolicy: "reported-maximal-running-v1" } : {}) } : {}) },
   })) : [{ id: `${block.sortOrder}`, label: block.blockType, durationSeconds: block.durationSeconds ?? 0,
     coachingTarget: { phase: phase(block.blockType, block.blockType), recognizesTargetLock: false } }]) ?? [{ id: "main", label: primary.title,
     durationSeconds: primary.durationSeconds ?? primary.durationMinutes * 60,
@@ -124,10 +126,24 @@ export async function effectiveWorkout(db: DB, userId: string, primary: Activity
         instruction: step.detail ?? step.label, cue: step.label, fallback: step.detail ?? step.label,
       }; }) } };
 }
+/** Only the unchanged current edit may supply its retained effective execution tree. */
+export async function storedEffectiveWorkout(db: DB, userId: string, primary: ActivitySuggestion): Promise<StandaloneWorkoutCatalogItem> {
+  if (primary.plannedWorkoutId) {
+    const row = await db.plannedWorkout.findFirst({ where: { id: primary.plannedWorkoutId, userId }, select: { prescription: true } });
+    const editId = (row?.prescription as Record<string, unknown> | undefined)?.workoutEditId;
+    const edit = typeof editId === "string" ? await db.workoutEdit.findFirst({ where: { id: editId, userId, plannedWorkoutId: primary.plannedWorkoutId, operation: { not: "skip" } } }) : null;
+    const context = edit?.validationContext as { resultStructureHash?: string } | undefined;
+    if (context?.resultStructureHash && context.resultStructureHash === hash(await structure(db, userId, primary))) {
+      const after = edit?.afterWorkout as unknown as { effectiveWorkout?: StandaloneWorkoutCatalogItem };
+      if (after?.effectiveWorkout) return structuredClone(after.effectiveWorkout);
+    }
+  }
+  return effectiveWorkout(db, userId, primary);
+}
 function phase(kind: string, block: string): "warmup" | "cooldown" | "work" | "walk" | "recovery" | "easy" {
   if (/warm/i.test(kind + block)) return "warmup";
   if (/cool/i.test(kind + block)) return "cooldown";
-  if (/interval|tempo|threshold|speed|^work$|repeat/i.test(kind) || /interval|repeat/i.test(block)) return "work";
+  if (/interval|tempo|threshold|speed|fartlek|hill|^work$|repeat/i.test(kind) || /interval|repeat/i.test(block)) return "work";
   if (/walk/i.test(kind + block)) return "walk";
   if (/recover/i.test(kind + block)) return "recovery";
   return "easy";
@@ -170,11 +186,20 @@ export async function applyManualWorkoutOverride(db: DB, userId: string, baselin
     relationship: skip ? "rest" : baseline.planContext ? "adjustedFromPlan" : "noPlanSuggestion", guideLine: primary?.why ?? "Rest today." };
 }
 export async function canonicalWorkoutSuggestion(db: DB, userId: string, planningStatus: PlanningStatus = "stable", now: Date = new Date()): Promise<ActivitySuggestionResponse> {
-  const baseline = await buildBaseActivitySuggestion(userId, planningStatus, now, db);
-  const legacy = await applyDailyWorkoutAdjustment(db, userId, baseline);
-  // Manual fingerprints refer to the base DB prescription; legacy proposals cannot mask a direct edit.
-  const manual = await applyManualWorkoutOverride(db, userId, baseline);
-  return attachWorkoutEditContext(db, userId, manual !== baseline ? manual : legacy);
+  return withIssuanceTransaction(db, userId, async (db) => {
+    const baseline = await buildBaseActivitySuggestion(userId, planningStatus, now, db);
+    const legacy = await applyDailyWorkoutAdjustment(db, userId, baseline);
+    // Manual fingerprints refer to the base DB prescription; legacy proposals cannot mask a direct edit.
+    const manual = await applyManualWorkoutOverride(db, userId, baseline);
+    const response = await attachWorkoutEditContext(db, userId, manual !== baseline ? manual : legacy);
+    const issue = async (primary: ActivitySuggestion | null) => {
+      if (!primary?.plannedWorkoutId) return primary;
+      const effective = await effectiveWorkout(db, userId, primary);
+      const performedWorkoutReference = await issueWorkout(db, userId, primary.plannedWorkoutId, { primary, effective, replacement: isAdaptivePlannedPrescription(primary) });
+      return { ...primary, effectiveWorkout: effective, ...(performedWorkoutReference ? { performedWorkoutReference } : {}) };
+    };
+    return { ...response, primary: await issue(response.primary), alternates: await Promise.all(response.alternates.map((row) => issue(row) as Promise<ActivitySuggestion>)) };
+  });
 }
 /** Preserve the provenance of the actual persisted prescription, without restoring an invalidated day overlay. */
 async function attachPersistedPlannedEdit(db: DB, userId: string, response: ActivitySuggestionResponse): Promise<ActivitySuggestionResponse> {
@@ -210,7 +235,7 @@ export async function attachWorkoutEditContext(db: DB, userId: string, response:
   const effective = await effectiveWorkout(db, userId, primary);
   const allowed = await checkedCapabilities(db, userId, primary, effective);
   // Expose the real phase durations to iOS instead of forcing it to divide plain step labels evenly.
-  const enriched: ActivitySuggestionResponse = primary.plannedWorkoutId && allowed.canEditTarget && !primary.catalogWorkout
+  const enriched: ActivitySuggestionResponse = primary.plannedWorkoutId && !primary.catalogWorkout
     ? { ...response, primary: { ...primary, effectiveWorkout: effective } } : response;
   return { ...enriched, editContext: { ...allowed, baseRevision: await revision(db, userId, enriched) } };
 }
@@ -241,7 +266,9 @@ export async function applyWorkoutEdit(userId: string, input: WorkoutEditApplyIn
     const planned = input.plannedWorkoutId ? await tx.plannedWorkout.findFirst({ where: { id: input.plannedWorkoutId, userId, status: "planned" },
       include: { ...workoutInclude, planVersion: { include: { plan: { include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } } } } } } }) : null;
     if (input.plannedWorkoutId && (!planned || planned.scheduledDate.toISOString().slice(0, 10) !== input.validForDate
-      || planned.planVersion.plan.status !== "active" || planned.planVersion.plan.versions[0]?.id !== planned.planVersionId)) {
+      || planned.planVersion.plan.status !== "active" || (planned.planVersion.plan.versions[0]?.id !== planned.planVersionId
+        && typeof (planned.prescription as Record<string, unknown>).workoutEditId !== "string"
+        && (planned.prescription as Record<string, unknown>).source !== "explicitWorkoutChange"))) {
       throw new WorkoutEditError(409, "The planned slot changed. Refresh before editing it.");
     }
     const beforeStructure = await structure(tx, userId, primary);
