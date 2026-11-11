@@ -817,6 +817,13 @@ struct SessionStatusCard: View {
         }
         .shadow(color: theme.glowColor.opacity(0.55), radius: 18, y: -6)
         .animation(panelAnimation, value: isExpanded)
+        .onChange(of: isExpanded) { _, _ in
+            // The detent is shared by the camera and map cards, while drag
+            // geometry belongs to this card instance. Clear any interrupted
+            // drag when the shared detent changes so a stale height cannot
+            // keep the compact card displaced after collapsing.
+            panelDragHeight = nil
+        }
         .accessibilityIdentifier("CameraDataOverlay")
     }
 
