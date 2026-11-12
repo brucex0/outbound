@@ -2,6 +2,28 @@
     <string name="today_cancel">Cancelar</string>
     <string name="plan_picker_title">Más planes</string>
     <string name="plan_picker_build">Crear mi plan</string>
+    <string name="plan_picker_build_detail">Crea un plan según tus objetivos, actividades y semana.</string>
+    <string name="plan_picker_reviewed">Plan revisado</string>
+    <string name="plan_picker_loading">Cargando planes…</string>
+    <string name="plan_picker_refreshing">Actualizando planes</string>
+    <string name="plan_picker_weeks">%1$d semanas</string>
+    <string name="plan_picker_sessions">%1$d× / semana</string>
+    <string name="plan_picker_minutes">%1$d min</string>
+    <string name="plan_picker_standard">Estándar del plan</string>
+    <string name="plan_picker_standard_detail">Revisado según las pautas de Plainstride para una progresión prudente, recuperación clara y entrenamientos prácticos.</string>
+    <string name="plan_picker_why">Por qué encaja</string>
+    <string name="plan_picker_expect">Qué puedes esperar</string>
+    <string name="plan_picker_tradeoff">Compromiso</string>
+    <string name="plan_picker_shape">Estructura del plan</string>
+    <string name="plan_picker_week_preview">Semana %1$s</string>
+    <string name="plan_picker_curated">Seleccionado por Plainstride</string>
+    <string name="plan_picker_curated_standard">Creado por Plainstride y contrastado con estructuras de carrera en ruta: predominio de carrera suave, calidad controlada, semanas de descarga y puesta a punto específica para el evento.</string>
+    <string name="plan_picker_length">Duración</string>
+    <string name="plan_picker_rhythm">Ritmo semanal</string>
+    <string name="plan_picker_target_time">Tiempo objetivo</string>
+    <string name="plan_picker_long_day">Sesión larga</string>
+    <string name="plan_picker_preview_duration">%1$d min</string>
+    <string name="plan_picker_preview_duration_effort">%1$d min · %2$s</string>
     <string name="plan_picker_details">Detalles</string>
     <string name="plan_picker_more">Más planes</string>
     <string name="plan_picker_use">Usar plan</string>
@@ -20,4 +42,8 @@
     <string name="plan_picker_focus_10mile">Preparar 10 millas</string>
     <string name="plan_picker_focus_half">Preparar una media maratón</string>
     <string name="plan_picker_focus_marathon">Preparar una maratón</string>
+    <string name="plan_picker_preview_title">Vista previa de las semanas</string>
+    <string name="plan_picker_use_this">Usar este plan</string>
+    <string name="plan_picker_weekly_sessions">%1$d sesiones</string>
+    <string name="plan_picker_week_focus">Semana %1$s: %2$s</string>
 </resources>

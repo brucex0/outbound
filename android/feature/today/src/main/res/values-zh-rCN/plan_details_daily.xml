@@ -5,4 +5,8 @@
     <string name="plan_details_set_up_training_plan">设置训练计划</string>
     <string name="plan_details_recommendation_cached">已保存的推荐 · 联网后可更新</string>
     <string name="plan_details_step">第 %1$d 阶段</string>
+    <string name="plan_details_schedule_adapts">训练进展后，后续安排也可能随之调整。</string>
+    <string name="plan_details_what_comes_next">接下来</string>
+    <string name="plan_details_rolling_outlook">这是根据目标和近期训练滚动更新的安排。计划更新时会显示新的训练。</string>
+    <string name="plan_details_roadmap_syncing">最新计划详情同步完成后，训练路线图将显示在这里。</string>
 </resources>

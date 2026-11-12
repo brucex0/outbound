@@ -13,6 +13,12 @@ import com.plainstride.outbound.core.network.RunningBenchmarkUpdateRequest
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import androidx.compose.runtime.DisposableEffect
+import androidx.core.content.ContextCompat
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +39,47 @@ import kotlinx.serialization.json.jsonObject
 @Composable
 internal fun DebugRunningPlanHarness() {
     val context = LocalContext.current
+    val intent = (context as? android.app.Activity)?.intent
+    val pickerMode = intent?.getStringExtra("running_plan_picker")
+    if (pickerMode != null) {
+        val recommendations = remember {
+            try {
+                PlainstrideJson.decodeFromString(
+                    com.plainstride.outbound.core.network.PlanRecommendationsResponse.serializer(),
+                    java.io.File(context.filesDir, "plan-recommendations-fixture.json").readText(),
+                ).recommendations
+            } catch (error: Exception) {
+                android.util.Log.e("planning_debug", "recommendation_fixture_load_failed category=invalid_or_missing_fixture")
+                emptyList()
+            }
+        }
+        var open by remember { mutableStateOf(true) }
+        var dark by remember { mutableStateOf(intent.getBooleanExtra("running_plan_dark", false)) }
+        DisposableEffect(context) {
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    dark = intent.getBooleanExtra("dark", false)
+                }
+            }
+            // Registered only inside the DEBUG launch fixture. Shell broadcasts can change
+            // appearance while the same production dialog and scroll state remain open.
+            ContextCompat.registerReceiver(context, receiver,
+                IntentFilter("com.plainstride.outbound.debug.PLAN_PREVIEW_APPEARANCE"),
+                ContextCompat.RECEIVER_EXPORTED)
+            onDispose { context.unregisterReceiver(receiver) }
+        }
+        com.plainstride.outbound.core.designsystem.PlainstrideTheme(
+            theme = if (dark) com.plainstride.outbound.core.designsystem.PlainstrideThemeId.Ocean else com.plainstride.outbound.core.designsystem.PlainstrideThemeId.VictoryGold,
+            darkTheme = dark,
+        ) {
+            if (open) com.plainstride.outbound.feature.today.DebugPlanPicker(
+                recommendations, pickerMode,
+                hasActivePlan = intent.getBooleanExtra("running_plan_active", false),
+                onDismiss = { open = false },
+            ) else Text("Synthetic picker dismissed")
+        }
+        return
+    }
     fun loadFixture(filename: String): Pair<PlanningState, ActivitySuggestionEnvelope>? = try {
         val json = PlainstrideJson.parseToJsonElement(java.io.File(context.filesDir, filename).readText()).jsonObject
         PlainstrideJson.decodeFromJsonElement(PlanningState.serializer(), json.getValue("planning")) to

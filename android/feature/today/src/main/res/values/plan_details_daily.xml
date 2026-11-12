@@ -5,4 +5,8 @@
     <string name="plan_details_set_up_training_plan">Set up a training plan</string>
     <string name="plan_details_recommendation_cached">Saved recommendation · reconnect to update</string>
     <string name="plan_details_step">Phase %1$d</string>
+    <string name="plan_details_schedule_adapts">Your scheduled workouts can change as your training progresses.</string>
+    <string name="plan_details_what_comes_next">What comes next</string>
+    <string name="plan_details_rolling_outlook">This is a rolling schedule based on your goal and recent training. New workouts appear as the plan updates.</string>
+    <string name="plan_details_roadmap_syncing">The training roadmap will appear when the latest plan details finish syncing.</string>
 </resources>

@@ -164,6 +164,7 @@ internal fun ActivePlanDetailsSheet(
                 }
             }
             PlanSectionCard(title = stringResource(R.string.plan_details_schedule)) {
+                Text(stringResource(R.string.plan_details_schedule_adapts), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (week.workouts.isEmpty()) Text(stringResource(R.string.plan_details_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 week.workouts.forEach { workout ->
                     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -187,6 +188,12 @@ internal fun ActivePlanDetailsSheet(
                         BenchmarkPhasePaces(workout, units)
                     }
                 }
+            }
+            if (planning.goal?.targetDate != null) {
+                if (planning.roadmap == null) Text(stringResource(R.string.plan_details_roadmap_syncing), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else PlanSectionCard(title = stringResource(R.string.plan_details_what_comes_next)) {
+                Text(planning.currentVersion?.summary.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.plan_details_rolling_outlook), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

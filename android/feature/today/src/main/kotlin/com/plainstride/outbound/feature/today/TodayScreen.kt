@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -65,6 +66,9 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Add
@@ -123,6 +127,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonArray
 import androidx.compose.foundation.rememberScrollState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
@@ -834,7 +841,7 @@ fun TodayScreen(
 }
 
 @Composable
-private fun PlanPickerDialog(
+internal fun PlanPickerDialog(
     picker: PlanPickerUiState,
     hasActivePlan: Boolean,
     onDismiss: () -> Unit,
@@ -857,60 +864,139 @@ private fun PlanPickerDialog(
     val recommendation = selected
     if (recommendation != null) {
         val template = recommendation.template
-        AlertDialog(
-            onDismissRequest = { if (!picker.replacing) onSelect(null) },
-            title = { Text(planRecommendationTitle(template["focus"]?.jsonPrimitive?.contentOrNull)) },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(template["subtitle"]?.jsonPrimitive?.contentOrNull.orEmpty())
-                    Text(stringResource(R.string.plan_picker_stats, recommendation.durationWeeks, recommendation.sessionsPerWeek, recommendation.targetWeeklyMinutes, recommendation.longSessionMinutes))
-                    Text(recommendation.rationale)
-                    Text(recommendation.tradeoff, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    template["summary"]?.jsonPrimitive?.contentOrNull?.let { Text(it) }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { if (hasActivePlan) confirmingReplacement = true else onUse(recommendation, false) }, enabled = !picker.replacing) {
-                    Text(stringResource(R.string.plan_picker_use))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onSelect(null) }, enabled = !picker.replacing) { Text(stringResource(R.string.plan_picker_more)) }
-            },
-        )
-    } else {
-        AlertDialog(
-            onDismissRequest = { if (!picker.replacing) onDismiss() },
-            title = { Text(stringResource(R.string.plan_picker_title)) },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(onClick = onBuild, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.plan_picker_build))
+        PlanPage(
+            title = stringResource(R.string.plan_details_title),
+            onDismiss = { if (!picker.replacing) onSelect(null) },
+            onDone = onDismiss,
+            dismissEnabled = !picker.replacing,
+            bottomActions = {
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(onClick = { onSelect(null) }, enabled = !picker.replacing) { Text(stringResource(R.string.plan_picker_more)) }
+                    Button(onClick = { if (hasActivePlan) confirmingReplacement = true else onUse(recommendation, false) }, enabled = !picker.replacing) {
+                        if (picker.replacing) {
+                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(stringResource(R.string.plan_picker_use_this))
                     }
-                    if (picker.loading) CircularProgressIndicator()
-                    if (picker.error) Text(stringResource(R.string.plan_picker_load_error), color = MaterialTheme.colorScheme.error)
-                    if (picker.loadingError) TextButton(onClick = onRetry) { Text(stringResource(R.string.today_retry)) }
-                    picker.recommendations.forEach { item ->
-                        Card(Modifier.fillMaxWidth().clickable { onSelect(item) }) {
-                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(planRecommendationTitle(item.template["focus"]?.jsonPrimitive?.contentOrNull), style = MaterialTheme.typography.titleMedium)
-                                Text(item.template["subtitle"]?.jsonPrimitive?.contentOrNull.orEmpty(), style = MaterialTheme.typography.bodySmall)
-                                Text(stringResource(R.string.plan_picker_card_stats, item.durationWeeks, item.sessionsPerWeek, item.targetWeeklyMinutes), style = MaterialTheme.typography.labelMedium)
-                                Text(item.rationale, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextButton(onClick = { onSelect(item) }) { Text(stringResource(R.string.plan_picker_details)) }
-                                    TextButton(onClick = { if (hasActivePlan) { onSelect(item); confirmingReplacement = true } else onUse(item, false) }) { Text(stringResource(R.string.plan_picker_use)) }
+                }
+            },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(planRecommendationTitle(template["focus"]?.jsonPrimitive?.contentOrNull), Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(template["subtitle"]?.jsonPrimitive?.contentOrNull.orEmpty(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val singleColumn = maxWidth < 320.dp || LocalDensity.current.fontScale > 1.3f
+                FlowRow(
+                    maxItemsInEachRow = if (singleColumn) 1 else 2,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    listOf(
+                        stringResource(R.string.plan_picker_length) to stringResource(R.string.plan_picker_weeks, recommendation.durationWeeks),
+                        stringResource(R.string.plan_picker_rhythm) to stringResource(R.string.plan_picker_weekly_sessions, recommendation.sessionsPerWeek),
+                        stringResource(R.string.plan_picker_target_time) to stringResource(R.string.plan_picker_minutes, recommendation.targetWeeklyMinutes),
+                        stringResource(R.string.plan_picker_long_day) to stringResource(R.string.plan_picker_minutes, recommendation.longSessionMinutes),
+                    ).forEach { (label, value) -> RecommendationStat(Modifier.weight(1f), label, value) }
+                }
+            }
+            val isCurated = template["source"]?.jsonObject?.get("name")?.jsonPrimitive?.contentOrNull == "Plainstride plan standards"
+            RecommendationDetailSection(stringResource(R.string.plan_picker_standard), stringResource(if (isCurated) R.string.plan_picker_curated_standard else R.string.plan_picker_standard_detail))
+            RecommendationDetailSection(stringResource(R.string.plan_picker_why), recommendation.rationale)
+            RecommendationDetailSection(stringResource(R.string.plan_picker_expect), template["summary"]?.jsonPrimitive?.contentOrNull.orEmpty())
+            RecommendationDetailSection(stringResource(R.string.plan_picker_tradeoff), recommendation.tradeoff)
+            (template["highlights"] as? JsonArray)?.takeIf { it.isNotEmpty() }?.let { highlights ->
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.plan_picker_shape), style = MaterialTheme.typography.titleMedium)
+                    highlights.forEach { item ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Default.CheckCircle, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(item.jsonPrimitive.contentOrNull.orEmpty(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+            (template["weeks"] as? JsonArray)?.take(2)?.takeIf { it.isNotEmpty() }?.let { weeks ->
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.plan_picker_preview_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    weeks.forEach { week ->
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest), shape = RoundedCornerShape(18.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    stringResource(R.string.plan_picker_week_focus, week.jsonObject["index"]?.jsonPrimitive?.contentOrNull.orEmpty(), week.jsonObject["focus"]?.jsonPrimitive?.contentOrNull.orEmpty()),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(week.jsonObject["summary"]?.jsonPrimitive?.contentOrNull.orEmpty(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                (week.jsonObject["workouts"] as? JsonArray)?.filter { (it.jsonObject["durationSeconds"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0) > 0 }?.take(3)?.forEach { workout ->
+                                    RecommendationWorkoutPreview(workout.jsonObject)
                                 }
                             }
                         }
                     }
-                    if (!picker.loading && picker.recommendations.isEmpty() && !picker.error) {
-                        Text(stringResource(R.string.plan_picker_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    } else {
+        PlanPage(
+            title = stringResource(R.string.plan_picker_title),
+            onDismiss = onDismiss,
+            dismissEnabled = !picker.replacing,
+            contentSpacing = 16.dp,
+        ) {
+            Card(
+                onClick = onBuild,
+                enabled = !picker.replacing,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
+            ) {
+                Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(stringResource(R.string.plan_picker_build), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.plan_picker_build_detail), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (picker.loading && picker.recommendations.isEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(20.dp)); Text(stringResource(R.string.plan_picker_loading), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (picker.loading && picker.recommendations.isNotEmpty()) Text(stringResource(R.string.plan_picker_refreshing), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (picker.error) Text(stringResource(R.string.plan_picker_load_error), color = MaterialTheme.colorScheme.error)
+            if (picker.loadingError) TextButton(onClick = onRetry) { Text(stringResource(R.string.today_retry)) }
+            picker.recommendations.forEach { item ->
+                Card(Modifier.fillMaxWidth().clickable(enabled = !picker.replacing) { onSelect(item) }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(planRecommendationTitle(item.template["focus"]?.jsonPrimitive?.contentOrNull), style = MaterialTheme.typography.titleMedium)
+                        Text(item.template["subtitle"]?.jsonPrimitive?.contentOrNull.orEmpty(), style = MaterialTheme.typography.bodyLarge)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(stringResource(R.string.plan_picker_weeks, item.durationWeeks), stringResource(R.string.plan_picker_sessions, item.sessionsPerWeek), stringResource(R.string.plan_picker_minutes, item.targetWeeklyMinutes)).forEach { stat ->
+                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface) { Text(stat, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall) }
+                            }
+                        }
+                        val isCurated = item.template["source"]?.jsonObject?.get("name")?.jsonPrimitive?.contentOrNull == "Plainstride plan standards"
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Verified, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(if (isCurated) R.string.plan_picker_curated else R.string.plan_picker_reviewed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                        (item.template["weeks"] as? JsonArray)?.firstOrNull()?.jsonObject?.get("summary")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Text(item.rationale, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            OutlinedButton(onClick = { onSelect(item) }, enabled = !picker.replacing) { Text(stringResource(R.string.plan_picker_details)) }
+                            Button(onClick = { if (hasActivePlan) { onSelect(item); confirmingReplacement = true } else onUse(item, false) }, enabled = !picker.replacing) { Text(stringResource(R.string.plan_picker_use)) }
+                        }
                     }
                 }
-            },
-            confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_done)) } },
-        )
+            }
+            if (!picker.loading && picker.recommendations.isEmpty() && !picker.error) {
+                Text(stringResource(R.string.plan_picker_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
     if (confirmingReplacement && recommendation != null) AlertDialog(
         onDismissRequest = { confirmingReplacement = false },
@@ -935,6 +1021,55 @@ private fun planRecommendationTitle(focus: String?): String = stringResource(whe
     "marathon" -> R.string.plan_picker_focus_marathon
     else -> R.string.plan_picker_focus_base
 })
+
+@Composable
+private fun RecommendationDetailSection(title: String, detail: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(detail, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun RecommendationWorkoutPreview(workout: JsonObject) {
+    val day = workout["dayLabel"]?.jsonPrimitive?.contentOrNull.orEmpty()
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth < 320.dp || LocalDensity.current.fontScale > 1.3f) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(day, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                RecommendationWorkoutSummary(workout)
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                Text(day, Modifier.width(36.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Column(Modifier.weight(1f)) { RecommendationWorkoutSummary(workout) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecommendationWorkoutSummary(workout: JsonObject) {
+    Text(workout["title"]?.jsonPrimitive?.contentOrNull.orEmpty(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+    val minutes = ((workout["durationSeconds"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0) + 59) / 60
+    val effort = workout["intervalEffortLabel"]?.jsonPrimitive?.contentOrNull ?: workout["effortLabel"]?.jsonPrimitive?.contentOrNull.orEmpty()
+    Text(
+        if (effort.isBlank()) stringResource(R.string.plan_picker_preview_duration, minutes)
+        else stringResource(R.string.plan_picker_preview_duration_effort, minutes, effort),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun RecommendationStat(modifier: Modifier, label: String, value: String) {
+    Card(modifier, shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)

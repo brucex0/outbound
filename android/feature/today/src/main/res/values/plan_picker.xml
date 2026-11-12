@@ -2,6 +2,28 @@
     <string name="today_cancel">Cancel</string>
     <string name="plan_picker_title">More Plans</string>
     <string name="plan_picker_build">Build my plan</string>
+    <string name="plan_picker_build_detail">Create a plan around your goals, activities, and week.</string>
+    <string name="plan_picker_reviewed">Reviewed plan</string>
+    <string name="plan_picker_loading">Loading plans…</string>
+    <string name="plan_picker_refreshing">Refreshing plans</string>
+    <string name="plan_picker_weeks">%1$d weeks</string>
+    <string name="plan_picker_sessions">%1$d× / week</string>
+    <string name="plan_picker_minutes">%1$d min</string>
+    <string name="plan_picker_standard">Plan standard</string>
+    <string name="plan_picker_standard_detail">Reviewed against Plainstride guidance for safe progression, clear recovery, and practical workout purpose.</string>
+    <string name="plan_picker_why">Why this fits</string>
+    <string name="plan_picker_expect">What to expect</string>
+    <string name="plan_picker_tradeoff">Tradeoff</string>
+    <string name="plan_picker_shape">Plan shape</string>
+    <string name="plan_picker_week_preview">Week %1$s</string>
+    <string name="plan_picker_curated">Curated</string>
+    <string name="plan_picker_curated_standard">Plainstride-authored and benchmarked against established road-running structure: mostly easy running, controlled quality, cutback weeks, and event-specific tapering.</string>
+    <string name="plan_picker_length">Length</string>
+    <string name="plan_picker_rhythm">Weekly rhythm</string>
+    <string name="plan_picker_target_time">Target time</string>
+    <string name="plan_picker_long_day">Long day</string>
+    <string name="plan_picker_preview_duration">%1$d min</string>
+    <string name="plan_picker_preview_duration_effort">%1$d min · %2$s</string>
     <string name="plan_picker_details">Details</string>
     <string name="plan_picker_more">More plans</string>
     <string name="plan_picker_use">Use plan</string>
@@ -20,4 +42,8 @@
     <string name="plan_picker_focus_10mile">Prepare for a 10 mile</string>
     <string name="plan_picker_focus_half">Prepare for a half marathon</string>
     <string name="plan_picker_focus_marathon">Prepare for a marathon</string>
+    <string name="plan_picker_preview_title">Week Preview</string>
+    <string name="plan_picker_use_this">Use this plan</string>
+    <string name="plan_picker_weekly_sessions">%1$d× sessions</string>
+    <string name="plan_picker_week_focus">Week %1$s: %2$s</string>
 </resources>

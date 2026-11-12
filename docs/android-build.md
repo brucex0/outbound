@@ -152,3 +152,20 @@ When UI tests are requested, run on an available Android device/emulator:
 ```
 
 The six Compose checks exercise production policy/review controls, the admin boundary, accepted-invitation waiting/withdrawal, multi-weekday composer retry state, and stopping repetition for following occurrences with retry preservation. Freebuff CLI authored and ran the latter two checks. They use deterministic callback fixtures rather than backend authorization. New Group contracts reset the Social home and Group/event/invitation destination cache namespaces; there is no Room schema change, old-cache migration, or effect on local recordings.
+
+## Synthetic Plan Picker Preview
+
+The existing DEBUG-only `debug_running_plan` launch harness can preview the production More Plans and recommendation Plan Details UI without account reads or writes. Put a synthetic `PlanRecommendationsResponse` JSON object in the app's `files/plan-recommendations-fixture.json`; each recommendation uses the current network model (`id`, `template`, duration/session/minute counts, rationale, and tradeoff). Use the bundled catalog as template content, never customer data.
+
+```sh
+adb -s emulator-5554 push /tmp/plan-recommendations-fixture.json /data/local/tmp/plan-recommendations-fixture.json
+adb -s emulator-5554 shell run-as com.plainstride.outbound.debug cp /data/local/tmp/plan-recommendations-fixture.json files/plan-recommendations-fixture.json
+adb -s emulator-5554 shell am force-stop com.plainstride.outbound.debug
+adb -s emulator-5554 shell am start -n com.plainstride.outbound.debug/com.plainstride.outbound.MainActivity --ez debug_running_plan true --es running_plan_picker detail
+```
+
+- `running_plan_picker` accepts `list`, `detail`, `loading`, `refreshing`, `empty`, `error`, or `replacing`. Retry returns to the fixture list. Build/use only dismiss this synthetic preview; they do not create or replace a plan.
+- Add `--ez running_plan_active true` to inspect the existing replacement confirmation and `--ez running_plan_dark true` for dark Ocean; otherwise the preview uses light Victory Gold. While this DEBUG picker fixture is open, `adb shell am broadcast -a com.plainstride.outbound.debug.PLAN_PREVIEW_APPEARANCE -p com.plainstride.outbound.debug --ez dark true` switches the same page to dark Ocean; use `false` to return to light Victory Gold. The receiver exists only inside this DEBUG launch fixture and does not persist settings.
+- Change app strings with `adb shell cmd locale set-app-locales com.plainstride.outbound.debug --user 0 --locales es` (or `en`/`zh-CN`). Template prose remains in the fixture's language.
+- For 320dp at the emulator's 420dpi setting, use `adb shell wm size 840x1900` and `adb shell settings put system font_scale 2.0`; restore with `adb shell wm size reset` and `adb shell settings put system font_scale 1.0`.
+- When a running Gradle daemon reports stale source as up-to-date, rebuild with `--no-watch-fs --no-configuration-cache` before installing or recording UI evidence.

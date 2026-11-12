@@ -2,6 +2,28 @@
     <string name="today_cancel">取消</string>
     <string name="plan_picker_title">更多计划</string>
     <string name="plan_picker_build">制定我的计划</string>
+    <string name="plan_picker_build_detail">根据你的目标、活动和每周安排制定计划。</string>
+    <string name="plan_picker_reviewed">已审核的计划</string>
+    <string name="plan_picker_loading">正在加载计划…</string>
+    <string name="plan_picker_refreshing">正在刷新计划</string>
+    <string name="plan_picker_weeks">%1$d 周</string>
+    <string name="plan_picker_sessions">每周 %1$d 次</string>
+    <string name="plan_picker_minutes">%1$d 分钟</string>
+    <string name="plan_picker_standard">计划标准</string>
+    <string name="plan_picker_standard_detail">根据 Plainstride 关于稳健进阶、清晰恢复和实用训练目的的指导审核。</string>
+    <string name="plan_picker_why">适合的原因</string>
+    <string name="plan_picker_expect">训练内容</string>
+    <string name="plan_picker_tradeoff">取舍</string>
+    <string name="plan_picker_shape">计划结构</string>
+    <string name="plan_picker_week_preview">第 %1$s 周</string>
+    <string name="plan_picker_curated">精选计划</string>
+    <string name="plan_picker_curated_standard">由 Plainstride 编写，并参照成熟的公路跑结构评估：以轻松跑为主、控制强度、安排减量周，并针对赛事进行调整。</string>
+    <string name="plan_picker_length">计划长度</string>
+    <string name="plan_picker_rhythm">每周安排</string>
+    <string name="plan_picker_target_time">目标时长</string>
+    <string name="plan_picker_long_day">长距离日</string>
+    <string name="plan_picker_preview_duration">%1$d 分钟</string>
+    <string name="plan_picker_preview_duration_effort">%1$d 分钟 · %2$s</string>
     <string name="plan_picker_details">详情</string>
     <string name="plan_picker_more">更多计划</string>
     <string name="plan_picker_use">使用此计划</string>
@@ -20,4 +42,8 @@
     <string name="plan_picker_focus_10mile">备战 10 英里</string>
     <string name="plan_picker_focus_half">备战半程马拉松</string>
     <string name="plan_picker_focus_marathon">备战马拉松</string>
+    <string name="plan_picker_preview_title">周训练预览</string>
+    <string name="plan_picker_use_this">使用此计划</string>
+    <string name="plan_picker_weekly_sessions">每周 %1$d 次训练</string>
+    <string name="plan_picker_week_focus">第 %1$s 周：%2$s</string>
 </resources>

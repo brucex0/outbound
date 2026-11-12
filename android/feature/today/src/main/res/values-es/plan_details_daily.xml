@@ -5,4 +5,8 @@
     <string name="plan_details_set_up_training_plan">Configurar un plan de entrenamiento</string>
     <string name="plan_details_recommendation_cached">Recomendación guardada · conéctate para actualizarla</string>
     <string name="plan_details_step">Fase %1$d</string>
+    <string name="plan_details_schedule_adapts">Los entrenamientos pueden cambiar a medida que avances.</string>
+    <string name="plan_details_what_comes_next">Qué sigue</string>
+    <string name="plan_details_rolling_outlook">Este calendario se adapta a tu objetivo y entrenamiento reciente. Se añadirán sesiones a medida que avance el plan.</string>
+    <string name="plan_details_roadmap_syncing">La ruta de entrenamiento aparecerá cuando se sincronicen los detalles más recientes del plan.</string>
 </resources>
