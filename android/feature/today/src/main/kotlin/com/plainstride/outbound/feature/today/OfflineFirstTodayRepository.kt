@@ -38,6 +38,7 @@ import com.plainstride.outbound.core.network.apiCall
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 /** Account- and locale-scoped cache; workout IDs and launch prescriptions remain server-authored. */
 class OfflineFirstTodayRepository @Inject constructor(
@@ -57,7 +58,8 @@ class OfflineFirstTodayRepository @Inject constructor(
     ) { resource, planning, now ->
         val projected = resource.mapValue { envelope ->
             val belongsToOldPlan = planning != null && envelope.planContext != null && envelope.planContext?.planId != planning.value.plan?.id
-            val expired = !envelope.isCurrent(now)
+            val zone = planning?.value?.calendar?.zone() ?: ZoneOffset.UTC
+            val expired = !envelope.isCurrent(now, zone)
             val savedIds = planning?.value?.workouts.orEmpty().filter { it.status == "pending" || it.status == "completed" }.mapTo(mutableSetOf()) { it.id }
             val filtered = envelope.copy(primary = envelope.primary?.takeUnless { it.plannedWorkoutId in savedIds },
                 alternates = envelope.alternates.filterNot { it.plannedWorkoutId in savedIds })
@@ -65,7 +67,7 @@ class OfflineFirstTodayRepository @Inject constructor(
                 envelope.copy(primary = null, alternates = emptyList(), planContext = null) else filtered)
         }
         when (projected) {
-            is CachedResource.Available -> projected.copy(isStale = projected.isStale || now.toEpochMilli() - projected.updatedAtEpochMs >= FIVE_MINUTES || !projected.value.isCurrent(now))
+            is CachedResource.Available -> projected.copy(isStale = projected.isStale || now.toEpochMilli() - projected.updatedAtEpochMs >= FIVE_MINUTES || !projected.value.isCurrent(now, planning?.value?.calendar?.zone() ?: ZoneOffset.UTC))
             else -> projected
         }
     }

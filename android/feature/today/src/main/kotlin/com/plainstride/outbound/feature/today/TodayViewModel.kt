@@ -22,6 +22,7 @@ import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.ActivitySuggestionEnvelope
 import com.plainstride.outbound.core.model.isCurrent
+import java.time.ZoneOffset
 import com.plainstride.outbound.core.model.AdjustmentProposal
 import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.core.model.PersonalizationSnapshot
@@ -53,6 +54,9 @@ data class TodayUiState(
     val activeSession: Boolean = false,
     val completedToday: Boolean = false,
 ) {
+    private fun ActivitySuggestionEnvelope.isCurrentForAccount(): Boolean =
+        isCurrent(zone = planningSnapshot?.calendar?.zone() ?: ZoneOffset.UTC)
+
     val planningSnapshot: PlanningState?
         get() = when (planning) {
             is CachedResource.Available -> planning.value
@@ -72,11 +76,11 @@ data class TodayUiState(
                 CachedResource.Loading -> null
             } ?: return null
             return snapshot.takeIf {
-                it.primary != null && it.isCurrent() && !isSavedPlannedWorkout(it.primary?.plannedWorkoutId)
+                it.primary != null && it.isCurrentForAccount() && !isSavedPlannedWorkout(it.primary?.plannedWorkoutId)
             }
         }
     val restRecommended: Boolean
-        get() = (suggestion as? CachedResource.Available)?.value?.let { it.isCurrent() && it.status == "restRecommended" } == true
+        get() = (suggestion as? CachedResource.Available)?.value?.let { it.isCurrentForAccount() && it.status == "restRecommended" } == true
     val hasConfirmedNoPlan: Boolean
         get() {
             val snapshot = planning as? CachedResource.Available ?: return false
@@ -86,11 +90,11 @@ data class TodayUiState(
                 CachedResource.Loading -> null
             }
             val hasCurrentPlanSuggestion = planSuggestion?.planContext != null &&
-                planSuggestion.isCurrent()
+                planSuggestion.isCurrentForAccount()
             return snapshot.value.plan == null && !hasCurrentPlanSuggestion
         }
     val primarySuggestion: ActivitySuggestion?
-        get() = (suggestion as? CachedResource.Available)?.value?.takeIf { it.isCurrent() }?.primary?.takeUnless { isSavedPlannedWorkout(it.plannedWorkoutId) }
+        get() = (suggestion as? CachedResource.Available)?.value?.takeIf { it.isCurrentForAccount() }?.primary?.takeUnless { isSavedPlannedWorkout(it.plannedWorkoutId) }
     private fun isSavedPlannedWorkout(workoutId: String?): Boolean = workoutId != null &&
         planningSnapshot?.workouts?.any { it.id == workoutId && (it.status == "pending" || it.status == "completed") } == true
     val pendingAdjustment: AdjustmentProposal?

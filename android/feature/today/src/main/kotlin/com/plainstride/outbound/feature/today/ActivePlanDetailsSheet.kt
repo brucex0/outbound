@@ -85,7 +85,7 @@ internal fun ActivePlanDetailsSheet(
     val todaySuggestion = suggestion?.takeIf {
         !suggestionStale &&
             it.planContext?.planId == plan.id &&
-            it.isCurrent()
+            it.isCurrent(zone = planning.calendar?.zone() ?: java.time.ZoneOffset.UTC)
     }
     var confirmsEnd by rememberSaveable(plan.id) { mutableStateOf(false) }
     PlanDetailsSheet(onDismiss = onDismiss) {
