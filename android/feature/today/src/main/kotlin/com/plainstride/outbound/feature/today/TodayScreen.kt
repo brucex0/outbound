@@ -656,7 +656,7 @@ fun TodayScreen(
                         onRefresh = onRefresh,
                     )
                 }
-                if (hasPlanDetails && (suggestion == null || activityChoice != TodayActivityChoice.PLANNED || groupActivityContent != null)) {
+                if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED && (suggestion == null || groupActivityContent != null)) {
                     OutlinedButton(onClick = { openPlanDetails("today_planned_card_plan") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text(stringResource(R.string.plan_details_title))
                     }
