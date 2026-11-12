@@ -139,6 +139,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import kotlin.math.roundToInt
+import com.plainstride.outbound.core.designsystem.MapCameraSnapshot
 import com.plainstride.outbound.core.designsystem.LocalPlainstrideThemeColors
 import com.plainstride.outbound.core.designsystem.MapCoordinate
 import com.plainstride.outbound.core.designsystem.LocationEnableChip
@@ -203,6 +204,7 @@ fun RecordingRoute(
     onToggleActivityLiveMap: () -> Unit = {},
     onStopActivityLiveMap: () -> Unit = {},
     viewModel: RecordingViewModel = hiltViewModel(),
+    initialMapCamera: MapCameraSnapshot? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -216,6 +218,10 @@ fun RecordingRoute(
         }
     }
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
+    val sharedStartLocation by viewModel.startLocationUpdates.collectAsStateWithLifecycle()
+    // Display framing can reuse Today's last fix while the service gets its first
+    // sample. Location preflight still validates freshness/accuracy independently.
+    val mapStartLocation = sharedStartLocation?.let { MapCoordinate(it.latitude, it.longitude) } ?: initialMapCamera?.target
     val voiceListening by viewModel.voiceListening.collectAsStateWithLifecycle()
     var askedForLocation by remember(context) {
         mutableStateOf(LocationPermissionAccess.wasRequestedBefore(context))
@@ -662,6 +668,8 @@ fun RecordingRoute(
             )
             snapshot.status == RecordingStatus.ACTIVE || snapshot.status == RecordingStatus.PAUSED -> LiveRecordingScreen(
                 snapshot = snapshot,
+                startLocation = mapStartLocation,
+                initialMapCamera = initialMapCamera,
                 configuration = ui.launch,
                 coachingAdvice = coachingAdvice,
                 groupRun = eventGroupRun,
@@ -715,7 +723,8 @@ fun RecordingRoute(
                 },
             )
             ui.countdown != null -> CountdownScreen(
-                startLocation = viewModel.recentStartLocation()?.let { MapCoordinate(it.latitude, it.longitude) },
+                startLocation = mapStartLocation,
+                initialMapCamera = initialMapCamera,
                 value = ui.countdown!!,
                 snapshot = snapshot,
                 configuration = ui.launch,
@@ -728,7 +737,8 @@ fun RecordingRoute(
             launch.startImmediately || ui.launch.startImmediately || locationWaitJob != null || ui.startRequested -> ActivityStartSurface(
                 configuration = ui.launch,
                 permission = permissionState(),
-                startLocation = viewModel.recentStartLocation()?.let { MapCoordinate(it.latitude, it.longitude) },
+                startLocation = mapStartLocation,
+                initialMapCamera = initialMapCamera,
                 acquiringLocation = showGpsWait,
                 canCancel = !ui.startRequested,
                 onCancel = ::cancelStart,
@@ -1017,11 +1027,12 @@ private fun CountdownScreen(
     locationPermission: LocationPermissionState,
     runSimulation: RunSimulationState?,
     onCancel: () -> Unit,
+    initialMapCamera: MapCameraSnapshot? = null,
 ) {
     val progress = (4 - value.coerceIn(0, 3)) / 4f
     val label = if (value == 0) stringResource(R.string.recording_go) else value.toString()
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        TrackMap(snapshot, configuration, Modifier.fillMaxSize(), startLocation = startLocation)
+        TrackMap(snapshot, configuration, Modifier.fillMaxSize(), startLocation = startLocation, initialMapCamera = initialMapCamera)
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)))
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Box(Modifier.size(188.dp), contentAlignment = Alignment.Center) {
@@ -1067,6 +1078,7 @@ private fun ActivityStartSurface(
     acquiringLocation: Boolean,
     canCancel: Boolean,
     onCancel: () -> Unit,
+    initialMapCamera: MapCameraSnapshot? = null,
 ) {
     Box(Modifier.fillMaxSize()) {
         PlainstrideRouteMap(
@@ -1076,6 +1088,9 @@ private fun ActivityStartSurface(
             preciseLocationGranted = permission == LocationPermissionState.PRECISE,
             focusOnUser = true,
             initialCameraCoordinate = startLocation,
+            initialCameraSnapshot = initialMapCamera,
+            deferUntilInitialCameraCoordinate = configuration.followedRoute?.points.isNullOrEmpty(),
+            followZoom = initialMapCamera?.zoom ?: 17f,
             bottomContentPadding = 128.dp,
         )
         if (acquiringLocation) Surface(
@@ -1100,6 +1115,8 @@ private fun ActivityStartSurface(
 @Composable
 private fun LiveRecordingScreen(
     snapshot: RecordingSnapshot,
+    startLocation: MapCoordinate?,
+    initialMapCamera: MapCameraSnapshot?,
     configuration: RecordingLaunchConfiguration,
     groupRun: SharedLiveRun?,
     participants: List<com.plainstride.outbound.core.model.activity.GroupActivityParticipant>,
@@ -1174,7 +1191,7 @@ private fun LiveRecordingScreen(
     )
     BoxWithConstraints(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
         // Let the map own its gestures, as on iOS. Switch back using the surface button.
-        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant, recenterRequest = recenterRequest) {
+        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant, startLocation = startLocation, initialMapCamera = initialMapCamera, recenterRequest = recenterRequest) {
             focusedParticipant = it
             recenterRequest++
             onParticipantFocused("map_pin")
@@ -1435,6 +1452,7 @@ private fun TrackMap(
     focusedParticipant: String? = null,
     startLocation: MapCoordinate? = null,
     recenterRequest: Int = 0,
+    initialMapCamera: MapCameraSnapshot? = null,
     onFocus: (String?) -> Unit = {},
 ) {
     val locationClock = rememberGroupLocationClock(groupRun?.id)
@@ -1463,7 +1481,9 @@ private fun TrackMap(
         followRunner = focusedParticipant == null,
         recenterRequest = recenterRequest,
         resumeFollowAfterGesture = false,
-        zoom = 17f,
+        deferUntilInitialCameraCoordinate = true,
+        zoom = initialMapCamera?.zoom ?: 17f,
+        initialCameraSnapshot = initialMapCamera,
         recordedRoute = recorded,
         plannedRoute = planned,
         recordedRouteSegments = recordedSegments,

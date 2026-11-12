@@ -123,6 +123,8 @@ import com.plainstride.outbound.auth.AuthViewModel
 import com.plainstride.outbound.connectivity.ConnectivityViewModel
 import com.plainstride.outbound.connectivity.ConnectivityUiState
 import com.plainstride.outbound.core.auth.SessionState
+import com.plainstride.outbound.core.designsystem.MapCameraSnapshot
+import com.plainstride.outbound.core.designsystem.MapCameraSnapshotReader
 import com.plainstride.outbound.core.designsystem.LocalPlainstrideThemeColors
 import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
 import com.plainstride.outbound.feature.activity.ActivityDetailDestination
@@ -348,6 +350,12 @@ private fun SignedInApp(
         is SessionState.Refreshing -> session.accountId
         else -> null
     }
+    var todayCameraReader by remember(accountId) {
+        mutableStateOf<MapCameraSnapshotReader?>(null)
+    }
+    var recordingLaunchCamera by remember(accountId) {
+        mutableStateOf<MapCameraSnapshot?>(null)
+    }
     remember(accountId) {
         com.plainstride.outbound.core.data.AccountConfigurationStore.activate(context, accountId)
         true
@@ -526,6 +534,7 @@ private fun SignedInApp(
     }
     fun launchTodayRecording() {
         if (todayStartJob?.isActive == true) return
+        val cameraAtStart = todayCameraReader?.invoke()?.takeIf { it.zoom > 0f }
         val changedRun = recordingLaunch.entrySource == "today_changed_run"
         val configuration = recordingLaunch.copy(
             activityEventId = todayGroupEvent?.id?.takeIf { !changedRun && it == selectedRecordingEventId },
@@ -551,6 +560,7 @@ private fun SignedInApp(
                     } else recordingViewModel.beginCountdown()
                 }
                 recordingLaunch = configuration
+                recordingLaunchCamera = cameraAtStart
                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
             } finally { todayStartJob = null }
         }
@@ -820,6 +830,7 @@ private fun SignedInApp(
                             plannedWorkoutWarmupDuration = rememberTodayWarmupDuration(),
                             onOpenStretch = { navController.navigate(AppDetailRoutes.stretch("today")) { launchSingleTop = true } },
                             mapLocation = startLocation,
+                            onMapCameraSnapshotReader = { todayCameraReader = it },
                             accountId = requireNotNull(accountId),
                             localeTag = resources.configuration.locales[0].toLanguageTag(),
                             viewModel = todayViewModel,
@@ -1165,7 +1176,10 @@ private fun SignedInApp(
                         if (hasActiveSession) {
                             recordingViewModel.attachGroupActivity(event.id, event.name)
                             recordingLaunch = recordingViewModel.state.value.launch
-                        } else recordingLaunch = event.recordingLaunch()
+                        } else {
+                            recordingLaunch = event.recordingLaunch()
+                            recordingLaunchCamera = null
+                        }
                         navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                     },
                     viewModel = socialViewModel, onBack = { navController.popBackStack() },
@@ -1238,6 +1252,7 @@ private fun SignedInApp(
                         }
                     },
                     onPrepareActivity = { sport, distanceMeters, durationSeconds ->
+                        recordingLaunchCamera = null
                         val isBike = sport == VoiceSport.Bike
                         val goal = when {
                             distanceMeters != null -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = distanceMeters)
@@ -1296,6 +1311,7 @@ private fun SignedInApp(
                     viewModel = recordingViewModel,
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
+                    initialMapCamera = recordingLaunchCamera,
                     onPrepareActivityStart = {
                         voicePreparation.preparation.activityWillStart(recordingViewModel.state.value.launch.voiceGuideEnabled)
                     },
@@ -1313,6 +1329,7 @@ private fun SignedInApp(
                     cheerSelectedCount = selectedCheerIdSet.size,
                     liveSharingEnabled = activeCheerShare?.status == "active",
                     onSaved = { review: RecordedActivityReview, photoAlbumExport: ActivityPhotoAlbumExportResult? ->
+                        recordingLaunchCamera = null
                         val photoMessage = when (photoAlbumExport) {
                             ActivityPhotoAlbumExportResult.SAVED -> R.string.photo_album_saved
                             ActivityPhotoAlbumExportResult.PERMISSION_DENIED -> R.string.photo_album_permission_denied
@@ -1325,6 +1342,7 @@ private fun SignedInApp(
                         selectTab(TopLevelDestination.Me.route)
                     },
                     onExit = {
+                        recordingLaunchCamera = null
                         suppressRecordingRecovery = true
                         selectTab(TopLevelDestination.Today.route)
                     },

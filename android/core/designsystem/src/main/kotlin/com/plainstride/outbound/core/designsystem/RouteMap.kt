@@ -43,6 +43,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
 data class MapCoordinate(val latitude: Double, val longitude: Double)
+data class MapCameraSnapshot(
+    val target: MapCoordinate,
+    val zoom: Float,
+    val bearingDegrees: Float = 0f,
+    val tiltDegrees: Float = 0f,
+)
+typealias MapCameraSnapshotReader = () -> MapCameraSnapshot
+
 data class MapRouteSegment(val points: List<MapCoordinate>, val color: Color)
 data class MapRouteMarker(
     val id: String,
@@ -94,6 +102,9 @@ fun PlainstrideRouteMap(
     fitRouteOnChange: Boolean = true,
     followCoordinate: MapCoordinate? = null,
     initialCameraCoordinate: MapCoordinate? = null,
+    initialCameraSnapshot: MapCameraSnapshot? = null,
+    deferUntilInitialCameraCoordinate: Boolean = false,
+    onCameraSnapshotReader: ((MapCameraSnapshotReader?) -> Unit)? = null,
     followAnimationDurationMs: Int = Int.MAX_VALUE,
     followBearingDegrees: Float? = null,
     followTiltDegrees: Float = 0f,
@@ -116,6 +127,19 @@ fun PlainstrideRouteMap(
         Box(modifier, contentAlignment = Alignment.Center) { Text(stringResource(R.string.route_map_unavailable), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         return
     }
+    val initialCoordinate = followCoordinate ?: initialCameraCoordinate ?: initialCameraSnapshot?.target
+    var retainedInitialCoordinate by remember { mutableStateOf(initialCoordinate) }
+    val pendingInitialCoordinate = initialCoordinate.takeIf { retainedInitialCoordinate == null }
+    LaunchedEffect(pendingInitialCoordinate) {
+        if (pendingInitialCoordinate != null) retainedInitialCoordinate = pendingInitialCoordinate
+    }
+    val cameraCoordinate = initialCoordinate ?: retainedInitialCoordinate
+    if (deferUntilInitialCameraCoordinate && cameraCoordinate == null) {
+        // Creating the map before preflight has a fix would expose the SDK's
+        // world camera. Keep the caller's GPS-wait surface until we can seed it.
+        Box(modifier)
+        return
+    }
     val mapStyle = remember(showPointsOfInterest) {
         if (showPointsOfInterest) null else com.google.android.gms.maps.model.MapStyleOptions(
             """[{"featureType":"poi","stylers":[{"visibility":"off"}]}]"""
@@ -126,18 +150,32 @@ fun PlainstrideRouteMap(
     val camera = rememberCameraPositionState {
         // A ready start should open at its known location, without flying in
         // from the map SDK's default world view during the countdown.
-        (followCoordinate ?: initialCameraCoordinate)?.let { coordinate ->
+        (initialCameraSnapshot?.target ?: cameraCoordinate)?.let { coordinate ->
             position = CameraPosition.Builder()
                 .target(LatLng(coordinate.latitude, coordinate.longitude))
-                .zoom(followZoom)
-                .bearing(followBearingDegrees ?: 0f)
-                .tilt(followTiltDegrees)
+                .zoom(initialCameraSnapshot?.zoom ?: followZoom)
+                .bearing(initialCameraSnapshot?.bearingDegrees ?: followBearingDegrees ?: 0f)
+                .tilt(initialCameraSnapshot?.tiltDegrees ?: followTiltDegrees)
                 .build()
         }
     }
+    val snapshotReaderCallback by rememberUpdatedState(onCameraSnapshotReader)
+    DisposableEffect(camera) {
+        // The owner reads this only at Start; camera frames do not update shell state.
+        snapshotReaderCallback?.invoke {
+            val position = camera.position
+            MapCameraSnapshot(
+                MapCoordinate(position.target.latitude, position.target.longitude),
+                position.zoom, position.bearing, position.tilt,
+            )
+        }
+        onDispose { snapshotReaderCallback?.invoke(null) }
+    }
     var mapLoaded by remember { mutableStateOf(false) }
     val fitRoutePaddingPx = with(androidx.compose.ui.platform.LocalDensity.current) { fitRoutePadding.toPx().toInt() }
-    var didFocusOnUser by remember { mutableStateOf(false) }
+    // A seeded camera already has its requested framing. Do not replace it
+    // with the fallback user-location zoom when map loading finishes.
+    var didFocusOnUser by remember { mutableStateOf(cameraCoordinate != null) }
     var didFocusRoute by remember { mutableStateOf(false) }
     var didFocusSelectedMarker by remember { mutableStateOf(false) }
     LaunchedEffect(focusOnUser, preciseLocationGranted, mapLoaded, useSuppliedUserLocation, suppliedUserLocation) {
@@ -362,6 +400,8 @@ fun PlainstrideLiveRouteMap(
     onAdditionalMarkerClick: ((String) -> Unit)? = null,
     recenterRequest: Int = 0,
     resumeFollowAfterGesture: Boolean = true,
+    deferUntilInitialCameraCoordinate: Boolean = false,
+    initialCameraSnapshot: MapCameraSnapshot? = null,
 ) {
     var mapReady by remember { mutableStateOf(false) }
     val bearing = remember(recordedRoute, rotateWithRunner) {
@@ -422,6 +462,9 @@ fun PlainstrideLiveRouteMap(
         bottomContentPadding = bottomContentPadding,
         fitRouteOnChange = false,
         followCoordinate = cameraPose?.coordinate,
+        initialCameraCoordinate = if (followRunner) runnerLocation else selectedParticipant?.coordinate,
+        initialCameraSnapshot = initialCameraSnapshot,
+        deferUntilInitialCameraCoordinate = deferUntilInitialCameraCoordinate,
         followAnimationDurationMs = 0,
         followBearingDegrees = cameraPose?.bearing,
         followTiltDegrees = cameraPose?.tilt ?: 0f,

@@ -143,6 +143,7 @@ import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.AdjustmentProposal
 import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.core.model.StandaloneWorkout
+import com.plainstride.outbound.core.designsystem.MapCameraSnapshotReader
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
 import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
@@ -223,6 +224,7 @@ fun TodayRoute(
     startRequest: Int = 0,
     refreshRequest: Int = 0,
     mapLocation: android.location.Location? = null,
+    onMapCameraSnapshotReader: ((MapCameraSnapshotReader?) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -336,6 +338,7 @@ fun TodayRoute(
         initialWorkoutId = initialWorkoutId,
         locationGranted = locationGranted,
         mapLocation = mapLocation,
+        onMapCameraSnapshotReader = onMapCameraSnapshotReader,
         onRequestLocationAccess = {
             if (locationGranted) viewModel.refreshWeather()
             else showsLocationPermission = true
@@ -417,6 +420,7 @@ fun TodayScreen(
     initialWorkoutId: String? = null,
     locationGranted: Boolean = false,
     mapLocation: android.location.Location? = null,
+    onMapCameraSnapshotReader: ((MapCameraSnapshotReader?) -> Unit)? = null,
     onRequestLocationAccess: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -564,6 +568,7 @@ fun TodayScreen(
                 showUserLocation = locationGranted,
                 useSuppliedUserLocation = true,
                 suppliedUserLocation = mapLocation,
+                onCameraSnapshotReader = onMapCameraSnapshotReader,
                 preciseLocationGranted = locationGranted,
                 focusOnUser = true,
                 bottomContentPadding = mapOverlayBottomPadding,
