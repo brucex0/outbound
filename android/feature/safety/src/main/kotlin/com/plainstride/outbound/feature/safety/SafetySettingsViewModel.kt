@@ -38,30 +38,40 @@ import java.time.Instant
  private var followerRefreshJob:Job?=null
  private var followerTrackShareId:String?=null
 
- init{reload()}
 
  /** Server pulls (screen open / account change) flow through here so the list survives reinstall. */
- fun onAccountActivated(accountId:String?)=viewModelScope.launch{
+ fun onAccountActivated(accountId:String?){
+  if(activeAccountId!=null && activeAccountId!=accountId)stopWatchingLiveShare()
   activeAccountId=accountId
-  if(accountId==null){mutableDefaultSharing.value=false;return@launch}
-  mutableDefaultSharing.value=contacts.sharesWithTrustedContactsByDefault(accountId)
-  contacts.pull(accountId)
-  reload()
+  connectionNames=emptyMap()
+  mutableFollower.value=null;mutableFollowerTrack.value=emptyList();mutableGroupDetail.value=null
+  mutableContacts.value=emptyList()
+  mutableDefaultSharing.value=false
+  if(accountId==null)return
+  viewModelScope.launch {
+   val defaultSharing=contacts.sharesWithTrustedContactsByDefault(accountId)
+   contacts.pull(accountId)
+   if(activeAccountId!=accountId)return@launch
+   mutableDefaultSharing.value=defaultSharing
+   reload()
+  }
  }
 
  /** Fresh connection roster so cached rows can be re-labelled after a reinstall. */
  fun onConnectionsUpdated(people:List<SocialPerson>){connectionNames=people.associate{it.id to it.displayName};reload()}
 
  fun add(contact:TrustedContact)=viewModelScope.launch{
+  val account=activeAccountId?:return@launch
   val makeDefault=mutableContacts.value.isEmpty()
-  contacts.save(if(makeDefault)contact.copy(isDefault=true)else contact)
-  contacts.push()
+  contacts.save(account,if(makeDefault)contact.copy(isDefault=true)else contact)
+  contacts.push(account)
   reload()
  }
- fun remove(contact:TrustedContact)=viewModelScope.launch{contacts.remove(contact.id);contacts.push();reload()}
+ fun remove(contact:TrustedContact)=viewModelScope.launch{val account=activeAccountId?:return@launch;contacts.remove(account,contact.id);contacts.push(account);reload()}
  fun setTrusted(person:SocialPerson,isTrusted:Boolean)=viewModelScope.launch{
-  if(isTrusted)contacts.save(TrustedContact(person.id,person.displayName,false)) else contacts.remove(person.id)
-  contacts.push()
+  val account=activeAccountId?:return@launch
+  if(isTrusted)contacts.save(account,TrustedContact(person.id,person.displayName,false)) else contacts.remove(account,person.id)
+  contacts.push(account)
   reload()
   analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("preference_changed",mapOf(
    com.plainstride.outbound.core.analytics.AnalyticsProperty.ChangeType to "trusted_contact",
@@ -72,19 +82,21 @@ import java.time.Instant
   val accountId=activeAccountId?:return@launch
   if(enabled&&mutableContacts.value.isEmpty())return@launch
   contacts.setSharesWithTrustedContactsByDefault(accountId,enabled)
+  if(activeAccountId!=accountId)return@launch
   mutableDefaultSharing.value=enabled
   analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("preference_changed",mapOf(
    com.plainstride.outbound.core.analytics.AnalyticsProperty.ChangeType to "trusted_contacts_default_share",
    com.plainstride.outbound.core.analytics.AnalyticsProperty.SelectionType to if(enabled)"on" else "off",
   )))
  }
- fun arm(){val ids=mutableContacts.value.map{it.id};if(ids.isNotEmpty())liveShare.arm(CreateLiveShareRequest(recipientUserIds=ids))}
- fun applyTrustedContactDefault(){
-  if(!mutableDefaultSharing.value)return
-  liveShare.applyDefaultRecipients(mutableContacts.value.map{it.id})
+ fun arm(){val account=activeAccountId?:return;val ids=mutableContacts.value.map{it.id};if(ids.isNotEmpty())liveShare.arm(account,CreateLiveShareRequest(recipientUserIds=ids))}
+ fun applyTrustedContactDefault(accountId:String?){
+  if(accountId==null || activeAccountId!=accountId)return
+  liveShare.applyDefaultRecipients(accountId,if(mutableDefaultSharing.value)mutableContacts.value.map{it.id}else emptyList())
  }
  suspend fun configureCheerRecipients(ids:Set<String>):Boolean {
-  val result = liveShare.configureLiveRecipients(ids.toList())
+  val account=activeAccountId?:return false
+  val result = liveShare.configureLiveRecipients(account,ids.toList())
   result.onFailure { Log.w(REALTIME_TAG,"live_share_reconfigure failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status}") }
   return result.isSuccess
  }
@@ -241,7 +253,13 @@ import java.time.Instant
  }
  fun sendVoiceCheer(audioBase64:String,durationMs:Int)=viewModelScope.launch{val id=mutableFollower.value?.id?:return@launch;mutableFollowerMessage.value=null;liveShare.sendVoiceCheer(id,audioBase64,durationMs).onSuccess{mutableFollowerMessage.value="sent"}.onFailure{mutableFollowerMessage.value="send_failed"}}
  fun leaveGroup()=viewModelScope.launch{liveShare.group.value?.let{liveShare.leaveGroupRun(it.id,false)}}
- private fun reload()=viewModelScope.launch{mutableContacts.value=contacts.contacts().map{contact->connectionNames[contact.id]?.takeIf(String::isNotBlank)?.let{contact.copy(displayName=it)}?:contact}}
+ private fun reload(){
+  val account=activeAccountId?:return
+  viewModelScope.launch {
+   val loaded=contacts.contacts(account)
+   if(activeAccountId==account)mutableContacts.value=loaded.map{contact->connectionNames[contact.id]?.takeIf(String::isNotBlank)?.let{contact.copy(displayName=it)}?:contact}
+  }
+ }
 
  private companion object { const val FOLLOWER_REFRESH_INTERVAL_MS=5_000L;const val MAX_FOLLOWER_ROUTE_POINTS=3_000;const val REALTIME_TAG="PlainstrideRealtime" }
 }

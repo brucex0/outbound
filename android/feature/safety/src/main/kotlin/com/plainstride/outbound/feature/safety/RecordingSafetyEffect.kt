@@ -67,6 +67,7 @@ fun RecordingSafetyEffect(
  snapshot:RecordingSnapshot,
  activityEventId:String?=null,
  voiceEnabled:Boolean=true,
+ cheerRecipientRoster:CheerRecipientRoster?=null,
  onGroupRunState:(SharedLiveRun?)->Unit={},
  viewModel:RecordingSafetyViewModel=hiltViewModel(),
 ){
@@ -81,12 +82,16 @@ fun RecordingSafetyEffect(
  LaunchedEffect(snapshot.status,snapshot.sessionId,activityEventId){
   val previous=prior.value;prior.value=snapshot.status
   when(snapshot.status){
-   RecordingStatus.ACTIVE, RecordingStatus.PAUSED->coordinator.recordingStarted(snapshot.sessionId).onFailure {
-    android.widget.Toast.makeText(context,R.string.live_cheer_invitation_failed,android.widget.Toast.LENGTH_LONG).show()
-   }
-   RecordingStatus.AWAITING_SAVE->{coordinator.recordingEnded();coordinator.finishRecordingGroupRun(snapshot.accountId)}
-   RecordingStatus.IDLE->if(previous!=null&&previous!=RecordingStatus.IDLE){coordinator.recordingEnded();coordinator.finishRecordingGroupRun(snapshot.accountId)}
+   RecordingStatus.AWAITING_SAVE->{coordinator.recordingEnded(snapshot.accountId);coordinator.finishRecordingGroupRun(snapshot.accountId)}
+   RecordingStatus.IDLE->if(previous!=null&&previous!=RecordingStatus.IDLE){coordinator.recordingEnded(snapshot.accountId);coordinator.finishRecordingGroupRun(snapshot.accountId)}
    else->Unit
+  }
+ }
+ // Roster readiness can arrive after ACTIVE, including after an offline refresh retry.
+ LaunchedEffect(snapshot.status,snapshot.sessionId,snapshot.accountId,cheerRecipientRoster){
+  if(snapshot.status!=RecordingStatus.ACTIVE && snapshot.status!=RecordingStatus.PAUSED)return@LaunchedEffect
+  coordinator.recordingStarted(snapshot.sessionId,snapshot.accountId,cheerRecipientRoster).onFailure {
+   android.widget.Toast.makeText(context,R.string.live_cheer_invitation_failed,android.widget.Toast.LENGTH_LONG).show()
   }
  }
  LaunchedEffect(snapshot.status,snapshot.sessionId,voiceEnabled){

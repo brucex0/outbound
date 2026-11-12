@@ -541,7 +541,6 @@ private fun SignedInApp(
                     context.checkSelfPermission(android.Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED &&
                     context.getSystemService(android.hardware.SensorManager::class.java)?.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_DETECTOR) != null
                 if (configuration.startImmediately && !needsMotion && hasPermission && (configuration.indoor || recordingViewModel.hasRecentStartLocation())) {
-                    cheerPickerViewModel.applyTrustedContactDefault()
                     voicePreparation.preparation.activityWillStart(configuration.voiceGuideEnabled)
                     // Resolve recovery before a direct Walk/Hike start so entering
                     // the recording route cannot recover the new session as paused.
@@ -584,6 +583,11 @@ private fun SignedInApp(
         }
     }
     LaunchedEffect(accountId) { cheerPickerViewModel.onAccountActivated(accountId) }
+    LaunchedEffect(accountId, currentRoute, hasActiveSession, trustedContacts, sharesWithTrustedContactsByDefault) {
+        if (!hasActiveSession && currentRoute == TopLevelDestination.Today.route) {
+            cheerPickerViewModel.applyTrustedContactDefault(accountId)
+        }
+    }
     LaunchedEffect(integration.connections) { cheerPickerViewModel.onConnectionsUpdated(integration.connections) }
     LaunchedEffect(accountId) { accountId?.let(connectivityViewModel::start) }
     LaunchedEffect(connectivityState.isOffline) {
@@ -1285,7 +1289,6 @@ private fun SignedInApp(
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
                     onPrepareActivityStart = {
-                        cheerPickerViewModel.applyTrustedContactDefault()
                         voicePreparation.preparation.activityWillStart(recordingViewModel.state.value.launch.voiceGuideEnabled)
                     },
                     isOffline = connectivityState.isOffline,
@@ -1323,7 +1326,12 @@ private fun SignedInApp(
                     onStopActivityLiveMap=stopActivityLiveMap,
                     sessionEffect = { snapshot, liveLaunch ->
                         LiveCoachRecordingEffect(liveLaunch, measurementUnitSystem, feedbackCoach)
-                        RecordingSafetyEffect(snapshot, liveLaunch.activityEventId, voiceEnabled = liveLaunch.voiceGuideEnabled)
+                        RecordingSafetyEffect(
+                            snapshot,
+                            liveLaunch.activityEventId,
+                            voiceEnabled = liveLaunch.voiceGuideEnabled,
+                            cheerRecipientRoster = integration.cheerRecipientRoster,
+                        )
                     },
                     saveActivityPhotosToAlbum = settingsState.preferences.saveActivityPhotosToAlbum,
                     onPhotoAlbumPermissionDenied = {

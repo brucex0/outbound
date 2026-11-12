@@ -23,13 +23,13 @@ import com.plainstride.outbound.feature.social.SocialAvatar
 import com.plainstride.outbound.feature.social.SocialPerson
 
 interface TrustedContactStore {
- suspend fun contacts():List<TrustedContact>
- suspend fun save(contact:TrustedContact)
- suspend fun remove(id:String)
+ suspend fun contacts(accountId:String):List<TrustedContact>
+ suspend fun save(accountId:String,contact:TrustedContact)
+ suspend fun remove(accountId:String,id:String)
  suspend fun sharesWithTrustedContactsByDefault(accountId:String):Boolean
  suspend fun setSharesWithTrustedContactsByDefault(accountId:String,enabled:Boolean)
  suspend fun pull(accountId:String)
- suspend fun push()
+ suspend fun push(accountId:String)
 }
 enum class NotificationPermissionState { UNKNOWN, GRANTED, DENIED, PERMANENTLY_DENIED }
 
@@ -205,20 +205,15 @@ fun CheerInvitationPickerDialog(
         trustedContacts.map(TrustedContact::id).toSet().intersect(accepted.map(SocialPerson::id).toSet())
     }
     val acceptedIds = remember(accepted) { accepted.map(SocialPerson::id).toSet() }
-    // Seed once per opening: roster refreshes also change the parent's filtered selection.
+    // The shared effective choice also drives the launch pill and invitation start.
+    // Keep edits local until Done; an empty saved choice never invents trusted recipients.
     var selected by remember { mutableStateOf(currentSelection) }
-    var selectionInitialized by remember { mutableStateOf(false) }
     var selectionEdited by remember { mutableStateOf(false) }
-    LaunchedEffect(acceptedIds, trustedIds) {
-        if (!selectionInitialized && acceptedIds.isEmpty()) return@LaunchedEffect
-        val retainedSelection = selected.intersect(acceptedIds)
-        selected = if (!selectionInitialized && !selectionEdited && retainedSelection.isEmpty()) {
-            trustedIds
-        } else {
-            retainedSelection
-        }
-        // Empty trusted contacts may still be loading; a choice or edit resolves defaults.
-        selectionInitialized = selectionInitialized || selectionEdited || selected.isNotEmpty()
+    var rosterReceived by remember { mutableStateOf(acceptedIds.isNotEmpty()) }
+    LaunchedEffect(acceptedIds, currentSelection) {
+        if (!selectionEdited) selected = currentSelection
+        if (acceptedIds.isNotEmpty()) rosterReceived = true
+        if (rosterReceived) selected = selected.intersect(acceptedIds)
     }
     val trusted = accepted.filter { it.id in trustedIds }
     val others = accepted.filterNot { it.id in trustedIds }

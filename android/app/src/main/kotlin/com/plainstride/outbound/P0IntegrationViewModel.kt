@@ -61,6 +61,8 @@ data class P0IntegrationState(
     val gearMileage: List<GearMileageSummary> = emptyList(),
     val pushEnabled: Boolean = true,
     val connections: List<SocialPerson> = emptyList(),
+    // Only a complete, successful network roster can prune persisted Cheer recipients.
+    val cheerRecipientRoster: CheerRecipientRoster? = null,
     val recognitions: List<RecognitionAward> = emptyList(),
     val insights: List<RunnerInsight> = emptyList(),
     val weightKilograms: Double? = null,
@@ -112,7 +114,7 @@ data class P0IntegrationState(
     }
     fun start(accountId: String, locale: String) {
         if (this.accountId == accountId && this.locale == locale) return
-        if (this.accountId != accountId) mutable.update { it.copy(notifications = emptyList(), notificationAccountId = accountId) }
+        if (this.accountId != accountId) mutable.update { it.copy(notifications = emptyList(), notificationAccountId = accountId, connections = emptyList(), cheerRecipientRoster = null) }
         this.accountId = accountId
         this.locale = locale
         serverStatistics = null
@@ -347,10 +349,16 @@ data class P0IntegrationState(
         val account = accountId ?: return@coroutineScope
         val requestedLocale = locale
         val inbox = async { inboxMutex.lock(); try { loadInbox() } finally { inboxMutex.unlock() } }
-        val roster = async { social.refreshConnections(account, requestedLocale, mutable.value.connections.size) }
+        // Exhaust pagination: absence from a partial or cached roster cannot revoke consent.
+        val roster = async { social.refreshConnections(account, requestedLocale, Int.MAX_VALUE) }
         val inboxSucceeded = inbox.await()
         val rosterResult = roster.await()
-        rosterResult.onFailure { error ->
+        rosterResult.onSuccess { page ->
+            if (accountId == account && page.nextCursor == null) mutable.update { state -> state.copy(
+                cheerRecipientRoster = CheerRecipientRoster(account, page.items.asSequence()
+                    .filter { it.relationship in setOf("accepted", "connected") }.map { it.id }.toSet()),
+            ) }
+        }.onFailure { error ->
             if (error is kotlinx.coroutines.CancellationException) throw error
             android.util.Log.w("PlainstrideSocial", "shared_connections_refresh failed type=${error.javaClass.simpleName} status=${(error as? com.plainstride.outbound.feature.social.SocialException)?.httpStatus}")
         }

@@ -25,6 +25,9 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 import com.plainstride.outbound.core.network.*
 import com.plainstride.outbound.core.analytics.*
 
+/** A complete accepted-connection roster fetched successfully for this signed-in account. */
+data class CheerRecipientRoster(val accountId: String, val eligibleRecipientIds: Set<String>)
+
 @Singleton
 class LiveShareCoordinator @Inject constructor(
     private val api: SafetyApi,
@@ -47,20 +50,16 @@ class LiveShareCoordinator @Inject constructor(
     private val preferences = context.getSharedPreferences("live_share_state", Context.MODE_PRIVATE)
     private val realtimeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
-    private val mutableActive = MutableStateFlow(preferences.getString(ACTIVE, null)?.let {
-        runCatching { PlainstrideJson.decodeFromString<LiveShare>(it) }.getOrNull()
-    })
+    @Volatile private var activeAccountId: String? = null
+    private var accountActivated = false
+    private val mutableActive = MutableStateFlow<LiveShare?>(null)
     val active = mutableActive.asStateFlow()
-    private val mutableGroup = MutableStateFlow(preferences.getString(GROUP, null)?.let {
-        runCatching { PlainstrideJson.decodeFromString<GroupRun>(it) }.getOrNull()
-    })
+    private val mutableGroup = MutableStateFlow<GroupRun?>(null)
     val group = mutableGroup.asStateFlow()
-    private val mutableArmed = MutableStateFlow(preferences.getString(ARMED, null)?.let {
-        runCatching { PlainstrideJson.decodeFromString<CreateLiveShareRequest>(it) }.getOrNull()
-    })
-    private val mutableSelectedRecipients = MutableStateFlow(mutableArmed.value?.recipientUserIds.orEmpty())
+    private val mutableArmed = MutableStateFlow<CreateLiveShareRequest?>(null)
+    private val mutableSelectedRecipients = MutableStateFlow<List<String>>(emptyList())
     val selectedRecipientIds = mutableSelectedRecipients.asStateFlow()
-    private var armed: CreateLiveShareRequest? = mutableArmed.value
+    private var armed: CreateLiveShareRequest? = null
     private var lastSentAt = 0L
     private var lastSentRecordedAt: Instant? = null
     private var lastPoint: LiveLocation? = null
@@ -80,16 +79,41 @@ class LiveShareCoordinator @Inject constructor(
     private val groupConsentRevision = java.util.concurrent.atomic.AtomicLong()
     private val mutableGroupJoining = MutableStateFlow(false)
     val groupJoining = mutableGroupJoining.asStateFlow()
-    init {
-        mutableGroup.value?.takeIf { run -> run.status == "active" && run.participants.any { it.userId == run.currentUserId && it.status in setOf("active", "stale") } }?.let { connectGroupRealtime(it.id) }
-        mutableActive.value?.takeIf { it.status == "active" }?.let { connectShareRealtime(it.id) }
+    /** No saved consent or realtime connection is exposed before its owner signs in. */
+    @Synchronized fun activateAccount(accountId: String?) {
+        if (accountActivated && activeAccountId == accountId) return
+        val restore = !accountActivated && accountId != null && preferences.getString(OWNER, null) == accountId
+        val savedActive = if (restore) preferences.getString(ACTIVE, null) else null
+        val savedGroup = if (restore) preferences.getString(GROUP, null) else null
+        val savedArmed = if (restore) preferences.getString(ARMED, null) else null
+        val explicit = restore && preferences.getBoolean(EXPLICIT_RECIPIENTS, false)
+        activeAccountId = accountId
+        accountActivated = true
+        groupConsentRevision.incrementAndGet()
+        clear()
+        clearGroup()
+        mutableGroupJoining.value = false
+        lastGroupCheckpointAt = 0L
+        if (accountId == null) return
+        preferences.edit().putString(OWNER, accountId).putBoolean(EXPLICIT_RECIPIENTS, explicit).apply()
+        savedArmed?.let { raw -> decodeSaved<CreateLiveShareRequest>(raw)?.let(::saveArmed) }
+        mutableSelectedRecipients.value = armed?.recipientUserIds.orEmpty()
+        savedGroup?.let { raw -> decodeSaved<GroupRun>(raw)?.let { saveGroup(it, allowConsent = true) } }
+        savedActive?.let { raw -> decodeSaved<LiveShare>(raw)?.takeIf { it.status == "active" }?.let(::saveActive) }
+    }
+    private inline fun <reified T> decodeSaved(raw: String): T? = try {
+        PlainstrideJson.decodeFromString<T>(raw)
+    } catch (error: Exception) {
+        Log.w(REALTIME_TAG, "sharing_state_decode failed type=${error.javaClass.simpleName}")
+        null
     }
 
  private fun saveArmed(request:CreateLiveShareRequest){armed=request;mutableArmed.value=request;preferences.edit().putString(ARMED,PlainstrideJson.encodeToString(request)).apply()}
- fun arm(request:CreateLiveShareRequest){mutableSelectedRecipients.value=request.recipientUserIds.distinct();saveArmed(request);analytics.record(AnalyticsEvent("live_share_armed"))}
+ fun arm(accountId:String,request:CreateLiveShareRequest){if(activeAccountId!=accountId)return;preferences.edit().putBoolean(EXPLICIT_RECIPIENTS,true).apply();mutableSelectedRecipients.value=request.recipientUserIds.distinct();saveArmed(request);analytics.record(AnalyticsEvent("live_share_armed"))}
  private var recordingSessionId: String? = null
  private val recipientChangeLock = kotlinx.coroutines.sync.Mutex()
- suspend fun configureLiveRecipients(ids: List<String>): Result<Unit> = recipientChangeLock.withLock {
+ suspend fun configureLiveRecipients(accountId: String, ids: List<String>): Result<Unit> = recipientChangeLock.withLock {
+  if(activeAccountId!=accountId)return@withLock Result.failure(IllegalStateException("account_changed"))
   if (ids.toSet() == mutableSelectedRecipients.value.toSet() && mutableActive.value != null) return@withLock Result.success(Unit)
   val sessionId = recordingSessionId
   if (sessionId != null && mutableActive.value != null) {
@@ -98,9 +122,11 @@ class LiveShareCoordinator @Inject constructor(
   }
   if (sessionId != recordingSessionId) return@withLock Result.failure(IllegalStateException("recording_ended"))
   configureRecipients(ids)
-  if (sessionId != null && ids.isNotEmpty()) recordingStarted(sessionId).map { Unit } else Result.success(Unit)
+  // A live picker confirmation is explicit consent for its displayed accepted recipients.
+  if (sessionId != null && ids.isNotEmpty()) startArmedRecording(sessionId, ids.toSet()).map { Unit } else Result.success(Unit)
  }
- fun configureRecipients(ids:List<String>){
+ private fun configureRecipients(ids:List<String>){
+  preferences.edit().putBoolean(EXPLICIT_RECIPIENTS,true).apply()
   val recipients=ids.distinct()
   mutableSelectedRecipients.value=recipients
   if(recipients.isEmpty()){
@@ -109,18 +135,46 @@ class LiveShareCoordinator @Inject constructor(
   analytics.record(AnalyticsEvent("live_cheer_invitation_configured",mapOf(AnalyticsProperty.ParticipantCountBucket to when(recipients.size){0->"0";1->"1";in 2..3->"2_3";in 4..7->"4_7";else->"8_plus"})))
  }
  /** Applies the user's default trusted contacts for a new activity without recording a picker change. */
- fun applyDefaultRecipients(ids:List<String>){
+ fun applyDefaultRecipients(accountId:String,ids:List<String>){
+  if(activeAccountId!=accountId)return
+  // Done, including an empty choice, overrides the default for this activity.
+  if(preferences.getBoolean(EXPLICIT_RECIPIENTS,false) || recordingSessionId!=null || mutableActive.value!=null)return
   val recipients=ids.distinct()
   mutableSelectedRecipients.value=recipients
   if(recipients.isEmpty()){
    armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply()
   }else saveArmed(CreateLiveShareRequest(recipientUserIds=recipients))
  }
- suspend fun recordingStarted(activityId:String?=null):Result<LiveShare?>{recordingSessionId=activityId;if(mutableActive.value!=null)return Result.success(mutableActive.value);val request=armed?:return Result.success(null);return start(request.copy(activityId=activityId)).onSuccess {
-  armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply()
- }.onFailure {
-  Log.w(REALTIME_TAG,"live_share_start failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status} category=${(it as? SafetyRequestException)?.category}")
- }.map{it}}
+ suspend fun recordingStarted(activityId:String?, accountId:String?, roster:CheerRecipientRoster?):Result<LiveShare?> = recipientChangeLock.withLock {
+  if(accountId==null || activeAccountId!=accountId)return@withLock Result.success(null)
+  recordingSessionId=activityId
+  if(mutableActive.value!=null)return@withLock Result.success(mutableActive.value)
+  if(armed==null)return@withLock Result.success(null)
+  if(roster==null || roster.accountId!=accountId){
+   // Loading/offline failure is not an empty roster. Preserve consent and retry
+   // when the recording effect receives this account's first authoritative roster.
+   analytics.record(AnalyticsEvent("live_cheer_start_eligibility",mapOf(AnalyticsProperty.Result to "deferred")))
+   return@withLock Result.success(null)
+  }
+  startArmedRecording(activityId,roster.eligibleRecipientIds)
+ }
+ private suspend fun startArmedRecording(activityId:String?, eligibleRecipientIds:Set<String>):Result<LiveShare?> {
+  val request=armed?:return Result.success(null)
+  val recipients=request.recipientUserIds.distinct().filter { it in eligibleRecipientIds }
+  mutableSelectedRecipients.value=recipients
+  analytics.record(AnalyticsEvent("live_cheer_start_eligibility",mapOf(AnalyticsProperty.Result to if(recipients.isEmpty())"empty" else "eligible")))
+  if(recipients.isEmpty()){
+   armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply()
+   return Result.success(null)
+  }
+  val eligibleRequest=request.copy(recipientUserIds=recipients)
+  saveArmed(eligibleRequest)
+  return start(eligibleRequest.copy(activityId=activityId)).onSuccess {
+   armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply()
+  }.onFailure {
+   Log.w(REALTIME_TAG,"live_share_start failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status} category=${(it as? SafetyRequestException)?.category}")
+  }.map{it}
+ }
  suspend fun start(request:CreateLiveShareRequest):Result<LiveShare> = authenticated{apiCall{api.create(it,request)}}.onSuccess{lastShareCheckpointAt=0;lastPoint=null;lastSentAt=0;lastSentRecordedAt=null;saveActive(it)}.also{result->analytics.record(AnalyticsEvent("live_share_started",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}
  suspend fun update(point:LiveLocation):Result<LiveShare?> = lock.withLock {
   val share=mutableActive.value?:return Result.success(null)
@@ -149,7 +203,15 @@ class LiveShareCoordinator @Inject constructor(
   }
   Result.success(share)
  }
- suspend fun recordingEnded():Result<Unit>{recordingSessionId=null;return end()}
+ suspend fun recordingEnded(accountId:String?):Result<Unit>{
+  if(accountId==null || activeAccountId!=accountId)return Result.success(Unit)
+  recordingSessionId=null
+  return end().onSuccess {
+   // The next activity may use its default; no pending invitation survives Finish.
+   armed=null;mutableArmed.value=null;mutableSelectedRecipients.value=emptyList()
+   preferences.edit().remove(ARMED).remove(EXPLICIT_RECIPIENTS).apply()
+  }
+ }
  suspend fun end(preserveGroup: Boolean = false):Result<Unit>{val share=mutableActive.value?:return Result.success(Unit);return authenticated{apiCall{api.end(it,share.id)}}.map{val currentRecording=recordingSessionId;if (preserveGroup) clearCurrentShare() else clear();recordingSessionId=currentRecording;Unit}.also{result->analytics.record(AnalyticsEvent("live_share_ended",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}}
  private fun clearCurrentShare() {
   shareRealtime?.close(); shareRealtime=null; shareRealtimeId=null
@@ -157,7 +219,7 @@ class LiveShareCoordinator @Inject constructor(
   lastPoint=null; lastShareCheckpointAt=0; lastSentAt=0; lastSentRecordedAt=null
   preferences.edit().remove(ACTIVE).remove(ARMED).apply()
  }
- fun clear(){recordingSessionId=null;groupSnapshots.clear();followerSnapshots.clear();shareRealtime?.close();shareRealtime=null;shareRealtimeId=null;followerRealtime?.close();followerRealtime=null;armed=null;mutableArmed.value=null;mutableActive.value=null;lastPoint=null;lastShareCheckpointAt=0;lastSentAt=0;lastSentRecordedAt=null;preferences.edit().clear().apply()}
+ fun clear(){recordingSessionId=null;mutableSelectedRecipients.value=emptyList();groupSnapshots.clear();followerSnapshots.clear();shareRealtime?.close();shareRealtime=null;shareRealtimeId=null;followerRealtime?.close();followerRealtime=null;armed=null;mutableArmed.value=null;mutableActive.value=null;lastPoint=null;lastShareCheckpointAt=0;lastSentAt=0;lastSentRecordedAt=null;preferences.edit().clear().putString(OWNER,activeAccountId).apply()}
  suspend fun registerToken(token:String,bundle:String,locale:String)=authenticated{apiCall{api.register(it,PushDeviceRequest(token,appBundle=bundle,locale=locale))}}.map{Unit}
  suspend fun unregisterToken(token:String)=authenticated{apiCall{api.unregister(it,token)}}.map{Unit}
  suspend fun inbox()=authenticated{apiCall{api.inbox(it)}}
@@ -195,10 +257,10 @@ class LiveShareCoordinator @Inject constructor(
  fun isSharingEvent(activityEventId:String):Boolean=mutableGroup.value?.let{run->run.status=="active"&&run.activityEventId==activityEventId&&run.participants.any{it.userId==run.currentUserId&&it.status in setOf("active","stale")}}==true
  fun hasDifferentActiveGroup(activityEventId:String):Boolean=mutableGroup.value?.let{run->run.status=="active"&&run.activityEventId!=activityEventId&&run.participants.any{it.userId==run.currentUserId&&it.status in setOf("active","stale")}}==true
  suspend fun finishRecordingGroupRun(accountId:String?){
+  if(accountId==null || activeAccountId!=accountId)return
   groupConsentRevision.incrementAndGet()
   val run=mutableGroup.value?:return
   run.activityEventId?.let { event ->
-   if(accountId==null)return@let
    val prefs=applicationContext.getSharedPreferences("group_recording_${accountId}",Context.MODE_PRIVATE)
    prefs.edit().putStringSet("completed_events",prefs.getStringSet("completed_events",emptySet()).orEmpty()+event).remove("selected_event").apply()
   }
@@ -355,7 +417,15 @@ class LiveShareCoordinator @Inject constructor(
   if(previous!=null && !measuredAt.isAfter(previous))return
   mutableGroup.value=old.copy(participants=old.participants.map{p->if(p.userId!=senderId)p else p.copy(status="active",lastLocationAt=timestamp,lastLocation=GroupRunPoint(lat,lon,(map["altitudeM"] as? Number)?.toDouble(),(map["accuracyM"] as? Number)?.toDouble()),lastActivitySnapshot=GroupRunProgress((map["elapsedSeconds"] as? Number)?.toInt()?:0,(map["distanceM"] as? Number)?.toDouble()?:0.0,(map["paceSecondsPerKM"] as? Number)?.toDouble()))})
  }
- private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out"));return when(val value=call("Bearer $token")){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(SafetyRequestException(value.error.code.name, value.error.httpStatus))}}
+ private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{
+  val account=activeAccountId?:return Result.failure(IllegalStateException("signed_out"))
+  val requestContext=tokens.captureAccount(account)?:return Result.failure(IllegalStateException("signed_out"))
+  val token=tokens.validAccessToken(requestContext)?:return Result.failure(IllegalStateException("signed_out"))
+  if(activeAccountId!=account || !tokens.isCurrent(requestContext))throw kotlinx.coroutines.CancellationException("safety_account_changed")
+  val value=call("Bearer $token")
+  if(activeAccountId!=account || !tokens.isCurrent(requestContext))throw kotlinx.coroutines.CancellationException("safety_account_changed")
+  return when(value){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(SafetyRequestException(value.error.code.name,value.error.httpStatus))}
+ }
  private fun isFreshMeasurement(point:LiveLocation):Boolean {
   val measuredAt=runCatching{Instant.parse(point.recordedAt)}.getOrNull()?:return false
   val age=Duration.between(measuredAt,Instant.now()).toMillis()
@@ -367,7 +437,7 @@ class LiveShareCoordinator @Inject constructor(
   return next.isBefore(old)
  }
 
- private companion object{const val ACTIVE="active";const val ARMED="armed";const val GROUP="group";const val REALTIME_TAG="PlainstrideRealtime"}
+ private companion object{const val OWNER="owner_account";const val EXPLICIT_RECIPIENTS="explicit_recipients";const val ACTIVE="active";const val ARMED="armed";const val GROUP="group";const val REALTIME_TAG="PlainstrideRealtime"}
 }
 
 class SafetyRequestException(val category: String, val status: Int?) : Exception(category)

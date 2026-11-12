@@ -67,6 +67,7 @@ class AuthViewModel @Inject constructor(
                     is SessionState.Refreshing -> session.accountId
                     SessionState.Loading, SessionState.SignedOut -> null
                 }
+                if (session != SessionState.Loading) push.activateAccount(accountId)
                 analytics.setUserId(accountId)
                 revenueCat.activate(accountId)
             }
@@ -112,6 +113,10 @@ class AuthViewModel @Inject constructor(
 
     fun signOut() = perform(AuthOperation.SignOut, "auth_sign_out", AuthMessage.SignedOut) {
         unregisterPush()
+        // End authorized sharing before dropping this account's credentials.
+        push.leaveGroupRun(false).onFailure { Log.w(TAG, "sign_out_group_leave failed type=${it.javaClass.simpleName} status=${(it as? com.plainstride.outbound.feature.safety.SafetyRequestException)?.status}") }
+        push.end().onFailure { Log.w(TAG, "sign_out_live_share_end failed type=${it.javaClass.simpleName} status=${(it as? com.plainstride.outbound.feature.safety.SafetyRequestException)?.status}") }
+        push.activateAccount(null)
         sessions.signOut()
         google.clear()
         ApiResult.Success(Unit)

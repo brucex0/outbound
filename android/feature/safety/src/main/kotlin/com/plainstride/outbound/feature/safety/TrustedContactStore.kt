@@ -30,36 +30,46 @@ import com.plainstride.outbound.core.network.apiCall
 ):TrustedContactStore{
  private val preferences=context.getSharedPreferences("server_trusted_contacts",Context.MODE_PRIVATE)
  private val lock=Mutex()
- override suspend fun contacts()=withContext(Dispatchers.IO){decode()}
- override suspend fun save(contact:TrustedContact)=withContext(Dispatchers.IO){
-  val updated=decode().filterNot{it.id==contact.id}.toMutableList().apply{if(contact.isDefault)replaceAll{it.copy(isDefault=false)};add(contact)}
-  preferences.edit().putString(KEY,PlainstrideJson.encodeToString(ListSerializer,updated)).commit();Unit
+ override suspend fun contacts(accountId:String)=withContext(Dispatchers.IO){decode(accountId)}
+ override suspend fun save(accountId:String,contact:TrustedContact)=withContext(Dispatchers.IO){
+  val updated=decode(accountId).filterNot{it.id==contact.id}.toMutableList().apply{if(contact.isDefault)replaceAll{it.copy(isDefault=false)};add(contact)}
+  preferences.edit().putString(contactsKey(accountId),PlainstrideJson.encodeToString(ListSerializer,updated)).commit();Unit
  }
- override suspend fun remove(id:String)=withContext(Dispatchers.IO){preferences.edit().putString(KEY,PlainstrideJson.encodeToString(ListSerializer,decode().filterNot{it.id==id})).commit();Unit}
+ override suspend fun remove(accountId:String,id:String)=withContext(Dispatchers.IO){preferences.edit().putString(contactsKey(accountId),PlainstrideJson.encodeToString(ListSerializer,decode(accountId).filterNot{it.id==id})).commit();Unit}
  override suspend fun sharesWithTrustedContactsByDefault(accountId:String)=withContext(Dispatchers.IO){preferences.getBoolean(defaultShareKey(accountId),false)}
  override suspend fun setSharesWithTrustedContactsByDefault(accountId:String,enabled:Boolean)=withContext(Dispatchers.IO){preferences.edit().putBoolean(defaultShareKey(accountId),enabled).commit();Unit}
 
  /** Pull the server list into the cache, preserving last-known display names. */
  override suspend fun pull(accountId:String){lock.withLock{
-  val remote=authenticated{apiCall{api.trustedContacts(it)}}.getOrNull()?:return@withLock
-  val cached=decode().associateBy{it.id}
+  val remote=authenticated(accountId){apiCall{api.trustedContacts(it)}}.getOrNull()?:return@withLock
+  val cached=decode(accountId).associateBy{it.id}
   val merged=remote.contactUserIds.map{id->
    val known=cached[id]
    TrustedContact(id,known?.displayName.orEmpty(),id==remote.defaultContactUserId)
   }
-  withContext(Dispatchers.IO){preferences.edit().putString(KEY,PlainstrideJson.encodeToString(ListSerializer,merged)).commit()}
+  withContext(Dispatchers.IO){preferences.edit().putString(contactsKey(accountId),PlainstrideJson.encodeToString(ListSerializer,merged)).commit()}
  }}
 
  /** Push the cached list to the server after a local mutation. */
- override suspend fun push(){lock.withLock{
-  val current=decode()
-  authenticated{apiCall{api.putTrustedContacts(it,PutTrustedContactsRequest(current.map{c->c.id},current.firstOrNull{c->c.isDefault}?.id))}}
+ override suspend fun push(accountId:String){lock.withLock{
+  val current=decode(accountId)
+  authenticated(accountId){apiCall{api.putTrustedContacts(it,PutTrustedContactsRequest(current.map{c->c.id},current.firstOrNull{c->c.isDefault}?.id))}}
  }}
 
- private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out"));return when(val value=call("Bearer $token")){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(IllegalStateException(value.error.code.name))}}
- private fun decode()=preferences.getString(KEY,null)?.let{runCatching{PlainstrideJson.decodeFromString(ListSerializer,it)}.getOrNull()}.orEmpty()
+ private suspend fun<T:Any>authenticated(accountId:String,call:suspend(String)->ApiResult<T>):Result<T>{
+  val requestContext=tokens.captureAccount(accountId)?:return Result.failure(IllegalStateException("signed_out"))
+  val token=tokens.validAccessToken(requestContext)?:return Result.failure(IllegalStateException("signed_out"))
+  val value=call("Bearer $token")
+  if(!tokens.isCurrent(requestContext))throw kotlinx.coroutines.CancellationException("trusted_contacts_account_changed")
+  return when(value){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->{
+   android.util.Log.w("PlainstrideSafety","trusted_contacts_request failed category=${value.error.code} status=${value.error.httpStatus}")
+   Result.failure(IllegalStateException(value.error.code.name))
+  }}
+ }
+ private fun decode(accountId:String)=preferences.getString(contactsKey(accountId),null)?.let{runCatching{PlainstrideJson.decodeFromString(ListSerializer,it)}.getOrNull()}.orEmpty()
+ private fun contactsKey(accountId:String)="contacts_$accountId"
  private fun defaultShareKey(accountId:String)="default_share_$accountId"
- private companion object{const val KEY="contacts";val ListSerializer=kotlinx.serialization.builtins.ListSerializer(TrustedContact.serializer())}
+ private companion object{val ListSerializer=kotlinx.serialization.builtins.ListSerializer(TrustedContact.serializer())}
 }
 
 @Module @InstallIn(SingletonComponent::class) abstract class TrustedContactModule{
