@@ -660,13 +660,6 @@ fun TodayScreen(
                     }
                 }
                 guidanceContent()
-                if (state.refreshing) Surface(shape = RoundedCornerShape(20.dp), tonalElevation = 3.dp) {
-                    Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.today_updating), style = MaterialTheme.typography.labelLarge)
-                    }
-                }
             }
             }
             if (!locationGranted && !indoor && !state.activeSession) {

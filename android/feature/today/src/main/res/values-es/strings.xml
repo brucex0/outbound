@@ -84,7 +84,6 @@
     <string name="today_time_format">%1$d min</string>
     <string name="today_time_value">30 min</string>
     <string name="today_up_next">A continuación</string>
-    <string name="today_updating">Actualizando hoy…</string>
     <string name="today_view_next">Ver el próximo entrenamiento</string>
     <string name="today_voice">Voz</string>
     <string name="today_ai_coach">Entrenador IA</string>
