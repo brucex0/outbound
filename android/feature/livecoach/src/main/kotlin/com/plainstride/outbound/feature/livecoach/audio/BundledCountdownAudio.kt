@@ -12,7 +12,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -99,18 +102,27 @@ class BundledCountdownAudio @Inject constructor(
         loaded.size == KEYS.size
     }
 
-    override fun play(value: Int) {
-        val bytes = clips[value]?.takeIf { isReady() } ?: run {
-            stop()
-            Log.w(TAG, "operation=countdown_play result=unavailable")
-            return
-        }
+    override suspend fun play(value: Int, minimumBeatMilliseconds: Long) {
+        val bytes = clips[value]?.takeIf { isReady() }
         val previous = playback
         val generation = playbackGeneration
-        playback = scope.launch {
+        val current = scope.async {
             previous?.join() // Complete the prior word instead of clipping its audio tail.
-            if (generation != playbackGeneration) return@launch
-            val played = output.playWav(bytes)
+            if (generation != playbackGeneration) return@async
+            var beatStartedNanos = System.nanoTime()
+            val played = if (bytes != null) {
+                try {
+                    output.playWav(bytes) { beatStartedNanos = System.nanoTime() }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Log.w(TAG, "operation=countdown_play type=${error.javaClass.simpleName}")
+                    false
+                }
+            } else {
+                Log.w(TAG, "operation=countdown_play result=unavailable")
+                false
+            }
             analytics.record(AnalyticsEvent("activity_voice_enqueue", mapOf(
                 AnalyticsProperty.Source to if (value == 0) "countdown_go" else "countdown_$value",
                 AnalyticsProperty.SourceType to "bundled_audio",
@@ -123,11 +135,19 @@ class BundledCountdownAudio @Inject constructor(
                     android.widget.Toast.makeText(context, com.plainstride.outbound.feature.recording.R.string.recording_countdown_voice_unavailable, android.widget.Toast.LENGTH_LONG).show()
                 }
             }
+            // Output setup and focus acquisition do not consume the spoken beat's minimum.
+            val elapsedMilliseconds = (System.nanoTime() - beatStartedNanos) / 1_000_000
+            delay((minimumBeatMilliseconds - elapsedMilliseconds).coerceAtLeast(0))
+        }
+        playback = current
+        try {
+            current.await()
+        } catch (error: CancellationException) {
+            // The Compose countdown owns this request; leaving it must not leave speech queued.
+            if (playback === current) stop()
+            throw error
         }
     }
-
-    override fun durationMilliseconds(value: Int): Long =
-        clips[value]?.let { WavPcm.decode(it)?.size?.toLong()?.times(1_000)?.div(48_000) } ?: 0
 
     override fun stop() {
         playbackGeneration += 1

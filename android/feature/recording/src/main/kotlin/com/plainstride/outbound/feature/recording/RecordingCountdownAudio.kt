@@ -5,7 +5,7 @@ interface RecordingCountdownAudio {
     fun setLocale(locale: String)
     suspend fun prepare(): Boolean
     fun isReady(): Boolean
-    fun play(value: Int)
-    fun durationMilliseconds(value: Int): Long
+    /** Returns after playback drains and the minimum visible beat has elapsed from playback start. */
+    suspend fun play(value: Int, minimumBeatMilliseconds: Long)
     fun stop()
 }

@@ -99,9 +99,8 @@ class RecordingVoiceCoordinator @Inject constructor(
     }
     fun isCountdownReady(): Boolean = countdownAudio.isReady()
 
-    fun speakCountdown(value: Int) = countdownAudio.play(value)
-    fun speakGo() = countdownAudio.play(0)
-    fun countdownDurationMilliseconds(value: Int) = countdownAudio.durationMilliseconds(value)
+    suspend fun playCountdownBeat(value: Int, minimumBeatMilliseconds: Long) =
+        countdownAudio.play(value, minimumBeatMilliseconds)
 
     fun stopSpeech() {
         countdownAudio.stop()

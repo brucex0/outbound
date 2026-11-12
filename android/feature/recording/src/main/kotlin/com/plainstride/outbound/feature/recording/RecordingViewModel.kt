@@ -429,9 +429,8 @@ class RecordingViewModel @Inject constructor(
         return true
     }
 
-    fun speakCountdown(value: Int) = voice.speakCountdown(value)
-    fun speakGo() = voice.speakGo()
-    fun countdownDurationMilliseconds(value: Int) = voice.countdownDurationMilliseconds(value)
+    suspend fun playCountdownBeat(value: Int, minimumBeatMilliseconds: Long) =
+        voice.playCountdownBeat(value, minimumBeatMilliseconds)
     fun setMode(mode: RecordingSurfaceMode) {
         mutableState.value = mutableState.value.copy(mode = mode)
         analytics.record(AnalyticsEvent("activity_surface_changed", mapOf(AnalyticsProperty.Result to mode.name.lowercase())))

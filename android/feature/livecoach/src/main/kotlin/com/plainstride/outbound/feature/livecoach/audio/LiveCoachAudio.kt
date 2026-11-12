@@ -66,7 +66,8 @@ class LiveCoachStreamReader(input: InputStream) {
 
 interface CoachAudioOutput {
     suspend fun playPcm(chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean
-    suspend fun playWav(bytes: ByteArray): Boolean
+    /** Notifies on first rendered frame and returns only after drain or failure. */
+    suspend fun playWav(bytes: ByteArray, onPlaybackStarted: () -> Unit = {}): Boolean
     fun stop()
 }
 
@@ -99,9 +100,13 @@ class AndroidCoachAudioOutput @Inject constructor(
     init { audioManager.registerAudioDeviceCallback(deviceCallback, null) }
 
     override suspend fun playPcm(chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean =
-        playAudio(null, chunks)
+        playAudio(null, chunks = chunks)
 
-    private suspend fun playAudio(pcm: ByteArray?, chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean =
+    private suspend fun playAudio(
+        pcm: ByteArray?,
+        onPlaybackStarted: () -> Unit = {},
+        chunks: suspend ((ByteArray) -> Unit) -> Unit,
+    ): Boolean =
         playbackMutex.withLock {
             withContext(Dispatchers.IO) {
                 if (!focus()) {
@@ -147,7 +152,16 @@ class AndroidCoachAudioOutput @Inject constructor(
                     val expectedFrames = writtenBytes / BYTES_PER_FRAME
                     val drainMilliseconds = (writtenBytes.toLong() * 1_000 / BYTES_PER_SECOND + 750).coerceAtLeast(750)
                     withTimeoutOrNull(drainMilliseconds) {
-                        while (generation == stopGeneration && current.playbackHeadPosition < expectedFrames) delay(10)
+                        var started = false
+                        while (generation == stopGeneration) {
+                            val renderedFrames = current.playbackHeadPosition
+                            if (!started && renderedFrames > 0) {
+                                started = true
+                                onPlaybackStarted()
+                            }
+                            if (renderedFrames >= expectedFrames) break
+                            delay(10)
+                        }
                     } != null && generation == stopGeneration
                 }.onFailure { error ->
                     if (error !is CancellationException && generation == stopGeneration) android.util.Log.w("PlainstrideAudio", "operation=play_audio type=${error.javaClass.simpleName} state=${current.state} playState=${current.playState}")
@@ -163,9 +177,9 @@ class AndroidCoachAudioOutput @Inject constructor(
             }
         }
 
-    override suspend fun playWav(bytes: ByteArray): Boolean {
+    override suspend fun playWav(bytes: ByteArray, onPlaybackStarted: () -> Unit): Boolean {
         val pcm = WavPcm.decode(bytes) ?: return false
-        return playAudio(pcm) { }
+        return playAudio(pcm, onPlaybackStarted) { }
     }
 
     override fun stop() {

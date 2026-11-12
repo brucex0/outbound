@@ -532,12 +532,13 @@ fun RecordingRoute(
     LaunchedEffect(ui.countdown) {
         val current = ui.countdown ?: return@LaunchedEffect
         if (BuildConfig.DEBUG) Log.d("RecordingStart", "countdown_step=$current voiceReady=${ui.countdownVoiceReady}")
-        if (ui.countdownVoiceReady) {
-            if (current == 0) viewModel.speakGo() else viewModel.speakCountdown(current)
-        }
-        // Keep the displayed beat until its complete local recording has played.
         val minimumBeat = if (current == 0) 420L else 1_000L
-        delay(maxOf(minimumBeat, if (ui.countdownVoiceReady) viewModel.countdownDurationMilliseconds(current) else 0L))
+        if (ui.countdownVoiceReady) {
+            // Await rendered audio, including first-beat output startup, before advancing.
+            viewModel.playCountdownBeat(current, minimumBeat)
+        } else {
+            delay(minimumBeat)
+        }
         if (current > 0) viewModel.updateCountdown(current - 1)
         else {
             val permission = permissionState()

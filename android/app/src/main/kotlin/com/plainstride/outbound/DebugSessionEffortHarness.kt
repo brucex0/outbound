@@ -100,8 +100,7 @@ class DebugSessionEffortViewModel @Inject constructor(
         override fun setLocale(locale: String) {}
         override suspend fun prepare() = false
         override fun isReady() = false
-        override fun play(value: Int) {}
-        override fun durationMilliseconds(value: Int) = 0L
+        override suspend fun play(value: Int, minimumBeatMilliseconds: Long) {}
         override fun stop() {}
     })
     private val recording = ViewModelProvider(recordingStore, object : ViewModelProvider.Factory {
