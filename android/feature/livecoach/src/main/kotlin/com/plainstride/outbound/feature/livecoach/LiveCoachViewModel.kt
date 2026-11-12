@@ -236,9 +236,10 @@ class LiveCoachViewModel @Inject constructor(
     }
 
     fun attachRecording(launch: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem) {
+        val replacingObserver = observer != null
         observer?.cancel()
         // Launch/live changes cancel an in-flight cue before the replacement observer starts.
-        if (!launch.voiceGuideEnabled || !launch.aiCoachEnabled) playback.stop()
+        if (replacingObserver && (!launch.voiceGuideEnabled || !launch.aiCoachEnabled)) playback.stop()
         observer = viewModelScope.launch {
             combine(merge(
                 client.snapshots.filter { it.runSimulation == null || it.status != RecordingStatus.ACTIVE },
@@ -257,7 +258,7 @@ class LiveCoachViewModel @Inject constructor(
             voiceGuideEnabled = snapshot.liveVoiceGuideEnabled ?: launchOptions.voiceGuideEnabled,
             aiCoachEnabled = snapshot.liveAICoachEnabled ?: launchOptions.aiCoachEnabled,
         )
-        if (lastAICoachEnabled != launch.aiCoachEnabled) {
+        if (lastAICoachEnabled != null && lastAICoachEnabled != launch.aiCoachEnabled) {
             pendingCues.clear()
             policy.resetPaceEvidence()
             mutableAdvice.value = null
