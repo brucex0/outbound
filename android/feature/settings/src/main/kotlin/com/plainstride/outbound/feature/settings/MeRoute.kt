@@ -104,6 +104,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.Locale
 
 private enum class MePage { Overview, Settings, Milestones }
 
@@ -324,48 +325,6 @@ private fun MeOverview(
                 }
             }
             item { SocialConnectionsPreview(connections, onOpenAll = onConnections, onOpenProfile = onConnectionProfile) }
-            item { SectionTitle(stringResource(R.string.current_focus)) }
-            item {
-                OutlinedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            when {
-                                planSummary == null -> stringResource(R.string.me_plan_status_unavailable)
-                                planSummary.phase == null && !planSummary.hasConfirmedNoPlan && planSummary.dailyRecommendationTitle == null -> stringResource(R.string.me_plan_status_unavailable)
-                                planSummary.phase == null && planSummary.dailyRecommendationTitle != null -> planSummary.dailyRecommendationTitle
-                                planSummary.phase == null -> stringResource(R.string.no_active_plan)
-                                else -> planSummary.phase
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            stringResource(when {
-                                planSummary == null -> R.string.me_plan_status_unavailable_body
-                                planSummary.phase == null && planSummary.dailyRecommendationTitle != null -> R.string.me_daily_recommendation_body
-                                planSummary.phase == null && !planSummary.hasConfirmedNoPlan -> R.string.me_plan_status_unavailable_body
-                                planSummary.phase == null -> R.string.no_active_plan_body
-                                else -> R.string.plan_synced
-                            }),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-            item { NavigationCard(R.string.me_my_routes, R.string.me_my_routes_body, Icons.Outlined.Map, onMyRoutes) }
-            if (insights.isNotEmpty()) item {
-                OutlinedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(stringResource(R.string.me_learned), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        insights.take(3).forEach { insight ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(insight.label, fontWeight = FontWeight.SemiBold)
-                                Text(insight.confidence, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Text(insight.value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
             item {
                 Row(
                     Modifier.fillMaxWidth().padding(start = 20.dp, top = 10.dp, end = 20.dp, bottom = 2.dp),
@@ -440,9 +399,81 @@ private fun MeOverview(
                 }
             }
             item { MilestonesOverviewCard(milestones, onMilestones) }
+            item { SectionTitle(stringResource(R.string.current_focus)) }
+            item {
+                OutlinedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            when {
+                                planSummary?.hasActivePlan == true -> stringResource(
+                                    R.string.me_plan_title_week,
+                                    stringResource(planTitleResource(planSummary.goalType, planSummary.targetDistanceMeters)),
+                                    if (planSummary.durationWeeks != null && planSummary.weekIndex <= planSummary.durationWeeks)
+                                        stringResource(R.string.me_plan_week_of, planSummary.weekIndex, planSummary.durationWeeks)
+                                    else planSummary.weekIndex.toString(),
+                                )
+                                planSummary == null -> stringResource(R.string.me_plan_status_unavailable)
+                                planSummary.phase == null && !planSummary.hasConfirmedNoPlan && planSummary.dailyRecommendationTitle == null -> stringResource(R.string.me_plan_status_unavailable)
+                                planSummary.phase == null && planSummary.dailyRecommendationTitle != null -> planSummary.dailyRecommendationTitle
+                                planSummary.phase == null && planSummary.hasConfirmedNoPlan -> stringResource(R.string.building_running_rhythm)
+                                planSummary.phase == null -> stringResource(R.string.me_plan_status_unavailable)
+                                else -> planSummary.phase
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            if (planSummary?.hasActivePlan == true) {
+                                planSummary.sessionsPerWeek?.let { stringResource(R.string.me_plan_weekly_sessions, it) }
+                                    ?: stringResource(R.string.plan_synced)
+                            } else stringResource(when {
+                                planSummary == null -> R.string.me_plan_status_unavailable_body
+                                planSummary.phase == null && planSummary.dailyRecommendationTitle != null -> R.string.me_daily_recommendation_body
+                                planSummary.phase == null && !planSummary.hasConfirmedNoPlan -> R.string.me_plan_status_unavailable_body
+                                planSummary.phase == null && planSummary.hasConfirmedNoPlan -> R.string.choose_a_plan
+                                planSummary.phase == null -> R.string.me_plan_status_unavailable_body
+                                else -> R.string.plan_synced
+                            }),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            if (insights.isNotEmpty()) item {
+                OutlinedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(stringResource(R.string.me_learned), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        insights.take(3).forEach { insight ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(insight.label, fontWeight = FontWeight.SemiBold)
+                                Text(insight.confidence, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(insight.value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+            item { NavigationCard(R.string.me_my_routes, R.string.me_my_routes_body, Icons.Outlined.Map, onMyRoutes) }
             item { activityContent() }
             if (state.loading) item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         }
+    }
+}
+
+private fun planTitleResource(goalType: String?, targetDistanceMeters: Double?): Int = when (goalType?.lowercase(Locale.ROOT)) {
+    "consistency" -> R.string.me_plan_title_consistency
+    "comeback" -> R.string.me_plan_title_comeback
+    "fivek" -> R.string.me_plan_title_5k
+    "tenk" -> R.string.me_plan_title_10k
+    "tenmile" -> R.string.me_plan_title_10mile
+    "halfmarathon" -> R.string.me_plan_title_half
+    "marathon" -> R.string.me_plan_title_marathon
+    else -> when {
+        targetDistanceMeters != null && targetDistanceMeters >= 40_000 -> R.string.me_plan_title_marathon
+        targetDistanceMeters != null && targetDistanceMeters >= 20_000 -> R.string.me_plan_title_half
+        targetDistanceMeters != null && targetDistanceMeters >= 15_000 -> R.string.me_plan_title_10mile
+        targetDistanceMeters != null && targetDistanceMeters >= 9_000 -> R.string.me_plan_title_10k
+        targetDistanceMeters != null && targetDistanceMeters >= 4_000 -> R.string.me_plan_title_5k
+        else -> R.string.me_plan_title_generic
     }
 }
 

@@ -803,6 +803,12 @@ private fun SignedInApp(
                             ?.takeIf { it > 0 },
                         hasConfirmedNoPlan = todayState.hasConfirmedNoPlan,
                         dailyRecommendationTitle = recommendation?.title,
+                        hasActivePlan = planning.plan != null,
+                        weekIndex = planning.calendar?.planWeekIndex ?: planning.currentVersion?.engineDecision?.programme?.weekIndex ?: 1,
+                        durationWeeks = planning.currentVersion?.engineDecision?.nominalSourceWeeks ?: planning.goal?.reviewHorizonWeeks,
+                        sessionsPerWeek = planning.goal?.daysPerWeekTarget,
+                        goalType = planning.goal?.type,
+                        targetDistanceMeters = planning.goal?.targetDistanceMeters,
                     )
                 }
                 val destination = TopLevelDestination.entries.first { it.route == selectedTab }

@@ -41,6 +41,12 @@ data class MePlanSummary(
     val runGoalTarget: Int?,
     val hasConfirmedNoPlan: Boolean = false,
     val dailyRecommendationTitle: String? = null,
+    val hasActivePlan: Boolean = false,
+    val weekIndex: Int = 1,
+    val durationWeeks: Int? = null,
+    val sessionsPerWeek: Int? = null,
+    val goalType: String? = null,
+    val targetDistanceMeters: Double? = null,
 )
 
 interface SettingsRepository {
