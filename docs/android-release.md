@@ -159,6 +159,14 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 - Production backend `/health` returned HTTP 200. The browser reached the public privacy policy from the configured `.ai` URL; command-line `.ai` legal/association requests returned HTTP 403, so link association is not confirmed.
 - No tests or device runtime acceptance checks were run. Existing Android unreleased-policy instructions remain in force until Bruce explicitly confirms release.
 
+### November 11 Production Update Submission
+
+- Play Console confirmed `1.0.5` (8) was available on Google Play at 100% before this update. Bruce requested a new Android release. Signed `1.0.6` (9) was built from committed main `42eb8033` in an isolated worktree, excluding unrelated local files.
+- Release configuration, `:app:bundleRelease` (including vital lint and R8), bundle signature, package ID, and version checks passed. The successful Gradle run used `--no-configuration-cache` after the existing release-configuration task failed configuration-cache serialization. AAB SHA-256: `f983ed8b5f41b689d58ef51c38cc6740a2fe75052ea44916b85d362585da3cec`.
+- Play accepted version 9 with ReTrace mapping attached. Supported-device counts were unchanged, and the only validation warning was the existing optional native debug symbols warning. The production release was submitted at **100%** across the existing two-country availability. Publishing overview shows **Changes in review** while quick checks run. Managed publishing is off, so approval can publish automatically; public availability of this update is not yet confirmed.
+- Changes include expanded running plans and race goals, clearer daily workout details and adjustment, activity-history reconciliation, Cheer invitations, and countdown audio handling. Release evidence is retained under ignored `artifacts/play-store/release-1.0.6-9/`.
+- Production `/health`, privacy, support, and Android `/.well-known/assetlinks.json` endpoints returned HTTP 200. Authenticated APIs, device runtime behavior, audible coaching, recording endurance, and accessibility were not checked for this update. No tests were run. The Android unreleased-policy instructions remain in force until Bruce explicitly confirms release.
+
 ## Dependencies And Notices
 
 - Generate the release dependency graph with `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and archive it with the release.
