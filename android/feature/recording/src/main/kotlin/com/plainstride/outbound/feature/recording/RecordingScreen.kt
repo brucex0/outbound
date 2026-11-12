@@ -728,6 +728,7 @@ fun RecordingRoute(
             launch.startImmediately || ui.launch.startImmediately || locationWaitJob != null || ui.startRequested -> ActivityStartSurface(
                 configuration = ui.launch,
                 permission = permissionState(),
+                startLocation = viewModel.recentStartLocation()?.let { MapCoordinate(it.latitude, it.longitude) },
                 acquiringLocation = showGpsWait,
                 canCancel = !ui.startRequested,
                 onCancel = ::cancelStart,
@@ -1062,6 +1063,7 @@ private fun CountdownScreen(
 private fun ActivityStartSurface(
     configuration: RecordingLaunchConfiguration,
     permission: LocationPermissionState,
+    startLocation: MapCoordinate?,
     acquiringLocation: Boolean,
     canCancel: Boolean,
     onCancel: () -> Unit,
@@ -1073,6 +1075,7 @@ private fun ActivityStartSurface(
             showUserLocation = permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE,
             preciseLocationGranted = permission == LocationPermissionState.PRECISE,
             focusOnUser = true,
+            initialCameraCoordinate = startLocation,
             bottomContentPadding = 128.dp,
         )
         if (acquiringLocation) Surface(

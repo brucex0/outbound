@@ -93,6 +93,7 @@ fun PlainstrideRouteMap(
     fitRoutePadding: Dp = 48.dp,
     fitRouteOnChange: Boolean = true,
     followCoordinate: MapCoordinate? = null,
+    initialCameraCoordinate: MapCoordinate? = null,
     followAnimationDurationMs: Int = Int.MAX_VALUE,
     followBearingDegrees: Float? = null,
     followTiltDegrees: Float = 0f,
@@ -125,7 +126,7 @@ fun PlainstrideRouteMap(
     val camera = rememberCameraPositionState {
         // A ready start should open at its known location, without flying in
         // from the map SDK's default world view during the countdown.
-        followCoordinate?.let { coordinate ->
+        (followCoordinate ?: initialCameraCoordinate)?.let { coordinate ->
             position = CameraPosition.Builder()
                 .target(LatLng(coordinate.latitude, coordinate.longitude))
                 .zoom(followZoom)
