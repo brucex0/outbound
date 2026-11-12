@@ -154,6 +154,7 @@ import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
 import com.plainstride.outbound.feature.recording.StretchSessionRoute
 import com.plainstride.outbound.feature.recording.StretchLaunchContext
 import com.plainstride.outbound.feature.recording.StretchEntryPoint
+import com.plainstride.outbound.feature.recording.rememberTodayWarmupDuration
 import com.plainstride.outbound.feature.recording.RecordingRoute
 import com.plainstride.outbound.feature.recording.ActivityStartWarmup
 import com.plainstride.outbound.feature.recording.RecordingViewModel
@@ -810,6 +811,7 @@ private fun SignedInApp(
                         ActivityStartWarmup(recordingViewModel)
                         val startLocation by recordingViewModel.startLocationUpdates.collectAsStateWithLifecycle()
                         TodayRoute(
+                            plannedWorkoutWarmupDuration = rememberTodayWarmupDuration(),
                             onOpenStretch = { navController.navigate(AppDetailRoutes.stretch("today")) { launchSingleTop = true } },
                             mapLocation = startLocation,
                             accountId = requireNotNull(accountId),

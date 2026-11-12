@@ -5,6 +5,11 @@ import com.plainstride.outbound.core.data.AccountConfigurationValue
 import com.plainstride.outbound.core.data.AccountStretchEntry
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 
 internal data class StretchDefinition(
     val id: String, val title: Int, val instruction: Int, val bilateral: Boolean,
@@ -47,6 +52,21 @@ data class StretchRoutine internal constructor(
         return (keys.ifEmpty { listOf(R.string.stretch_catalog_ui_none) }).joinToString(" · ") { context.getString(it) }
     }
 }
+/** Keeps the Today card duration aligned with the routine and saved edits its stretch route opens. */
+@Composable
+fun rememberTodayWarmupDuration(): String {
+    val context = LocalContext.current
+    val configurationRevision by AccountConfigurationStore.changes.collectAsState()
+    val seconds = remember(context, configurationRevision) {
+        StretchCatalog.initial(
+            StretchCatalog.routines(context, kind = null, entryPoint = StretchEntryPoint.TODAY),
+            isIndoor = false, last = null, lastStanding = null, kind = null,
+            entryPoint = StretchEntryPoint.TODAY,
+        ).totalSeconds
+    }
+    return "≈ ${stretchClock(seconds)}"
+}
+
 internal object StretchCatalog {
     val durations = listOf(15, 20, 25, 30)
     fun definition(id: String) = StretchCatalogData.definitions.firstOrNull { it.id == id }

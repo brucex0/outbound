@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="today_stretch">拉伸</string>
+    <string name="today_planned_warmup_title">热身动作</string>
+    <string name="today_planned_warmup_hint">打开热身动作，不会开始训练。</string>
 </resources>

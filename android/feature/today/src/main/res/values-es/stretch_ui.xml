@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="today_stretch">Estirar</string>
+    <string name="today_planned_warmup_title">Ejercicios de calentamiento</string>
+    <string name="today_planned_warmup_hint">Abre la rutina de calentamiento sin iniciar el entrenamiento.</string>
 </resources>

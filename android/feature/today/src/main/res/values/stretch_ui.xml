@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="today_stretch">Stretch</string>
+    <string name="today_planned_warmup_title">Warm-up exercises</string>
+    <string name="today_planned_warmup_hint">Opens the warm-up routine without starting your workout.</string>
 </resources>

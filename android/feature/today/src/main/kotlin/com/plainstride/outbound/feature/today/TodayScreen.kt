@@ -208,6 +208,7 @@ fun TodayRoute(
     cheerRecipientsSelected: Boolean = false,
     onOpenInbox: () -> Unit,
     onOpenStretch: () -> Unit,
+    plannedWorkoutWarmupDuration: String? = null,
     onFindRoute: () -> Unit,
     selectedRoute: TodayRouteSelection? = null,
     onRemoveRoute: () -> Unit = {},
@@ -313,6 +314,8 @@ fun TodayRoute(
         cheerRecipientsSelected = cheerRecipientsSelected,
         onOpenInbox = onOpenInbox,
         onOpenStretch = onOpenStretch,
+        plannedWorkoutWarmupDuration = plannedWorkoutWarmupDuration,
+        onOpenPlannedWorkoutWarmup = { viewModel.trackPlannedWorkoutWarmupOpened(); onOpenStretch() },
         onFindRoute = onFindRoute,
         selectedRoute = selectedRoute,
         onRemoveRoute = onRemoveRoute,
@@ -390,6 +393,8 @@ fun TodayScreen(
     cheerRecipientsSelected: Boolean = false,
     onOpenInbox: () -> Unit = {},
     onOpenStretch: () -> Unit = {},
+    plannedWorkoutWarmupDuration: String? = null,
+    onOpenPlannedWorkoutWarmup: () -> Unit = onOpenStretch,
     onFindRoute: () -> Unit = {},
     selectedRoute: TodayRouteSelection? = null,
     onRemoveRoute: () -> Unit = {},
@@ -627,6 +632,8 @@ fun TodayScreen(
                         completedToday = state.completedToday,
                         weather = weather,
                         minimized = cardMinimized,
+                        warmupDuration = plannedWorkoutWarmupDuration.takeIf { !state.activeSession && suggestion.modality == Modality.run },
+                        onOpenWarmup = onOpenPlannedWorkoutWarmup,
                         onToggleMinimized = {
                             cardMinimized = !cardMinimized
                             displayPreferences.edit().putBoolean("planned_workout_minimized", cardMinimized).apply()
@@ -1241,6 +1248,8 @@ private fun WorkoutRecommendationCard(
     onOpen: () -> Unit,
     onChange: () -> Unit,
     onOpenPlan: (() -> Unit)? = null,
+    warmupDuration: String? = null,
+    onOpenWarmup: () -> Unit = {},
 ) {
     val toggleDescription = stringResource(if (minimized) R.string.today_expand_card else R.string.today_collapse_card)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
@@ -1275,6 +1284,25 @@ private fun WorkoutRecommendationCard(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.tertiary,
                 )
+                warmupDuration?.let { duration ->
+                    val hint = stringResource(R.string.today_planned_warmup_hint)
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .clickable(role = Role.Button, onClickLabel = hint, onClick = onOpenWarmup),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.today_planned_warmup_title),
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(duration, style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"))
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    }
+                }
                 HorizontalDivider()
                 Row(Modifier.fillMaxWidth()) {
                     TextButton(onClick = onOpenPlan ?: onOpen, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
