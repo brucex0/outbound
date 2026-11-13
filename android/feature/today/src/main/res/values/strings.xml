@@ -209,4 +209,8 @@
     <string name="plan_details_pending">Saved · awaiting sync</string>
     <string name="plan_calendar_connect">Connect to load this week’s schedule.</string>
     <plurals name="plan_pending_sessions"><item quantity="one">%1$d saved workout awaiting sync</item><item quantity="other">%1$d saved workouts awaiting sync</item></plurals>
+    <string name="today_plan_completed_recovery">Today’s planned session is complete. Rest is enough; gentle movement is optional.</string>
+    <string name="today_plan_incomplete_after_activity">An activity is logged today. This planned session is still incomplete.</string>
+    <string name="today_recovery_caution">Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain.</string>
+    <string name="today_recovery_choice">Choose a short, very easy recovery workout, or skip today. Your planned workout changes only after you apply your choice.</string>
 </resources>

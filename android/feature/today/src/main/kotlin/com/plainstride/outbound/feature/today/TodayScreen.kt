@@ -298,6 +298,7 @@ fun TodayRoute(
         onUpdateRaceGoal = viewModel::updateRaceGoal,
         onRaceGoalOpened = viewModel::trackRaceGoalOpened,
         onWorkoutChangeOpened = viewModel::trackWorkoutChangeOpened,
+        onRecoveryAdviceShown = viewModel::trackRecoveryAdviceShown,
         onDismissPlanPicker = viewModel::closePlanPicker,
         onRetryPlanPicker = { viewModel.openPlanPicker() },
         onChangePlan = { viewModel.openPlanPicker("plan_details_change") },
@@ -383,6 +384,7 @@ fun TodayScreen(
     onUpdateRunningBenchmark: suspend (String, com.plainstride.outbound.core.model.RunningBenchmarkReport?) -> Boolean = { _, _ -> false },
     onRaceGoalOpened: () -> Unit = {},
     onWorkoutChangeOpened: () -> Unit = {},
+    onRecoveryAdviceShown: () -> Unit = {},
     onDismissPlanPicker: () -> Unit = {},
     onRetryPlanPicker: () -> Unit = {},
     onSelectPlan: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit = {},
@@ -634,7 +636,9 @@ fun TodayScreen(
                         suggestion = suggestion,
                         stale = state.isStale,
                         updatedAtEpochMs = state.suggestionUpdatedAtEpochMs,
-                        completedToday = state.completedToday,
+                        completedToday = state.currentRecommendationSnapshot?.relationship == "optionalRecovery",
+                        recoveryChangeRecommended = state.recoveryChangeRecommended,
+                        onRecoveryAdviceShown = onRecoveryAdviceShown,
                         weather = weather,
                         minimized = cardMinimized,
                         warmupDuration = plannedWorkoutWarmupDuration.takeIf { !state.activeSession && suggestion.modality == Modality.run },
@@ -686,7 +690,7 @@ fun TodayScreen(
             ActivityLaunchDock(
                 suggestion = suggestion,
                 activeSession = state.activeSession,
-                completedToday = state.completedToday,
+                completedToday = state.completedToday && suggestion?.plannedWorkoutId == null,
                 activityChoice = activityChoice,
                 goalChoice = goalChoice,
                 indoor = indoor,
@@ -1247,6 +1251,8 @@ private fun WorkoutRecommendationCard(
     stale: Boolean,
     updatedAtEpochMs: Long?,
     completedToday: Boolean,
+    recoveryChangeRecommended: Boolean,
+    onRecoveryAdviceShown: () -> Unit,
     weather: WeatherGuidance?,
     minimized: Boolean,
     onToggleMinimized: () -> Unit,
@@ -1273,6 +1279,13 @@ private fun WorkoutRecommendationCard(
                 ) {
                     Text(if (minimized) "⌄" else "⌃", style = MaterialTheme.typography.titleLarge)
                 }
+            }
+            if (recoveryChangeRecommended) {
+                Text(stringResource(R.string.today_recovery_caution), style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.today_change_workout))
+                }
+                LaunchedEffect(Unit) { onRecoveryAdviceShown() }
             }
             if (minimized && onOpenPlan != null) {
                 TextButton(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

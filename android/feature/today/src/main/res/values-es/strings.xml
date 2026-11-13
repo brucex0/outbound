@@ -209,4 +209,8 @@
     <string name="plan_details_pending">Guardada · pendiente de sincronizar</string>
     <string name="plan_calendar_connect">Conéctate para cargar el calendario de esta semana.</string>
     <plurals name="plan_pending_sessions"><item quantity="one">%1$d sesión guardada pendiente de sincronizar</item><item quantity="other">%1$d sesiones guardadas pendientes de sincronizar</item></plurals>
+    <string name="today_plan_completed_recovery">La sesión planificada de hoy está completada. Con descansar basta; moverte suavemente es opcional.</string>
+    <string name="today_plan_incomplete_after_activity">Ya has registrado una actividad hoy. Esta sesión planificada sigue pendiente.</string>
+    <string name="today_recovery_caution">Te recomendamos recuperarte. Tu entrenamiento planificado no ha cambiado. Elige una sesión de recuperación u omite la de hoy antes de añadir más carga.</string>
+    <string name="today_recovery_choice">Elige una sesión de recuperación breve y muy suave, u omite la de hoy. Tu entrenamiento planificado solo cambia cuando aplicas tu elección.</string>
 </resources>

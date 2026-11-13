@@ -42,8 +42,17 @@ internal class StructuredWorkoutText(context: Context, localeTag: String) {
     fun planning(value: PlanningState) = value.copy(today = value.today?.let(::workout),
         workouts = value.workouts.map(::workout), upcoming = value.upcoming.map(::workout))
 
-    fun envelope(value: ActivitySuggestionEnvelope) = value.copy(primary = value.primary?.let(::suggestion),
-        alternates = value.alternates.map(::suggestion))
+    fun envelope(value: ActivitySuggestionEnvelope): ActivitySuggestionEnvelope {
+        val advice = when {
+            "recovery_change_recommended" in value.decision.reasons -> resources.getString(R.string.today_recovery_caution)
+            "recovery_advised" in value.decision.reasons -> resources.getString(R.string.today_recovery_choice)
+            "planned_workout_completed_today" in value.decision.reasons -> resources.getString(R.string.today_plan_completed_recovery)
+            "unlinked_activity_logged_today" in value.decision.reasons -> resources.getString(R.string.today_plan_incomplete_after_activity)
+            else -> null
+        }
+        return value.copy(primary = value.primary?.let(::suggestion)?.let { if (advice == null) it else it.copy(why = advice) },
+            guideLine = advice ?: value.guideLine, alternates = value.alternates.map(::suggestion))
+    }
 }
 
 internal fun <T, R> CachedResource<T>.mapValue(transform: (T) -> R): CachedResource<R> = when (this) {

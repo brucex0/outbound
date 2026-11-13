@@ -79,6 +79,8 @@ data class TodayUiState(
                 it.primary != null && it.isCurrentForAccount() && !isSavedPlannedWorkout(it.primary?.plannedWorkoutId)
             }
         }
+    val recoveryChangeRecommended: Boolean
+        get() = currentRecommendationSnapshot?.decision?.reasons?.contains("recovery_change_recommended") == true
     val restRecommended: Boolean
         get() = (suggestion as? CachedResource.Available)?.value?.let { it.isCurrentForAccount() && it.status == "restRecommended" } == true
     val hasConfirmedNoPlan: Boolean
@@ -430,6 +432,10 @@ class TodayViewModel @Inject constructor(
             ),
         ),
     )
+
+    fun trackRecoveryAdviceShown() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+        AnalyticsProperty.Feature to "planned_workout_recovery_advice",
+    )))
 
     fun trackWorkoutChangeOpened() {
         analytics.record(
