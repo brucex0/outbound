@@ -154,7 +154,7 @@ extension ActivityFlowCoordinator {
         switch choice {
         case .planned:
             guard !self.dependencies.trainingPlanStore.shouldBlockPlannedLaunch else {
-                self.showSetupToast(String(localized: "today.plan.scheduled_rest", defaultValue: "No workout is scheduled today. Your next planned session stays on its scheduled date."))
+                self.showSetupToast(self.dependencies.trainingPlanStore.plannedLaunchBlockedMessage)
                 return
             }
             let workoutIntent: SessionIntent

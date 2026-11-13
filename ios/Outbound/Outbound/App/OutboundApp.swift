@@ -1150,7 +1150,21 @@ final class TrainingPlanStore: ObservableObject {
     }
 
     var shouldBlockPlannedLaunch: Bool {
-        activitySuggestion?.status == "restRecommended" || isScheduledRestDay
+        currentRestRecommendation != nil || isScheduledRestDay
+    }
+
+    private var currentRestRecommendation: ActivitySuggestionResponse? {
+        activitySuggestion.flatMap { $0.isValid(now: Date()) && $0.status == "restRecommended" ? $0 : nil }
+    }
+
+    var plannedLaunchBlockedMessage: String {
+        if currentRestRecommendation?.workoutEditOperation == "skip" {
+            return String(localized: "today.edit.skipped", defaultValue: "Today’s workout has been skipped.")
+        }
+        if isScheduledRestDay {
+            return String(localized: "today.plan.scheduled_rest", defaultValue: "No workout scheduled today.")
+        }
+        return String(localized: "today.change.rest_explanation", defaultValue: "Rest today. Return to activity when comfortable.")
     }
 
     init(

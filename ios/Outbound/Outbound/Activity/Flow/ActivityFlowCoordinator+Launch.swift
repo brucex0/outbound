@@ -223,7 +223,7 @@ extension ActivityFlowCoordinator {
     func beginStartRecording() {
         guard self.canStartRecording, !self.isCountingDown, !self.isStartingActivity else { return }
         guard !(self.setup.selectedWorkoutChoice == .planned && self.dependencies.trainingPlanStore.shouldBlockPlannedLaunch) else {
-            self.showSetupToast(String(localized: "today.plan.scheduled_rest", defaultValue: "No workout is scheduled today. Your next planned session stays on its scheduled date."))
+            self.showSetupToast(self.dependencies.trainingPlanStore.plannedLaunchBlockedMessage)
             return
         }
         self.guide.setSpeechEnabled(self.voiceGuideSpeechEnabled)

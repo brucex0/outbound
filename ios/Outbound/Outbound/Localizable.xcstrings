@@ -405,19 +405,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No workout is scheduled today. Your next planned session stays on its scheduled date."
+            "value": "No workout scheduled today."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hoy no hay ningún entrenamiento programado. Tu próxima sesión sigue en la fecha prevista."
+            "value": "Hoy no hay entrenamiento programado."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天没有安排训练。下一次计划训练仍按原定日期进行。"
+            "value": "今天没有安排训练。"
           }
         }
       }

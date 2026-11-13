@@ -1369,11 +1369,11 @@ private struct SimplifiedTodayView: View {
         VStack(spacing: OutboundSpacing.compact) {
             if let activityEventToday {
                 activityEventCard(activityEventToday)
-            } else if launchGoalMode == .planned && (trainingPlanStore.activitySuggestion?.status == "restRecommended" || trainingPlanStore.isScheduledRestDay) {
+            } else if launchGoalMode == .planned && trainingPlanStore.shouldBlockPlannedLaunch {
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         Text(String(localized: "Rest today")).font(.headline)
-                        Text(restDayMessage)
+                        Text(trainingPlanStore.plannedLaunchBlockedMessage)
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1386,16 +1386,6 @@ private struct SimplifiedTodayView: View {
                 inProgressActivityCard
             }
         }
-    }
-
-    private var restDayMessage: String {
-        if trainingPlanStore.activitySuggestion?.workoutEditOperation == "skip" {
-            return String(localized: "today.edit.skipped", defaultValue: "Today’s workout has been skipped.")
-        }
-        if trainingPlanStore.isScheduledRestDay {
-            return String(localized: "today.plan.scheduled_rest", defaultValue: "No workout is scheduled today. Your next planned session stays on its scheduled date.")
-        }
-        return String(localized: "Skipping one run is better than turning discomfort into an injury.")
     }
 
     private var todayPeerCardsBottomPadding: CGFloat {
@@ -1989,7 +1979,7 @@ private struct SimplifiedTodayView: View {
         if let suggestion = trainingPlanStore.todaySuggestion {
             return suggestion.suggestedSession.intent
         }
-        return .freestyleRun
+        return .todayComfortableRun
     }
 
     private var activeRunIntent: SessionIntent {
