@@ -1,6 +1,6 @@
 # Plainstride UX QA
 
-Every UX change receives an independent review after implementation and before merge or completion. UX includes visual layout and components, strings/localization, interaction/navigation/forms/keyboard, accessibility, themes/shared components, and visible behavior, including backend-driven states. `AGENTS.md` defines the mandatory gate and exception to normal worker routing.
+Every UX change receives an independent review. UX includes visual layout and components, strings/localization, interaction/navigation/forms/keyboard, accessibility, themes/shared components, and visible behavior, including backend-driven states. `AGENTS.md` defines the normal merge gate, immediate-merge exception, and exception to normal worker routing.
 
 ## Reviewer setup
 
@@ -21,14 +21,14 @@ Give the reviewer the exact base and proposed revision, worktree, and dirty diff
 
 Include staged and unstaged changes and new untracked source files in the review scope and fingerprint. Any later UX edit invalidates the affected part of the report and requires re-review before merge.
 
-The report must state one status: `Pass`, `Issues found`, or `Incomplete`, using this precedence: report `Issues found` when any actionable defect or source-level risk remains, even if evidence is also missing; otherwise report `Incomplete` when applicable evidence is missing; report `Pass` only when there are no unresolved findings and all applicable checks have adequate evidence. Include:
+The report must state one status: `Pass`, `Issues found`, or `Incomplete`, using this precedence: report `Issues found` when any actionable defect or source-level risk remains, even if evidence is also missing; otherwise report `Incomplete` when applicable evidence is missing; report `Pass` only when there are no unresolved findings and all applicable checks have adequate evidence. Runtime simulator/emulator checks are not part of the default workflow; run them only when Bruce explicitly requests them. Without runtime evidence, mark applicable runtime checks `Not run` and do not claim runtime behavior is verified. Include:
 
 - Exact base/revision and diff fingerprint, affected platforms/screens, and contracts reviewed.
 - Evidence inspected and each relevant check's result; mark checks `N/A` with a reason or `Not run` with its blocker.
 - Findings with severity, reproducible steps, expected behavior, and actual behavior. Separate observed defects from source-level risks.
 - Remaining unperformed checks and their limits.
 
-Review the implementation owner's exact diff, wait for the report, fix findings, and request review of the affected diff again. Unresolved issues or missing applicable runtime evidence block QA pass and merge/completion unless Bruce explicitly accepts a documented waiver. Source review and builds alone never prove runtime behavior.
+Review the implementation owner's exact diff and fix findings, then request review of the affected diff again. Normally, wait for the report before merge; unresolved issues or missing evidence that is applicable under the requested checks block QA pass and merge/completion unless Bruce explicitly accepts a documented waiver. If Bruce explicitly says to merge immediately, basic build/diff verification is sufficient to proceed without waiting for UX review; the review may finish separately, and any unresolved findings or unchecked behavior must be reported without claiming `Pass`. Source review and builds alone never prove runtime behavior.
 
 ## Check matrix
 
@@ -40,9 +40,9 @@ Apply relevant checks to every affected screen and platform; explain each `N/A`.
 | Layout and themes | Narrow and largest accessibility text size together; long translated strings; light and dark appearance, bright and dark themes, and reactive theme changes; clipping, wrapping, scrolling, and reachable actions. |
 | Accessibility | Names/labels, focus order and visibility, touch targets, contrast, and meaning that does not rely on color alone. |
 | Keyboard and input | Focus, input, scrolling, dismissal, save/cancel reachability, and preservation of edits where applicable. |
-| Interaction and states | Navigation and relevant loading, empty, error, offline, retry, save, and cancel behavior. Verify on-device or in a representative runtime for behavior claims. |
+| Interaction and states | Navigation and relevant loading, empty, error, offline, retry, save, and cancel behavior. Use source review for default review; simulator/emulator or representative-runtime checks are opt-in when Bruce explicitly requests them. |
 
-Do not report a runtime check as passed from code inspection or compilation. If runtime evidence is unavailable for an applicable check, state what was not checked and why; use `Incomplete` unless actionable findings require `Issues found`. The coordinator applies the documented merge gate in either case.
+Do not report a runtime check as passed from code inspection or compilation. If Bruce requests runtime checks but evidence is unavailable, state what was not checked and why; use `Incomplete` unless actionable findings require `Issues found`. The coordinator applies the documented merge gate, including the explicit immediate-merge exception, in either case.
 
 ## Setup dry run — 2026-11-09
 
