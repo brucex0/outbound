@@ -1,3 +1,4 @@
+import { recoveryChangeMessage } from "../services/personalization/workoutAdjustmentPolicy.js";
 import { LongRunDaysError } from "../services/planning/longRunDays.js";
 import { PerformedWorkoutConflictError, performedWorkoutReferenceSchema } from "../services/planning/workoutIssuance.js";
 import { RunningScheduleError, ProgrammeTimelineError, ProgrammeConstraintError } from "../services/planning/runningDosePolicy.js";
@@ -44,7 +45,7 @@ router.post("/workout-edits/apply", zValidator("json", workoutEditApplySchema), 
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     console.error("[planning] workout_edit_apply_failed", { errorType: error instanceof Error ? error.name : "unknown",
       failureCode: /^(P\d{4}|E[A-Z_]{2,30})$/.test(code) ? code : "unknown", status: error instanceof WorkoutEditError ? error.status : 500 });
-    return c.json({ error: error instanceof WorkoutEditError ? error.message : "The workout change could not be confirmed. Retry the same change." }, error instanceof WorkoutEditError ? error.status : 500);
+    return c.json({ error: error instanceof WorkoutEditError ? error.code === "recovery_change_required" ? recoveryChangeMessage(c.get("locale")) : error.message : "The workout change could not be confirmed. Retry the same change." }, error instanceof WorkoutEditError ? error.status : 500);
   }
 });
 

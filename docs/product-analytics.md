@@ -496,3 +496,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 ## Activity reconciliation
 
 - Existing `activity_sync_completed` / `activity_sync_failed` events retain safe source/route/error-category properties. Reconciliation checkpoints use `feature_exposed` with `feature=activity_reconciliation` and bounded `result=pending|complete`. No account/activity/workout IDs, receipts, exact ratings or entered text are emitted.
+
+- iOS and Android showing the planned-workout recovery caution emit `feature_exposed` with only `feature=planned_workout_recovery_advice`. Backend `today_plan_preserved` reports only bounded result `recovery_change_recommended`; `recovery_workout_change` reports `blocked|rest_allowed|recovery_allowed`. These diagnostics contain no activity/plan/workout/runner IDs, load/readiness values, dates, prescription text or entered content. Existing Change workout and Apply events remain unchanged.

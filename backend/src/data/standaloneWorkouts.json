@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "locale": "en",
   "measurementSystem": "metric",
   "editorialPolicy": {
@@ -734,7 +734,7 @@
       "targetDurationSeconds": 1200,
       "steps": [
         { "id": "recovery-20-walk", "label": "Settle in", "durationSeconds": 300, "detail": "Relaxed walk or shuffle", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
-        { "id": "recovery-20-main", "label": "Gentle movement", "durationSeconds": 600, "detail": "Easy jog, walk, or a mix", "coachingTarget": { "phase": "recovery", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 45, "fasterToleranceSeconds": 25 }, "recognizesTargetLock": false } },
+        { "id": "recovery-20-main", "label": "Gentle movement", "durationSeconds": 600, "detail": "Easy jog, walk, or a mix", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
         { "id": "recovery-20-finish", "label": "Walk it down", "durationSeconds": 300, "detail": "Relaxed walking", "coachingTarget": { "phase": "cooldown", "recognizesTargetLock": false } }
       ],
       "prerequisites": [

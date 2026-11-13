@@ -1,3 +1,4 @@
+import { recoveryChangeMessage } from "../services/personalization/workoutAdjustmentPolicy.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
@@ -97,7 +98,7 @@ router.post("/adjustments/apply", zValidator("json", workoutAdjustmentApplyReque
   } catch (error) {
     const status = error instanceof WorkoutAdjustmentError ? error.status : 503;
     console.warn(`[personalization] operation=apply_workout_adjustment status=${status} category=${error instanceof Error ? error.name : "unknown"}`);
-    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.message : "Unable to apply the workout change." }, status);
+    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.code === "recovery_change_required" ? recoveryChangeMessage(c.get("locale")) : error.message : "Unable to apply the workout change." }, status);
   }
 });
 
@@ -109,7 +110,7 @@ router.post("/adjustments/preview", zValidator("json", workoutAdjustmentPreviewR
   } catch (error) {
     const status = error instanceof WorkoutAdjustmentError ? error.status : 503;
     console.warn(`[personalization] operation=preview_workout_adjustment status=${status} category=${error instanceof Error ? error.name : "unknown"}`);
-    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.message : "Unable to preview an alternative." }, status);
+    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.code === "recovery_change_required" ? recoveryChangeMessage(c.get("locale")) : error.message : "Unable to preview an alternative." }, status);
   }
 });
 
@@ -146,7 +147,7 @@ router.post("/adjustments/:id/decision", zValidator("json", adjustmentDecisionSc
   } catch (error) {
     const status = error instanceof WorkoutAdjustmentError ? error.status : 404;
     console.warn(`[personalization] operation=decide_adjustment status=${status} category=${error instanceof Error ? error.name : "unknown"}`);
-    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.message : "Unable to decide adjustment." }, status);
+    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.code === "recovery_change_required" ? recoveryChangeMessage(c.get("locale")) : error.message : "Unable to decide adjustment." }, status);
   }
 });
 

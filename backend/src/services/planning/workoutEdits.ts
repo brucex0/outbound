@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { standaloneWorkoutCatalog, type StandaloneWorkoutCatalogItem } from "../../data/standaloneWorkouts.js";
 import { getPrismaClient } from "../prisma.js";
-import { applyDailyWorkoutAdjustment, latestReadinessId, suggestionFingerprint, restFingerprint } from "../personalization/workoutAdjustmentPolicy.js";
+import { applyDailyWorkoutAdjustment, latestReadinessId, suggestionFingerprint, restFingerprint, hasBlockingSafetyGuidance, recoveryAdvised, isRecoveryWorkout } from "../personalization/workoutAdjustmentPolicy.js";
 import { buildBaseActivitySuggestion } from "./activitySuggestion.js";
 import { assemblePlanningState } from "./planningService.js";
 import { json, lockPlanningUser } from "./persistence.js";
@@ -28,7 +28,7 @@ export const workoutEditApplySchema = z.object({
 }).strict();
 export type WorkoutEditApplyInput = z.infer<typeof workoutEditApplySchema>;
 export class WorkoutEditError extends Error {
-  constructor(readonly status: 409 | 422, message: string) { super(message); }
+  constructor(readonly status: 409 | 422, message: string, readonly code?: "recovery_change_required") { super(message); }
 }
 const presets = [{ id: "veryEasy", min: 1, max: 2 }, { id: "easy", min: 2, max: 4 }, { id: "steady", min: 4, max: 6 }];
 type DB = Prisma.TransactionClient;
@@ -177,7 +177,7 @@ export async function applyManualWorkoutOverride(db: DB, userId: string, baselin
   const context = edit.validationContext as { fingerprint: string; readinessId: string | null; planId: string | null; resultStructureHash?: string };
   const skip = edit.operation === "skip";
   if (context.fingerprint !== (skip ? restFingerprint(baseline) : suggestionFingerprint(baseline))
-    || context.readinessId !== await latestReadinessId(db, userId) || baseline.decision.safetyFlags.length > 0) return baseline;
+    || context.readinessId !== await latestReadinessId(db, userId) || (hasBlockingSafetyGuidance(baseline) && !(skip && baseline.decision.safetyFlags.length === 0))) return baseline;
   if (!skip && edit.plannedWorkoutId && (!context.resultStructureHash
     || baseline.primary?.plannedWorkoutId !== edit.plannedWorkoutId
     || hash(await structure(db, userId, baseline.primary)) !== context.resultStructureHash)) return baseline;
@@ -229,7 +229,7 @@ async function attachPersistedPlannedEdit(db: DB, userId: string, response: Acti
 }
 
 export async function attachWorkoutEditContext(db: DB, userId: string, response: ActivitySuggestionResponse): Promise<ActivitySuggestionResponse> {
-  if (!response.primary || response.decision.safetyFlags.length) return { ...response, editContext: null };
+  if (!response.primary || hasBlockingSafetyGuidance(response)) return { ...response, editContext: null };
   response = await attachPersistedPlannedEdit(db, userId, response);
   const primary = response.primary!;
   const effective = await effectiveWorkout(db, userId, primary);
@@ -257,7 +257,7 @@ export async function applyWorkoutEdit(userId: string, input: WorkoutEditApplyIn
     const primary = current.primary;
     if (!primary || current.validForDate !== input.validForDate || primary.id !== input.suggestionId
       || (primary.plannedWorkoutId ?? null) !== input.plannedWorkoutId || current.editContext?.baseRevision !== input.baseRevision
-      || current.decision.safetyFlags.length) {
+      || hasBlockingSafetyGuidance(current)) {
       console.warn("[planning] workout_edit_context_changed", { dateMatches: current.validForDate === input.validForDate,
         suggestionMatches: primary?.id === input.suggestionId, slotMatches: (primary?.plannedWorkoutId ?? null) === input.plannedWorkoutId,
         revisionMatches: current.editContext?.baseRevision === input.baseRevision, safetyFlagCount: current.decision.safetyFlags.length });
@@ -336,6 +336,11 @@ export async function applyWorkoutEdit(userId: string, input: WorkoutEditApplyIn
       effective.guideInstructions.segments = effective.guideInstructions.segments.map((segment) => ({ ...segment,
         instruction: removeDuration(segment.instruction), cue: removeDuration(segment.cue), fallback: removeDuration(segment.fallback) }));
     }
+    if (!skip && recoveryAdvised(current) && !isRecoveryWorkout(effective, primary.durationSeconds ?? primary.durationMinutes * 60)) {
+      console.info("[planning] recovery_workout_change", { result: "blocked" });
+      throw new WorkoutEditError(422, "Recovery is recommended. Choose a short recovery workout or skip today.", "recovery_change_required");
+    }
+    if (recoveryAdvised(current)) console.info("[planning] recovery_workout_change", { result: skip ? "rest_allowed" : "recovery_allowed" });
     const id = randomUUID();
     const durationSeconds = effective.targetDistanceMeters != null ? Math.round(effective.targetDistanceMeters / 1000 * 420) : effective.steps.reduce((n, s) => n + s.durationSeconds, 0);
     const after: ActivitySuggestion = { ...primary, title: effective.title, durationSeconds, durationMinutes: Math.ceil(durationSeconds / 60),

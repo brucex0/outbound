@@ -22,7 +22,7 @@ import type {
 import type { Prisma } from "@prisma/client";
 import { canonicalWorkoutSuggestion } from "./workoutEdits.js";
 
-const ALGORITHM_VERSION = "activity-suggestion-v1";
+const ALGORITHM_VERSION = "activity-suggestion-v2";
 
 type PlannedWorkoutWithBlocks = Prisma.PlannedWorkoutGetPayload<{
   include: {
@@ -182,73 +182,18 @@ export async function buildBaseActivitySuggestion(
       now,
     });
 
-    if (todayActivities.length > 0 || todayWorkout.status === "completed") {
-      const completedTodayWhy = todayActivities.length > 0
-        ? `You already logged ${formatActivitySummary(todayActivities)} today. ${planFit.explanation} No additional training is needed; recovery is optional.`
-        : "Today's planned session is already complete. No additional training is needed; recovery is optional.";
-      return responseWithPrimary({
-        base,
-        source: "recovery",
-        relationship: "optionalRecovery",
-        primary: {
-          ...archetypeSuggestion("recovery-walk-20", completedTodayWhy),
-          why: completedTodayWhy,
-        },
-        alternates: [],
-        guideLine: "You already have the meaningful work for today. Only add this if it genuinely helps you loosen up.",
-        reasons: ["activity_already_completed_today", "active_plan_present", ...planFit.reasons],
-        safetyFlags: planFit.safetyFlags,
-      });
-    }
-
-    if (planFit.action === "recover" || shouldSoftenToday(todayWorkout, athleteState, latestReadiness)) {
-      const fallback = archetypeSuggestion(
-        recoveryArchetypeFor(todayWorkout.modality),
-        planFit.action === "recover"
-          ? planFit.explanation
-          : "Today's plan is being softened because current readiness or load asks for less stress."
-      );
-      return responseWithPrimary({
-        base,
-        source: "plan",
-        relationship: "adjustedFromPlan",
-        primary: {
-          ...fallback,
-          plannedWorkoutId: todayWorkout.id,
-          optional: false,
-        },
-        alternates: [],
-        guideLine: "Keep the plan alive by lowering the strain today. This protects the next useful workout.",
-        reasons: ["active_plan_present", "planned_workout_softened", ...planFit.reasons, athleteState.fatigueRisk],
-        safetyFlags: [...planFit.safetyFlags, ...(athleteState.fatigueRisk === "low" ? [] : [`fatigue_${athleteState.fatigueRisk}`])],
-      });
-    }
-
-    if (planFit.action === "useObservedBaseline" && todayWorkout.modality === "run") {
-      const durationMinutes = Math.max(30, Math.min(90, planFit.observedAverageRunMinutes));
-      const observed = archetypeSuggestion(
-        "easy-run-30",
-        planFit.explanation
-      );
-      return responseWithPrimary({
-        base,
-        source: "adaptive",
-        relationship: "adjustedFromPlan",
-        primary: {
-          ...observed,
-          id: `observed-baseline-${todayWorkout.id}`,
-          title: `${durationMinutes} min easy run`,
-          durationMinutes,
-          steps: [`5 min easy warmup`, `${Math.max(1, durationMinutes - 10)} min relaxed continuous run`, `5 min easy cooldown`],
-          plannedWorkoutId: todayWorkout.id,
-          archetypeId: "easy-run-observed-baseline",
-          optional: false,
-        },
-        alternates: [],
-        guideLine: "Your recent running supports continuous easy running, but today stays conversational and avoids extra intensity.",
-        reasons: ["active_plan_present", ...planFit.reasons],
-      });
-    }
+    // Activity presence is not completion of this slot. Preserve the issued plan
+    // until an explicit Apply changes it or a linked completion closes it.
+    const recoveryRecommended = planFit.action === "recover" || shouldSoftenToday(todayWorkout, athleteState, latestReadiness);
+    const changeRecommended = recoveryRecommended && !(todayWorkout.stimulus === "recovery" && todayWorkout.durationSeconds <= 30 * 60
+      && todayWorkout.distanceMeters == null && todayWorkout.targetCalories == null);
+    const caution = "Recovery is recommended today. The planned workout has not changed. Use Change workout to choose a recovery session or skip today; avoid the hard session while recovery is needed.";
+    const why = recoveryRecommended
+      ? `${changeRecommended ? caution : "Keep this recovery session very easy, or choose rest if needed."} ${planFit.explanation}`
+      : todayActivities.length > 0
+        ? `You logged ${formatActivitySummary(todayActivities)} today, but this planned session is still incomplete.`
+        : "This is today's planned session.";
+    if (recoveryRecommended) console.info("[planning] today_plan_preserved", { result: "recovery_change_recommended" });
 
     return responseWithPrimary({
       base,
@@ -256,14 +201,26 @@ export async function buildBaseActivitySuggestion(
       relationship: "todayPlannedWorkout",
       primary: plannedWorkoutSuggestion(
         todayWorkout,
-        "This is today's planned session.",
+        why,
         athleteState,
         typedActivities,
         latestReadiness
       ),
       alternates: [],
-      guideLine: "This is the next planned step. Keep the effort matched to the prescription.",
-      reasons: ["active_plan_present", "today_planned_workout", ...planFit.reasons],
+      guideLine: recoveryRecommended ? changeRecommended ? caution : "Keep this recovery session very easy, or choose rest if needed." : "This is the next planned step. Keep the effort matched to the prescription.",
+      reasons: ["active_plan_present", "today_planned_workout", ...(todayActivities.length > 0 ? ["unlinked_activity_logged_today"] : []), ...(recoveryRecommended ? ["recovery_advised"] : []), ...(changeRecommended ? ["recovery_change_recommended"] : []), ...planFit.reasons],
+      safetyFlags: recoveryRecommended ? [...new Set([...planFit.safetyFlags, ...(athleteState.fatigueRisk === "low" ? [] : [`fatigue_${athleteState.fatigueRisk}`])])] : [],
+    });
+  }
+
+  const completedTodayWorkout = workouts.find((workout) => sameDay(workout.scheduledDate, todayStart) && workout.status === "completed"
+    && (workout.prescription as Record<string, unknown>)?.optional !== true);
+  if (plan && completedTodayWorkout) {
+    return responseWithPrimary({
+      base, source: "recovery", relationship: "optionalRecovery",
+      primary: archetypeSuggestion("recovery-walk-20", "Today's planned session is complete. Rest is enough; gentle movement is optional."),
+      alternates: [], guideLine: "Today's planned session is complete. Only add gentle movement if it helps you loosen up.",
+      reasons: ["active_plan_present", "planned_workout_completed_today"],
     });
   }
 
@@ -697,10 +654,6 @@ function shouldSoftenToday(
   if (!readiness) return false;
   const hard = workout.isKeyWorkout || ["threshold", "speed", "longEndurance"].includes(workout.stimulus);
   return hard && (readiness.energy <= 2 || readiness.stress >= 4 || readiness.soreness >= 4);
-}
-
-function recoveryArchetypeFor(modality: string): string {
-  return modality === "bike" ? "recovery-spin-25" : "recovery-run-25";
 }
 
 function plannedWorkoutForState(workout: PlannedWorkoutWithBlocks): PlannedWorkoutForState {

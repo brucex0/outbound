@@ -19,7 +19,7 @@ import type {
 } from "./contracts.js";
 import { calibrationWorkouts } from "./calibrationTemplates.js";
 import { buildBaseActivitySuggestion, dailyConstraintAlternative } from "../planning/activitySuggestion.js";
-import { applyDailyWorkoutAdjustment, latestReadinessId, suggestionFingerprint, workoutPreviewPolicy, WorkoutAdjustmentError, type DailyPreviewChange, workoutApplyPolicy, restFingerprint } from "./workoutAdjustmentPolicy.js";
+import { applyDailyWorkoutAdjustment, latestReadinessId, suggestionFingerprint, workoutPreviewPolicy, WorkoutAdjustmentError, type DailyPreviewChange, workoutApplyPolicy, restFingerprint, hasBlockingSafetyGuidance, recoveryAdvised, isRecoveryWorkout } from "./workoutAdjustmentPolicy.js";
 export { WorkoutAdjustmentError } from "./workoutAdjustmentPolicy.js";
 import {
   recordFeedbackEvidence,
@@ -47,7 +47,7 @@ export async function previewWorkoutAdjustment(userId: string, input: WorkoutAdj
   if (!primary || primary.id !== input.suggestionId || (primary.plannedWorkoutId ?? primary.id) !== input.workoutId || current.validForDate !== input.validForDate) {
     throw new WorkoutAdjustmentError(409, "The recommendation changed. Refresh before choosing an alternative.");
   }
-  if (baseline.decision.safetyFlags.length > 0) {
+  if (baseline.decision.safetyFlags.length > 0 || recoveryAdvised(baseline)) {
     throw new WorkoutAdjustmentError(409, "Current safety guidance takes priority. Refresh before choosing an alternative.");
   }
   if (!primary.id.startsWith("planned-")) {
@@ -103,7 +103,7 @@ export async function applyWorkoutAdjustment(userId: string, input: WorkoutAdjus
     const current = await applyDailyWorkoutAdjustment(tx, userId, baseline);
     const primary = current.primary;
     if (!primary || primary.id !== input.suggestionId || (primary.plannedWorkoutId ?? primary.id) !== input.workoutId
-      || current.validForDate !== input.validForDate || baseline.decision.safetyFlags.length > 0) {
+      || current.validForDate !== input.validForDate || hasBlockingSafetyGuidance(baseline)) {
       throw new WorkoutAdjustmentError(409, "The recommendation changed. Refresh before applying a change.");
     }
     if (input.choice === "good" && input.action !== "catalog") throw new WorkoutAdjustmentError(409, "Choose a workout change first.");
@@ -125,6 +125,11 @@ export async function applyWorkoutAdjustment(userId: string, input: WorkoutAdjus
       throw new WorkoutAdjustmentError(409, "An easier workout cannot extend the current session.");
     }
     const durationSeconds = catalog ? catalog.targetDistanceMeters ? Math.round(catalog.targetDistanceMeters / 1000 * 420) : catalog.steps.reduce((sum, step) => sum + step.durationSeconds, 0) : minutes * 60;
+    if (!rest && recoveryAdvised(baseline) && (catalog ? !isRecoveryWorkout(catalog, originalSeconds) : durationSeconds > Math.min(originalSeconds, 30 * 60))) {
+      console.info("[planning] recovery_workout_change", { result: "blocked" });
+      throw new WorkoutAdjustmentError(409, "Recovery is recommended. Choose a short recovery workout or rest today.", "recovery_change_required");
+    }
+    if (recoveryAdvised(baseline)) console.info("[planning] recovery_workout_change", { result: rest ? "rest_allowed" : "recovery_allowed" });
     const movement = primary.modality === "bike" ? "ride" : primary.modality;
     const title = rest ? "Rest today" : catalog?.title ?? `${minutes} min easy ${movement}`;
     const explanation = rest ? "Rest today. Return to activity when comfortable." : catalog?.guideLine ?? "Keep the effort easy and stop at the selected time.";
@@ -324,13 +329,13 @@ export async function decideAdjustment(userId: string, adjustmentId: string, dec
             const baseline = await buildBaseActivitySuggestion(userId, "stable", new Date(), tx);
             const currentSuggestion = await applyDailyWorkoutAdjustment(tx, userId, baseline);
             if (change.date !== baseline.validForDate || change.baselineFingerprint !== suggestionFingerprint(baseline)
-              || baseline.decision.safetyFlags.length > 0 || currentSuggestion.primary?.id !== change.workoutId || change.readinessId !== await latestReadinessId(tx, userId)) {
+              || baseline.decision.safetyFlags.length > 0 || recoveryAdvised(baseline) || currentSuggestion.primary?.id !== change.workoutId || change.readinessId !== await latestReadinessId(tx, userId)) {
               throw new WorkoutAdjustmentError(409, "The recommendation changed. Request a new alternative.");
             }
             continue;
           }
           const baseline = await buildBaseActivitySuggestion(userId, "stable", new Date(), tx);
-          if (change.date !== baseline.validForDate || baseline.primary?.plannedWorkoutId !== change.workoutId || baseline.decision.safetyFlags.length > 0) {
+          if (change.date !== baseline.validForDate || baseline.primary?.plannedWorkoutId !== change.workoutId || baseline.decision.safetyFlags.length > 0 || recoveryAdvised(baseline)) {
             throw new WorkoutAdjustmentError(409, "The recommendation changed. Request a new alternative.");
           }
           const workout = await currentPreviewWorkout(tx, userId, change.workoutId, baseline.validForDate);
@@ -362,6 +367,12 @@ export async function decideAdjustment(userId: string, adjustmentId: string, dec
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     if (decision === "accept") {
+      const todaySuggestion = await buildBaseActivitySuggestion(userId, "stable", now, tx);
+      if ((hasBlockingSafetyGuidance(todaySuggestion) || recoveryAdvised(todaySuggestion))
+        && changes.some((change) => change.workoutId === todaySuggestion.primary?.plannedWorkoutId)) {
+        console.info("[planning] recovery_workout_change", { result: "blocked" });
+        throw new WorkoutAdjustmentError(409, "Recovery is recommended. Choose a short recovery workout or rest today.", "recovery_change_required");
+      }
       // Validate all affected slots before changing any. The same lock is used by
       // direct edits, plan replacement, completion and rolling refills.
       for (const change of changes) {

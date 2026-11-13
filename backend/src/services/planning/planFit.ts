@@ -175,7 +175,7 @@ function recoveryExplanation(input: {
   if (input.fatigueRisk === "high") evidence.push("a high current fatigue assessment");
   if (input.readinessConcern) evidence.push("a readiness or health signal that favors caution");
   const joined = evidence.length > 0 ? evidence.join(", ") : "elevated recent training load";
-  return `Your recent training shows ${joined}. Recovery is the useful next step, so I am reducing stress instead of stacking another progression workout.`;
+  return `Your recent training shows ${joined}. Recovery is recommended before another progression workout. Use Change workout to choose a gentler session or rest.`;
 }
 
 function onTrackExplanation(
