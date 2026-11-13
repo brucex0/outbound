@@ -883,6 +883,8 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
     let steps: [TrainingPlanWorkoutStep]
     let isOptional: Bool
     var status: String? = nil
+    var modality: String? = nil
+    var stimulus: String? = nil
 
     init(
         id: String,
@@ -900,7 +902,9 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
         steps: [TrainingPlanWorkoutStep],
         isOptional: Bool,
         status: String? = nil,
-        scheduledDateKey: String? = nil
+        scheduledDateKey: String? = nil,
+        modality: String? = nil,
+        stimulus: String? = nil
     ) {
         self.id = id
         self.scheduledDate = scheduledDate
@@ -918,6 +922,8 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
         self.steps = steps
         self.isOptional = isOptional
         self.status = status
+        self.modality = modality
+        self.stimulus = stimulus
     }
 
     var durationMinutesRounded: Int {

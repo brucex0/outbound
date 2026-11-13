@@ -473,6 +473,7 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Initial short-session and optional-mobility edits reuse `plan_intake_answer_edited` with bounded `selection_type=short_sessions|optional_mobility`, `source_type=conversation`.
 - Backend operational `generated_window_refreshed` records bounded reason (`goal_updated|policy_updated|refill`), phase, and required-session count only. It is a privacy-safe service diagnostic, not a client analytics event.
 - Expanding or collapsing a workout's phases in Plan Details uses `feature_exposed` with fixed `feature=plan_workout_phases` and `result=expanded|collapsed`; workout IDs, phase text, dates, duration and effort targets are excluded.
+- Expanding or collapsing a scheduled workout's details in iOS Plan Details uses `feature_exposed` with fixed `feature=plan_workout_details` and `result=expanded|collapsed`; workout IDs, titles, phases, dates, duration and effort targets are excluded.
 
 - Backend `catalog_programme_decision` operational analytics records only bounded `outcome=initial|same_week|advanced|repeated|completed`, existing planning-event trigger or `refill`, and `result=version_created`. It excludes programme/runner/workout IDs, dates, readiness/effort values, activity facts and text. `catalog_programme_failed` diagnostics contain only operation and bounded failure category.
 

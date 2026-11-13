@@ -1782,7 +1782,9 @@ private extension PlanningAPIWorkout {
             steps: targetCalories == nil ? steps : [],
             isOptional: prescription?.optional ?? false,
             status: status,
-            scheduledDateKey: String(scheduledDate.prefix(10))
+            scheduledDateKey: String(scheduledDate.prefix(10)),
+            modality: modality,
+            stimulus: stimulus
         )
     }
 }

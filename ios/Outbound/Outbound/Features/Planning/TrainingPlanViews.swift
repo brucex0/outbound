@@ -294,6 +294,7 @@ struct ActiveTrainingPlanDetailView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @State private var expandedWorkoutIDs: Set<String> = []
+    @State private var expandedPhaseIDs: Set<String> = []
 
     let activePlan: ActiveTrainingPlan
     let week: TrainingPlanWeekSnapshot
@@ -306,65 +307,22 @@ struct ActiveTrainingPlanDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                    Text(activePlan.localizedTitle)
-                        .font(.system(.title2, design: .rounded).weight(.bold))
-                    TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
-                    if let progress = activePlan.programmeProgress, progress.programme != nil || progress.requiresReview { RunningProgrammeProgressView(progress: progress) }
-                    if let benchmark = activePlan.runningBenchmark {
-                        RunningBenchmarkManagementRow(context: benchmark, saveOverride: benchmarkSaveOverride)
-                    }
-                    if let goal = activePlan.raceGoal {
-                        RaceGoalCard(goal: goal)
-                    } else {
-                        Text(String(format: String(localized: "plan.details.weekly_rhythm", defaultValue: "%d planned sessions each week"), activePlan.sessionsPerWeek))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                planHeading
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(String(localized: "plan.details.your_scheduled_workouts", defaultValue: "Your scheduled workouts"))
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(String(localized: "plan.details.your_scheduled_workouts", defaultValue: "Your schedule"))
                         .font(.headline)
+                    if let context = week.calendar {
+                        Text(context.localizedPeriod).font(.subheadline).foregroundStyle(.secondary)
+                        if context.isPartialWeek {
+                            Text(String(localized: "plan.calendar.partial_week", defaultValue: "Partial first week · starts on your plan start date", table: "PlanningCalendar"))
+                                .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                     if let throughDate = scheduleCoverageDate {
-                        Text(String(format: String(localized: "plan.details.scheduled_through", defaultValue: "Workouts scheduled through %@"), throughDate.formatted(date: .abbreviated, time: .omitted)))
-                            .font(.subheadline.weight(.semibold))
+                        Text(String(format: String(localized: "plan.details.scheduled_through", defaultValue: "Scheduled through %@"), throughDate.formatted(date: .abbreviated, time: .omitted)))
+                            .font(.subheadline).foregroundStyle(.secondary)
                     }
-                    Text(String(localized: "plan.details.schedule_adapts", defaultValue: "Your scheduled workouts can change as your training progresses."))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("This week")
-                            .font(.subheadline.weight(.semibold))
-                        if let context = week.calendar {
-                            Text(context.localizedPeriod).font(.caption).foregroundStyle(.secondary)
-                            if context.isPartialWeek {
-                                Text(String(localized: "plan.calendar.partial_week", defaultValue: "Partial first week · starts on your plan start date", table: "PlanningCalendar"))
-                                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        Text(week.summaryLine)
-                            .font(.subheadline)
-                        TrainingPlanProgressBar(progress: week.progressPercent, accentColor: accentColor)
-                        if let pending = week.pendingSessions, pending > 0 {
-                            Text(String(format: String(localized: "plan.progress.pending", defaultValue: "%d saved sessions pending sync"), pending))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        if week.weekSummary != activePlan.subtitle {
-                            Text(week.weekSummary)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        Text(week.guideLine)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.vertical, 6)
 
                     if let todaySuggestion, !scheduleWorkouts.contains(where: { $0.id == todaySuggestion.suggestedSession.plannedWorkoutID }) {
                         VStack(alignment: .leading, spacing: 5) {
@@ -390,11 +348,12 @@ struct ActiveTrainingPlanDetailView: View {
                     }
                     ForEach(scheduleGroups) { group in
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(group.title)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            ForEach(group.workouts) { workout in
-                                scheduledWorkoutRow(workout)
+                            Text(group.title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                            ForEach(groupedByDay(group.workouts)) { day in
+                                ForEach(day.primaryWorkouts) { primary in
+                                    scheduledWorkoutRow(primary, nestedMobility: primary.id == day.primaryWorkouts.first?.id ? day.mobility : [])
+                                }
+                                ForEach(day.standalone) { workout in scheduledWorkoutRow(workout) }
                             }
                         }
                         .padding(.top, 6)
@@ -431,6 +390,18 @@ struct ActiveTrainingPlanDetailView: View {
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
+                if let progress = activePlan.programmeProgress, progress.programme != nil || progress.requiresReview {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(String(localized: "plan.details.training_context", defaultValue: "Training context")).font(.headline)
+                        RunningProgrammeProgressView(progress: progress)
+                    }
+                }
+                if let benchmark = activePlan.runningBenchmark {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(String(localized: "plan.details.running_benchmark", defaultValue: "Running benchmark")).font(.headline)
+                        RunningBenchmarkManagementRow(context: benchmark, saveOverride: benchmarkSaveOverride)
+                    }
+                }
             }
             .padding()
         }
@@ -442,6 +413,34 @@ struct ActiveTrainingPlanDetailView: View {
                 }
             }
         }
+    }
+
+    private var planHeading: some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(activePlan.localizedTitle).font(.system(.title2, design: .rounded).weight(.bold))
+                if let goal = activePlan.raceGoal {
+                    Text("·").foregroundStyle(.secondary)
+                    Text(goalSummary(goal)).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                }
+            }
+            TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
+            if activePlan.raceGoal == nil {
+                Text(String(format: String(localized: "plan.details.weekly_rhythm", defaultValue: "%d planned sessions each week"), activePlan.sessionsPerWeek))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            if let goal = activePlan.raceGoal {
+                DisclosureGroup(String(localized: "plan.details.race_goal_details", defaultValue: "Race goal details")) {
+                    RaceGoalCard(goal: goal)
+                }
+                .font(.subheadline.weight(.semibold))
+            }
+        }
+    }
+
+    private func goalSummary(_ goal: SavedRaceGoal) -> String {
+        guard let meters = goal.targetDistanceMeters else { return String(localized: "plan.details.race_goal", defaultValue: "Race goal") }
+        return "\(measurementPreferences.unitSystem.distanceValue(meters: meters).formatted(.number.precision(.fractionLength(1)))) \(measurementPreferences.unitSystem.distanceUnit)"
     }
 
     private var scheduleCoverageDate: Date? {
@@ -475,7 +474,7 @@ struct ActiveTrainingPlanDetailView: View {
                                end.formatted(date: .abbreviated, time: .omitted))
             return TrainingPlanWorkoutWeekGroup(index: index, title: title, workouts: entries.sorted { ($0.logicalScheduledDate ?? .distantPast) < ($1.logicalScheduledDate ?? .distantPast) })
         }
-        let undated = scheduleWorkouts.filter { $0.scheduledDate == nil }
+        let undated = scheduleWorkouts.filter { $0.logicalScheduledDate == nil }
         if !undated.isEmpty {
             groups.append(TrainingPlanWorkoutWeekGroup(
                 index: Int.min,
@@ -487,7 +486,7 @@ struct ActiveTrainingPlanDetailView: View {
     }
 
     @ViewBuilder
-    private func scheduledWorkoutRow(_ workout: TrainingPlanWorkout) -> some View {
+    private func scheduledWorkoutRow(_ workout: TrainingPlanWorkout, nestedMobility: [TrainingPlanWorkout] = []) -> some View {
         let effectiveWorkout = todaySuggestion?.suggestedSession.plannedWorkoutID == workout.id ? todaySuggestion?.workout : nil
         let displayTitle = effectiveWorkout?.title ?? workout.title
         let displayDuration = effectiveWorkout?.durationLabel ?? workout.durationLabel
@@ -495,62 +494,62 @@ struct ActiveTrainingPlanDetailView: View {
             ?? workout.intervalEffortLabel
             ?? BuiltinWorkoutText.localized(workout.effortLabel)
         let displaySteps = effectiveWorkout?.steps ?? workout.steps
-        let scheduledGoal = workout.targetCalories.map {
+        let displayWorkout = effectiveWorkout ?? workout
+        let scheduledGoal = displayWorkout.targetCalories.map {
             String(format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"), locale: .autoupdatingCurrent, $0)
-        } ?? workout.distanceLabel
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(workout.logicalScheduledDate?.formatted(date: .complete, time: .omitted) ?? workout.dayLabel)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text(BuiltinWorkoutText.localized(displayTitle))
-                        .font(.subheadline.weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
+        } ?? displayWorkout.distanceLabel
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                toggleWorkout(workout.id)
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    dateTile(workout)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(BuiltinWorkoutText.localized(displayTitle))
+                                .font(.headline)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 4)
+                            statusIcon(for: workout)
+                        }
+                        Text(brief(goal: scheduledGoal, duration: displayDuration, effort: displayEffort))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if workout.isOptional {
+                            Text(String(localized: "plan.details.optional", defaultValue: "Optional"))
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }
+                    Image(systemName: expandedWorkoutIDs.contains(workout.id) ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.tertiary).padding(.top, 5)
                 }
-                Spacer(minLength: 8)
-                if workout.isOptional {
-                    Text("Optional")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            if effectiveWorkout != nil, let todaySuggestion {
-                Text(todaySuggestion.detail)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(accentColor)
-                    .fixedSize(horizontal: false, vertical: true)
-                if (effectiveWorkout?.targetCalories != nil || effectiveWorkout?.distanceLabel != nil),
-                   let phaseEffort = effectiveWorkout?.intervalEffortLabel {
-                    Text(phaseEffort)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(accentColor)
-                }
-                Text(todaySuggestion.guideLine)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let adjustment = todaySuggestion.adjustmentLine {
-                    Label(adjustment, systemImage: "heart.text.square.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(accentColor)
-                }
-            } else {
-                Text([scheduledGoal, displayDuration, displayEffort].compactMap { $0 }.joined(separator: " • "))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(accentColor)
-            }
-                if let status = workout.status, status != "planned" {
-                    Text(workoutStatusLabel(status))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if !displaySteps.isEmpty {
-                    DisclosureGroup(isExpanded: Binding(
-                        get: { expandedWorkoutIDs.contains(workout.id) },
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityHint(String(localized: "plan.details.workout.expand_hint", defaultValue: "Shows workout targets and guidance"))
+
+            if expandedWorkoutIDs.contains(workout.id) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if effectiveWorkout != nil, let todaySuggestion {
+                        Text(todaySuggestion.detail).font(.subheadline.weight(.semibold)).foregroundStyle(accentColor).fixedSize(horizontal: false, vertical: true)
+                        Text(todaySuggestion.guideLine).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        if let adjustment = todaySuggestion.adjustmentLine {
+                            Label(adjustment, systemImage: "heart.text.square.fill").font(.subheadline.weight(.semibold)).foregroundStyle(accentColor)
+                        }
+                    }
+                    Text(displayWorkout.summary).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    if let status = workout.status, status != "planned", status != "completed" {
+                        Text(workoutStatusLabel(status)).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    if !displaySteps.isEmpty {
+                        DisclosureGroup(isExpanded: Binding(
+                        get: { expandedPhaseIDs.contains(workout.id) },
                         set: { isExpanded in
-                            if isExpanded { expandedWorkoutIDs.insert(workout.id) }
-                            else { expandedWorkoutIDs.remove(workout.id) }
+                            if isExpanded { expandedPhaseIDs.insert(workout.id) }
+                            else { expandedPhaseIDs.remove(workout.id) }
                             Task {
                                 await analyticsManager?.track(.init(.featureExposed, properties: [
                                     .feature: .string("plan_workout_phases"),
@@ -586,14 +585,137 @@ struct ActiveTrainingPlanDetailView: View {
                             .frame(minHeight: 44, alignment: .leading)
                             .contentShape(Rectangle())
                     }
-                    .accessibilityIdentifier("plan.details.phases.\(workout.id)")
+                        .accessibilityIdentifier("plan.details.phases.\(workout.id)")
+                    }
                 }
-            Text(workout.summary)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 70)
+                .transition(.opacity)
+            }
+            ForEach(nestedMobility) { mobility in
+                mobilityRow(mobility)
+                    .padding(.leading, 60)
+            }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 7)
+    }
+
+    private func toggleWorkout(_ id: String) {
+        let isExpanded = !expandedWorkoutIDs.contains(id)
+        if isExpanded { expandedWorkoutIDs.insert(id) } else { expandedWorkoutIDs.remove(id) }
+        Task { await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("plan_workout_details"), .result: .string(isExpanded ? "expanded" : "collapsed")])) }
+    }
+
+    @ViewBuilder private func dateTile(_ workout: TrainingPlanWorkout) -> some View {
+        if let date = workout.logicalScheduledDate {
+            VStack(spacing: 1) {
+                Text(date.formatted(.dateTime.weekday(.abbreviated))).font(.caption.weight(.semibold))
+                Text(date.formatted(.dateTime.day())).font(.title3.weight(.bold))
+            }
+            .frame(width: 48)
+            .frame(minHeight: 54)
+            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .accessibilityLabel(date.formatted(date: .complete, time: .omitted))
+        } else {
+            VStack(spacing: 3) {
+                Image(systemName: "calendar")
+                Text(BuiltinWorkoutText.localized(workout.dayLabel)).font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(width: 48)
+            .frame(minHeight: 54)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private func statusIcon(for workout: TrainingPlanWorkout) -> some View {
+        if workout.status == "completed" {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(accentColor).accessibilityLabel(String(localized: "plan.details.status.completed", defaultValue: "Completed"))
+        } else if let status = workout.status, status != "planned" {
+            Image(systemName: status == "skipped" || status == "missed" ? "minus.circle" : "clock.badge.exclamationmark")
+                .foregroundStyle(.secondary).accessibilityLabel(workoutStatusLabel(status))
+        }
+    }
+
+    private func brief(goal: String?, duration: String?, effort: String?) -> String {
+        return [goal, duration, effort].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private func isMobility(_ workout: TrainingPlanWorkout) -> Bool {
+        workout.modality == "mobility" || workout.stimulus == "mobility"
+    }
+
+    private struct DayWorkouts: Identifiable {
+        let dayKey: String
+        let primaryWorkouts: [TrainingPlanWorkout]
+        let mobility: [TrainingPlanWorkout]
+        let standalone: [TrainingPlanWorkout]
+        var id: String { dayKey }
+    }
+
+    private func groupedByDay(_ workouts: [TrainingPlanWorkout]) -> [DayWorkouts] {
+        let calendar = PlanningCalendarContext.accountCalendar()
+        let groups = Dictionary(grouping: workouts, by: { workout in
+            workout.logicalScheduledDate.map { calendar.startOfDay(for: $0).formatted(.iso8601.year().month().day().dateSeparator(.dash)) } ?? "undated-\(workout.id)"
+        })
+        return groups.keys.sorted().compactMap { key in
+            guard let rows = groups[key] else { return nil }
+            let mobility = rows.filter { $0.isOptional && isMobility($0) }
+            let primary = rows.filter { !($0.isOptional && isMobility($0)) }
+            let standalone = primary.isEmpty ? mobility : []
+            let ordered = primary.sorted { ($0.logicalScheduledDate ?? .distantPast) < ($1.logicalScheduledDate ?? .distantPast) }
+            return DayWorkouts(dayKey: key, primaryWorkouts: ordered, mobility: mobility, standalone: standalone)
+        }
+    }
+
+    @ViewBuilder
+    private func mobilityRow(_ workout: TrainingPlanWorkout) -> some View {
+        let goal = workout.targetCalories.map {
+            String(format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"), locale: .autoupdatingCurrent, $0)
+        } ?? workout.distanceLabel
+        VStack(alignment: .leading, spacing: 6) {
+            Button { toggleWorkout(workout.id) } label: {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "figure.cooldown").foregroundStyle(.secondary).frame(width: 24)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(BuiltinWorkoutText.localized(workout.title))
+                            .font(.subheadline.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text([String(localized: "plan.details.optional", defaultValue: "Optional"), workout.durationLabel].joined(separator: " · "))
+                            .font(.subheadline).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 4)
+                    statusIcon(for: workout)
+                    Image(systemName: expandedWorkoutIDs.contains(workout.id) ? "chevron.up" : "chevron.down").font(.caption).foregroundStyle(.tertiary)
+                }
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityHint(String(localized: "plan.details.workout.expand_hint", defaultValue: "Shows workout targets and guidance"))
+            if expandedWorkoutIDs.contains(workout.id) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(workout.summary).font(.subheadline).foregroundStyle(.secondary)
+                    Text(brief(goal: goal, duration: workout.durationLabel, effort: workout.intervalEffortLabel ?? BuiltinWorkoutText.localized(workout.effortLabel)))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    if let status = workout.status, status != "planned", status != "completed" {
+                        Text(workoutStatusLabel(status)).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    ForEach(workout.steps) { step in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("\(BuiltinWorkoutText.localized(step.label)) · \(step.durationLabel)").font(.subheadline)
+                            if let detail = step.detail { Text(BuiltinWorkoutText.localized(detail)).font(.subheadline).foregroundStyle(.secondary) }
+                            if let pace = step.estimatedPace?.rangeLabel(units: measurementPreferences.unitSystem) { Text(pace).font(.caption).foregroundStyle(.secondary) }
+                            if let rpe = step.rpeLabel { Text(rpe).font(.caption).foregroundStyle(.secondary) }
+                        }
+                    }
+                }
+                .padding(.leading, 34)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 5)
     }
 
     private func workoutStatusLabel(_ status: String) -> String {
