@@ -12,7 +12,7 @@ import { Prisma } from "@prisma/client";
 import { buildActivitySuggestion } from "./activitySuggestion.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { enqueuePlanningEvent } from "./events.js";
-import { allowsShortRuns, generateInitialPlan, normalizeGoalInput } from "./generator.js";
+import { allowsShortRuns, generateInitialPlan, normalizeGoalInput, runningProgressionBlocked } from "./generator.js";
 import { createPlanVersionWithWorkouts, json, lockPlanningUser, isOptionalWorkout, protectedEditedWorkouts, workoutSlotKey } from "./persistence.js";
 import { processDuePlanningEventsForUser, processPlanningEventById } from "./processor.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
@@ -47,14 +47,16 @@ export async function createGoal(
   userId: string,
   input: CreateTrainingGoalInput
 ): Promise<PlanningState> {
-  input = { ...input, constraints: benchmarkConstraints(input, new Date()) };
-  const eligibility = assessGoalFeasibility(input, new Date());
+  const creationNow = new Date();
+  input = { ...input, constraints: benchmarkConstraints(input, creationNow) };
+  const eligibility = assessGoalFeasibility(input, creationNow);
   if (!eligibility.eligible) {
     console.info("[planning] goal_feasibility_decision", { result: "blocked" });
     throw new GoalFeasibilityError();
   }
   const prisma = getPrismaClient();
   const timeZone = await accountTimeZone(userId);
+  const scheduleStart = accountDateLabel(creationNow, timeZone);
   const selection = readCatalogRecommendationSelection(input.constraints);
   if (selection && preferredLongRunDays(input.constraints).length) throw new LongRunDaysError("catalog");
   const [activities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
@@ -94,13 +96,13 @@ export async function createGoal(
   };
   // Resolve the authoritative selected distance before the final admission check.
   // An omitted request distance must not bypass a selected marathon's guard.
-  const resolvedEligibility = assessGoalFeasibility(goalInput, new Date());
+  const resolvedEligibility = assessGoalFeasibility(goalInput, creationNow);
   console.info("[planning] goal_feasibility_decision", { result: resolvedEligibility.eligible ? "eligible" : "blocked" });
   if (!resolvedEligibility.eligible) throw new GoalFeasibilityError();
   if (!profile?.sexAtBirth || !profile.birthDate || profile.weightKilograms == null) {
     throw new Error("Birth date, sex assigned at birth, and weight are required to create a personalized plan.");
   }
-  const age = ageYears(profile.birthDate, new Date());
+  const age = ageYears(profile.birthDate, creationNow);
   if (age < 13 || age > 100) {
     throw new Error("Enter a valid birth date before creating a personalized plan.");
   }
@@ -129,16 +131,20 @@ export async function createGoal(
   const athleteState = computeAthleteTrainingState({
     activities,
     plannedWorkouts,
-    readiness: normalized.activities.includes("run") ? [freshReadiness(readiness, new Date())].filter((row): row is ReadinessForPlanning => row != null) : readiness,
+    now: creationNow,
+    readiness: normalized.activities.includes("run") ? [freshReadiness(readiness, creationNow)].filter((row): row is ReadinessForPlanning => row != null) : readiness,
   });
   const generated = selectedRecommendation ? null : generateInitialPlan({
     goal: normalized,
     athleteState,
+    now: creationNow,
+    planStart: scheduleStart,
+    progressionBlocked: runningProgressionBlocked(readiness, plannedWorkouts, scheduleStart),
     reason: "initial",
-    scheduleStart: accountDateLabel(new Date(), timeZone),
+    scheduleStart,
   });
   const generation = selectedRecommendation
-    ? generateCatalogWindow({ template: selectedRecommendation.template, goal: normalized, now: new Date(), createdAt: new Date(), timeZone,
+    ? generateCatalogWindow({ template: selectedRecommendation.template, goal: normalized, now: creationNow, createdAt: creationNow, timeZone,
         evidence: [], readyToAdvance: false, explicitDifficulty: false, athleteState })
     : { ...generated!, workouts: applyCalorieTargets({
         workouts: generated!.workouts, preferredRunGoalType: normalized.preferredRunGoalType,
@@ -202,6 +208,7 @@ export async function createGoal(
         goalId: goal.id,
         currentPhase: generation.phase,
         source: selectedRecommendation ? "catalog" : "generated",
+        createdAt: creationNow,
       },
     });
     const version = await createPlanVersionWithWorkouts(tx, {
@@ -209,6 +216,7 @@ export async function createGoal(
       userId,
       versionNumber: 1,
       reason: "initial",
+      effectiveFrom: creationNow,
       summary: generation.summary,
       engineInputs: {
         athleteState: stateForJson(athleteState),
@@ -244,6 +252,11 @@ export async function createGoal(
     });
   });
 
+  if (generated) {
+    const progression = generated.engineDecision.genericWeekProgression as { applied?: boolean; safetyHold?: boolean } | undefined;
+    console.info("[planning] generated_plan_created", { stagedRunningProgression: progression?.applied === true && progression.safetyHold !== true,
+      runningProgressionHeld: progression?.safetyHold === true });
+  }
   return assemblePlanningState(userId, "updated");
 }
 

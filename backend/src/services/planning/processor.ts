@@ -1,3 +1,4 @@
+import { runningProgressionBlocked } from "./generator.js";
 import { accountTimeZone, accountDateLabel } from "../accountCalendar.js";
 import { runningConstraintReview, retainRunningPlanForReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
@@ -87,6 +88,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
         versions: {
           orderBy: { versionNumber: "desc" },
           take: 1,
+          include: { workouts: { select: { scheduledDate: true, modality: true, durationSeconds: true } } },
         },
       },
     });
@@ -199,6 +201,9 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       eventType,
       now: calendarNow,
       scheduleStart: accountDateLabel(calendarNow, timeZone),
+      planStart: accountDateLabel(plan.createdAt, timeZone),
+      previousWorkouts: activeVersion?.workouts,
+      progressionBlocked: runningProgressionBlocked(readiness, plannedWorkouts, accountDateLabel(calendarNow, timeZone)),
       basePlan: plan.source === "catalog" ? { phase: plan.currentPhase as import("./types.js").TrainingPlanPhase, summary: "Catalogue review", workouts: [], engineDecision: (activeVersion?.engineDecision as Record<string, unknown>) ?? {} } : undefined,
       goal,
       runWalkProgramme: parseRunWalkProgramme((activeVersion?.engineDecision as Record<string, unknown> | undefined)?.runWalkProgramme),
@@ -271,7 +276,9 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           now: new Date(), createdAt: plan.createdAt, enableProgramme: goal.baselineContext !== "currentlyActive" });
         athleteState = context.athleteState;
         latestReadiness = context.latestReadiness;
-        adaptation = adaptPlan({ eventType, goal, athleteState, latestReadiness, runWalkProgramme: context.state });
+        adaptation = adaptPlan({ eventType, goal, athleteState, latestReadiness, runWalkProgramme: context.state, previousWorkouts: activeVersion?.workouts,
+          now: calendarNow, scheduleStart: accountDateLabel(calendarNow, timeZone), planStart: accountDateLabel(plan.createdAt, timeZone),
+          progressionBlocked: runningProgressionBlocked(readiness, plannedWorkouts, accountDateLabel(calendarNow, timeZone)) });
         adaptedWorkouts = applyCalorieTargets({ workouts: adaptation.workouts,
           preferredRunGoalType: goal.preferredRunGoalType, weightKilograms: profile?.weightKilograms,
           pace: resolveLearnedRunPace(context.activities, calibration?.status === "completed") });

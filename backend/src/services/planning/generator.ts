@@ -4,7 +4,7 @@ import { preferredLongRunDays, longRunWeekModalities, longRunAllocation, LongRun
 import { raceTaperDays } from "./raceRoadmap.js";
 import { evaluateRunWalkProgramme, RUN_WALK_LADDER, stampIssuedRunningDose, type RunWalkProgramme } from "./runWalkProgramme.js";
 import { runningDoseBudget, RUNNING_DOSE_POLICY, type RunningDoseBudget } from "./runningDosePolicy.js";
-import { RUN_STRUCTURE_VERSION } from "./runningPrescription.js";
+import { RUN_STRUCTURE_VERSION, resizeTimedRunningWorkout } from "./runningPrescription.js";
 import { applyRunningBenchmark, runningBenchmarkDecision } from "./runningBenchmark.js";
 import { adapterFor } from "./adapters/index.js";
 import type {
@@ -17,9 +17,11 @@ import type {
   RunGoalType,
   TrainingPlanPhase,
   TrainingStimulus,
+  PlannedWorkoutForState,
+  ReadinessForPlanning,
 } from "./types.js";
 
-export const PLANNER_POLICY_VERSION = "running-dose-v3";
+export const PLANNER_POLICY_VERSION = "running-dose-v4";
 
 export interface GeneratePlanInput {
   goal: {
@@ -46,6 +48,11 @@ export interface GeneratePlanInput {
   scheduleStart?: Date;
   reason?: string;
   runWalkProgramme?: RunWalkProgramme;
+  /** Stable account-local creation date; rolling windows must not restart progression. */
+  planStart?: Date;
+  progressionBlocked?: boolean;
+  /** Active-version doses bound adverse rebuilds even when evidence changes. */
+  previousWorkouts?: Pick<PlannedWorkoutForState, "scheduledDate" | "modality" | "durationSeconds">[];
 }
 
 export function normalizeGoalInput(input: CreateTrainingGoalInput) {
@@ -76,7 +83,7 @@ export function normalizeGoalInput(input: CreateTrainingGoalInput) {
 }
 
 export function generateInitialPlan(input: GeneratePlanInput): PlanGenerationResult {
-  return generateWindow(input, "Initial adaptive plan");
+  return generateWindow({ ...input, planStart: input.planStart ?? input.scheduleStart ?? startOfDay(input.now ?? new Date()) }, "Initial adaptive plan");
 }
 
 export function generateNextWindow(input: GeneratePlanInput): PlanGenerationResult {
@@ -116,7 +123,24 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
     if (programme?.status === "active") programme = { ...programme, sessionTotalSeconds: Math.min(programme.sessionTotalSeconds, budget!.ordinarySessionMinutes * 60) };
     workouts = render();
   }
-  const balancedWorkouts = balanceRunningWeek(workouts, input, budget, programme);
+  const progression = genericWeekProgressionDecision(input, budget, programme, workouts);
+  let balancedWorkouts = balanceRunningWeek(workouts, input, budget, programme, progression);
+  if (progression.safetyHold && input.previousWorkouts?.length) {
+    const previous = new Map(input.previousWorkouts.filter((row) => row.modality === "run")
+      .map((row) => [row.scheduledDate.getTime(), row.durationSeconds]));
+    balancedWorkouts = balancedWorkouts.map((row) => {
+      const priorSeconds = previous.get(row.scheduledDate.getTime());
+      if (row.modality !== "run" || priorSeconds == null || priorSeconds <= 0 || row.durationSeconds <= priorSeconds) return row;
+      progression.heldToPrevious = true;
+      return resizeTimedRunningWorkout(row, priorSeconds);
+    });
+  }
+  if (progression.eligible) {
+    const supported = balanceRunningWeek(workouts, input, budget, programme);
+    progression.applied = balancedWorkouts.some((row, index) => row.scheduledDate >= scheduleStart
+      && row.modality === "run" && row.durationSeconds < supported[index].durationSeconds);
+  }
+  if (progression.eligible && !progression.applied && !progression.safetyHold) progression.reason = "session_capacity_hold";
   const withOptionalMobility = input.goal.constraints?.optionalMobility === "true"
     ? balancedWorkouts.flatMap((workout) => [workout, {
         ...adapterFor("mobility", "mobility").generateWorkout({ scheduledDate: workout.scheduledDate, modality: "mobility", stimulus: "mobility", durationMinutes: 10, isKeyWorkout: false, athleteState: input.athleteState }),
@@ -139,6 +163,7 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
       effectiveBaselineContext: effectiveGoal.baselineContext,
       runningBenchmark: runningBenchmarkDecision(input.goal.constraints, now),
       plannerPolicyVersion: PLANNER_POLICY_VERSION,
+      genericWeekProgression: progression,
       runStructureVersion: RUN_STRUCTURE_VERSION,
       reportedEffortLoadAvailable: ((input.athleteState.modalityBreakdown.run as { sessionEffortLoad?: { comparable?: boolean } } | undefined)?.sessionEffortLoad?.comparable === true),
       phase,
@@ -163,34 +188,55 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
 }
 
 /** Allocate the weekly budget with a separate evidenced long slot, then taper it. */
-function balanceRunningWeek(workouts: PlannedWorkoutDraft[], input: GeneratePlanInput, budget?: RunningDoseBudget, programme?: RunWalkProgramme): PlannedWorkoutDraft[] {
+function balanceRunningWeek(workouts: PlannedWorkoutDraft[], input: GeneratePlanInput, budget?: RunningDoseBudget, programme?: RunWalkProgramme,
+  progression?: ReturnType<typeof genericWeekProgressionDecision>): PlannedWorkoutDraft[] {
   if (!budget) return workouts;
   const result = [...workouts];
   const longDays = preferredLongRunDays(input.goal.constraints);
-  let ordinaryFloor: number | undefined;
-  if (longDays.length && budget.reportedCapacityApplied) {
+  function explicitAllocation(weeklyMinutes: number) {
+    if (!budget || !longDays.length) return undefined;
+    let ordinaryFloor: number | undefined;
+    if (budget.reportedCapacityApplied) {
+      try {
+        ordinaryFloor = longRunAllocation({ sessions: budget.sessionsPerWeek, longSessions: longDays.length,
+          weeklySeconds: weeklyMinutes * 60, ordinaryCeiling: budget.perSessionCeilingMinutes * 60,
+          longCeiling: budget.observedLongSessionCeilingMinutes * 60, minimum: budget.minimumMinutes * 60 }).ordinarySeconds;
+      } catch (error) {
+        if (!(error instanceof LongRunDaysError) || error.category !== "capacity") throw error;
+        // No supported old long allocation: preserve the ordinary equal-session dose.
+        ordinaryFloor = budget.ordinarySessionMinutes * 60;
+      }
+    }
+    return longRunAllocation({ sessions: budget.sessionsPerWeek, longSessions: longDays.length,
+      weeklySeconds: weeklyMinutes * 60, ordinaryCeiling: budget.perSessionCeilingMinutes * 60,
+      longCeiling: budget.longSessionCeilingMinutes * 60, minimum: budget.minimumMinutes * 60, ordinaryFloor });
+  }
+  const allocation = explicitAllocation(budget.targetWeeklyMinutes);
+  let initialAllocation = allocation;
+  if (allocation && progression?.eligible) {
     try {
-      ordinaryFloor = longRunAllocation({ sessions: budget.sessionsPerWeek, longSessions: longDays.length,
-        weeklySeconds: budget.targetWeeklyMinutes * 60, ordinaryCeiling: budget.perSessionCeilingMinutes * 60,
-        longCeiling: budget.observedLongSessionCeilingMinutes * 60, minimum: budget.minimumMinutes * 60 }).ordinarySeconds;
+      initialAllocation = explicitAllocation(progression.initialTargetWeeklyMinutes!);
     } catch (error) {
       if (!(error instanceof LongRunDaysError) || error.category !== "capacity") throw error;
-      // No supported old long allocation: preserve the ordinary equal-session dose.
-      ordinaryFloor = budget.ordinarySessionMinutes * 60;
+      // Adverse evidence cannot restore the larger dose. Keep the existing plan
+      // for capacity review rather than violate explicit long-slot floors.
+      if (progression.safetyHold) throw error;
+      progression.eligible = false;
+      progression.reason = "allocation_capacity_hold";
     }
   }
-  const allocation = longDays.length ? longRunAllocation({ sessions: budget.sessionsPerWeek, longSessions: longDays.length,
-    weeklySeconds: budget.targetWeeklyMinutes * 60, ordinaryCeiling: budget.perSessionCeilingMinutes * 60,
-    longCeiling: budget.longSessionCeilingMinutes * 60, minimum: budget.minimumMinutes * 60, ordinaryFloor }) : undefined;
   const weekKeys = [...new Set(workouts.map((row) => mondayDateLabel(row.scheduledDate).getTime()))];
   for (const weekKey of weekKeys) {
     const week = workouts.filter((row) => mondayDateLabel(row.scheduledDate).getTime() === weekKey && row.modality === "run");
     if (!week.length) continue;
+    const initialWeek = progression?.eligible && (progression.safetyHold || weekKey === mondayDateLabel(input.planStart!).getTime());
+    const weeklyMinutes = initialWeek ? progression.initialTargetWeeklyMinutes! : budget.targetWeeklyMinutes;
     if (allocation) {
+      const selectedAllocation = initialWeek ? initialAllocation! : allocation;
       for (const row of week) {
         const selected = longDays.some((day) => isDay(row.scheduledDate, day));
         // Prior hard work, pain/fatigue and the race approach may override a long slot.
-        const base = selected && row.stimulus === "longEndurance" ? allocation.longSeconds : allocation.ordinarySeconds;
+        const base = selected && row.stimulus === "longEndurance" ? selectedAllocation.longSeconds : selectedAllocation.ordinarySeconds;
         const phase = phaseForGoal(input.goal, row.scheduledDate);
         const safetyReduction = row.stimulus === "recovery" || input.athleteState.fatigueRisk === "high";
         const factor = safetyReduction ? .7 : phase === "taper" ? .8 : 1;
@@ -205,7 +251,7 @@ function balanceRunningWeek(workouts: PlannedWorkoutDraft[], input: GeneratePlan
     const longCeiling = budget.longSessionCeilingMinutes * 60;
     const minimum = budget.minimumMinutes * 60;
     const mayHaveLong = candidate && programme?.status !== "active" && longCeiling >= ordinaryCeiling * 1.15 && longCeiling - ordinaryCeiling >= 300;
-    const target = Math.min(budget.targetWeeklyMinutes * 60 * week.length / budget.sessionsPerWeek,
+    const target = Math.min(weeklyMinutes * 60 * week.length / budget.sessionsPerWeek,
       ordinaryCeiling * (week.length - (mayHaveLong ? 1 : 0)) + (mayHaveLong ? longCeiling : 0));
     // A reported larger capacity can spend unused weekly time, but cannot take
     // minutes away from the ordinary runs the same history already supported.
@@ -213,7 +259,7 @@ function balanceRunningWeek(workouts: PlannedWorkoutDraft[], input: GeneratePlan
     if (budget.reportedCapacityApplied) {
       const oldLongCeiling = budget.observedLongSessionCeilingMinutes * 60;
       const oldMayHaveLong = candidate && programme?.status !== "active" && oldLongCeiling >= ordinaryCeiling * 1.15 && oldLongCeiling - ordinaryCeiling >= 300;
-      const oldTarget = Math.min(budget.targetWeeklyMinutes * 60 * week.length / budget.sessionsPerWeek,
+      const oldTarget = Math.min(weeklyMinutes * 60 * week.length / budget.sessionsPerWeek,
         ordinaryCeiling * (week.length - (oldMayHaveLong ? 1 : 0)) + (oldMayHaveLong ? oldLongCeiling : 0));
       const oldLong = oldMayHaveLong ? Math.min(oldLongCeiling, oldTarget - minimum * (week.length - 1)) : 0;
       const oldOrdinary = Math.min(ordinaryCeiling, (oldTarget - oldLong) / Math.max(1, week.length - (oldMayHaveLong ? 1 : 0)));
@@ -255,6 +301,34 @@ function stageFor(programme: RunWalkProgramme) {
   const ratio = RUN_WALK_LADDER[programme.stageIndex];
   return ratio ? { runSeconds: ratio[0], walkSeconds: ratio[1], continuousTrial: false }
     : { runSeconds: programme.sessionTotalSeconds, walkSeconds: 0, continuousTrial: true };
+}
+
+/** These are actual recent evidence rows, never newly generated planned rows. */
+export function runningProgressionBlocked(readiness: ReadinessForPlanning[], planned: Pick<PlannedWorkoutForState, "status" | "scheduledDate" | "modality">[], today: Date): boolean {
+  const recent = (date: Date) => date >= addDays(today, -7) && date < addDays(today, 1);
+  return readiness.some((row) => recent(row.date) && (row.illnessOrPain || row.energy <= 2 || row.soreness >= 4 || row.stress >= 4))
+    || planned.some((row) => row.modality === "run" && row.status === "skipped" && recent(row.scheduledDate));
+}
+
+function genericWeekProgressionDecision(input: GeneratePlanInput, budget: RunningDoseBudget | undefined, programme: RunWalkProgramme | undefined,
+  workouts: PlannedWorkoutDraft[]) {
+  // Stage the existing allowance; never compound it or raise evidence ceilings.
+  const initialTargetWeeklyMinutes = budget ? Math.min(budget.targetWeeklyMinutes,
+    Math.max(budget.minimumMinutes * budget.sessionsPerWeek, budget.baselineWeeklyMinutes * 1.05)) : null;
+  const openingWeekInWindow = input.planStart != null && workouts.some((row) => row.modality === "run"
+    && mondayDateLabel(row.scheduledDate).getTime() === mondayDateLabel(input.planStart!).getTime());
+  const safetyHold = input.goal.activities.includes("run") && (input.progressionBlocked === true || input.athleteState.fatigueRisk !== "low"
+    || input.athleteState.adherenceRate < 0.75 || input.athleteState.consistencyScore < 0.5
+    || ["workoutSkipped", "workoutMissed", "painFlagged"].includes(input.reason ?? "")
+    || workouts.some((row) => row.modality === "run" && phaseForGoal(input.goal, row.scheduledDate) === "taper"));
+  const eligible = budget != null && programme?.status !== "active" && input.goal.baselineContext === "currentlyActive"
+    && budget.basis === "observed_run_history" && ["balanced", "stretch"].includes(input.goal.riskTolerance)
+    && input.planStart != null && (openingWeekInWindow || safetyHold)
+    && initialTargetWeeklyMinutes! < budget.targetWeeklyMinutes;
+  return { policy: "initial-week-staged-allowance-v1", eligible, applied: false, safetyHold, heldToPrevious: false,
+    initialTargetWeeklyMinutes, supportedTargetWeeklyMinutes: budget?.targetWeeklyMinutes ?? null,
+    reason: safetyHold ? "adverse_evidence_hold" : eligible ? "staged_existing_allowance"
+      : !openingWeekInWindow ? "outside_initial_week" : "safety_or_capacity_hold" };
 }
 
 function workoutForDate(params: {

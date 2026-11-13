@@ -9,7 +9,7 @@ import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "../prisma.js";
 import { adaptPlan } from "./adaptationEngine.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
-import { generateNextWindow, phaseForGoal, PLANNER_POLICY_VERSION, type GeneratePlanInput } from "./generator.js";
+import { generateNextWindow, phaseForGoal, PLANNER_POLICY_VERSION, runningProgressionBlocked, type GeneratePlanInput } from "./generator.js";
 import { createPlanVersionWithWorkouts, json, lockPlanningUser, isOptionalWorkout, workoutSlotKey } from "./persistence.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import type { ActivityForPlanning, PlannedWorkoutForState, ReadinessForPlanning } from "./types.js";
@@ -82,14 +82,16 @@ async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userI
   });
   const protectedDays = new Set(protectedWorkouts.map(workoutSlotKey));
   let windowStart = today;
-  let generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, now, scheduleStart: windowStart, reason: force ? "goalUpdated" : policyChanged ? "policyUpdated" : "weeklyRollover" });
+  const progressionBlocked = runningProgressionBlocked(readiness, planned, today);
+  const planStart = accountDateLabel(plan.createdAt, timeZone);
+  let generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, progressionBlocked, planStart, previousWorkouts: version?.workouts, now, scheduleStart: windowStart, reason: force ? "goalUpdated" : policyChanged ? "policyUpdated" : "weeklyRollover" });
   const required = generation.workouts.filter((workout) => !isOptionalWorkout(workout));
   if (required.length > 0 && required.every((workout) => protectedDays.has(workoutSlotKey(workout)))) {
     // Skip the entire protected horizon, even when several windows were completed
     // in advance. Optional supports cannot prevent required-run replenishment.
     const latest = Math.max(...protectedWorkouts.filter((workout) => !isOptionalWorkout(workout)).map((workout) => workout.scheduledDate.getTime()));
     windowStart = addDays(new Date(latest), 1);
-    generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, now, scheduleStart: windowStart, reason: "weeklyRollover" });
+    generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, progressionBlocked, planStart, previousWorkouts: version?.workouts, now, scheduleStart: windowStart, reason: "weeklyRollover" });
   }
   const latestReadiness = runningContext ? runningContext.latestReadiness : readiness.find((entry) => entry.date >= addDays(today, -1));
   const adapted = latestReadiness && (latestReadiness.illnessOrPain || latestReadiness.energy <= 2 || latestReadiness.soreness >= 4 || latestReadiness.stress >= 4)
@@ -120,7 +122,8 @@ async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userI
     changedWorkoutIds: [], engineDecision: json(engineDecision),
   } });
   // Bounded operational analytics: no goal dates, distances, IDs, body data, or text.
-  console.info("[planning] generated_window_refreshed", { reason: force ? "goal_updated" : policyChanged ? "policy_updated" : "refill", phase, runWalkOutcome: runningContext?.outcome ?? "not_applicable", reportedEffortLoadAvailable: generation.engineDecision.reportedEffortLoadAvailable === true, structuredRunning: workouts.some((workout) => workout.prescription.runStructureVersion != null), requiredSessions: workouts.filter((workout) => workout.prescription.optional !== true).length });
+  const progression = generation.engineDecision.genericWeekProgression as { applied?: boolean; safetyHold?: boolean } | undefined;
+  console.info("[planning] generated_window_refreshed", { reason: force ? "goal_updated" : policyChanged ? "policy_updated" : "refill", phase, runWalkOutcome: runningContext?.outcome ?? "not_applicable", reportedEffortLoadAvailable: generation.engineDecision.reportedEffortLoadAvailable === true, stagedRunningProgression: progression?.applied === true && progression.safetyHold !== true, runningProgressionHeld: progression?.safetyHold === true, structuredRunning: workouts.some((workout) => workout.prescription.runStructureVersion != null), requiredSessions: workouts.filter((workout) => workout.prescription.optional !== true).length });
 }
 
 function day(value: Date) { return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())); }

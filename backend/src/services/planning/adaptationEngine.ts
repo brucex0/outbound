@@ -16,6 +16,9 @@ export interface AdaptationInput {
   latestReadiness?: ReadinessForPlanning;
   now?: Date;
   scheduleStart?: Date;
+  planStart?: Date;
+  progressionBlocked?: boolean;
+  previousWorkouts?: GeneratePlanInput["previousWorkouts"];
   basePlan?: PlanGenerationResult;
   runWalkProgramme?: GeneratePlanInput["runWalkProgramme"];
 }
@@ -37,6 +40,10 @@ export function adaptPlan(input: AdaptationInput): AdaptationResult {
     athleteState: input.athleteState,
     now,
     scheduleStart: input.scheduleStart,
+    planStart: input.planStart,
+    progressionBlocked: input.progressionBlocked || Boolean(input.latestReadiness && (input.latestReadiness.illnessOrPain
+      || input.latestReadiness.energy <= 2 || input.latestReadiness.soreness >= 4 || input.latestReadiness.stress >= 4)),
+    previousWorkouts: input.previousWorkouts,
     reason: input.eventType,
   });
   const result = resultForEvent(input, base);

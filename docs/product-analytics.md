@@ -483,6 +483,8 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 
 - Reported session-effort planning adds only `reportedEffortLoadAvailable` (boolean) to persisted engine decisions and the existing bounded refresh diagnostic. Ratings, duration×effort values, coverage counts/ratios, activity/completion IDs and private metadata never enter analytics.
 
+- Generic running allowance staging adds only `stagedRunningProgression` and `runningProgressionHeld` (booleans) to `generated_plan_created` and the existing `generated_window_refreshed` diagnostic. Staging excludes adverse holds; the hold boolean distinguishes negative evidence from progression. Detailed policy targets and eligibility remain private persisted engine decision data; exact volume, dates, constraints, history and identifiers are excluded from analytics.
+
 - iOS/Android optional session effort uses `feature_exposed` only with bounded `feature=session_effort_optional|session_effort_selected|session_effort_cleared|session_effort_saved`. Selection values, rating, duration×effort, activity IDs and feedback content are excluded; saved exposure follows durable local save. Categorical feedback events stay separate.
 
 - Running benchmarks emit only bounded status/source/presence and operation/category through `running_benchmark_updated`, `running_benchmark_validation`, `running_benchmark_fallback` and version decision metadata. Distance, time, date, pace, performance estimate, goal/activity identifiers and user text are excluded. Expected invalid input is validation flow, not an error log.
