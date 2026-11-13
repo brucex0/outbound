@@ -996,6 +996,8 @@ struct SessionStatusCard: View {
 
                     extraCountdownStrip
 
+                    liveWorkoutStructure
+
                     if let guideMessage, state != .idle {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "sparkles")
@@ -1055,6 +1057,78 @@ struct SessionStatusCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
+    }
+
+    @ViewBuilder
+    private var liveWorkoutStructure: some View {
+        let steps = displayIntent.workoutSteps.filter { $0.durationSeconds > 0 }
+        if !steps.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(String(localized: "today.phases", defaultValue: "Workout phases"))
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                        let isCurrent = currentStepProgress?.index == index
+                        let isUpcoming = currentStepProgress.map { index > $0.index } ?? false
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(step.label)
+                                        .font(.subheadline.weight(isCurrent ? .bold : .semibold))
+                                        .foregroundStyle(.primary)
+                                    if let detail = step.detail, !detail.isEmpty {
+                                        Text(detail)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                Spacer(minLength: 8)
+                                VStack(alignment: .trailing, spacing: 3) {
+                                    Text(Duration.seconds(step.durationSeconds), format: .units(
+                                        allowed: [.hours, .minutes, .seconds], width: .abbreviated
+                                    ).locale(AppLanguage.speechLocale))
+                                        .font(.subheadline.monospacedDigit().weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    if isCurrent {
+                                        Text(String(localized: "today.change.current_short", defaultValue: "Current"))
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(theme.accentColor)
+                                    } else if isUpcoming {
+                                        Text(String(localized: "Up next"))
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            if isCurrent, let progress = currentStepProgress {
+                                ProgressView(value: progress.progress)
+                                    .tint(theme.accentColor)
+                                    .accessibilityLabel(step.label)
+                                    .accessibilityValue(Text("\(Int((progress.progress * 100).rounded()))%"))
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            isCurrent ? theme.accentColor.opacity(0.10) : Color(.secondarySystemBackground),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+            }
+            .padding(14)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .accessibilityIdentifier("LiveWorkoutStructure")
+            .task(id: isExpanded) {
+                guard isExpanded else { return }
+                await analyticsManager?.track(.init(.featureExposed, properties: [
+                    .feature: .string("live_workout_structure")
+                ]))
+            }
+        }
     }
 
     private var heroMetricValue: String {

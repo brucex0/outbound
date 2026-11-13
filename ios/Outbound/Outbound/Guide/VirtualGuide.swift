@@ -105,6 +105,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var queuedMoments: [DetectedLiveGuidanceMoment] = []
     private var processedWorkoutCueIDs: Set<String> = []
     private var lastWorkoutCueSnapshot: ActiveSessionSnapshot?
+    private var didQueueInitialWorkoutInstruction = false
 
     private let maxRecentSpokenFingerprints = 4
     private let maxRecentSpokenMessages = 4
@@ -252,6 +253,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         queuedMoments = []
         processedWorkoutCueIDs = []
         lastWorkoutCueSnapshot = nil
+        didQueueInitialWorkoutInstruction = false
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0, unitSystem: unitSystem) } ?? ""
         lastSpokenAnnouncement = ""
         latestAnalysis = nil
@@ -309,6 +311,8 @@ final class VirtualGuide: NSObject, ObservableObject {
 
         snapshotHistory.append(snapshot)
         retainRecentLiveGuidanceHistory(&snapshotHistory, through: snapshot.elapsedSeconds)
+
+        queueInitialWorkoutInstruction(for: snapshot)
 
         let runningSession = sessionIntent?.resolvedActivityType == .running
         if runningSession {
@@ -862,6 +866,55 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
     }
 
+    private func queueInitialWorkoutInstruction(for snapshot: ActiveSessionSnapshot) {
+        guard !didQueueInitialWorkoutInstruction else { return }
+        didQueueInitialWorkoutInstruction = true
+        guard snapshot.elapsedSeconds <= 20,
+              sessionIntent?.resolvedActivityType == .running,
+              sessionIntent?.raceIntent == nil,
+              sessionIntent?.workoutReference?.source != "standalone_catalog",
+              sessionIntent?.workoutCues.isEmpty == true,
+              let firstStep = sessionIntent?.workoutSteps.first(where: { $0.durationSeconds > 0 })
+        else { return }
+
+        let instruction = initialWorkoutInstruction(for: firstStep)
+        lastNudge = instruction
+        let moment = DetectedLiveGuidanceMoment(
+            type: .workoutInstruction,
+            detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+            evaluationDelaySeconds: 0,
+            preferredMessage: instruction,
+            instructionID: "workout.phase.start"
+        )
+        guidanceEventHandler?(.momentDetected(
+            type: moment.type,
+            contract: persona?.coachingContract ?? .responsive
+        ))
+        enqueue(moment)
+    }
+
+    private func initialWorkoutInstruction(for step: SessionIntentStep) -> String {
+        if let instruction = step.transitionInstruction?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !instruction.isEmpty,
+           AppLanguage.current == .english {
+            return instruction
+        }
+        switch step.coachingTarget?.phase {
+        case .warmup:
+            return String(localized: "live_guidance.workout_start.warmup", defaultValue: "Begin with an easy warm-up and build gradually.")
+        case .work:
+            return String(localized: "live_guidance.workout_start.work", defaultValue: "Start the work effort under control and settle into the prescribed effort.")
+        case .recovery:
+            return String(localized: "live_guidance.transition.recovery", defaultValue: "Ease into recovery and let your breathing settle.")
+        case .walk:
+            return String(localized: "live_guidance.transition.walk", defaultValue: "Shift into the walk and let the effort settle.")
+        case .cooldown:
+            return String(localized: "live_guidance.transition.cooldown", defaultValue: "Bring the effort down smoothly for your cooldown.")
+        default:
+            return String(localized: "live_guidance.transition.default", defaultValue: "Adjust gradually to the next segment’s prescribed effort.")
+        }
+    }
+
     private func workoutCueTriggerState(
         _ trigger: SessionWorkoutCueTrigger,
         previous: ActiveSessionSnapshot?,
@@ -1251,6 +1304,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             return instruction
         }
         let fallback = switch step.coachingTarget?.phase {
+        case .warmup:
+            String(localized: "live_guidance.workout_start.warmup", defaultValue: "Begin with an easy warm-up and build gradually.")
         case .recovery:
             String(localized: "live_guidance.transition.recovery", defaultValue: "Ease into recovery and let your breathing settle.")
         case .walk:

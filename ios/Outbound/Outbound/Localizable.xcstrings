@@ -30626,6 +30626,52 @@
         }
       }
     },
+    "live_guidance.workout_start.warmup": {
+      "comment": "Spoken at the start of a structured workout whose first phase is a warm-up.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Begin with an easy warm-up and build gradually."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza con un calentamiento suave y aumenta el esfuerzo poco a poco."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先轻松热身，再逐渐提升强度。"
+          }
+        }
+      }
+    },
+    "live_guidance.workout_start.work": {
+      "comment": "Spoken at the start of a structured workout whose first phase is a work interval.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start the work effort under control and settle into the prescribed effort."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza el tramo de trabajo con control y encuentra el esfuerzo indicado."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以可控的强度开始训练段，并逐渐稳定在规定强度。"
+          }
+        }
+      }
+    },
     "live_guidance.transition.cooldown": {
       "comment": "Fallback spoken just before a structured workout enters cooldown.",
       "localizations": {

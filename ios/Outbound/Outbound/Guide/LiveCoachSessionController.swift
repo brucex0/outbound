@@ -304,16 +304,23 @@ final class LiveCoachSessionController {
             "race_start_restraint", "race_halfway_assessment", "race_late_fade", "race_final_kilometer",
             "recovery_too_hard", "climb_start", "segment_transition", "finish_opportunity"
         ]
+        let openingPhrases = response.guidancePlan.cues
+            .filter { $0.instructionId == "workout.phase.start" }
+            .compactMap(\.phrases.first)
         let pacerPhrases = response.guidancePlan.cues
             .filter { $0.instructionId == "cadence_pacer.intro" }
             .compactMap(\.phrases.first)
         let workoutPhrases = response.guidancePlan.cues
-            .filter { $0.moment == "workout_instruction" && $0.instructionId != "cadence_pacer.intro" }
+            .filter {
+                $0.moment == "workout_instruction"
+                    && $0.instructionId != "cadence_pacer.intro"
+                    && $0.instructionId != "workout.phase.start"
+            }
             .compactMap(\.phrases.first)
         let reactivePhrases = preferredMoments.compactMap { moment in
             response.guidancePlan.cues.first(where: { $0.moment == moment })?.phrases.first
         }
-        let phrases = Array((pacerPhrases + workoutPhrases + reactivePhrases).prefix(8))
+        let phrases = Array((openingPhrases + pacerPhrases + workoutPhrases + reactivePhrases).prefix(8))
         for phrase in phrases {
             guard !Task.isCancelled, expectedGeneration == generation else { return }
             let cached = await GuidePlannedAudioCache.shared.audioData(
