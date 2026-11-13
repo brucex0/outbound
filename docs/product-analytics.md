@@ -476,6 +476,7 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Opening an iOS scheduled workout detail from Plan Details uses `feature_exposed` with fixed `feature=plan_workout_details` and `result=opened`; workout IDs, titles, phases, dates, duration and effort targets are excluded. Phases appear on that detail page without a separate expansion event.
 
 - Backend `catalog_programme_decision` operational analytics records only bounded `outcome=initial|same_week|advanced|repeated|completed`, existing planning-event trigger or `refill`, and `result=version_created`. It excludes programme/runner/workout IDs, dates, readiness/effort values, activity facts and text. `catalog_programme_failed` diagnostics contain only operation and bounded failure category.
+- Backend `scheduled_rest_day` operational analytics records only bounded `result=rest_recommended` and `source=active_plan` when an active plan has no required workout today. Dates, timezone values, identifiers and workout details are excluded.
 
 - Structured running generation retains existing operational refresh analytics and adds only `structuredRunning` as a boolean. Workout kind, quality seconds, per-phase effort and durations remain prescription data, not analytics properties.
 

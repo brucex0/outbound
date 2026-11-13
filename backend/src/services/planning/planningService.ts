@@ -663,10 +663,8 @@ export async function assemblePlanningState(
       .sort((left, right) => left.scheduledDate.getTime() - right.scheduledDate.getTime());
     const workouts = await Promise.all(storedWorkouts.map(async (workout) => workout.status === "planned"
       ? { ...workout, performedWorkoutReference: await issueWorkout(prisma, userId, workout.id) } : workout));
-    const today =
-      workouts.find((workout) => sameDay(workout.scheduledDate, now) && workout.status === "planned" && !isOptionalWorkout(workout)) ??
-      workouts.find((workout) => workout.scheduledDate >= now && workout.status === "planned" && !isOptionalWorkout(workout)) ??
-      null;
+    const todayLabel = accountDateLabel(now, timeZone);
+    const today = workouts.find((workout) => sameDay(workout.scheduledDate, todayLabel) && workout.status === "planned" && !isOptionalWorkout(workout)) ?? null;
     const recommendations = plan ? [] : await trainingPlanRecommendationsForUser(userId);
 
     // Reads and accepted activity transactions share the user planning lock. Every

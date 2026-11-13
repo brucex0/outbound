@@ -137,8 +137,6 @@ export async function buildBaseActivitySuggestion(
       sameDay(workout.scheduledDate, todayStart) &&
       workout.status === "planned" && !((workout.prescription as Record<string, unknown>)?.optional === true)
   );
-  const upcomingWorkout =
-    workouts.find((workout) => workout.scheduledDate >= todayStart && workout.status === "planned" && !((workout.prescription as Record<string, unknown>)?.optional === true)) ?? null;
   const base = baseResponse({
     now,
     validFor: todayStart,
@@ -224,24 +222,6 @@ export async function buildBaseActivitySuggestion(
     });
   }
 
-  if (plan && upcomingWorkout) {
-    return responseWithPrimary({
-      base,
-      source: "plan",
-      relationship: "planFallback",
-      primary: plannedWorkoutSuggestion(
-        upcomingWorkout,
-        "There is no workout specifically scheduled today, so this is the next plan session.",
-        athleteState,
-        typedActivities,
-        latestReadiness
-      ),
-      alternates: [],
-      guideLine: "There is no specific workout on today's calendar. This is the next useful plan step when you are ready.",
-      reasons: ["active_plan_present", "no_today_workout", "next_planned_workout"],
-    });
-  }
-
   if (todayActivities.length > 0) {
     return responseWithPrimary({
       base,
@@ -250,8 +230,26 @@ export async function buildBaseActivitySuggestion(
       primary: archetypeSuggestion("recovery-walk-20", "You already trained today, so this is optional recovery movement."),
       alternates: [],
       guideLine: "The main work is already logged. Keep anything else genuinely easy.",
-      reasons: ["activity_already_completed_today", "no_active_plan"],
+      reasons: ["activity_already_completed_today", ...(plan ? ["active_plan_present"] : ["no_active_plan"])],
     });
+  }
+
+  if (plan) {
+    console.info("[planning] scheduled_rest_day", { result: "rest_recommended", source: "active_plan" });
+    return {
+      ...base,
+      status: "restRecommended",
+      source: "plan",
+      relationship: "rest",
+      primary: null,
+      alternates: [],
+      guideLine: "No required workout is scheduled today. Take the rest day; your next planned workout stays on its scheduled date.",
+      decision: {
+        algorithmVersion: ALGORITHM_VERSION,
+        reasons: ["active_plan_present", "no_today_workout", "scheduled_rest_day"],
+        safetyFlags: [],
+      },
+    };
   }
 
   const noPlan = chooseNoPlanSuggestion(typedActivities, athleteState, latestReadiness, now);
