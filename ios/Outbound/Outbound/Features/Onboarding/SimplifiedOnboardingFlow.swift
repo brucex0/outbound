@@ -99,6 +99,16 @@ struct SimplifiedOnboardingFlow: View {
         .onChange(of: draft.preferredDays) { _, days in
             draft.preferredLongRunDays = draft.preferredLongRunDays?.filter(days.contains)
         }
+        .onChange(of: draft.observedBaselineConfirmed) { _, confirmed in
+            if confirmed != true { draft.comfortableMinutes = reportedComfortableMinutes }
+        }
+        .onChange(of: draft.activities) { _, activities in
+            if activities == [.run], needsReportedRunningTime, draft.observedBaselineConfirmed == true,
+               intakeContext?.observedBaseline?.activityMix.contains(where: { $0 != "run" }) == true {
+                // An inferred cycling/walking duration is not running capacity.
+                draft.comfortableMinutes = 30
+            }
+        }
         .onChange(of: step) { _, value in
             if value == .profile {
                 restoreTrainingProfileStep()
@@ -359,15 +369,27 @@ struct SimplifiedOnboardingFlow: View {
             }
             if intakeContext?.observedBaseline?.confidence != "high"
                 || intakeContext?.suggestedSetup != nil
-                || draft.observedBaselineConfirmed == false {
+                || draft.observedBaselineConfirmed == false || needsReportedRunningTime {
                 ForEach(PlanBaselineContext.allCases) { context in
                     selectionRow(context.title, selected: draft.baselineContext == context) { draft.baselineContext = context }
                 }
-                Stepper(String(format: String(localized: "plan_builder.baseline.frequency", defaultValue: "Recent sessions: %d per week"), locale: .autoupdatingCurrent, draft.recentSessionsPerWeek), value: $draft.recentSessionsPerWeek, in: 0...6)
+                if !needsReportedRunningTime {
+                    Stepper(recentFrequencyTitle, value: Binding(get: { recentBaselineFrequency }, set: {
+                        if usesRunningFrequency { draft.recentRunningSessionsPerWeek = $0 }
+                        else { draft.recentSessionsPerWeek = $0 }
+                    }), in: 0...6)
+                        .planBuilderCard()
+                }
+                Stepper(String(format: String(localized: "plan_builder.baseline.duration", defaultValue: "Comfortable session: %d min"), locale: .autoupdatingCurrent, reportedComfortableMinutes), value: Binding(get: { reportedComfortableMinutes }, set: { draft.comfortableMinutes = $0 }), in: 10...120, step: 5)
                     .planBuilderCard()
-                Stepper(String(format: String(localized: "plan_builder.baseline.duration", defaultValue: "Comfortable session: %d min"), locale: .autoupdatingCurrent, draft.comfortableMinutes), value: $draft.comfortableMinutes, in: 10...120, step: 5)
-                    .planBuilderCard()
+                Text(String(localized: "plan_builder.baseline.capacity_help"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+                if baselineNeedsCorrection && recentBaselineFrequency == 0 {
+                    Text(String(localized: "plan_builder.baseline.zero_recent"))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
             }
+            if needsReportedRunningTime { reportedRunningTimeInput }
         }
     }
 
@@ -541,7 +563,18 @@ struct SimplifiedOnboardingFlow: View {
                 }
             }
             summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), draft.activities.map(\.title).joined(separator: " · "))
-            summaryRow(String(localized: "plan_builder.review.week", defaultValue: "Realistic week"), String(format: String(localized: "plan_builder.review.week_value", defaultValue: "%1$d sessions · about %2$d min each"), locale: .autoupdatingCurrent, draft.sessionsPerWeek, draft.availableMinutes))
+            summaryRow(String(localized: "plan_builder.review.week", defaultValue: "Realistic week"), String(format: String(localized: "plan_builder.review.week_value", defaultValue: "%1$d sessions · up to %2$d min each"), locale: .autoupdatingCurrent, draft.sessionsPerWeek, draft.availableMinutes))
+            if let intakeBaseline {
+                summaryRow(String(localized: "plan_builder.review.baseline"), String(format: String(localized: "plan_builder.review.baseline_value"), locale: .autoupdatingCurrent, intakeBaseline.recentSessionsPerWeek, intakeBaseline.comfortableDurationMinutes))
+            }
+            if needsReportedRunningTime { reportedRunningTimeInput }
+            baselineRationale
+            if reportedScheduleConflict {
+                Text(String(localized: "planning.running_schedule_conflict"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+                Button(String(localized: "plan_builder.result.change_days", defaultValue: "Change days")) { step = .week }
+                    .frame(minHeight: 44)
+            }
             planPreferences
             longRunDaysPicker
             if needsContextRefresh {
@@ -569,6 +602,7 @@ struct SimplifiedOnboardingFlow: View {
             summaryRow(String(localized: "plan_builder.review.objective", defaultValue: "Goal"), draft.objective.title)
             summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), draft.activities.map(\.title).joined(separator: " · "))
             Text(String(localized: "plan_builder.result.week", defaultValue: "Your starting week")).font(.title3.weight(.bold))
+            baselineRationale
             if let week = trainingPlanStore.currentWeek {
                 let totalMinutes = week.scheduledWorkouts.filter { !$0.isOptional }.reduce(0) { $0 + $1.durationMinutesRounded }
                 summaryRow(
@@ -634,6 +668,8 @@ struct SimplifiedOnboardingFlow: View {
             || isLoadingIntakeContext
             || (step == .profile && !trainingMeasurementsAreValid)
             || (step == .profile && !requiredBodyProfileComplete)
+            || ([.baseline, .review].contains(step) && baselineNeedsCorrection)
+            || (step == .review && reportedScheduleConflict)
             || (step == .baseline && intakeContext?.suggestedSetup == nil && intakeContext?.observedBaseline?.confidence == "high" && draft.observedBaselineConfirmed == nil)
             || ([.objective, .review].contains(step) && draft.objectiveConfirmed != true)
             || ([.objective, .review].contains(step) && draft.objective == .eventPreparation && !eventDetailsComplete)
@@ -705,7 +741,13 @@ struct SimplifiedOnboardingFlow: View {
 
     private func createPlan() {
         guard !needsContextRefresh, !isLoadingIntakeContext else { return }
+        guard !baselineNeedsCorrection else { step = .baseline; return }
+        guard !reportedScheduleConflict else { step = .week; return }
         toastMessage = nil
+        track(.planIntakeBaselineSubmitted, [
+            .sourceType: .string(intakeBaseline?.source ?? "unavailable"),
+            .result: .string(intakeContext?.observedRunningBaseline?.established == true ? "observed_load" : needsReportedRunningTime ? "provisional_load" : "starter_or_mixed"),
+        ])
         creationStartedAt = Date()
         step = .creating
         Task {
@@ -802,11 +844,108 @@ struct SimplifiedOnboardingFlow: View {
         }
     }
 
+    private var needsReportedRunningTime: Bool {
+        draft.activities == [.run] && draft.baselineContext == .currentlyActive
+            && intakeContext?.observedRunningBaseline?.established != true
+    }
+
+    private var reportedComfortableMinutes: Int { min(max(draft.comfortableMinutes, 10), 120) }
+
+    private var usesRunningFrequency: Bool {
+        draft.activities == [.run] && (needsReportedRunningTime || draft.recentRunningSessionsPerWeek != nil)
+    }
+
+    private var recentBaselineFrequency: Int {
+        usesRunningFrequency ? draft.recentRunningSessionsPerWeek ?? 0 : draft.recentSessionsPerWeek
+    }
+
+    private var recentFrequencyTitle: String {
+        usesRunningFrequency
+            ? String(format: String(localized: "plan_builder.baseline.run_frequency"), locale: .autoupdatingCurrent, recentBaselineFrequency)
+            : String(format: String(localized: "plan_builder.baseline.frequency", defaultValue: "Recent sessions: %d per week"), locale: .autoupdatingCurrent, recentBaselineFrequency)
+    }
+
+    private var baselineNeedsCorrection: Bool {
+        needsReportedRunningTime && (recentBaselineFrequency == 0
+            || !(1...6000).contains(draft.recentWeeklyRunMinutes ?? 0))
+    }
+
+    private var reportedScheduleConflict: Bool {
+        guard needsReportedRunningTime, !baselineNeedsCorrection,
+              let minutes = draft.recentWeeklyRunMinutes else { return false }
+        let minimum = draft.shortRunSessions == true ? 10 : 25
+        return minimum * draft.sessionsPerWeek > minutes || minimum > reportedComfortableMinutes
+            || minimum * recentBaselineFrequency > minutes
+    }
+
+    private var reportedRunningTimeInput: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Stepper(recentFrequencyTitle, value: Binding(
+                get: { draft.recentRunningSessionsPerWeek ?? 0 },
+                set: { draft.recentRunningSessionsPerWeek = $0 }
+            ), in: 0...6)
+            Text(String(localized: "plan_builder.baseline.weekly_running"))
+                .font(.headline)
+            TextField(String(localized: "plan_builder.baseline.weekly_placeholder"), text: Binding(
+                get: { draft.recentWeeklyRunMinutes.map(String.init) ?? "" },
+                set: { draft.recentWeeklyRunMinutes = Int($0) }
+            ))
+            .focused($focusedInput, equals: "recentWeeklyRunningTime")
+            .keyboardType(.numberPad)
+            .submitLabel(.done)
+            .onSubmit { focusedInput = nil }
+            .textFieldStyle(.roundedBorder)
+            .accessibilityLabel(String(localized: "plan_builder.baseline.weekly_running"))
+            Text(String(localized: "plan_builder.baseline.weekly_help"))
+                .font(.subheadline).foregroundStyle(.secondary)
+            if let minutes = draft.recentWeeklyRunMinutes, !(1...6000).contains(minutes) {
+                Text(String(localized: "plan_builder.baseline.weekly_range"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+        }.planBuilderCard()
+    }
+
+    @ViewBuilder private var baselineRationale: some View {
+        if draft.activities.contains(.run) {
+            if draft.baselineContext != .currentlyActive {
+                Text(String(localized: "plan_builder.baseline.starter_help"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else if let running = intakeContext?.observedRunningBaseline, running.established {
+                summaryRow(String(localized: "plan_builder.baseline.recorded_running"), String(format: String(localized: "plan_builder.baseline.weekly_value"), locale: .autoupdatingCurrent, running.weeklyMinutes))
+                Text(String(localized: "plan_builder.baseline.observed_help"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else if needsReportedRunningTime {
+                Text(String(localized: "plan_builder.baseline.provisional_help"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            if draft.baselineContext == .currentlyActive && draft.sessionsPerWeek > recentBaselineFrequency {
+                Text(String(localized: "plan_builder.baseline.more_days_help"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            if baselineNeedsCorrection && recentBaselineFrequency == 0 {
+                Text(String(localized: "plan_builder.baseline.zero_recent"))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var intakeBaseline: PlanningIntakeBaselineRequest? {
+        if draft.observedBaselineConfirmed == true && !needsReportedRunningTime {
+            guard let observed = intakeContext?.observedBaseline,
+                  let comfortable = observed.comfortableMinutes else { return nil }
+            return .init(recentSessionsPerWeek: observed.sessionsPerWeek, comfortableDurationMinutes: comfortable,
+                         recentWeeklyRunMinutes: nil, source: "recent_activities")
+        }
+        return .init(recentSessionsPerWeek: recentBaselineFrequency, comfortableDurationMinutes: reportedComfortableMinutes,
+                     recentWeeklyRunMinutes: needsReportedRunningTime ? draft.recentWeeklyRunMinutes : nil, source: "self_reported")
+    }
+
     private var request: PlanningGoalRequest {
         PlanningGoalRequest(
             type: draft.objective.rawValue,
             activities: draft.activities.map(\.rawValue),
             baselineContext: draft.baselineContext.rawValue,
+            intakeBaseline: intakeBaseline,
             targetDate: draft.objective == .eventPreparation ? draft.eventDate.map(Self.apiDateFormatter.string) : nil,
             targetDistanceMeters: draft.objective == .eventPreparation ? draft.eventDistanceMeters : nil,
             eventIntent: draft.objective == .eventPreparation ? draft.eventIntent : nil,
@@ -1761,6 +1900,11 @@ struct SimplifiedOnboardingFlow: View {
     private func acceptSuggestedSetup() {
         draft.observedBaselineConfirmed = true
         track(.planIntakeBaselineConfirmed, [.result: .string("accepted"), .sourceType: .string("recent_activity_setup")])
+        if needsReportedRunningTime {
+            draft.comfortableMinutes = reportedComfortableMinutes
+            step = .baseline
+            return
+        }
         advance()
     }
 

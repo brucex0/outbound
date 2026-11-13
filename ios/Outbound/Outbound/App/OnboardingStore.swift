@@ -79,6 +79,8 @@ struct PlanBuilderDraft: Codable, Equatable {
     var baselineContext: PlanBaselineContext = .currentlyActive
     var recentSessionsPerWeek = 2
     var comfortableMinutes = 30
+    var recentWeeklyRunMinutes: Int?
+    var recentRunningSessionsPerWeek: Int?
     var sessionsPerWeek = 3
     var availableMinutes = 30
     var shortRunSessions: Bool?

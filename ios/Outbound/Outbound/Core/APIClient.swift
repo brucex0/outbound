@@ -1364,6 +1364,7 @@ nonisolated enum APIError: LocalizedError, Sendable {
             }
             if code == "planning_context_changed" { return String(localized: "planning.context_changed", defaultValue: "Your training context changed. Refresh and review your answers before creating your plan.") }
             if code == "running_schedule_conflict" { return String(localized: "planning.running_schedule_conflict") }
+            if code == "running_baseline_required" { return String(localized: "planning.running_baseline_required") }
             if code == "programme_timeline_conflict" { return String(localized: "planning.programme_timeline_conflict") }
             if code == "programme_constraints_conflict" { return String(localized: "planning.programme_constraints_conflict") }
             if code == "goal_timeline_unrealistic" {
@@ -1380,7 +1381,7 @@ extension Error {
         guard let apiError = self as? APIError,
               case let .http(_, _, code) = apiError,
               let code,
-              ["running_schedule_conflict", "programme_timeline_conflict", "programme_constraints_conflict", "goal_timeline_unrealistic", "long_run_days_selection", "long_run_days_capacity", "long_run_days_modalities", "long_run_days_programme", "long_run_days_catalog"].contains(code) else { return nil }
+              ["running_baseline_required", "running_schedule_conflict", "programme_timeline_conflict", "programme_constraints_conflict", "goal_timeline_unrealistic", "long_run_days_selection", "long_run_days_capacity", "long_run_days_modalities", "long_run_days_programme", "long_run_days_catalog"].contains(code) else { return nil }
         return apiError.errorDescription
     }
 
@@ -2410,7 +2411,15 @@ struct PlanningGoalConstraints: Encodable {
     }
 }
 
+struct PlanningIntakeBaselineRequest: Encodable {
+    let recentSessionsPerWeek: Int
+    let comfortableDurationMinutes: Int
+    let recentWeeklyRunMinutes: Int?
+    let source: String
+}
+
 struct PlanningGoalRequest: Encodable {
+    let intakeBaseline: PlanningIntakeBaselineRequest?
     let type: String
     let activities: [String]
     let baselineContext: String
@@ -2433,6 +2442,7 @@ struct PlanningGoalRequest: Encodable {
         type: String,
         activities: [String],
         baselineContext: String,
+        intakeBaseline: PlanningIntakeBaselineRequest? = nil,
         targetDate: String?,
         targetDistanceMeters: Double?,
         eventIntent: String? = nil,
@@ -2452,6 +2462,7 @@ struct PlanningGoalRequest: Encodable {
         self.type = type
         self.activities = activities
         self.baselineContext = baselineContext
+        self.intakeBaseline = intakeBaseline
         self.targetDate = targetDate
         self.targetDistanceMeters = targetDistanceMeters
         self.eventIntent = eventIntent
@@ -2474,6 +2485,7 @@ struct PlanningGoalRequest: Encodable {
             ? ["run", "walk", "bike"]
             : [recommendation.template.sport.apiPlanningModality]
         baselineContext = "currentlyActive"
+        intakeBaseline = nil
         targetDate = nil
         targetDistanceMeters = recommendation.template.focus.targetDistanceMeters
         eventIntent = nil
@@ -2500,6 +2512,7 @@ struct PlanIntakeContextDTO: Decodable, Sendable {
     let questions: [String]
     let bodyProfile: PlanIntakeBodyProfileDTO
     let observedBaseline: PlanIntakeObservedBaselineDTO?
+    let observedRunningBaseline: PlanIntakeRunningBaselineDTO?
     let suggestedSetup: PlanIntakeSuggestedSetupDTO?
     let previousSchedule: PlanIntakePreviousScheduleDTO?
     let requiredBodyFields: [String]
@@ -2512,6 +2525,11 @@ struct PlanIntakeBodyProfileDTO: Decodable, Sendable {
     let weightKilograms: Double?
     let completeForPlanning: Bool
     let source: String
+}
+
+struct PlanIntakeRunningBaselineDTO: Decodable, Sendable {
+    let weeklyMinutes: Int
+    let established: Bool
 }
 
 struct PlanIntakeObservedBaselineDTO: Decodable, Sendable {

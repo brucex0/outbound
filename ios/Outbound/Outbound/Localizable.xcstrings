@@ -1,6 +1,358 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "plan_builder.baseline.run_frequency": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent runs: %d per week"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carreras recientes: %d por semana"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近期每周跑步：%d 次"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.weekly_range": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter 1–6000 minutes per week. If you have not run recently, choose Starting out or Returning after a break."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introduce entre 1 y 6000 minutos por semana. Si no has corrido recientemente, elige Estoy empezando o Vuelvo después de una pausa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入每周 1–6000 分钟。如果近期没有跑步，请选择“刚开始运动”或“休息一段时间后重返”。"
+          }
+        }
+      }
+    },
+    "plan_builder.review.baseline": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent training and capacity"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento reciente y capacidad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近期训练与单次能力"
+          }
+        }
+      }
+    },
+    "plan_builder.review.baseline_value": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d sessions/week recently · comfortable for %2$d min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d sesiones/semana últimamente · %2$d min con comodidad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近期每周 %1$d 次 · 单次轻松完成 %2$d 分钟"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.capacity_help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comfortable time is your capacity for one session. It does not mean every recent session lasted that long."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El tiempo que haces con comodidad indica tu capacidad para una sesión. No significa que todas tus sesiones recientes hayan durado tanto."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松完成的时长代表你的单次能力，并不表示近期每次训练都持续了这么久。"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.weekly_running": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent running minutes per week"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minutos de carrera recientes por semana"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近期每周实际跑步分钟数"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.weekly_placeholder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly minutes"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minutos semanales"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周分钟数"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.weekly_help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter what you actually ran in a typical recent week, not the time you could run."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indica cuánto corriste realmente en una semana reciente habitual, no cuánto podrías correr."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "填写近期通常一周实际跑了多少分钟，而不是你最多能跑多久。"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.zero_recent": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With no recent runs, choose Starting out or Returning after a break."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si no has corrido recientemente, elige Estoy empezando o Vuelvo después de una pausa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果近期没有跑步，请选择“刚开始运动”或“休息一段时间后重返”。"
+          }
+        }
+      }
+    },
+    "planning.running_baseline_required": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter your recent weekly running time, or choose Starting out or Returning after a break."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indica tus minutos de carrera semanales recientes o elige Estoy empezando o Vuelvo después de una pausa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请填写近期每周实际跑步时长，或选择“刚开始运动”或“休息一段时间后重返”。"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.recorded_running": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recorded running average"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Promedio de carrera registrado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已记录的周跑步均值"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.weekly_value": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min/week"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min/semana"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周 %d 分钟"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.observed_help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recorded running sets your starting weekly time. Comfortable duration can support a longer run when weekly time allows, without shortening your other runs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las carreras registradas determinan tu tiempo semanal inicial. La duración cómoda puede permitir una carrera más larga si cabe en ese tiempo, sin acortar las demás."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起始周跑量以已记录的跑步时长为依据。周总时长有余量时，会参考你的单次能力安排更长的跑步，不会为此缩短其他跑步。"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.provisional_help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your reported weekly running time is a provisional starting point. Comfortable duration limits individual sessions. We’ll recalibrate as you complete runs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu tiempo semanal de carrera declarado es un punto de partida provisional. La duración cómoda limita cada sesión. Lo ajustaremos a medida que completes carreras."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你填写的实际周跑步时长将作为暂定起点，单次训练不超过轻松完成的时长。完成更多跑步后，计划会根据记录重新调整。"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.starter_help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your plan starts with a gradual starting-out or return-to-running programme. Comfortable duration does not replace that progression."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu plan empieza con un programa gradual para empezar o retomar la carrera. La duración cómoda no sustituye esa progresión."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计划会从循序渐进的入门或恢复跑步安排开始，不会因为单次能力较高就跳过这个过程。"
+          }
+        }
+      }
+    },
+    "plan_builder.baseline.more_days_help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More training days share the same starting weekly time, so individual runs may be shorter. Choose fewer days if you prefer longer sessions."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más días de entrenamiento reparten el mismo tiempo semanal inicial, por lo que cada carrera puede ser más corta. Elige menos días si prefieres sesiones más largas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "增加训练天数会分摊原有的起始周总时长，因此单次跑步可能更短。如果希望每次跑得久一些，可以减少训练天数。"
+          }
+        }
+      }
+    },
     "today.plan.completed_recovery": {
       "comment": "Canonical completed planned slot; recovery remains optional. [android:today]",
       "localizations": {
@@ -63652,19 +64004,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$d sessions · about %2$d min each"
+            "value": "%1$d sessions · up to %2$d min each"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$d sesiones · unos %2$d min cada una"
+            "value": "%1$d sesiones · hasta %2$d min por sesión"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$d 次运动 · 每次约 %2$d 分钟"
+            "value": "每周 %1$d 次 · 每次最多 %2$d 分钟"
           }
         }
       }

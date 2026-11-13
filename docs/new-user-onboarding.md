@@ -130,6 +130,10 @@ When recent evidence is not established or the runner chooses `Adjust it`, colle
 - comfortable session duration
 - `starting out`, `currently active`, or `returning after a break`
 
+Recent frequency and comfortable duration are submitted with their source and retained for replanning. Comfortable duration describes single-session capacity, not the duration of every recent session. For currently active run-only users without established running records, collect recent **runs** per week separately from any inferred mixed-activity frequency, and ask for actual recent weekly running minutes with an empty field rather than a capacity-based default. Accepting an overall activity setup does not skip these running questions. This is a provisional load anchor with no initial growth; completed running history replaces it when established. Zero recent runs prompt the user to choose starting out or returning, without silently changing their answer. Manual comfortable-duration controls normalize inferred values to 10–120 minutes; actual weekly minutes accept 1–6000 with visible range guidance.
+
+Review shows the recorded weekly running average when established and explains why comfortable capacity may exceed scheduled run duration. Increasing planned frequency shares the same weekly time. A larger comfortable capacity can support a longer slot only within that budget and without shortening ordinary runs. Sparse users see incompatible schedules before creation with `Change days` and the existing explicit short-session toggle. Starter/re-entry progression remains separate.
+
 Use observed Health or activity data when the user explicitly connects it. Keep manual answers editable.
 
 ### 4. Realistic Week
@@ -137,7 +141,7 @@ Use observed Health or activity data when the user explicitly connects it. Keep 
 When recent evidence is not established or the runner chooses `Adjust it`, ask what most weeks can reliably support:
 
 - `1–6 sessions per week`
-- typical time available
+- maximum time available for a session (review says `up to`, not an expected duration for every session)
 - preferred days when the user cares about scheduling
 - optional `Long-run days`, shown below preferred weekdays for running plans and again on final review; each selected weekday requests its own longer easy run, stays within selected training days and survives result-screen edits; changing the parent training days removes only no-longer-available selections
 
@@ -213,6 +217,7 @@ Add typed, bounded events for:
 - `plan_intake_goal_interpreted`, with success/failure, bounded source `conversation_text` or `quick_reply`, and a bounded error category on failure
 - `plan_intake_answer_edited`, with a bounded field name and source `conversation`
 - `plan_intake_baseline_confirmed`, with accepted/corrected and bounded source `recent_activities` or `recent_activity_setup`
+- `plan_intake_baseline_submitted`, with bounded source `self_reported`, `recent_activities`, or `unavailable`, and result `observed_load`, `provisional_load`, or `starter_or_mixed`; exclude exact frequency, minutes and all free text
 
 Objective and activity categories may be bounded enum values. Never send free text, body details, dates, exact measurements, constraints, workout details, or account identifiers through analytics.
 `plan_creation_completed` may include the single bounded goal type and a coarse selected-activity count bucket; it must not include profile measurements or free text.

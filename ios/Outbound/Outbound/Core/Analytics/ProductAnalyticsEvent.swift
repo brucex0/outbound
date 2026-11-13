@@ -265,6 +265,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case planIntakeGoalInterpreted = "plan_intake_goal_interpreted"
     case planIntakeAnswerEdited = "plan_intake_answer_edited"
     case planIntakeBaselineConfirmed = "plan_intake_baseline_confirmed"
+    case planIntakeBaselineSubmitted = "plan_intake_baseline_submitted"
     case authenticationSessionRecovered = "authentication_session_recovered"
     case accountTransferIntentCreated = "account_transfer_intent_created"
     case accountTransferShared = "account_transfer_shared"
@@ -633,6 +634,7 @@ enum ProductAnalyticsSchema {
         .planIntakeGoalInterpreted: [.result, .sourceType, .errorCategory],
         .planIntakeAnswerEdited: [.selectionType, .sourceType],
         .planIntakeBaselineConfirmed: [.result, .sourceType],
+        .planIntakeBaselineSubmitted: [.result, .sourceType],
         .authenticationSessionRecovered: [.result],
         .accountTransferIntentCreated: [.result, .errorCategory],
         .accountTransferShared: [.sourceType],
