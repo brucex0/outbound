@@ -1,4 +1,4 @@
-import { cadencePacerIntroductionCues, executionCoachingCues } from "./executionCoaching.js";
+import { cadencePacerIntroductionCues, executionCoachingCues, workoutStartInstructionCues } from "./executionCoaching.js";
 import { aiFailure, generateStructuredAI } from "../aiReliability/structuredGeneration.js";
 import { validateLiveCoachOutput } from "./liveCoachOutputValidation.js";
 import { createHash } from "node:crypto";
@@ -16,7 +16,7 @@ import {
   type LiveCoachMoment,
 } from "./liveCoachTypes.js";
 
-export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-11-08.1";
+export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-11-12.1";
 
 const phases = ["any", "warmup", "easy", "work", "recovery", "walk", "cooldown", "open"] as const;
 const plannerCueSchema = z.object({
@@ -211,7 +211,7 @@ function normalizeGeneratedPlan(
     }));
   });
   const workoutInstructions = normalizedWorkoutInstructions(output.workoutInstructions, context);
-  cues.push(...workoutInstructions, ...executionCoachingCues(context), ...cadencePacerIntroductionCues(context));
+  cues.push(...workoutStartInstructionCues(context), ...workoutInstructions, ...executionCoachingCues(context), ...cadencePacerIntroductionCues(context));
   const provisional = {
     contractVersion: 1 as const,
     planVersion: "pending",
@@ -262,7 +262,7 @@ function fallbackGuidancePlan(context: LiveCoachCompiledContext): LiveCoachGuida
       announceEveryMeters: isStationary ? 10_000 : progressDistance,
       includePace: !isStationary,
     },
-    cues: reactiveCues.concat(fallbackWorkoutInstructions(context), executionCoachingCues(context), cadencePacerIntroductionCues(context)),
+    cues: reactiveCues.concat(workoutStartInstructionCues(context), fallbackWorkoutInstructions(context), executionCoachingCues(context), cadencePacerIntroductionCues(context)),
   };
   return { ...provisional, planVersion: planHash(provisional).slice(0, 16) };
 }

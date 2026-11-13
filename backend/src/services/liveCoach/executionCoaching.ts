@@ -57,6 +57,22 @@ const scripts: Record<SupportedAILocale, Record<Phase | "breathing" | "form" | "
   },
 };
 
+/** The device requests this once at activation; it is not an optional scheduled tip. */
+export function workoutStartInstructionCues(context: LiveCoachCompiledContext): LiveCoachGuidancePlan["cues"] {
+  if (context.activityType !== "running" || context.race || context.safetyRequiresFixedOnly
+      || (context.workoutExecution?.segments.length ?? 0) > 0) return [];
+  const firstStep = (context.clientWorkout?.steps ?? []).find((value) =>
+    ((value as { durationSeconds?: number }).durationSeconds ?? 0) > 0
+  ) as { phase?: string } | undefined;
+  if (!firstStep) return [];
+  const id = "workout.phase.start";
+  return [{
+    id, moment: "workout_instruction", instructionId: id,
+    phases: ["any"], priority: "opportunity", cooldownSeconds: 45,
+    phrases: [{ id: `${id}.0`, text: scripts[context.locale][phase(firstStep.phase)] }],
+  }];
+}
+
 /** Scheduled instruction opportunities fill quiet steady runs; they assert no sensor observations. */
 export function executionCoachingCues(context: LiveCoachCompiledContext): LiveCoachGuidancePlan["cues"] {
   if (context.activityType !== "running" || context.race || context.safetyRequiresFixedOnly
