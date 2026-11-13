@@ -107,9 +107,14 @@ export async function createGoal(
   if (goalInput.type === "eventPreparation" && (!goalInput.targetDate || !goalInput.targetDistanceMeters) && !selectedRecommendation) {
     throw new Error("Event date and distance are required for an event-preparation plan.");
   }
-  if (goalInput.intakeContextVersion) {
+  if (goalInput.intakeContextVersion || goalInput.intakeBaseline?.source === "recent_activities") {
     const currentContext = await getPlanIntakeContext(userId, goalInput.type);
-    if (currentContext.contextVersion !== goalInput.intakeContextVersion) {
+    const submittedBaseline = goalInput.intakeBaseline;
+    const observed = currentContext.observedBaseline;
+    if (goalInput.intakeContextVersion && currentContext.contextVersion !== goalInput.intakeContextVersion
+      || submittedBaseline?.source === "recent_activities" && (!observed || observed.confidence !== "high"
+        || observed.sessionsPerWeek !== submittedBaseline.recentSessionsPerWeek
+        || observed.comfortableMinutes !== submittedBaseline.comfortableDurationMinutes)) {
       throw new PlanningContextChangedError();
     }
   }

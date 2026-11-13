@@ -1,4 +1,5 @@
 import { recoveryChangeMessage } from "../services/personalization/workoutAdjustmentPolicy.js";
+import { intakeBaselineSchema } from "../services/planning/intakeBaseline.js";
 import { LongRunDaysError } from "../services/planning/longRunDays.js";
 import { PerformedWorkoutConflictError, performedWorkoutReferenceSchema } from "../services/planning/workoutIssuance.js";
 import { RunningScheduleError, ProgrammeTimelineError, ProgrammeConstraintError } from "../services/planning/runningDosePolicy.js";
@@ -60,6 +61,7 @@ const catalogFocusSchema = z.enum(["consistency", "comeback", "fiveK", "tenK", "
 const goalTypeSchema = z.union([objectiveSchema, catalogFocusSchema]);
 const activitySchema = z.enum(["run", "walk", "bike"]);
 const goalSchema = z.object({
+  intakeBaseline: intakeBaselineSchema.optional(),
   runningBenchmark: z.unknown().optional(),
   type: goalTypeSchema,
   activities: z.array(activitySchema).min(1).max(3),

@@ -5,8 +5,8 @@ import { json } from "./persistence.js";
 
 export interface RunningPlanReview {
   status: "needs_review";
-  code: LongRunDaysCode | "running_schedule_conflict" | "programme_timeline_conflict" | "programme_constraints_conflict";
-  category: LongRunDaysCategory | "session_minimum" | "frequency_capacity" | "session_capacity" | "programme_timeline" | "programme_quality";
+  code: LongRunDaysCode | "running_baseline_required" | "running_schedule_conflict" | "programme_timeline_conflict" | "programme_constraints_conflict";
+  category: LongRunDaysCategory | "baseline_required" | "session_minimum" | "frequency_capacity" | "session_capacity" | "programme_timeline" | "programme_quality";
   action: "replacement_schedule_or_programme" | "later_date_or_replacement";
 }
 export function runningConstraintReview(error: unknown): RunningPlanReview | null {
@@ -20,6 +20,9 @@ function record(value: unknown): Record<string, unknown> { return value != null 
 export function runningPlanReview(decision: unknown): RunningPlanReview | null {
   const value = record(record(decision).runningPlanReview);
   if (value.status !== "needs_review") return null;
+  if (value.code === "running_baseline_required" && value.category === "baseline_required") {
+    return { status: "needs_review", code: value.code, category: "baseline_required", action: "replacement_schedule_or_programme" };
+  }
   if (["selection", "capacity", "modalities", "programme", "catalog"].includes(String(value.category)) && value.code === `long_run_days_${value.category}`) {
     return { status: "needs_review", code: value.code as LongRunDaysCode, category: value.category as LongRunDaysCategory, action: "replacement_schedule_or_programme" };
   }

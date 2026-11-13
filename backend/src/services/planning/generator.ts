@@ -1,4 +1,5 @@
 import { mondayDateLabel } from "../accountCalendar.js";
+import { intakeBaselineSchema, retainedIntakeBaseline } from "./intakeBaseline.js";
 import { preferredLongRunDays, longRunWeekModalities, longRunAllocation, LongRunDaysError } from "./longRunDays.js";
 import { raceTaperDays } from "./raceRoadmap.js";
 import { evaluateRunWalkProgramme, RUN_WALK_LADDER, stampIssuedRunningDose, type RunWalkProgramme } from "./runWalkProgramme.js";
@@ -67,6 +68,8 @@ export function normalizeGoalInput(input: CreateTrainingGoalInput) {
     targetTimeSeconds: input.targetTimeSeconds ?? null,
     reviewHorizonWeeks: input.reviewHorizonWeeks ?? null,
     constraints: { ...input.constraints,
+      // Only the validated request field may establish baseline provenance.
+      intakeBaseline: input.intakeBaseline ? intakeBaselineSchema.parse(input.intakeBaseline) : undefined,
       ...(input.constraints?.preferredLongRunDays !== undefined ? { preferredLongRunDays: longDays } : {}),
       shortRunSessions: String(input.constraints?.shortRunSessions === true || input.constraints?.shortRunSessions === "true"), optionalMobility: String(input.constraints?.optionalMobility === true || input.constraints?.optionalMobility === "true") },
   };
@@ -128,6 +131,9 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
     engineDecision: {
       runningDosePolicy: RUNNING_DOSE_POLICY,
       runningDoseBasis: budget?.basis ?? null,
+      intakeBaseline: retainedIntakeBaseline(input.goal.constraints) ?? null,
+      reportedCapacityApplied: budget?.reportedCapacityApplied ?? false,
+      weeklyLoadAnchor: budget?.basis ?? null,
       explicitLongRunDays: longDays,
       runWalkProgramme: programme ?? null,
       effectiveBaselineContext: effectiveGoal.baselineContext,
@@ -161,9 +167,21 @@ function balanceRunningWeek(workouts: PlannedWorkoutDraft[], input: GeneratePlan
   if (!budget) return workouts;
   const result = [...workouts];
   const longDays = preferredLongRunDays(input.goal.constraints);
+  let ordinaryFloor: number | undefined;
+  if (longDays.length && budget.reportedCapacityApplied) {
+    try {
+      ordinaryFloor = longRunAllocation({ sessions: budget.sessionsPerWeek, longSessions: longDays.length,
+        weeklySeconds: budget.targetWeeklyMinutes * 60, ordinaryCeiling: budget.perSessionCeilingMinutes * 60,
+        longCeiling: budget.observedLongSessionCeilingMinutes * 60, minimum: budget.minimumMinutes * 60 }).ordinarySeconds;
+    } catch (error) {
+      if (!(error instanceof LongRunDaysError) || error.category !== "capacity") throw error;
+      // No supported old long allocation: preserve the ordinary equal-session dose.
+      ordinaryFloor = budget.ordinarySessionMinutes * 60;
+    }
+  }
   const allocation = longDays.length ? longRunAllocation({ sessions: budget.sessionsPerWeek, longSessions: longDays.length,
     weeklySeconds: budget.targetWeeklyMinutes * 60, ordinaryCeiling: budget.perSessionCeilingMinutes * 60,
-    longCeiling: budget.longSessionCeilingMinutes * 60, minimum: budget.minimumMinutes * 60 }) : undefined;
+    longCeiling: budget.longSessionCeilingMinutes * 60, minimum: budget.minimumMinutes * 60, ordinaryFloor }) : undefined;
   const weekKeys = [...new Set(workouts.map((row) => mondayDateLabel(row.scheduledDate).getTime()))];
   for (const weekKey of weekKeys) {
     const week = workouts.filter((row) => mondayDateLabel(row.scheduledDate).getTime() === weekKey && row.modality === "run");
@@ -189,7 +207,20 @@ function balanceRunningWeek(workouts: PlannedWorkoutDraft[], input: GeneratePlan
     const mayHaveLong = candidate && programme?.status !== "active" && longCeiling >= ordinaryCeiling * 1.15 && longCeiling - ordinaryCeiling >= 300;
     const target = Math.min(budget.targetWeeklyMinutes * 60 * week.length / budget.sessionsPerWeek,
       ordinaryCeiling * (week.length - (mayHaveLong ? 1 : 0)) + (mayHaveLong ? longCeiling : 0));
-    const longSeconds = mayHaveLong ? Math.min(longCeiling, target - minimum * (week.length - 1)) : 0;
+    // A reported larger capacity can spend unused weekly time, but cannot take
+    // minutes away from the ordinary runs the same history already supported.
+    let automaticOrdinaryFloor = minimum;
+    if (budget.reportedCapacityApplied) {
+      const oldLongCeiling = budget.observedLongSessionCeilingMinutes * 60;
+      const oldMayHaveLong = candidate && programme?.status !== "active" && oldLongCeiling >= ordinaryCeiling * 1.15 && oldLongCeiling - ordinaryCeiling >= 300;
+      const oldTarget = Math.min(budget.targetWeeklyMinutes * 60 * week.length / budget.sessionsPerWeek,
+        ordinaryCeiling * (week.length - (oldMayHaveLong ? 1 : 0)) + (oldMayHaveLong ? oldLongCeiling : 0));
+      const oldLong = oldMayHaveLong ? Math.min(oldLongCeiling, oldTarget - minimum * (week.length - 1)) : 0;
+      const oldOrdinary = Math.min(ordinaryCeiling, (oldTarget - oldLong) / Math.max(1, week.length - (oldMayHaveLong ? 1 : 0)));
+      const oldMeaningful = oldMayHaveLong && oldLong >= oldOrdinary * 1.15 && oldLong - oldOrdinary >= 300;
+      automaticOrdinaryFloor = oldMeaningful ? oldOrdinary : Math.min(ordinaryCeiling, oldTarget / week.length);
+    }
+    const longSeconds = mayHaveLong ? Math.min(longCeiling, target - automaticOrdinaryFloor * (week.length - 1)) : 0;
     const ordinarySeconds = Math.min(ordinaryCeiling, (target - longSeconds) / Math.max(1, week.length - (mayHaveLong ? 1 : 0)));
     const meaningfulLong = mayHaveLong && longSeconds >= ordinarySeconds * 1.15 && longSeconds - ordinarySeconds >= 300;
     for (const row of week) {

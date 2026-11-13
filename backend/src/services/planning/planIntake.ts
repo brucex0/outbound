@@ -3,8 +3,9 @@ import { generateStructuredAI } from "../aiReliability/structuredGeneration.js";
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { getPrismaClient } from "../prisma.js";
+import { computeAthleteTrainingState } from "./athleteState.js";
 
-export const PLAN_INTAKE_POLICY_VERSION = "plan-intake-v6";
+export const PLAN_INTAKE_POLICY_VERSION = "plan-intake-v7";
 
 export class PlanningContextChangedError extends Error {
   readonly code = "planning_context_changed";
@@ -104,6 +105,8 @@ export async function getPlanIntakeContext(
   const observedActivities = activityMix(recent.map((item) => item.type));
   const preferredDays = preferredDaysFor(recent, sessionsPerWeek, timeZoneIdentifier);
   const suggestedMaxSessionMinutes = suggestedSessionCap(durations, activePlan?.goal.maxSessionMinutes);
+  const running = computeAthleteTrainingState({ activities: activityHistory.map((item) => ({ ...item, avgPace: null, avgHeartRate: null })), plannedWorkouts: [], readiness: [], now }).modalityBreakdown.run as
+    { minutes?: number; baselineEstablished?: boolean } | undefined;
   // Hash reviewed planning evidence, not the row timestamp: creating a plan also
   // updates profile preferences, which must not invalidate that same intake.
   // Include edited activity measures and recency classification, not just count.
@@ -113,6 +116,7 @@ export async function getPlanIntakeContext(
     recent: recent.map((item) => item.id),
     evidenceState,
     dataTier,
+    running,
   })).digest("hex")}`;
   const questions = questionIds({
     objective,
@@ -147,6 +151,10 @@ export async function getPlanIntakeContext(
       latestActivityAt: latest?.startedAt.toISOString() ?? null,
       activityMix: observedActivities,
     },
+    observedRunningBaseline: running ? {
+      weeklyMinutes: Math.round((running.minutes ?? 0) / 4),
+      established: running.baselineEstablished === true,
+    } : null,
     suggestedSetup: rich ? {
       source: "recent_activities",
       confidence: "high",

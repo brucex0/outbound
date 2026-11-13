@@ -45,6 +45,7 @@ export type PrimaryMotivation = "generalFitness" | "consistency" | "performance"
 export type RunGoalType = "time" | "distance" | "calories";
 
 export interface CreateTrainingGoalInput {
+  intakeBaseline?: import("./intakeBaseline.js").IntakeBaseline;
   runningBenchmark?: unknown;
   type: string;
   activities: Modality[];

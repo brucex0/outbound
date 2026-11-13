@@ -65,6 +65,7 @@ export function longRunWeekModalities(goal: GeneratePlanInput["goal"], dates: Da
 export function longRunAllocation(input: {
   sessions: number; longSessions: number; weeklySeconds: number;
   ordinaryCeiling: number; longCeiling: number; minimum: number;
+  ordinaryFloor?: number;
 }): { ordinarySeconds: number; longSeconds: number } {
   const { sessions, longSessions, weeklySeconds, ordinaryCeiling, longCeiling, minimum } = input;
   // Explicit preferences cannot manufacture a long dose from equal-session or
@@ -73,8 +74,8 @@ export function longRunAllocation(input: {
   const ordinaryCount = sessions - longSessions;
   if (ordinaryCount < 1) throw new LongRunDaysError("selection");
   const target = Math.min(weeklySeconds, ordinaryCeiling * ordinaryCount + longCeiling * longSessions);
-  const ordinarySeconds = Math.floor(Math.min(ordinaryCeiling, longCeiling / 1.15, longCeiling - 300,
-    (target - longSessions * 300) / sessions, target / (ordinaryCount + 1.15 * longSessions)));
+  const ordinarySeconds = Math.max(input.ordinaryFloor ?? 0, Math.floor(Math.min(ordinaryCeiling, longCeiling / 1.15, longCeiling - 300,
+    (target - longSessions * 300) / sessions, target / (ordinaryCount + 1.15 * longSessions))));
   const longSeconds = Math.floor(Math.min(longCeiling, (target - ordinarySeconds * ordinaryCount) / longSessions));
   if (ordinarySeconds < minimum || longSeconds < ordinarySeconds * 1.15 || longSeconds - ordinarySeconds < 300) {
     throw new LongRunDaysError("capacity");
