@@ -18,6 +18,8 @@ enum ActivityPlanProjector {
         let projectedSchedule = plan?.plannedSchedule?.map(overlay)
         plan?.plannedSchedule = projectedSchedule
         if let context { plan?.calendar = context }
+        let accountCalendar = context?.calendar ?? plan?.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
+        let todayStart = accountCalendar.startOfDay(for: now)
         let week: TrainingPlanWeekSnapshot?
         if let original = state.currentWeek {
             let rolled = context.map { $0.weekStart != original.calendar?.weekStart } ?? false
@@ -62,16 +64,26 @@ enum ActivityPlanProjector {
         } else { week = nil }
         let unavailable = confirmed.union(pending).union(Set(state.currentWeek?.scheduledWorkouts.filter { $0.status == "completed" }.map(\.id) ?? []))
         let validSuggestion = state.activitySuggestion?.isValid(now: now) == true ? state.activitySuggestion : nil
+        let stalePlanFallback = plan != nil && validSuggestion?.relationship == "planFallback"
         let today = state.todaySuggestion.flatMap { suggestion -> TodayTrainingSuggestion? in
+            guard !stalePlanFallback else { return nil }
             guard !unavailable.contains(suggestion.workout.id) else { return nil }
             if state.activitySuggestion != nil, validSuggestion == nil { return nil }
-            if let context, let key = suggestion.workout.scheduledDateKey,
-               let date = PlanningCalendarContext.logicalDate(key, calendar: context.calendar),
-               date < context.calendar.startOfDay(for: now) { return nil }
+            let scheduledDate: Date?
+            if let key = suggestion.workout.scheduledDateKey {
+                scheduledDate = PlanningCalendarContext.logicalDate(key, calendar: accountCalendar)
+            } else {
+                scheduledDate = suggestion.workout.scheduledDate
+            }
+            if let scheduledDate {
+                if plan != nil && !accountCalendar.isDate(scheduledDate, inSameDayAs: todayStart) { return nil }
+                if scheduledDate < todayStart { return nil }
+            }
             return suggestion
         }
         var result = TrainingPlanStateResponse(activePlan: plan, recommendations: state.recommendations, currentWeek: week,
-            todaySuggestion: today, activitySuggestion: today == nil && state.todaySuggestion != nil ? nil : validSuggestion,
+            todaySuggestion: today,
+            activitySuggestion: stalePlanFallback || today == nil && state.todaySuggestion != nil ? nil : validSuggestion,
             scheduledWorkouts: state.scheduledWorkouts.filter { !unavailable.contains($0.workoutID) }, calendar: context ?? state.calendar)
         result.revision = state.revision
         return result

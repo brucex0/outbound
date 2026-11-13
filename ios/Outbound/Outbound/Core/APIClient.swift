@@ -1501,8 +1501,8 @@ private extension PlanningAPIStateResponse {
         }
 
         // Presentation dates preserve logical labels on a travelling device.
-        let calendar = PlanningCalendarContext.accountCalendar()
         let context = self.calendar
+        let calendar = context?.calendar ?? PlanningCalendarContext.accountCalendar()
         let createdAt = APIDateParser.date(from: plan.createdAt)
             ?? APIDateParser.date(from: goal.createdAt)
             ?? Date()
@@ -1608,10 +1608,20 @@ private extension PlanningAPIStateResponse {
             notes: latestAdjustment.map { [String(localized: String.LocalizationValue($0.message))] } ?? []
         )
 
-        let apiWorkout = today ?? upcoming.first
+        // Keep Today tied to the account-local scheduled date. Upcoming workouts
+        // remain available in Plan Details and reminders, never as today's session.
+        let todayDate = calendar.startOfDay(for: Date())
+        let apiWorkout = today.flatMap { candidate -> PlanningAPIWorkout? in
+            guard let scheduledDate = APIDateParser.planningDate(from: candidate.scheduledDate, calendar: calendar),
+                  calendar.isDate(scheduledDate, inSameDayAs: todayDate) else { return nil }
+            return candidate
+        }
+        let stalePlanFallback = activePlan != nil && activitySuggestion?.relationship == "planFallback"
         let todaySuggestion: TodayTrainingSuggestion?
-        if let activityTodaySuggestion = activitySuggestion?.todayTrainingSuggestion() {
+        if !stalePlanFallback, let activityTodaySuggestion = activitySuggestion?.todayTrainingSuggestion() {
             todaySuggestion = activityTodaySuggestion
+        } else if stalePlanFallback {
+            todaySuggestion = nil
         } else if activitySuggestion?.shouldSuppressLocalSuggestion == true {
             todaySuggestion = nil
         } else if let apiWorkout {
@@ -1629,7 +1639,7 @@ private extension PlanningAPIStateResponse {
             recommendations: [],
             currentWeek: weekSnapshot,
             todaySuggestion: todaySuggestion,
-            activitySuggestion: activitySuggestion,
+            activitySuggestion: stalePlanFallback ? nil : activitySuggestion,
             scheduledWorkouts: notificationWorkouts,
             calendar: context
         ))
@@ -2220,6 +2230,10 @@ extension ActivitySuggestionResponse {
 
     var shouldSuppressLocalSuggestion: Bool {
         status == "restRecommended" || status == "noSuggestion" || primary != nil
+    }
+
+    var isScheduledRestDay: Bool {
+        decision.reasons.contains("scheduled_rest_day")
     }
 
     func isValid(now: Date = Date()) -> Bool {

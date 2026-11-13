@@ -399,6 +399,29 @@
         }
       }
     },
+    "today.plan.scheduled_rest": {
+      "comment": "Active-plan day with no required workout scheduled today. [android:today]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No workout is scheduled today. Your next planned session stays on its scheduled date."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy no hay ningún entrenamiento programado. Tu próxima sesión sigue en la fecha prevista."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天没有安排训练。下一次计划训练仍按原定日期进行。"
+          }
+        }
+      }
+    },
     "today.recovery.empty": {
       "comment": "Today plan preservation. [platform:ios]",
       "localizations": {

@@ -487,6 +487,8 @@ struct MainTabView: View {
         let personalIntent: SessionIntent?
         if trainingPlanStore.activePlan == nil {
             personalIntent = nil
+        } else if trainingPlanStore.shouldBlockPlannedLaunch {
+            personalIntent = nil
         } else {
             personalIntent = customizedTodayIntent
                 ?? currentCalibrationIntent

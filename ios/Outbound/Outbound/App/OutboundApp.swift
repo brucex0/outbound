@@ -1125,6 +1125,34 @@ final class TrainingPlanStore: ObservableObject {
         return workout.kind == .recovery && workout.isOptional
     }
 
+    var isScheduledRestDay: Bool {
+        let now = Date()
+        if let activitySuggestion, activitySuggestion.isValid(now: now) {
+            if activitySuggestion.isScheduledRestDay { return true }
+            // Safety guidance and optional recovery are distinct from a scheduled day off.
+            if activitySuggestion.status == "restRecommended" || activitySuggestion.primary != nil { return false }
+        }
+        guard todaySuggestion == nil, let activePlan, let week = currentWeek,
+              week.weekCoverageUnknown != true,
+              let context = week.calendar ?? activePlan.calendar,
+              now >= context.weekStart, now < context.weekEnd else { return false }
+
+        // Missing or expired suggestion data is not evidence of rest. Only a known
+        // current account week with dated required slots can establish that today is off.
+        let calendar = context.calendar
+        for workout in week.scheduledWorkouts where !workout.isOptional {
+            let date = workout.scheduledDateKey.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) }
+                ?? workout.scheduledDate
+            guard let date else { return false }
+            if calendar.isDate(date, inSameDayAs: now) { return false }
+        }
+        return true
+    }
+
+    var shouldBlockPlannedLaunch: Bool {
+        activitySuggestion?.status == "restRecommended" || isScheduledRestDay
+    }
+
     init(
         defaults: UserDefaults = .standard,
         calendar: Calendar = .current,
@@ -1141,10 +1169,12 @@ final class TrainingPlanStore: ObservableObject {
             ? Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
             : nil
         if cacheMatchesLocale,
-           let cachedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
+           let decodedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
+            let now = Date()
+            let cachedState = ActivityPlanProjector.project(decodedState, repository: repositoryProjection, now: now)
             authoritativeState = cachedState
             serverRevision = cachedState.revision
-            let cachedActivitySuggestion = cachedState.activitySuggestion?.isValid(now: Date()) == true
+            let cachedActivitySuggestion = cachedState.activitySuggestion?.isValid(now: now) == true
                 ? cachedState.activitySuggestion
                 : nil
             activePlan = cachedState.activePlan ?? persistedActivePlan
@@ -1504,9 +1534,9 @@ final class TrainingPlanStore: ObservableObject {
         if let revision = incoming.revision, revision < (serverRevision ?? 0) { return }
         if incoming.revision == nil, serverRevision != nil { return }
         serverRevision = incoming.revision
-        authoritativeState = incoming
         if let context = incoming.calendar { calendar = context.calendar }
         let state = ActivityPlanProjector.project(incoming, repository: repositoryProjection)
+        authoritativeState = state
         resetDismissedRecommendationIfNeeded(now: now)
 
         let validActivitySuggestion = state.activitySuggestion?.isValid(now: now) == true
@@ -1579,13 +1609,20 @@ final class TrainingPlanStore: ObservableObject {
             calendar: calendar,
             now: now
         )
-        todaySuggestion = Self.makeTodaySuggestion(
-            plan: activePlan,
-            week: currentWeek,
-            readiness: readiness,
-            calendar: calendar,
-            now: now
-        )
+        if let activitySuggestion, activitySuggestion.isValid(now: now) {
+            todaySuggestion = activitySuggestion.todayTrainingSuggestion()
+                ?? (activitySuggestion.shouldSuppressLocalSuggestion
+                    ? nil
+                    : Self.makeTodaySuggestion(plan: activePlan, week: currentWeek, readiness: readiness, calendar: calendar, now: now))
+        } else {
+            todaySuggestion = Self.makeTodaySuggestion(
+                plan: activePlan,
+                week: currentWeek,
+                readiness: readiness,
+                calendar: calendar,
+                now: now
+            )
+        }
         persistState()
     }
 
@@ -2004,8 +2041,24 @@ private extension TrainingPlanStore {
         return reminders
     }
 
-    static func makeTodaySuggestion(plan: ActiveTrainingPlan, week: TrainingPlanWeekSnapshot?, readiness: DailyReadiness?, calendar: Calendar, now: Date) -> TodayTrainingSuggestion {
-        let baseWorkout = nextWorkout(for: plan, week: week)
+    static func makeTodaySuggestion(plan: ActiveTrainingPlan, week: TrainingPlanWeekSnapshot?, readiness: DailyReadiness?, calendar: Calendar, now: Date) -> TodayTrainingSuggestion? {
+        let accountCalendar = plan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar(timeZone: calendar.timeZone.identifier)
+        let today = accountCalendar.startOfDay(for: now)
+        let weekday = accountCalendar.component(.weekday, from: today)
+        guard let baseWorkout = week?.scheduledWorkouts.first(where: { workout in
+            guard !workout.isOptional else { return false }
+            if let key = workout.scheduledDateKey,
+               let scheduledDate = PlanningCalendarContext.logicalDate(key, calendar: accountCalendar) {
+                return accountCalendar.isDate(scheduledDate, inSameDayAs: today)
+            }
+            if let scheduledDate = workout.scheduledDate {
+                return accountCalendar.isDate(scheduledDate, inSameDayAs: today)
+            }
+            let label = workout.dayLabel.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return accountCalendar.shortWeekdaySymbols.firstIndex {
+                label.hasPrefix($0.lowercased()) || $0.lowercased().hasPrefix(label)
+            } == weekday - 1
+        }) else { return nil }
         let lowReadiness = readiness == .lowEnergy || readiness == .stressed
         let workout = lowReadiness ? adjustedWorkout(from: baseWorkout) : baseWorkout
         let detailPrefix = lowReadiness ? "Adjusted session" : "Planned session"
@@ -2122,17 +2175,6 @@ private extension TrainingPlanStore {
         return remainingSessions <= 1
             ? "One more honest session would round out this week well."
             : "\(remainingSessions) more sessions would give this week the shape this plan is aiming for."
-    }
-
-    static func nextWorkout(for plan: ActiveTrainingPlan, week: TrainingPlanWeekSnapshot?) -> TrainingPlanWorkout {
-        guard let week, !week.scheduledWorkouts.isEmpty else {
-            return TrainingPlanLibrary.fallbackWorkout(for: plan.focus)
-        }
-        if week.completedSessions >= week.targetSessions {
-            return TrainingPlanLibrary.completionWorkout(for: plan.focus)
-        }
-        let nextIndex = min(week.completedSessions, week.scheduledWorkouts.count - 1)
-        return week.scheduledWorkouts[nextIndex]
     }
 
     static func adjustedWorkout(from workout: TrainingPlanWorkout) -> TrainingPlanWorkout {
