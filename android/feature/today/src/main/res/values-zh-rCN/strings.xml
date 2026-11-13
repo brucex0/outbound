@@ -188,6 +188,7 @@
     <string name="today_change_original">%1$s · %2$d 分钟</string>
     <string name="today_change_rest_action">今天休息</string>
     <string name="today_change_rest_body">少跑一次，胜过让不适发展成伤病。</string>
+    <string name="today_scheduled_rest_body">今天没有安排训练。下一次计划训练仍按原定日期进行。</string>
     <string name="today_change_rest_heading">今天休息</string>
     <string name="today_change_start_action">应用</string>
     <string name="today_change_time_body">Plainstride 会安排轻松的强度，并在你选择的时间结束。</string>

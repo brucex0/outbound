@@ -655,7 +655,10 @@ fun TodayScreen(
                     state.restRecommended && activityChoice == TodayActivityChoice.PLANNED -> Card {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(stringResource(R.string.today_change_rest_heading), style = MaterialTheme.typography.titleLarge)
-                            Text(stringResource(R.string.today_change_rest_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                stringResource(if (state.scheduledRestDay) R.string.today_scheduled_rest_body else R.string.today_change_rest_body),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                     state.hasNoCachedSuggestion -> NoSuggestionCard(

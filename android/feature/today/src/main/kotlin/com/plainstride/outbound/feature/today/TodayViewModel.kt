@@ -83,6 +83,10 @@ data class TodayUiState(
         get() = currentRecommendationSnapshot?.decision?.reasons?.contains("recovery_change_recommended") == true
     val restRecommended: Boolean
         get() = (suggestion as? CachedResource.Available)?.value?.let { it.isCurrentForAccount() && it.status == "restRecommended" } == true
+    val scheduledRestDay: Boolean
+        get() = (suggestion as? CachedResource.Available)?.value?.let {
+            it.isCurrentForAccount() && it.decision.reasons.contains("scheduled_rest_day")
+        } == true
     val hasConfirmedNoPlan: Boolean
         get() {
             val snapshot = planning as? CachedResource.Available ?: return false

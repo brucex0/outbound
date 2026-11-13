@@ -188,6 +188,7 @@
     <string name="today_change_original">%1$s · %2$d min</string>
     <string name="today_change_rest_action">Use rest day</string>
     <string name="today_change_rest_body">Skipping one run is better than turning discomfort into an injury.</string>
+    <string name="today_scheduled_rest_body">No workout is scheduled today. Your next planned session stays on its scheduled date.</string>
     <string name="today_change_rest_heading">Rest today</string>
     <string name="today_change_start_action">Apply</string>
     <string name="today_change_time_body">Plainstride will keep this easy and end it at your selected time.</string>
