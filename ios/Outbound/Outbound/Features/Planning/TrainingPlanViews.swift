@@ -530,6 +530,9 @@ struct ActiveTrainingPlanDetailView: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityHint(String(localized: "plan.details.workout.expand_hint", defaultValue: "Shows workout targets and guidance"))
+            .accessibilityValue(expandedWorkoutIDs.contains(workout.id)
+                ? String(localized: "plan.details.workout.expanded", defaultValue: "Expanded")
+                : String(localized: "plan.details.workout.collapsed", defaultValue: "Collapsed"))
 
             if expandedWorkoutIDs.contains(workout.id) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -694,6 +697,9 @@ struct ActiveTrainingPlanDetailView: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityHint(String(localized: "plan.details.workout.expand_hint", defaultValue: "Shows workout targets and guidance"))
+            .accessibilityValue(expandedWorkoutIDs.contains(workout.id)
+                ? String(localized: "plan.details.workout.expanded", defaultValue: "Expanded")
+                : String(localized: "plan.details.workout.collapsed", defaultValue: "Collapsed"))
             if expandedWorkoutIDs.contains(workout.id) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(workout.summary).font(.subheadline).foregroundStyle(.secondary)
