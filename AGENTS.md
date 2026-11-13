@@ -48,6 +48,7 @@ When user ask questions or brain storm, always answer in concise bullet points
 
 - For every code change, create and work in a Git worktree under this repository's `worktrees/<task>` directory. Do not use `~/.codex/worktrees`. After basic verification succeeds, squash and merge the worktree branch back into main branch, then remove the worktree and delete its branch.
 - After completing repository changes, run a basic verification appropriate to the affected scope without running the test suite unless the user explicitly requested tests.
+- After finishing iOS code changes, build and install the updated app on Bruce main so Bruce can verify it on his phone. Launch it when practical. If the phone is unavailable, report the specific connection or signing blocker and keep the install as an outstanding step; a compile-only build is not a substitute for installation.
 - If the basic verification succeeds, commit the completed changes before handing the task back to the user.
 - Keep unrelated user files, generated artifacts, temporary directories, and agent metadata out of the commit.
 - Split changes to `backend/`, `android/`, and `ios/` into separate focused commits. Prefix their titles with `[BE]`, `[Droid]`, or `[iOS]` respectively; never combine these scopes in one commit.

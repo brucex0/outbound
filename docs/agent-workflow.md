@@ -94,6 +94,7 @@ Infer routine details from the repository; ask only for missing decisions that a
 
 - Follow the worktree and scoped-commit rules in `AGENTS.md` for every code change.
 - Review the diff, run appropriate build/static checks, and inspect affected behavior. Simulator/emulator runtime checks are opt-in and run only when Bruce explicitly requests them. State any runtime or visual checks that could not be performed. A successful build does not establish behavioral equivalence.
+- For iOS code changes, finish by installing the updated app on Bruce main for Bruce's own verification. Use the physical-device flow in `docs/build-test-device.md`; report a concrete blocker if the phone cannot be reached or signing fails.
 - Use an additional strong-model review for consequential changes or unresolved concerns. Do not repeat completed verification without a new change, failure, or concern.
 - A handoff includes the branch/worktree, outcome, changed files or diff, decisions, verification results, and one unresolved issue. Omit full conversation history and redundant logs.
 - Compare accepted changes per elapsed hour and per Codex allowance, including correction rounds. Keep a cheaper tool only where it improves those results.
