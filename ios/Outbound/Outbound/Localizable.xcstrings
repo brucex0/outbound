@@ -75269,6 +75269,54 @@
         "es": { "stringUnit": { "state": "translated", "value": "Expandido" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "已展开" } }
       }
+    },
+    "plan.details.workout.open_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Opens workout details" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Abre los detalles de la sesión" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "打开训练详情" } }
+      }
+    },
+    "plan.details.workout_detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Workout" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Sesión" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "训练" } }
+      }
+    },
+    "plan.details.optional_mobility": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Optional mobility" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Movilidad opcional" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "可选灵活性练习" } }
+      }
+    },
+    "plan.details.effort_scale": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Effort is how hard it feels on a 1–10 scale." } },
+        "es": { "stringUnit": { "state": "translated", "value": "El esfuerzo indica cómo se siente la intensidad, del 1 al 10." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "用 1–10 分表示主观用力程度。" } }
+      }
+    },
+    "plan.details.effort_range_of_ten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Effort %1$d–%2$d/10" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Esfuerzo %1$d–%2$d/10" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "用力程度 %1$d–%2$d/10" } }
+      }
+    },
+    "plan.details.effort_very_easy_range": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Effort %1$d–%2$d/10 · Very easy, comfortable conversation" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Esfuerzo %1$d–%2$d/10 · Muy suave; puedes hablar con comodidad" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "用力程度 %1$d–%2$d/10 · 非常轻松，可以正常交谈" } }
+      }
     }
   },
   "version": "1.1"
