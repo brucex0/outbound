@@ -2193,12 +2193,15 @@ struct ActivitySuggestionDecision: Codable, Equatable {
 }
 
 extension ActivitySuggestionResponse {
+    var recoveryChangeRecommended: Bool { decision.reasons.contains("recovery_change_recommended") }
+    var recoveryAdvised: Bool { decision.reasons.contains("recovery_advised") }
+
     /// Safety- and recovery-oriented suggestions are the canonical Today action,
     /// even while the runner still has calibration sessions to complete.
     var shouldSupersedeCalibration: Bool {
         if status == "restRecommended" { return true }
         guard primary != nil else { return false }
-        return primary?.workoutEditId != nil || primary?.id.hasPrefix("changed-") == true || primary?.catalogWorkout != nil
+        return recoveryAdvised || primary?.workoutEditId != nil || primary?.id.hasPrefix("changed-") == true || primary?.catalogWorkout != nil
             || ["optionalRecovery", "adjustedFromPlan"].contains(relationship)
     }
 
@@ -2223,13 +2226,29 @@ extension ActivitySuggestionResponse {
         return now < validUntilDate
     }
 
+    var localizedPlanAdvice: String? {
+        if recoveryChangeRecommended {
+            return String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain.")
+        }
+        if recoveryAdvised {
+            return String(localized: "today.recovery.choice", defaultValue: "Choose a short, very easy recovery workout, or skip today. Your planned workout changes only after you apply your choice.")
+        }
+        if decision.reasons.contains("planned_workout_completed_today") {
+            return String(localized: "today.plan.completed_recovery", defaultValue: "Today’s planned session is complete. Rest is enough; gentle movement is optional.")
+        }
+        if decision.reasons.contains("unlinked_activity_logged_today") {
+            return String(localized: "today.plan.incomplete_after_activity", defaultValue: "An activity is logged today. This planned session is still incomplete.")
+        }
+        return nil
+    }
+
     func todayTrainingSuggestion() -> TodayTrainingSuggestion? {
-        primary?.todayTrainingSuggestion(guideLine: guideLine)
+        primary?.todayTrainingSuggestion(guideLine: guideLine, displayAdvice: localizedPlanAdvice)
     }
 }
 
 extension ActivitySuggestionPayload {
-    func todayTrainingSuggestion(guideLine: String) -> TodayTrainingSuggestion? {
+    func todayTrainingSuggestion(guideLine: String, displayAdvice: String? = nil) -> TodayTrainingSuggestion? {
         guard let sport = SportType.apiSport(from: modality) else { return nil }
         let catalog = (effectiveWorkout ?? catalogWorkout).map { $0.withCatalogVersion(catalogVersion ?? $0.catalogVersion ?? 1) }
         let structuredEfforts = catalog.map { workout -> (work: SessionWorkoutCue.Effort?, recovery: SessionWorkoutCue.Effort?) in
@@ -2313,9 +2332,9 @@ extension ActivitySuggestionPayload {
             title: catalog?.title ?? BuiltinWorkoutText.localized(title),
             kind: stimulus.workoutKind,
             dayLabel: "Today",
-            summary: catalog?.detail ?? why,
-            purpose: catalog?.guideInstructions.objective ?? why,
-            guideCue: catalog?.guideLine ?? guideLine,
+            summary: displayAdvice ?? catalog?.detail ?? why,
+            purpose: displayAdvice ?? catalog?.guideInstructions.objective ?? why,
+            guideCue: displayAdvice ?? catalog?.guideLine ?? guideLine,
             effortLabel: displayEffort,
             durationSeconds: durationSeconds,
             distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
@@ -2340,8 +2359,8 @@ extension ActivitySuggestionPayload {
             title: catalog?.title ?? BuiltinWorkoutText.localized(title),
             durationLabel: durationText,
             activityLabel: displayEffort.lowercased(),
-            framing: why,
-            guideLine: catalog?.guideLine ?? guideLine,
+            framing: displayAdvice ?? why,
+            guideLine: displayAdvice ?? catalog?.guideLine ?? guideLine,
             startLabel: startLabel,
             targetDistanceMeters: targetCalories == nil ? distanceMeters : nil,
             targetDurationSeconds: targetCalories == nil ? durationSeconds : nil,
@@ -2359,7 +2378,7 @@ extension ActivitySuggestionPayload {
         return TodayTrainingSuggestion(
             title: catalog?.title ?? BuiltinWorkoutText.localized(title),
             detail: calorieDetail ?? catalogDetail ?? "\(String(localized: "\(durationMinutes) min")) • \(displayEffort)",
-            guideLine: catalog?.guideLine ?? guideLine,
+            guideLine: displayAdvice ?? catalog?.guideLine ?? guideLine,
             adjustmentLine: optional ? "Optional" : nil,
             suggestedSession: suggestion,
             workout: workout,

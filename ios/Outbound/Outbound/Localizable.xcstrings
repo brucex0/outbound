@@ -1,6 +1,121 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "today.plan.completed_recovery": {
+      "comment": "Canonical completed planned slot; recovery remains optional. [android:today]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today’s planned session is complete. Rest is enough; gentle movement is optional."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sesión planificada de hoy está completada. Con descansar basta; moverte suavemente es opcional."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天计划中的训练已完成。休息即可，也可以自愿做些轻松活动。"
+          }
+        }
+      }
+    },
+    "today.plan.incomplete_after_activity": {
+      "comment": "Today plan preservation. [android:today]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An activity is logged today. This planned session is still incomplete."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya has registrado una actividad hoy. Esta sesión planificada sigue pendiente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天已记录一次活动，但计划中的这次训练尚未完成。"
+          }
+        }
+      }
+    },
+    "today.recovery.empty": {
+      "comment": "Today plan preservation. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No recovery workout fits this session. Go back to Change workout to skip today, or cancel to keep your plan."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay una sesión de recuperación que se ajuste a este entrenamiento. Vuelve a Cambiar entrenamiento para omitir el de hoy, o cancela para mantener tu plan."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有适合本次训练的恢复项目。请返回“更改训练”以跳过今天的训练，或取消并保留原计划。"
+          }
+        }
+      }
+    },
+    "today.recovery.caution": {
+      "comment": "Today recovery advice requires an explicit workout change. [android:today]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te recomendamos recuperarte. Tu entrenamiento planificado no ha cambiado. Elige una sesión de recuperación u omite la de hoy antes de añadir más carga."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建议今天先恢复。计划中的训练尚未更改。请先选择恢复训练或跳过今天的训练，避免继续增加负荷。"
+          }
+        }
+      }
+    },
+    "today.recovery.choice": {
+      "comment": "Today recovery advice requires an explicit workout change. [android:today]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a short, very easy recovery workout, or skip today. Your planned workout changes only after you apply your choice."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una sesión de recuperación breve y muy suave, u omite la de hoy. Tu entrenamiento planificado solo cambia cuando aplicas tu elección."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择一次简短、轻松的恢复训练，或跳过今天的训练。只有应用选择后，计划中的训练才会更改。"
+          }
+        }
+      }
+    },
     "plan_builder.context.private_changed": {
       "comment": "Stale planning context recovery. [platform:ios]",
       "localizations": {

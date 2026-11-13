@@ -38,6 +38,7 @@ struct TodayChangeSheet: View {
     private var original: ActivitySuggestionPayload? { baseline?.primary }
     let displayedOverride: SessionIntent?
     private var context: WorkoutEditContextDTO? { baseline?.editContext }
+    private var recoveryAdvised: Bool { baseline?.recoveryAdvised == true }
     let pendingAdjustment: AdjustmentProposalDTO?
     let busy: Bool
     let onApply: (TodayWorkoutChangeSelection) async -> Bool
@@ -106,8 +107,13 @@ struct TodayChangeSheet: View {
                         if original != nil || displayedOverride != nil {
                             Text(currentTitle)
                                 .font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
-                            targetControls
-                            effortControl
+                            if recoveryAdvised {
+                                Text(String(localized: "today.recovery.choice", defaultValue: "Choose a short, very easy recovery workout, or skip today. Your planned workout changes only after you apply your choice."))
+                                    .font(.body).fixedSize(horizontal: false, vertical: true)
+                            } else {
+                                targetControls
+                                effortControl
+                            }
                             if displayedOverride != nil {
                                 Text(String(localized: "today.edit.local_setup", defaultValue: "This session has its own setup. Choose another workout to save a replacement for today."))
                                     .font(.body).foregroundStyle(.secondary)
@@ -148,10 +154,12 @@ struct TodayChangeSheet: View {
                     }
                     if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
                     if busy { ProgressView().accessibilityLabel(String(localized: "today.edit.saving", defaultValue: "Saving…")) }
+                    if !recoveryAdvised {
                     OutboundPrimaryButton(title: String(localized: "today.change.apply", defaultValue: "Apply"), systemImage: "checkmark", expands: false) {
                         editingTarget = false
                         save(.init(baseline: baseline, reason: optionalReason, change: .init(operation: "edit", edits: .init(target: changedTarget, effortPreset: changedEffort))))
                     }.disabled(!canApply || busy).accessibilityIdentifier("todayChangeApply")
+                    }
                 }
                 .padding(.horizontal, OutboundSpacing.screen).padding(.vertical, OutboundSpacing.compact)
                 .background(OutboundPalette.background)
@@ -181,6 +189,7 @@ struct TodayChangeSheet: View {
             }
             .sheet(isPresented: $showsCatalog) {
                 StandaloneWorkoutPickerView(sport: original.flatMap { SportType(rawValue: $0.modality) } ?? .run,
+                    recoveryMaximumSeconds: recoveryAdvised ? min(seconds, 30 * 60) : nil,
                     onUse: { workout in
                         let success = await onApply(.init(baseline: baseline, reason: optionalReason, change: .init(operation: "replace", catalogWorkoutId: workout.id, catalogVersion: workout.catalogVersion)))
                         return success

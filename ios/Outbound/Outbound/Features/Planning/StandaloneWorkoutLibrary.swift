@@ -135,11 +135,20 @@ struct StandaloneWorkoutPickerView: View {
     @StateObject private var store = StandaloneWorkoutStore()
     @State private var isSavingSelection = false
     let sport: SportType
+    var recoveryMaximumSeconds: Int? = nil
     var onUse: ((StandaloneWorkout) async -> Bool)? = nil
     let onSelect: (StandaloneWorkout) -> Void
 
     private var workouts: [StandaloneWorkout] {
-        store.workouts.filter { $0.sport == sport }
+        store.workouts.filter { workout in
+            guard workout.sport == sport else { return false }
+            guard let maximum = recoveryMaximumSeconds else { return true }
+            let seconds = workout.steps.reduce(0) { $0 + $1.durationSeconds }
+            return workout.targetDistanceMeters == nil && workout.coachingTarget?.pace == nil && seconds > 0 && seconds <= maximum
+                && workout.steps.allSatisfy { $0.coachingTarget?.pace == nil && ![SessionCoachingPhase.work, .open].contains($0.coachingTarget?.phase ?? .easy) }
+                && !workout.guideInstructions.segments.isEmpty
+                && workout.guideInstructions.segments.allSatisfy { $0.effort.rpeMax <= 3 }
+        }
     }
 
     var body: some View {
@@ -151,7 +160,9 @@ struct StandaloneWorkoutPickerView: View {
                         .foregroundStyle(theme.accentColor)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("Pick one workout and go. No training plan required.")
+                    Text(recoveryMaximumSeconds == nil
+                        ? String(localized: "Pick one workout and go. No training plan required.")
+                        : String(localized: "today.recovery.choice", defaultValue: "Choose a short, very easy recovery workout, or skip today. Your planned workout changes only after you apply your choice."))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -172,7 +183,9 @@ struct StandaloneWorkoutPickerView: View {
                         ContentUnavailableView {
                             Label("No curated workouts", systemImage: "sparkles.rectangle.stack")
                         } description: {
-                            Text("Try another activity type.")
+                            Text(recoveryMaximumSeconds == nil
+                                ? String(localized: "Try another activity type.")
+                                : String(localized: "today.recovery.empty", defaultValue: "No recovery workout fits this session. Go back to Change workout to skip today, or cancel to keep your plan."))
                         }
                     } else {
                         ForEach(workouts) { workout in

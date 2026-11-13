@@ -1075,6 +1075,10 @@ private struct SimplifiedTodayView: View {
             .onChange(of: todayWorkoutID) { _, _ in
                 Task { await loadCompanionTodayMessage(force: true) }
             }
+            .onChange(of: trainingPlanStore.activitySuggestion?.decision) { _, _ in
+                companionTodayMessage = nil
+                Task { await loadCompanionTodayMessage(force: true) }
+            }
             .onChange(of: displayedWorkoutSelectionKey) { _, _ in
                 customizedRunIntent = nil
             }
@@ -1515,7 +1519,7 @@ private struct SimplifiedTodayView: View {
                     Button(action: openPlannedWorkoutDetails) {
                         HStack(spacing: OutboundSpacing.standard) {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(completedActivityToday == nil ? "Today’s workout" : "Up next")
+                                Text(trainingPlanStore.activitySuggestion?.relationship == "optionalRecovery" ? "Up next" : "Today’s workout")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(theme.accentColor)
                                     .textCase(.uppercase)
@@ -1550,6 +1554,23 @@ private struct SimplifiedTodayView: View {
                             ? String(localized: "Expand workout card")
                             : String(localized: "Collapse workout card")
                     )
+                }
+
+                if trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                        Text(String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain."))
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(String(localized: "today.change.sheet_title", defaultValue: "Change workout")) { openWorkoutChange() }
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("todayRecoveryChange")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .task {
+                        await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("planned_workout_recovery_advice")]))
+                    }
                 }
 
                 if !isPlannedWorkoutCardMinimized {
@@ -1628,6 +1649,7 @@ private struct SimplifiedTodayView: View {
 
     private var todayCardSourceType: String {
         if currentCalibrationWorkout != nil { return "calibration_workout" }
+        if trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true { return "planned_workout" }
         if trainingPlanStore.shouldSupersedeCalibration { return "optional_recovery" }
         switch trainingPlanStore.activitySuggestion?.relationship {
         case "adjustedFromPlan": return "adjusted_from_plan"
@@ -1661,6 +1683,10 @@ private struct SimplifiedTodayView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(String(localized: "today.purpose", defaultValue: "Why this workout?"))
                             .font(.headline)
+                        if trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true {
+                            Text(String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain."))
+                                .font(.subheadline.weight(.semibold))
+                        }
                         Text(todayExplanation)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -1893,12 +1919,17 @@ private struct SimplifiedTodayView: View {
     }
 
     private func companionTodayPrompt(activity: SavedActivity?) -> String {
-        let base = "What is the one most useful thing for me to know about today's training? The workout currently displayed in the app is \(todayWorkoutName), \(todayTotalDuration), with workout ID \(todayWorkoutID). Refer to that workout, not an earlier cached plan day. If a situational signal matters, recommend the smallest safe adjustment, but do not mutate the plan."
+        let safety = trainingPlanStore.activitySuggestion?.recoveryAdvised == true
+            ? " Recovery is recommended. Do not endorse the hard session. Suggest an explicit Change workout choice or rest; the plan has not been automatically replaced."
+            : ""
+        let base = "What is the one most useful thing for me to know about today's training? The workout currently displayed in the app is \(todayWorkoutName), \(todayTotalDuration), with workout ID \(todayWorkoutID). Refer to that workout, not an earlier cached plan day. If a situational signal matters, recommend the smallest safe adjustment, but do not mutate the plan.\(safety)"
         guard let activity else { return base }
         let distance = measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1)
         return """
         \(base)
-        The local activity store confirms that a workout was already completed today: \(activity.title), \(durationLabel(activity.durationSecs)), \(distance). The workout currently displayed is a new optional recommendation, not the completed session. Briefly explain whether doing it today is sensible, and favor recovery when another workout would add unnecessary stress.
+        The local activity store confirms that a workout was already completed today: \(activity.title), \(durationLabel(activity.durationSecs)), \(distance). \(trainingPlanStore.activitySuggestion?.relationship == "optionalRecovery"
+            ? "The backend confirms today's planned session is complete, and the displayed workout is optional recovery."
+            : "This activity does not confirm completion of the currently displayed planned workout. Keep that prescription and its incomplete status unless the user explicitly applies a change.") Briefly explain whether doing it today is sensible, and favor recovery when another workout would add unnecessary stress.
         """
     }
 
@@ -1933,8 +1964,11 @@ private struct SimplifiedTodayView: View {
     }
 
     private var companionInsightMessage: String {
+        if trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true {
+            return String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain.")
+        }
         if let companionTodayMessage { return companionTodayMessage }
-        if let activity = completedActivityToday {
+        if trainingPlanStore.activitySuggestion?.relationship == "optionalRecovery", let activity = completedActivityToday {
             return String(localized: "You completed today’s \(durationLabel(activity.durationSecs)) activity. Let that work count and prioritize recovery now.")
         }
         return todayExplanation
@@ -2002,6 +2036,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayExplanation: String {
+        if let advice = trainingPlanStore.activitySuggestion?.localizedPlanAdvice { return advice }
         if let workout = currentCalibrationWorkout { return localizedAppCopy(workout.purpose) }
         if let evidence = trainingPlanStore.activitySuggestion?.primary?.why {
             return localizedAppCopy(evidence)
