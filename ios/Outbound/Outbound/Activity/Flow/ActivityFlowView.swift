@@ -44,6 +44,10 @@ struct ActivityFlowView: View {
         model.host = host
         model.reduceMotion = reduceMotion
         return flowBody
+            .background {
+                StandaloneWorkoutPresentationHost(presenter: model.curatedWorkoutPresenter)
+                    .frame(width: 0, height: 0)
+            }
     }
 
     func binding<Value>(_ keyPath: ReferenceWritableKeyPath<ActivityFlowCoordinator, Value>) -> Binding<Value> {

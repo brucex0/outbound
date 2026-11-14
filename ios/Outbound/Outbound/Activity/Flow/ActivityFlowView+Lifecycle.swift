@@ -228,11 +228,6 @@ extension ActivityFlowView {
                 .environmentObject(model.dependencies.liveShareStore)
                 .environmentObject(model.dependencies.safetyContactStore)
         }
-        .sheet(isPresented: binding(\.setup.showsCuratedWorkouts)) {
-            StandaloneWorkoutPickerView(sport: model.setup.selectedManualSport ?? .run) { workout in
-                model.selectCuratedWorkout(workout)
-            }
-        }
         .sheet(isPresented: binding(\.setup.showsRacePlanner)) {
             RacePlannerView(
                 activities: model.dependencies.activityStore.activities,

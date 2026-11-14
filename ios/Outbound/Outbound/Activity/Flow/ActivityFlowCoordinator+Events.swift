@@ -238,7 +238,6 @@ extension ActivityFlowCoordinator {
         }
         self.setup.selectedWorkoutChoice = .sport(workout.sport)
         self.setup.selectedGoalMode = .curated
-        self.setup.showsCuratedWorkouts = false
         self.track(.init(.activityConfigurationChanged, properties: [
             .changeType: .string("curated_workout"),
             .selectionType: .string(workout.sport.rawValue),

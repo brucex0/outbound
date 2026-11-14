@@ -223,12 +223,14 @@ extension ActivityFlowCoordinator {
     }
 
     func openCuratedWorkoutPicker() {
-        guard self.setup.selectedManualSport != nil else { return }
+        guard let sport = self.setup.selectedManualSport else { return }
         self.track(.init(.planningSurfaceOpened, properties: [
             .sourceType: .string("curated_workouts"),
             .entrySource: .string("manual_mode_row"),
         ]))
-        self.setup.showsCuratedWorkouts = true
+        curatedWorkoutPresenter.present(sport: sport) { [weak self] workout in
+            self?.selectCuratedWorkout(workout)
+        }
     }
 
     func setAICoachEnabled(_ enabled: Bool) {

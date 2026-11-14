@@ -1,7 +1,7 @@
 import Combine
 import SwiftUI
 
-struct StandaloneWorkout: Identifiable, Hashable, Codable {
+nonisolated struct StandaloneWorkout: Identifiable, Hashable, Codable, Sendable {
     let id: String
     let title: String
     let subtitle: String
@@ -18,7 +18,7 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
     let guideInstructions: GuideInstructions
     var catalogVersion: Int?
 
-    struct GuideInstructions: Hashable, Codable {
+    nonisolated struct GuideInstructions: Hashable, Codable, Sendable {
         let objective: String
         let beforeStart: [String]
         let segments: [SessionWorkoutCue]
@@ -26,7 +26,7 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
         let stopConditions: [String]
     }
 
-    var intent: SessionIntent {
+    @MainActor var intent: SessionIntent {
         SessionIntent(
             id: id, sport: sport, title: title, detail: detail,
             guideLine: guideLine, startLabel: startLabel,
@@ -85,7 +85,7 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
     }
 }
 
-struct StandaloneWorkoutCatalogResponse: Codable {
+nonisolated struct StandaloneWorkoutCatalogResponse: Codable, Equatable, Sendable {
     let version: Int
     let workouts: [StandaloneWorkout]
 }
@@ -93,35 +93,79 @@ struct StandaloneWorkoutCatalogResponse: Codable {
 @MainActor
 final class StandaloneWorkoutStore: ObservableObject {
     @Published private(set) var workouts: [StandaloneWorkout] = []
-    @Published private(set) var isLoading = false
+    @Published private(set) var isLoading = true
     @Published private(set) var errorMessage: String?
 
     private let api: APIClient
     private let defaults: UserDefaults
     private let cacheKey = "standalone_workout_catalog_v1"
+    private var catalog: StandaloneWorkoutCatalogResponse?
+    private var hasReadCache = false
+    private var refreshInFlight = false
 
     init(api: APIClient? = nil, defaults: UserDefaults = .standard) {
         self.api = api ?? .shared
         self.defaults = defaults
-        if let data = defaults.data(forKey: cacheKey),
-           let cached = try? JSONDecoder().decode(StandaloneWorkoutCatalogResponse.self, from: data) {
-            workouts = cached.workouts.map { $0.withCatalogVersion(cached.version) }
-        }
     }
 
     func refresh() async {
-        guard !isLoading else { return }
+        guard !refreshInFlight else { return }
+        refreshInFlight = true
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        defer {
+            refreshInFlight = false; isLoading = false
+        }
+
+        // The initializer must stay cheap: SwiftUI can create the sheet while the
+        // user starts dragging. Decode and localize the complete catalog off-main.
+        if !hasReadCache {
+            let defaults = defaults
+            let cacheKey = cacheKey
+            do {
+                let cached = try await Task.detached(priority: .userInitiated) { () throws -> (StandaloneWorkoutCatalogResponse, [StandaloneWorkout])? in
+                    guard let data = defaults.data(forKey: cacheKey) else { return nil }
+                    let response = try JSONDecoder().decode(StandaloneWorkoutCatalogResponse.self, from: data)
+                    return (response, response.workouts.map { $0.withCatalogVersion(response.version) })
+                }.value
+                try Task.checkCancellation()
+                if let (response, localized) = cached {
+                    catalog = response
+                    workouts = localized
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                ActivityDiagnosticLog.error(.persistence, "standalone_catalog_cache_read_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+            }
+            hasReadCache = true
+        }
 
         do {
+            try Task.checkCancellation()
             let response = try await api.fetchStandaloneWorkouts()
-            workouts = response.workouts.map { $0.withCatalogVersion(response.version) }
-            if let data = try? JSONEncoder().encode(response) {
-                defaults.set(data, forKey: cacheKey)
+            try Task.checkCancellation()
+            // A normal refresh returns the same catalog. Avoid relocalizing and
+            // invalidating all visible rows during an in-progress scroll.
+            guard response != catalog else {
+                return
+            }
+            let prepared = await Task.detached(priority: .userInitiated) {
+                (response.workouts.map { $0.withCatalogVersion(response.version) }, Result { try JSONEncoder().encode(response) })
+            }.value
+            try Task.checkCancellation()
+            catalog = response
+            if workouts != prepared.0 {
+                workouts = prepared.0
+            }
+            switch prepared.1 {
+            case .success(let data): defaults.set(data, forKey: cacheKey)
+            case .failure(let error):
+                // A cache write failure must not discard a usable fresh catalog.
+                ActivityDiagnosticLog.error(.persistence, "standalone_catalog_cache_encode_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
             }
         } catch {
+            guard !Task.isCancelled, !(error is CancellationError) else { return }
+            ActivityDiagnosticLog.error(.sync, "standalone_catalog_refresh_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
             if workouts.isEmpty {
                 errorMessage = String(localized: "Workouts couldn’t be loaded. Check your connection and try again.")
             }
@@ -132,12 +176,25 @@ final class StandaloneWorkoutStore: ObservableObject {
 struct StandaloneWorkoutPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.outboundTheme) private var theme
-    @StateObject private var store = StandaloneWorkoutStore()
+    @StateObject private var store: StandaloneWorkoutStore
     @State private var isSavingSelection = false
     let sport: SportType
     var recoveryMaximumSeconds: Int? = nil
     var onUse: ((StandaloneWorkout) async -> Bool)? = nil
+    var onClose: (() -> Void)? = nil
     let onSelect: (StandaloneWorkout) -> Void
+
+    init(sport: SportType, recoveryMaximumSeconds: Int? = nil,
+         onUse: ((StandaloneWorkout) async -> Bool)? = nil,
+         onClose: (() -> Void)? = nil,
+         onSelect: @escaping (StandaloneWorkout) -> Void) {
+        self.sport = sport
+        self.recoveryMaximumSeconds = recoveryMaximumSeconds
+        self.onUse = onUse
+        self.onClose = onClose
+        self.onSelect = onSelect
+        _store = StateObject(wrappedValue: StandaloneWorkoutStore())
+    }
 
     private var workouts: [StandaloneWorkout] {
         store.workouts.filter { workout in
@@ -154,7 +211,9 @@ struct StandaloneWorkoutPickerView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: OutboundSpacing.standard) {
+                // Measure this small catalog up front so offscreen localized
+                // card heights cannot change the scroll geometry during a drag.
+                VStack(spacing: OutboundSpacing.standard) {
                     Label(sport.displayName, systemImage: sport.systemImage)
                         .font(.headline)
                         .foregroundStyle(theme.accentColor)
@@ -209,12 +268,16 @@ struct StandaloneWorkoutPickerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }.disabled(isSavingSelection)
+                    Button("Close") {
+                        if let onClose { onClose() } else { dismiss() }
+                    }.disabled(isSavingSelection)
                 }
             }
         }
         .interactiveDismissDisabled(isSavingSelection)
-        .task { await store.refresh() }
+        .task {
+            await store.refresh()
+        }
     }
 
     private func workoutButton(_ workout: StandaloneWorkout) -> some View {

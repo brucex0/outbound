@@ -2,7 +2,7 @@ import Foundation
 
 /// Resolves only known product-authored vocabulary; unrecognized/generated prose
 /// and user-entered names pass through unchanged.
-enum BuiltinWorkoutText {
+nonisolated enum BuiltinWorkoutText {
     static func localized(_ value: String) -> String {
         let exact = NSLocalizedString(value, bundle: .main, value: value, comment: "Built-in workout vocabulary")
         if exact != value { return exact }

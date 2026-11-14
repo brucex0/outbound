@@ -1,6 +1,6 @@
 import Foundation
 
-enum SportType: String, Codable, CaseIterable, Identifiable {
+nonisolated enum SportType: String, Codable, CaseIterable, Identifiable, Sendable {
     case run
     case bike
     case walk

@@ -38,7 +38,6 @@ final class ActivitySetupViewModel: ObservableObject {
     @Published var musicSearchCategory: MusicSearchCategory = .songs
     @Published var isAddShoePresented = false
     @Published var showsTrustedContacts = false
-    @Published var showsCuratedWorkouts = false
     @Published var showsRacePlanner = false
     @Published var showsRouteLibrary = false
     @Published var intentBeforeSelectedRoute: SessionIntent? = nil

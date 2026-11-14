@@ -44,7 +44,7 @@ struct ActiveSessionSnapshot: Equatable {
     }
 }
 
-enum SessionCoachingPhase: String, Codable, Hashable {
+nonisolated enum SessionCoachingPhase: String, Codable, Hashable, Sendable {
     case warmup
     case easy
     case work
@@ -54,12 +54,12 @@ enum SessionCoachingPhase: String, Codable, Hashable {
     case open
 }
 
-enum SessionPaceReference: String, Codable, Hashable {
+nonisolated enum SessionPaceReference: String, Codable, Hashable, Sendable {
     case athleteReference = "athlete_reference"
     case absolute
 }
 
-struct SessionPaceTarget: Codable, Hashable {
+nonisolated struct SessionPaceTarget: Codable, Hashable, Sendable {
     let reference: SessionPaceReference
     let targetSecondsPerKilometer: Double?
     let athleteReferenceOffsetSeconds: Double
@@ -93,7 +93,7 @@ struct SessionPaceTarget: Codable, Hashable {
     }
 }
 
-struct SessionCoachingTarget: Codable, Hashable {
+nonisolated struct SessionCoachingTarget: Codable, Hashable, Sendable {
     let phase: SessionCoachingPhase
     let pace: SessionPaceTarget?
     let recognizesTargetLock: Bool
@@ -155,8 +155,8 @@ struct SessionCoachingTarget: Codable, Hashable {
     static let open = SessionCoachingTarget(phase: .open)
 }
 
-struct SessionIntentStep: Identifiable, Hashable, Codable {
-    enum TransitionCountdown: String, Codable, Hashable {
+nonisolated struct SessionIntentStep: Identifiable, Hashable, Codable, Sendable {
+    nonisolated enum TransitionCountdown: String, Codable, Hashable, Sendable {
         case none
         case fiveSecond = "five_second"
     }
@@ -224,8 +224,8 @@ struct SessionWorkoutReference: Hashable, Codable {
     }
 }
 
-struct SessionWorkoutCueTrigger: Hashable, Codable {
-    enum Kind: String, Codable {
+nonisolated struct SessionWorkoutCueTrigger: Hashable, Codable, Sendable {
+    nonisolated enum Kind: String, Codable, Sendable {
         case distance
         case elapsedTime = "elapsed_time"
     }
@@ -237,8 +237,8 @@ struct SessionWorkoutCueTrigger: Hashable, Codable {
     let endSeconds: Int?
 }
 
-struct SessionWorkoutCue: Identifiable, Hashable, Codable {
-    struct Effort: Hashable, Codable {
+nonisolated struct SessionWorkoutCue: Identifiable, Hashable, Codable, Sendable {
+    nonisolated struct Effort: Hashable, Codable, Sendable {
         let rpeMin: Int
         let rpeMax: Int
         let feel: String

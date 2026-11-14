@@ -107,6 +107,7 @@ final class ActivityFlowStore: ObservableObject {
 @MainActor
 final class ActivityFlowCoordinator: ObservableObject {
     let dependencies: ActivityFlowDependencies
+    let curatedWorkoutPresenter = StandaloneWorkoutPresenter()
     let preferences: ActivityFlowPreferences
     var host: ActivityFlowHost
     var analyticsManager: AnalyticsManager?

@@ -531,7 +531,24 @@ final class APIClient {
     }
 
     func fetchStandaloneWorkouts() async throws -> StandaloneWorkoutCatalogResponse {
-        try await get("/planning/standalone-workouts")
+        // Keep auth/retry/account validation on the usual path, but decode this
+        // full browsing catalog away from the main actor used by APIClient.
+        try await ActivityAccountBoundary.withAccount {
+            try ActivityAccountBoundary.validate()
+            var request = URLRequest(url: url(for: "/planning/standalone-workouts"))
+            configureLocale(on: &request)
+            if let token = try await resolvedAuthToken() {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, response) = try await authenticatedData(for: request)
+            try validate(response: response, data: data)
+            let catalog = try await Task.detached(priority: .userInitiated) {
+                try JSONDecoder().decode(StandaloneWorkoutCatalogResponse.self, from: data)
+            }.value
+            try Task.checkCancellation()
+            try ActivityAccountBoundary.validate()
+            return catalog
+        }
     }
 
     func fetchPersonalizationSnapshot() async throws -> PersonalizationSnapshotDTO {
