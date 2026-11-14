@@ -840,7 +840,7 @@ private fun SignedInApp(
                     )
                 }
                 val destination = TopLevelDestination.entries.first { it.route == selectedTab }
-                tabStateHolder.SaveableStateProvider(destination.route) {
+                tabStateHolder.SaveableStateProvider("${destination.route}:$accountId") {
                     if (destination == TopLevelDestination.Today) {
                         ActivityStartWarmup(recordingViewModel)
                         val startLocation by recordingViewModel.startLocationUpdates.collectAsStateWithLifecycle()
@@ -1702,25 +1702,7 @@ private fun RecordingLaunchConfiguration.withTodayRoute(
 ): RecordingLaunchConfiguration {
     if (route == null) return this
     val routeLaunch = com.plainstride.outbound.feature.community.CommunityRecordingCoordinator.launch(route, reverse)
-    val preservesWorkoutStructure = activityKind == routeLaunch.activityKind
     return copy(
-        activityKind = routeLaunch.activityKind,
-        title = title.takeIf { preservesWorkoutStructure } ?: route.name,
-        guideInstructions = guideInstructions.takeIf { preservesWorkoutStructure },
-        workoutSteps = workoutSteps.takeIf { preservesWorkoutStructure }.orEmpty(),
-        plannedWorkoutId = plannedWorkoutId.takeIf { preservesWorkoutStructure },
-        performedWorkoutReference = performedWorkoutReference.takeIf { preservesWorkoutStructure },
-        standaloneWorkoutId = standaloneWorkoutId.takeIf { preservesWorkoutStructure },
-        standaloneWorkoutCatalogVersion = standaloneWorkoutCatalogVersion.takeIf { preservesWorkoutStructure },
-        workoutDetail = workoutDetail.takeIf { preservesWorkoutStructure },
-        workoutGuideline = workoutGuideline.takeIf { preservesWorkoutStructure },
-        privateTrainingSignal = privateTrainingSignal.takeIf { preservesWorkoutStructure },
-        workoutPhase = workoutPhase.takeIf { preservesWorkoutStructure },
-        workoutTargetPaceSecondsPerKilometer = workoutTargetPaceSecondsPerKilometer.takeIf { preservesWorkoutStructure },
-        workoutFasterToleranceSeconds = workoutFasterToleranceSeconds.takeIf { preservesWorkoutStructure },
-        workoutSlowerToleranceSeconds = workoutSlowerToleranceSeconds.takeIf { preservesWorkoutStructure },
-        workoutRecognizesTargetLock = workoutRecognizesTargetLock && preservesWorkoutStructure,
-        raceIntent = raceIntent.takeIf { preservesWorkoutStructure },
         followedRoute = routeLaunch.followedRoute,
         startImmediately = true,
     )

@@ -496,15 +496,34 @@ fun TodayScreen(
         onDispose { audioPreferences.storage.unregisterOnSharedPreferenceChangeListener(listener) }
     }
     var companionType by rememberSaveable { mutableStateOf<com.plainstride.outbound.core.model.activity.ActivityCompanionType?>(null) }
-    var curatedWorkout by remember { mutableStateOf<StandaloneWorkout?>(null) }
+    val curatedWorkoutSaver = androidx.compose.runtime.saveable.Saver<androidx.compose.runtime.MutableState<StandaloneWorkout?>, String>(
+        save = { state -> state.value?.let { kotlinx.serialization.json.Json.encodeToString(StandaloneWorkout.serializer(), it) } ?: "" },
+        restore = { encoded -> mutableStateOf(encoded.takeIf(String::isNotEmpty)?.let { kotlinx.serialization.json.Json.decodeFromString(StandaloneWorkout.serializer(), it) }) },
+    )
+    var curatedWorkout by rememberSaveable(saver = curatedWorkoutSaver) { mutableStateOf<StandaloneWorkout?>(null) }
+    var curatedWorkoutCatalogVersion by rememberSaveable { mutableStateOf<Int?>(null) }
     var distanceMeters by rememberSaveable { mutableStateOf(5_000.0) }
     var durationSeconds by rememberSaveable { mutableStateOf(1_800L) }
     var calories by rememberSaveable { mutableStateOf(300) }
     var caloriePlan by remember { mutableStateOf<PlannedCalorieEstimate?>(null) }
     val configurationRevision by AccountConfigurationStore.changes.collectAsState()
-    val manualDrafts = remember(AccountConfigurationStore.accountId) { mutableMapOf<TodayActivityChoice, Triple<Double, Long, Int>>() }
-    val manualModes = remember(AccountConfigurationStore.accountId) { mutableMapOf<TodayActivityChoice, TodayGoalChoice>() }
-    val locallyEdited = remember(AccountConfigurationStore.accountId) { mutableSetOf<TodayActivityChoice>() }
+    val accountKey = AccountConfigurationStore.accountId
+    val manualDrafts = rememberSaveable(accountKey, saver = androidx.compose.runtime.saveable.listSaver<MutableMap<TodayActivityChoice, Triple<Double, Long, Int>>, Any>(
+        save = { drafts -> drafts.entries.flatMap { (activity, values) -> listOf(activity.name, values.first, values.second, values.third) } },
+        restore = { values -> mutableMapOf<TodayActivityChoice, Triple<Double, Long, Int>>().apply {
+            values.chunked(4).forEach { row -> put(TodayActivityChoice.valueOf(row[0] as String), Triple(row[1] as Double, row[2] as Long, row[3] as Int)) }
+        } },
+    )) { mutableMapOf() }
+    val manualModes = rememberSaveable(accountKey, saver = androidx.compose.runtime.saveable.listSaver<MutableMap<TodayActivityChoice, TodayGoalChoice>, Any>(
+        save = { modes -> modes.entries.flatMap { (activity, mode) -> listOf(activity.name, mode.name) } },
+        restore = { values -> mutableMapOf<TodayActivityChoice, TodayGoalChoice>().apply {
+            values.chunked(2).forEach { row -> put(TodayActivityChoice.valueOf(row[0] as String), TodayGoalChoice.valueOf(row[1] as String)) }
+        } },
+    )) { mutableMapOf() }
+    val locallyEdited = rememberSaveable(accountKey, saver = androidx.compose.runtime.saveable.listSaver<MutableSet<TodayActivityChoice>, Any>(
+        save = { it.map(TodayActivityChoice::name) },
+        restore = { it.mapTo(mutableSetOf()) { name -> TodayActivityChoice.valueOf(name as String) } },
+    )) { mutableSetOf() }
     fun saveManualDraft(markEdited: Boolean = true) {
         if (activityChoice != TodayActivityChoice.PLANNED) {
             manualDrafts[activityChoice] = Triple(distanceMeters, durationSeconds, calories)
@@ -564,7 +583,8 @@ fun TodayScreen(
                 onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
             }
         } else {
-            val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
+            val catalogVersion = curatedWorkoutCatalogVersion
+                ?: (state.catalog as? CachedResource.Available)?.value?.version
             if (goalChoice == TodayGoalChoice.RACE && racePlan == null) { showsRacePlanner = true; return@launch }
             onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType, autoStopAtGoal, racePlan.takeIf { goalChoice == TodayGoalChoice.RACE }, raceTitle.takeIf { goalChoice == TodayGoalChoice.RACE }, raceGuideline.takeIf { goalChoice == TodayGoalChoice.RACE }, aiCoachEnabled))
         }
@@ -859,15 +879,18 @@ fun TodayScreen(
         distanceMeters = it.distanceMeters
         curatedWorkout = null
         goalChoice = TodayGoalChoice.RACE
+        saveManualDraft()
+        curatedWorkoutCatalogVersion = null
         showsRacePlanner = false
         onRacePlanApplied(it)
     })
     if (showsCatalog) CuratedWorkoutSheet(
         workouts = (state.catalog as? CachedResource.Available)?.value?.workouts.orEmpty()
             .filter { it.sport.lowercase() in activityChoice.catalogSportNames() },
-        onDismiss = { showsCatalog = false; if (curatedWorkout == null) goalChoice = TodayGoalChoice.FREE },
+        onDismiss = { showsCatalog = false; if (curatedWorkout == null) { goalChoice = TodayGoalChoice.FREE; curatedWorkoutCatalogVersion = null; saveManualDraft() } },
         onChoose = {
             curatedWorkout = it
+            curatedWorkoutCatalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
             showsCatalog = false
             onLaunchConfigurationChanged("curated_workout", "selected")
         },

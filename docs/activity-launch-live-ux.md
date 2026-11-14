@@ -23,6 +23,7 @@ The launch surface is the Today page itself; there is no separate start-activity
 - On Today, the center control becomes an orange play icon with the visible label `Start` and a goal-specific accessibility label.
 - On Social or Me, the same position shows the normal Today icon and label; tapping it returns to Today.
 - Social and Me hide the launch dock. Returning to Today restores the same retained activity setup without navigating through another screen.
+- Android keeps Today’s selected activity, goal, curated workout snapshot and catalog version, race plan, and per-sport goal drafts when the route library is opened and dismissed or a route is selected. This state is scoped to the signed-in account. Selecting, changing, removing, or reversing a route adds route guidance independently; the route’s sport does not replace the selected workout or its activity type.
 - The primary tab bar remains hidden during countdown, live recording, camera capture, and post-run completion.
 
 ## Launch Dock
