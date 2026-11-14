@@ -142,13 +142,40 @@ function render(module, locale) {
   return ['<?xml version="1.0" encoding="utf-8"?>', "<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->", "<resources>", ...rows, "</resources>", ""].join("\n");
 }
 
+/** Catalog-owned phase prose uses its English editorial key, not semantic UI keys.
+ * Derive the bounded vocabulary from current catalog segments; adding a phase fails
+ * generation until both translated locales exist in the canonical editorial table.
+ */
+async function renderEditorialPhases(module, locale) {
+  const editorialPath = resolve(dirname(configPath), module.editorialCatalog);
+  const editorial = JSON.parse(await readFile(editorialPath, "utf8"));
+  const workouts = JSON.parse(await readFile(resolve(dirname(configPath), module.workoutSource), "utf8"));
+  const keys = [...new Set(workouts.workouts.flatMap(workout => workout.guideInstructions.segments
+    .flatMap(segment => [segment.effort.feel, segment.instruction, segment.cue, segment.fallback])))].sort();
+  const values = keys.map(key => {
+    const entry = editorial.strings[key];
+    if (!entry) throw new Error(`Missing canonical curated phase: ${key}`);
+    const translations = Object.keys(config.locales).map(language => language === editorial.sourceLanguage
+      ? { type: "string", value: key } : localized(entry, language, key));
+    validatePlaceholders(translations, key);
+    const value = locale === editorial.sourceLanguage ? key : localized(entry, locale, key).value;
+    return `        <item>${androidFormat(value)}</item>`;
+  });
+  // English lookup keys are intentionally inherited from values/ in every locale.
+  const source = locale === editorial.sourceLanguage
+    ? ['    <string-array name="curated_workout_phase_sources">', ...keys.map(key => `        <item>${androidFormat(key)}</item>`), '    </string-array>'] : [];
+  return ['<?xml version="1.0" encoding="utf-8"?>',
+    '<!-- Generated from CuratedWorkouts.xcstrings and current catalog phase vocabulary. Do not edit by hand. -->',
+    '<resources>', ...source, '    <string-array name="curated_workout_phase_text">', ...values, '    </string-array>', '</resources>', ''].join("\n");
+}
+
 if (adopt) await adoptExisting();
 
 let stale = false;
 for (const module of outputModules) {
   for (const [appleLocale, directory] of Object.entries(config.locales)) {
     const output = join(repo, module.resourceRoot, directory, module.file);
-    const expected = render(module, appleLocale);
+    const expected = module.editorialCatalog ? await renderEditorialPhases(module, appleLocale) : render(module, appleLocale);
     let actual = "";
     try { actual = await readFile(output, "utf8"); } catch (error) { if (error.code !== "ENOENT") throw error; }
     if (actual === expected) continue;

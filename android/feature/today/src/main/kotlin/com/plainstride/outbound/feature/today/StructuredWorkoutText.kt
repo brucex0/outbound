@@ -21,7 +21,13 @@ internal class StructuredWorkoutText(context: Context, localeTag: String) {
         setLocale(displayLocale)
     }).resources
 
-    private fun text(value: String): String = authoredText(value) ?: value
+    // Resolve only the exact current catalog vocabulary. Persisted/network payloads
+    // remain canonical; already-localized or arbitrary runner/server prose passes through.
+    private val curatedPhases by lazy {
+        resources.getStringArray(R.array.curated_workout_phase_sources)
+            .zip(resources.getStringArray(R.array.curated_workout_phase_text)).toMap()
+    }
+    private fun text(value: String): String = curatedPhases[value] ?: authoredText(value) ?: value
 
     /** Match complete authored label shapes; never translate a free-form prefix or suffix. */
     private fun authoredText(value: String): String? {
@@ -362,7 +368,8 @@ internal class StructuredWorkoutText(context: Context, localeTag: String) {
         title = text(value.title), detail = text(value.detail),
         steps = value.steps.map { it.copy(label = text(it.label), detail = it.detail?.let(::text)) },
         guideInstructions = value.guideInstructions.copy(segments = value.guideInstructions.segments.map {
-            it.copy(instruction = text(it.instruction), cue = text(it.cue), fallback = text(it.fallback))
+            it.copy(effort = it.effort.copy(feel = text(it.effort.feel)),
+                instruction = text(it.instruction), cue = text(it.cue), fallback = text(it.fallback))
         }),
     )
 
@@ -370,6 +377,9 @@ internal class StructuredWorkoutText(context: Context, localeTag: String) {
         title = text(value.title), effortLabel = text(value.effortLabel), why = text(value.why),
         steps = value.steps.map(::text), effectiveWorkout = value.effectiveWorkout?.let(::effective),
     )
+
+    fun catalog(value: com.plainstride.outbound.core.model.StandaloneWorkoutCatalog) =
+        value.copy(workouts = value.workouts.map(::effective))
 
     fun planning(value: PlanningState) = value.copy(today = value.today?.let(::workout),
         workouts = value.workouts.map(::workout), upcoming = value.upcoming.map(::workout))

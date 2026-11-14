@@ -1,5 +1,7 @@
 package com.plainstride.outbound.feature.livecoach.policy
 
+import com.plainstride.outbound.core.model.GuideInstructions
+import com.plainstride.outbound.feature.livecoach.network.CueTrigger
 import com.plainstride.outbound.feature.livecoach.network.GuidancePlan
 import com.plainstride.outbound.feature.livecoach.network.LiveCoachMoment
 import com.plainstride.outbound.feature.livecoach.network.PlanCue
@@ -12,6 +14,7 @@ data class ScheduledCue(
     val moment: DetectedMoment,
     val goalMilestone: String? = null,
     val includePace: Boolean = true,
+    val trigger: CueTrigger? = null,
 )
 
 data class ScheduleUpdate(
@@ -23,7 +26,6 @@ data class ScheduleUpdate(
 class LiveCoachSchedule {
     private val processedWorkoutCueIds = mutableSetOf<String>()
     private val spokenGoalMilestones = mutableSetOf<String>()
-    private var lastSnapshot: RecordingSnapshot? = null
     private var lastProgressAnnouncementAt: Int? = null
     private var lastGuideSpeechAt: Int? = null
     private var lastProgressTimeMilestone = 0
@@ -32,7 +34,6 @@ class LiveCoachSchedule {
     fun reset() {
         processedWorkoutCueIds.clear()
         spokenGoalMilestones.clear()
-        lastSnapshot = null
         lastProgressAnnouncementAt = null
         lastGuideSpeechAt = null
         lastProgressTimeMilestone = 0
@@ -46,11 +47,11 @@ class LiveCoachSchedule {
         activityKind: ActivityKind,
         imperial: Boolean,
         aiCoachEnabled: Boolean = true,
+        localInstructions: GuideInstructions? = null,
     ): ScheduleUpdate {
-        val workout = nextWorkoutCue(snapshot, guidancePlan, aiCoachEnabled)
+        val workout = nextWorkoutCue(snapshot, guidancePlan, aiCoachEnabled, localInstructions)
         val progress = nextGoalCue(snapshot, goal, guidancePlan?.progressPolicy, activityKind, imperial)
             ?: nextPeriodicProgress(snapshot, guidancePlan?.progressPolicy, activityKind, imperial)
-        lastSnapshot = snapshot
         return ScheduleUpdate(workout, progress)
     }
 
@@ -67,27 +68,30 @@ class LiveCoachSchedule {
         lastGuideSpeechAt = elapsedSeconds
     }
 
-    private fun nextWorkoutCue(snapshot: RecordingSnapshot, plan: GuidancePlan?, aiCoachEnabled: Boolean): ScheduledCue? {
-        for (cue in plan?.cues.orEmpty()) {
-            if (cue.moment != LiveCoachMoment.WorkoutInstruction || cue.trigger == null || cue.id in processedWorkoutCueIds) continue
-            when (triggerState(cue, lastSnapshot, snapshot)) {
+    private fun nextWorkoutCue(snapshot: RecordingSnapshot, plan: GuidancePlan?, aiCoachEnabled: Boolean, local: GuideInstructions?): ScheduledCue? {
+        // Local catalog sections remain execution instructions with AI Coach off/offline.
+        // Use the semantic instruction ID across local, fallback and refreshed server plans.
+        val localCues = local?.segments.orEmpty().map { instruction ->
+            PlanCue(id = instruction.id, moment = LiveCoachMoment.WorkoutInstruction, instructionId = instruction.id,
+                trigger = instruction.trigger.let { CueTrigger(it.type, it.startMeters, it.endMeters, it.startSeconds, it.endSeconds) },
+                phases = listOf("any"), priority = "high", cooldownSeconds = 0,
+                phrases = listOf(com.plainstride.outbound.feature.livecoach.network.Phrase(instruction.id, instruction.cue.ifBlank { instruction.instruction })))
+        }
+        val cues = (localCues + plan?.cues.orEmpty()).distinctBy { it.instructionId ?: it.id }
+        for (cue in cues) {
+            val key = cue.instructionId ?: cue.id
+            if (cue.moment != LiveCoachMoment.WorkoutInstruction || cue.trigger == null || key in processedWorkoutCueIds) continue
+            when (triggerState(cue.trigger, snapshot)) {
                 TriggerState.NotReached -> continue
-                TriggerState.Missed -> {
-                    processedWorkoutCueIds += cue.id
-                    continue
-                }
+                TriggerState.Missed -> { processedWorkoutCueIds += key; continue }
                 TriggerState.Due -> {
-                    processedWorkoutCueIds += cue.id
-                    if (!aiCoachEnabled && (cue.instructionId ?: cue.id).startsWith("execution_coaching.")) continue
+                    processedWorkoutCueIds += key
+                    if (!aiCoachEnabled && key.startsWith("execution_coaching.")) continue
                     return ScheduledCue(
-                        DetectedMoment(
-                            moment = LiveCoachMoment.WorkoutInstruction,
-                            detectedAtElapsedSeconds = snapshot.elapsedSeconds.toInt(),
-                            evaluationDelaySeconds = 0,
-                            preferredText = cue.phrases.firstOrNull()?.text,
-                            instructionId = cue.instructionId,
-                            fixedCueKey = null,
-                        ),
+                        DetectedMoment(moment = LiveCoachMoment.WorkoutInstruction,
+                            detectedAtElapsedSeconds = snapshot.elapsedSeconds.toInt(), evaluationDelaySeconds = 0,
+                            preferredText = cue.phrases.firstOrNull()?.text, instructionId = cue.instructionId, fixedCueKey = null),
+                        trigger = cue.trigger,
                     )
                 }
             }
@@ -95,30 +99,32 @@ class LiveCoachSchedule {
         return null
     }
 
-    private fun triggerState(cue: PlanCue, previous: RecordingSnapshot?, current: RecordingSnapshot): TriggerState {
-        val trigger = cue.trigger ?: return TriggerState.Missed
-        return when (trigger.type) {
-            "elapsed_time" -> {
-                val start = trigger.startSeconds ?: return TriggerState.Missed
-                when {
-                    current.elapsedSeconds < start -> TriggerState.NotReached
-                    start == 0 && previous == null -> if (current.elapsedSeconds <= 20) TriggerState.Due else TriggerState.Missed
-                    current.elapsedSeconds - start <= 20 -> TriggerState.Due
-                    else -> TriggerState.Missed
-                }
+    private fun triggerState(trigger: CueTrigger, current: RecordingSnapshot): TriggerState = when (trigger.type) {
+        "elapsed_time" -> {
+            val start = trigger.startSeconds
+            val end = trigger.endSeconds
+            when {
+                start == null || start < 0 -> TriggerState.Missed
+                current.elapsedSeconds < start -> TriggerState.NotReached
+                end != null && (end <= start || current.elapsedSeconds >= end) -> TriggerState.Missed
+                current.elapsedSeconds - start <= 20 -> TriggerState.Due
+                else -> TriggerState.Missed
             }
-            "distance" -> {
-                val start = trigger.startMeters ?: return TriggerState.Missed
-                when {
-                    start == 0.0 && previous == null -> TriggerState.Due
-                    current.distanceMeters < start -> TriggerState.NotReached
-                    current.distanceMeters - start > 75 -> TriggerState.Missed
-                    !hasReliableDistanceProgress(current) -> TriggerState.NotReached
-                    else -> TriggerState.Due
-                }
-            }
-            else -> TriggerState.Missed
         }
+        "distance" -> {
+            val start = trigger.startMeters
+            val end = trigger.endMeters
+            when {
+                start == null || !start.isFinite() || start < 0 -> TriggerState.Missed
+                current.distanceMeters < start -> TriggerState.NotReached
+                end != null && (!end.isFinite() || end <= start || current.distanceMeters >= end) -> TriggerState.Missed
+                start == 0.0 && current.distanceMeters <= 75 -> TriggerState.Due
+                current.distanceMeters - start > 75 -> TriggerState.Missed
+                !hasReliableDistanceProgress(current) -> TriggerState.NotReached
+                else -> TriggerState.Due
+            }
+        }
+        else -> TriggerState.Missed
     }
 
     private fun nextGoalCue(

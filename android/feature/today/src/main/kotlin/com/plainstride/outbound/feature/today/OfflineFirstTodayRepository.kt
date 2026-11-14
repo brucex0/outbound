@@ -72,7 +72,10 @@ class OfflineFirstTodayRepository @Inject constructor(
         }
     }
     override fun observePersonalization(accountId: String, localeTag: String) = observe(accountId, localeTag, PERSONALIZATION, PersonalizationSnapshot.serializer())
-    override fun observeStandaloneWorkouts(accountId: String, localeTag: String) = observe(accountId, localeTag, CATALOG, StandaloneWorkoutCatalog.serializer())
+    override fun observeStandaloneWorkouts(accountId: String, localeTag: String) =
+        observe(accountId, localeTag, CATALOG, StandaloneWorkoutCatalog.serializer()).map { resource ->
+            resource.mapValue { StructuredWorkoutText(context, localeTag).catalog(it) }
+        }
 
     override suspend fun refresh(accountId: String, localeTag: String): TodayDataError? = refreshMutex.withLock {
         val owner = reads.context(accountId) ?: return@withLock TodayDataError.SignedOut

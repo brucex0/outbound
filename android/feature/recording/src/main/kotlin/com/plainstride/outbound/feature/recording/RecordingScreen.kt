@@ -1560,7 +1560,7 @@ private fun SessionDashboard(
         modifier = if (expanded) {
             modifier.fillMaxSize()
         } else {
-            modifier.padding(horizontal = 16.dp, vertical = 18.dp).fillMaxWidth().height(92.dp)
+            modifier.padding(horizontal = 16.dp, vertical = 18.dp).fillMaxWidth()
         },
         shape = if (expanded) RoundedCornerShape(0.dp) else RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1636,6 +1636,7 @@ private fun CompactSessionDashboard(
 ) {
     Column {
         DashboardGrabber(false) { onExpand() }
+        CompactWorkoutPhase(snapshot, configuration, unitSystem)
         Row(
             Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1724,7 +1725,7 @@ private fun ExpandedSessionDashboard(
         ) {
             PrimaryGoalMetric(snapshot, configuration.goal, unitSystem, energyKilocalories)
             ExpandedMetricGrid(snapshot, unitSystem)
-            CurrentWorkoutStep(snapshot.elapsedSeconds, configuration.workoutSteps)
+            WorkoutPhaseList(snapshot, configuration, unitSystem)
             configuration.followedRoute?.let { route ->
                 Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                     Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1841,43 +1842,58 @@ private fun CompactMetric(value: String, modifier: Modifier = Modifier) {
     )
 }
 
-private data class WorkoutStepProgress(
-    val index: Int,
-    val count: Int,
-    val step: StructuredWorkoutStep,
-    val remainingSeconds: Long,
-)
-
 @Composable
-private fun CurrentWorkoutStep(elapsedSeconds: Long, steps: List<StructuredWorkoutStep>) {
-    val progress = currentWorkoutStep(elapsedSeconds, steps) ?: return
-    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                    Text("${progress.index + 1}/${progress.count}", Modifier.padding(horizontal = 9.dp, vertical = 5.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+private fun WorkoutPhaseList(snapshot: RecordingSnapshot, configuration: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem) {
+    val phases = configuration.workoutPhases()
+    if (phases.isEmpty()) return
+    val current = phases.currentPhaseIndex(snapshot.elapsedSeconds, snapshot.distanceMeters)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        phases.forEachIndexed { index, phase ->
+            val complete = phase.isComplete(snapshot.elapsedSeconds, snapshot.distanceMeters)
+            val active = index == current
+            Surface(shape = RoundedCornerShape(14.dp), color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(stringResource(when { complete -> R.string.recording_phase_completed; active -> R.string.recording_phase_current; else -> R.string.recording_phase_upcoming }),
+                        style = MaterialTheme.typography.labelSmall)
+                    Text(phase.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(phaseRange(phase, unitSystem), style = MaterialTheme.typography.labelMedium)
+                    phase.detail?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    if (active) {
+                        Text(phaseRemaining(phase, snapshot, unitSystem), style = MaterialTheme.typography.labelMedium)
+                        LinearProgressIndicator(progress = { phase.progress(snapshot.elapsedSeconds, snapshot.distanceMeters) }, modifier = Modifier.fillMaxWidth())
+                    }
                 }
-                Text(formatDuration(progress.remainingSeconds), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            }
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(progress.step.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                progress.step.detail?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
     }
 }
 
-private fun currentWorkoutStep(elapsedSeconds: Long, steps: List<StructuredWorkoutStep>): WorkoutStepProgress? {
-    val timed = steps.filter { (it.durationSeconds ?: 0) > 0 }
-    if (timed.isEmpty()) return null
-    var remainingElapsed = elapsedSeconds
-    timed.forEachIndexed { index, step ->
-        val duration = step.durationSeconds!!.toLong()
-        if (remainingElapsed < duration) return WorkoutStepProgress(index, timed.size, step, duration - remainingElapsed)
-        remainingElapsed -= duration
+@Composable
+private fun CompactWorkoutPhase(snapshot: RecordingSnapshot, configuration: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem) {
+    val phases = configuration.workoutPhases()
+    val current = phases.currentPhaseIndex(snapshot.elapsedSeconds, snapshot.distanceMeters)
+    val phase = current?.let(phases::get) ?: phases.lastOrNull()?.takeIf { it.isComplete(snapshot.elapsedSeconds, snapshot.distanceMeters) } ?: return
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(phase.title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        if (current == null) Text(stringResource(R.string.recording_phase_completed), style = MaterialTheme.typography.labelSmall)
+        Text(phaseRemaining(phase, snapshot, unitSystem), style = MaterialTheme.typography.labelSmall)
+        LinearProgressIndicator(progress = { phase.progress(snapshot.elapsedSeconds, snapshot.distanceMeters) }, modifier = Modifier.fillMaxWidth())
     }
-    return WorkoutStepProgress(timed.lastIndex, timed.size, timed.last(), 0)
 }
+
+private fun phaseRange(phase: WorkoutPhase, unitSystem: MeasurementUnitSystem): String =
+    if (phase.startMeters != null && phase.endMeters != null) {
+        val start = SessionFormatting.distance(phase.startMeters, unitSystem)
+        val end = SessionFormatting.distance(phase.endMeters, unitSystem)
+        "${String.format(java.util.Locale.getDefault(), "%.1f", start.value)}–${String.format(java.util.Locale.getDefault(), "%.1f", end.value)} ${end.unit.shortLabel}"
+    } else formatDuration((phase.endSeconds ?: 0) - (phase.startSeconds ?: 0))
+
+@Composable
+private fun phaseRemaining(phase: WorkoutPhase, snapshot: RecordingSnapshot, unitSystem: MeasurementUnitSystem): String =
+    if (phase.endMeters != null) {
+        val remaining = SessionFormatting.distance((phase.endMeters - snapshot.distanceMeters).coerceAtLeast(0.0), unitSystem)
+        stringResource(R.string.recording_phase_distance_remaining, "${String.format(java.util.Locale.getDefault(), "%.2f", remaining.value)} ${remaining.unit.shortLabel}")
+    } else formatDuration(((phase.endSeconds ?: 0) - snapshot.elapsedSeconds).coerceAtLeast(0))
 
 private fun liveElapsedText(snapshot: RecordingSnapshot, goal: RecordingGoal): String {
     val current = formatDuration(snapshot.movingSeconds)
@@ -2365,4 +2381,4 @@ internal fun LiveWorkoutOptions(
 
 /** Developer fixture adapter around the production phase-progress component. */
 @Composable
-fun DebugRunningPhase(elapsedSeconds: Long, steps: List<StructuredWorkoutStep>) = CurrentWorkoutStep(elapsedSeconds, steps)
+fun DebugRunningPhase(elapsedSeconds: Long, steps: List<StructuredWorkoutStep>) = WorkoutPhaseList(RecordingSnapshot(elapsedSeconds = elapsedSeconds), RecordingLaunchConfiguration(workoutSteps = steps), MeasurementUnitSystem.metric)

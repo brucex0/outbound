@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from CuratedWorkouts.xcstrings and current catalog phase vocabulary. Do not edit by hand. -->
+<resources>
+    <string-array name="curated_workout_phase_sources">
+        <item>Accelerate smoothly, settle your breathing, and avoid spending the first minute chasing pace.</item>
+        <item>Adjust for heat, hills, stomach issues, or rising effort; the original pace is no longer the goal if conditions have changed.</item>
+        <item>Adopt a deliberate run-walk pattern and use course support before the situation becomes unsafe.</item>
+        <item>Almost too easy</item>
+        <item>Back off until breathing and form feel coordinated.</item>
+        <item>Begin a gradual build while keeping your arms compact and your stride underneath you.</item>
+        <item>Begin slower than your eventual easy rhythm and let your stride loosen naturally.</item>
+        <item>Best safe effort available</item>
+        <item>Best safe finish available</item>
+        <item>Bring it down and keep the recovery win.</item>
+        <item>Change gears, keep the same relaxed form.</item>
+        <item>Check in. Recovery is the whole job.</item>
+        <item>Choose a pace you could maintain for another kilometre beyond the finish.</item>
+        <item>Choose flat easy running if conditions are unsafe.</item>
+        <item>Comfortably hard and even</item>
+        <item>Comfortably sustainable</item>
+        <item>Commit to the final 400 metres and keep your shoulders loose as cadence rises.</item>
+        <item>Continue walking if your body does not feel ready to jog.</item>
+        <item>Conversational and sustainable</item>
+        <item>Cruise the middle. Quiet arms, steady feet.</item>
+        <item>Deep, controlled work</item>
+        <item>Deliberately restrained</item>
+        <item>Drop effort immediately and jog or walk until calm.</item>
+        <item>Ease it down. No finish-line surge.</item>
+        <item>Ease off or add an early walk break if breathing rises too quickly.</item>
+        <item>Easing down</item>
+        <item>Easy and conversational</item>
+        <item>Easy and gradually warmer</item>
+        <item>Easy cooldown</item>
+        <item>Easy enough to repeat tomorrow.</item>
+        <item>Easy first. Read the route ahead.</item>
+        <item>Easy recovery</item>
+        <item>Easy run, easier walk. Repeat with control.</item>
+        <item>Easy running</item>
+        <item>Easy running or walking</item>
+        <item>Easy walk. No rush to run.</item>
+        <item>Easy walking</item>
+        <item>Easy warm-up</item>
+        <item>Economical and routine</item>
+        <item>Effortless movement</item>
+        <item>End a repeat early, walk down, or stop the set if footing or form becomes unreliable.</item>
+        <item>End the session if movement increases pain or fatigue.</item>
+        <item>Even, economical rhythm</item>
+        <item>Extend the easy running or convert the workout to Easy 30 if you do not feel ready.</item>
+        <item>Fast and repeatable. Recovery is part of the workout.</item>
+        <item>Fast, repeatable efforts with easy recoveries</item>
+        <item>Final 1.1K. Strong, compact, and all the way through.</item>
+        <item>Firm and even. Fifteen minutes, not a time trial.</item>
+        <item>Firm, even rhythm</item>
+        <item>Five hundred left. Strong form to the line.</item>
+        <item>Five kilometres left. Focus first, build second.</item>
+        <item>Five kilometres left. Stay safe, stay compact, keep moving forward.</item>
+        <item>Five protected kilometres. Easy is the assignment.</item>
+        <item>Focus on posture, compact steps, and the next landmark; hold effort rather than forcing pace.</item>
+        <item>Focused and controlled</item>
+        <item>Focused and purposeful</item>
+        <item>Focused late-race work</item>
+        <item>Four hundred to go. Commit and stay relaxed.</item>
+        <item>Gentle enough to feel restorative.</item>
+        <item>Gentle jog, full walking recovery</item>
+        <item>Hard and deliberate</item>
+        <item>Hard with control</item>
+        <item>Hard, rhythmic, and repeatable</item>
+        <item>Hill work done. Easy from here.</item>
+        <item>Hold a proud, steady finish without sprinting.</item>
+        <item>Hold a tall posture, relaxed shoulders, and an even rhythm through the longest section.</item>
+        <item>Hold an economical pace, check posture periodically, and take the route one kilometre at a time.</item>
+        <item>Hold effort on hills and into wind; build only if breathing, form, and fueling all remain stable.</item>
+        <item>Hold steady or use a short walk reset rather than letting form unravel.</item>
+        <item>Hold the current rhythm if a build would compromise form.</item>
+        <item>Hold the effort you chose, scan for relaxed shoulders, and avoid unnecessary surges.</item>
+        <item>If form is fading, hold the current effort instead of accelerating.</item>
+        <item>If the start already feels strained, ease back immediately and rebuild your rhythm.</item>
+        <item>If you still feel composed, gradually increase pressure; otherwise keep the same steady effort.</item>
+        <item>Increase pressure gradually without reaching for a longer stride.</item>
+        <item>Jog each minute gently, then use the entire ninety-second walk to recover.</item>
+        <item>Jog only if it feels smoother than walking; switch freely between both.</item>
+        <item>Keep decisions simple: form, direction, aid, next kilometre. Increase effort only when your condition is stable and the finish is close.</item>
+        <item>Keep moving safely at the best sustainable effort available.</item>
+        <item>Keep the best form you can and carry the effort steadily to the finish.</item>
+        <item>Keep the current effort and run evenly through the line.</item>
+        <item>Keep the entire workout easy if the route or body does not feel ready.</item>
+        <item>Keep your gaze forward, arms quiet, and pace even through the central kilometre and a half.</item>
+        <item>Let excitement pass through without turning it into pace; establish calm breathing and clear space around you.</item>
+        <item>Let short surges be quicker and long surges more measured; make every recovery genuinely easy.</item>
+        <item>Let the field or watch go if needed; establish relaxed breathing and an economical stride.</item>
+        <item>Lift cadence, keep your face and hands relaxed, and run through the distance target.</item>
+        <item>Lift to an effort where short phrases are possible, then hold without surging.</item>
+        <item>Lift your cadence and commit to the line without tightening your face or shoulders.</item>
+        <item>Lock into a repeatable rhythm and follow your practiced hydration and fueling timing.</item>
+        <item>Maintain or add short walk breaks; finishing safely is the priority.</item>
+        <item>Maintain rather than accelerate if breathing or form is deteriorating.</item>
+        <item>Make it routine. Easy rhythm, familiar fuel.</item>
+        <item>Move easily away from the hill and let effort fall gradually.</item>
+        <item>One and a half to go. Build only if you own the pace.</item>
+        <item>One kilometre left. Build with cadence.</item>
+        <item>One kilometre. Build in control and finish proud.</item>
+        <item>One rhythm. Relax into the work.</item>
+        <item>Past halfway. Keep the rhythm honest and simple.</item>
+        <item>Patient and aerobic</item>
+        <item>Patient and controlled</item>
+        <item>Patient first kilometre. Find your rhythm.</item>
+        <item>Patient through thirty. Keep stacking calm kilometres.</item>
+        <item>Playful controlled surges</item>
+        <item>Purposeful and contained</item>
+        <item>Pyramid complete. Float it home.</item>
+        <item>Quick and calm. Leave room to build.</item>
+        <item>Quick but contained</item>
+        <item>Reduce effort immediately and keep moving gently until breathing settles.</item>
+        <item>Reduce effort until you can speak a short sentence without gasping.</item>
+        <item>Reduce pace gradually and finish calmer than the middle of the run.</item>
+        <item>Reduce pace slightly and protect form if the effort spikes early.</item>
+        <item>Reduce the next surge or skip it if the recovery does not restore control.</item>
+        <item>Reduce to steady running if breathing becomes ragged or pace keeps fading.</item>
+        <item>Relaxed walking</item>
+        <item>Run at a pace that allows full-sentence conversation and relaxed shoulders.</item>
+        <item>Run each work block at the fastest pace you can repeat evenly; jog or walk every recovery until breathing settles.</item>
+        <item>Run easily and confirm that the hill and footing are safe.</item>
+        <item>Run easily and let cadence rise naturally near the end without forcing pace.</item>
+        <item>Run kilometre to kilometre, keep fueling familiar, and make posture the priority when fatigue appears.</item>
+        <item>Run or walk easily with no final surge.</item>
+        <item>Run strongly to the line at the best sustainable effort available today.</item>
+        <item>Run the final 1.1K with compact form and increase effort only as the finish becomes certain.</item>
+        <item>Settle and fuel as practiced. Nothing new today.</item>
+        <item>Settle first. The work comes later.</item>
+        <item>Settle into efficient steps and let other runners or early pace changes go.</item>
+        <item>Settle into repeatable mechanics and begin the exact fueling and hydration routine practiced in training.</item>
+        <item>Shift to a planned run-walk pattern before fatigue becomes a crisis.</item>
+        <item>Shorten your stride slightly rather than forcing the pace.</item>
+        <item>Slow down early; small corrections now are cheaper than large corrections later.</item>
+        <item>Slow down immediately if the start does not feel restrained.</item>
+        <item>Slow down or add a brief walk break before effort becomes strained.</item>
+        <item>Slow down or insert a walk break until conversation feels easy again.</item>
+        <item>Slow the next repeat, shorten it, or skip it if form or control does not return.</item>
+        <item>Smooth through the middle. One steady gear.</item>
+        <item>Start below the effort you expect to hold later and let your body warm into the distance.</item>
+        <item>Start softer than you think you need.</item>
+        <item>Start the build. Smooth first, faster second.</item>
+        <item>Stay easy for the whole run if you do not feel ready after ten minutes.</item>
+        <item>Stay present as fatigue grows; build gently only if pace and form remain under control.</item>
+        <item>Stay tall. Hold the rhythm.</item>
+        <item>Steady and repeatable</item>
+        <item>Steady concentration</item>
+        <item>Steady patience</item>
+        <item>Stop early in a safe place.</item>
+        <item>Stop in a safe place if walking is uncomfortable.</item>
+        <item>Strong controlled close</item>
+        <item>Strong finish</item>
+        <item>Strong uphill, complete recovery</item>
+        <item>Strongest sustainable finish</item>
+        <item>Take the course in small sections, keep fueling familiar, and resist any urge to race before 30K.</item>
+        <item>Tall hips, compact feet, full recovery.</item>
+        <item>Tempo complete. Easy all the way home.</item>
+        <item>Ten easy minutes. Save the tempo.</item>
+        <item>The fast work is done. Bring everything down.</item>
+        <item>This is the work. Short horizon, steady form.</item>
+        <item>Three kilometres left. Focus, do not force.</item>
+        <item>Three patient kilometres. Protect the day.</item>
+        <item>Two hundred to go. Fast feet, relaxed shoulders.</item>
+        <item>Two patient kilometres. Save the work for later.</item>
+        <item>Use aid-station walk breaks or reduce pace before small issues compound.</item>
+        <item>Use compact steps, a slight lean from the ankles, and active arms; walk or jog the recovery safely.</item>
+        <item>Use the final kilometre progressively: first hold form, then lift cadence toward the finish.</item>
+        <item>Use the first kilometre to settle breathing, cadence, and posture.</item>
+        <item>Very easy</item>
+        <item>Very easy jog or walk</item>
+        <item>Walk and notice whether your body loosens, stays the same, or feels worse.</item>
+        <item>Walk any run interval or end the running portion early; completing every repeat is optional.</item>
+        <item>Walk briefly at an aid point or reduce pace if fueling, heat, or hills raise the effort.</item>
+        <item>Walk easily and finish as soon as you feel settled.</item>
+        <item>Walk easily until breathing settles and finish without rushing.</item>
+        <item>Walk if easy jogging does not feel restorative.</item>
+        <item>Walk naturally and let your breathing and joints warm gradually.</item>
+        <item>Walk or stop; there is nothing to complete at the expense of recovery.</item>
+        <item>Walk the cooldown.</item>
+        <item>Walk the final minutes.</item>
+        <item>Walk the full cooldown.</item>
+        <item>Walk until your body feels ready to jog.</item>
+        <item>Walk, stop at aid, or end the attempt if symptoms or conditions make continuing unsafe.</item>
+        <item>Warm first. Speed comes after eight minutes.</item>
+        <item>Warm gradually and wait for the timed transition before increasing effort.</item>
+        <item>Warm up and inspect the hill.</item>
+        <item>Warm up gradually and identify safe landmarks for the faster blocks.</item>
+        <item>You did the work. Walk it down gently.</item>
+    </string-array>
+    <string-array name="curated_workout_phase_text">
+        <item>Accelerate smoothly, settle your breathing, and avoid spending the first minute chasing pace.</item>
+        <item>Adjust for heat, hills, stomach issues, or rising effort; the original pace is no longer the goal if conditions have changed.</item>
+        <item>Adopt a deliberate run-walk pattern and use course support before the situation becomes unsafe.</item>
+        <item>Almost too easy</item>
+        <item>Back off until breathing and form feel coordinated.</item>
+        <item>Begin a gradual build while keeping your arms compact and your stride underneath you.</item>
+        <item>Begin slower than your eventual easy rhythm and let your stride loosen naturally.</item>
+        <item>Best safe effort available</item>
+        <item>Best safe finish available</item>
+        <item>Bring it down and keep the recovery win.</item>
+        <item>Change gears, keep the same relaxed form.</item>
+        <item>Check in. Recovery is the whole job.</item>
+        <item>Choose a pace you could maintain for another kilometre beyond the finish.</item>
+        <item>Choose flat easy running if conditions are unsafe.</item>
+        <item>Comfortably hard and even</item>
+        <item>Comfortably sustainable</item>
+        <item>Commit to the final 400 metres and keep your shoulders loose as cadence rises.</item>
+        <item>Continue walking if your body does not feel ready to jog.</item>
+        <item>Conversational and sustainable</item>
+        <item>Cruise the middle. Quiet arms, steady feet.</item>
+        <item>Deep, controlled work</item>
+        <item>Deliberately restrained</item>
+        <item>Drop effort immediately and jog or walk until calm.</item>
+        <item>Ease it down. No finish-line surge.</item>
+        <item>Ease off or add an early walk break if breathing rises too quickly.</item>
+        <item>Easing down</item>
+        <item>Easy and conversational</item>
+        <item>Easy and gradually warmer</item>
+        <item>Easy cooldown</item>
+        <item>Easy enough to repeat tomorrow.</item>
+        <item>Easy first. Read the route ahead.</item>
+        <item>Easy recovery</item>
+        <item>Easy run, easier walk. Repeat with control.</item>
+        <item>Easy running</item>
+        <item>Easy running or walking</item>
+        <item>Easy walk. No rush to run.</item>
+        <item>Easy walking</item>
+        <item>Easy warm-up</item>
+        <item>Economical and routine</item>
+        <item>Effortless movement</item>
+        <item>End a repeat early, walk down, or stop the set if footing or form becomes unreliable.</item>
+        <item>End the session if movement increases pain or fatigue.</item>
+        <item>Even, economical rhythm</item>
+        <item>Extend the easy running or convert the workout to Easy 30 if you do not feel ready.</item>
+        <item>Fast and repeatable. Recovery is part of the workout.</item>
+        <item>Fast, repeatable efforts with easy recoveries</item>
+        <item>Final 1.1K. Strong, compact, and all the way through.</item>
+        <item>Firm and even. Fifteen minutes, not a time trial.</item>
+        <item>Firm, even rhythm</item>
+        <item>Five hundred left. Strong form to the line.</item>
+        <item>Five kilometres left. Focus first, build second.</item>
+        <item>Five kilometres left. Stay safe, stay compact, keep moving forward.</item>
+        <item>Five protected kilometres. Easy is the assignment.</item>
+        <item>Focus on posture, compact steps, and the next landmark; hold effort rather than forcing pace.</item>
+        <item>Focused and controlled</item>
+        <item>Focused and purposeful</item>
+        <item>Focused late-race work</item>
+        <item>Four hundred to go. Commit and stay relaxed.</item>
+        <item>Gentle enough to feel restorative.</item>
+        <item>Gentle jog, full walking recovery</item>
+        <item>Hard and deliberate</item>
+        <item>Hard with control</item>
+        <item>Hard, rhythmic, and repeatable</item>
+        <item>Hill work done. Easy from here.</item>
+        <item>Hold a proud, steady finish without sprinting.</item>
+        <item>Hold a tall posture, relaxed shoulders, and an even rhythm through the longest section.</item>
+        <item>Hold an economical pace, check posture periodically, and take the route one kilometre at a time.</item>
+        <item>Hold effort on hills and into wind; build only if breathing, form, and fueling all remain stable.</item>
+        <item>Hold steady or use a short walk reset rather than letting form unravel.</item>
+        <item>Hold the current rhythm if a build would compromise form.</item>
+        <item>Hold the effort you chose, scan for relaxed shoulders, and avoid unnecessary surges.</item>
+        <item>If form is fading, hold the current effort instead of accelerating.</item>
+        <item>If the start already feels strained, ease back immediately and rebuild your rhythm.</item>
+        <item>If you still feel composed, gradually increase pressure; otherwise keep the same steady effort.</item>
+        <item>Increase pressure gradually without reaching for a longer stride.</item>
+        <item>Jog each minute gently, then use the entire ninety-second walk to recover.</item>
+        <item>Jog only if it feels smoother than walking; switch freely between both.</item>
+        <item>Keep decisions simple: form, direction, aid, next kilometre. Increase effort only when your condition is stable and the finish is close.</item>
+        <item>Keep moving safely at the best sustainable effort available.</item>
+        <item>Keep the best form you can and carry the effort steadily to the finish.</item>
+        <item>Keep the current effort and run evenly through the line.</item>
+        <item>Keep the entire workout easy if the route or body does not feel ready.</item>
+        <item>Keep your gaze forward, arms quiet, and pace even through the central kilometre and a half.</item>
+        <item>Let excitement pass through without turning it into pace; establish calm breathing and clear space around you.</item>
+        <item>Let short surges be quicker and long surges more measured; make every recovery genuinely easy.</item>
+        <item>Let the field or watch go if needed; establish relaxed breathing and an economical stride.</item>
+        <item>Lift cadence, keep your face and hands relaxed, and run through the distance target.</item>
+        <item>Lift to an effort where short phrases are possible, then hold without surging.</item>
+        <item>Lift your cadence and commit to the line without tightening your face or shoulders.</item>
+        <item>Lock into a repeatable rhythm and follow your practiced hydration and fueling timing.</item>
+        <item>Maintain or add short walk breaks; finishing safely is the priority.</item>
+        <item>Maintain rather than accelerate if breathing or form is deteriorating.</item>
+        <item>Make it routine. Easy rhythm, familiar fuel.</item>
+        <item>Move easily away from the hill and let effort fall gradually.</item>
+        <item>One and a half to go. Build only if you own the pace.</item>
+        <item>One kilometre left. Build with cadence.</item>
+        <item>One kilometre. Build in control and finish proud.</item>
+        <item>One rhythm. Relax into the work.</item>
+        <item>Past halfway. Keep the rhythm honest and simple.</item>
+        <item>Patient and aerobic</item>
+        <item>Patient and controlled</item>
+        <item>Patient first kilometre. Find your rhythm.</item>
+        <item>Patient through thirty. Keep stacking calm kilometres.</item>
+        <item>Playful controlled surges</item>
+        <item>Purposeful and contained</item>
+        <item>Pyramid complete. Float it home.</item>
+        <item>Quick and calm. Leave room to build.</item>
+        <item>Quick but contained</item>
+        <item>Reduce effort immediately and keep moving gently until breathing settles.</item>
+        <item>Reduce effort until you can speak a short sentence without gasping.</item>
+        <item>Reduce pace gradually and finish calmer than the middle of the run.</item>
+        <item>Reduce pace slightly and protect form if the effort spikes early.</item>
+        <item>Reduce the next surge or skip it if the recovery does not restore control.</item>
+        <item>Reduce to steady running if breathing becomes ragged or pace keeps fading.</item>
+        <item>Relaxed walking</item>
+        <item>Run at a pace that allows full-sentence conversation and relaxed shoulders.</item>
+        <item>Run each work block at the fastest pace you can repeat evenly; jog or walk every recovery until breathing settles.</item>
+        <item>Run easily and confirm that the hill and footing are safe.</item>
+        <item>Run easily and let cadence rise naturally near the end without forcing pace.</item>
+        <item>Run kilometre to kilometre, keep fueling familiar, and make posture the priority when fatigue appears.</item>
+        <item>Run or walk easily with no final surge.</item>
+        <item>Run strongly to the line at the best sustainable effort available today.</item>
+        <item>Run the final 1.1K with compact form and increase effort only as the finish becomes certain.</item>
+        <item>Settle and fuel as practiced. Nothing new today.</item>
+        <item>Settle first. The work comes later.</item>
+        <item>Settle into efficient steps and let other runners or early pace changes go.</item>
+        <item>Settle into repeatable mechanics and begin the exact fueling and hydration routine practiced in training.</item>
+        <item>Shift to a planned run-walk pattern before fatigue becomes a crisis.</item>
+        <item>Shorten your stride slightly rather than forcing the pace.</item>
+        <item>Slow down early; small corrections now are cheaper than large corrections later.</item>
+        <item>Slow down immediately if the start does not feel restrained.</item>
+        <item>Slow down or add a brief walk break before effort becomes strained.</item>
+        <item>Slow down or insert a walk break until conversation feels easy again.</item>
+        <item>Slow the next repeat, shorten it, or skip it if form or control does not return.</item>
+        <item>Smooth through the middle. One steady gear.</item>
+        <item>Start below the effort you expect to hold later and let your body warm into the distance.</item>
+        <item>Start softer than you think you need.</item>
+        <item>Start the build. Smooth first, faster second.</item>
+        <item>Stay easy for the whole run if you do not feel ready after ten minutes.</item>
+        <item>Stay present as fatigue grows; build gently only if pace and form remain under control.</item>
+        <item>Stay tall. Hold the rhythm.</item>
+        <item>Steady and repeatable</item>
+        <item>Steady concentration</item>
+        <item>Steady patience</item>
+        <item>Stop early in a safe place.</item>
+        <item>Stop in a safe place if walking is uncomfortable.</item>
+        <item>Strong controlled close</item>
+        <item>Strong finish</item>
+        <item>Strong uphill, complete recovery</item>
+        <item>Strongest sustainable finish</item>
+        <item>Take the course in small sections, keep fueling familiar, and resist any urge to race before 30K.</item>
+        <item>Tall hips, compact feet, full recovery.</item>
+        <item>Tempo complete. Easy all the way home.</item>
+        <item>Ten easy minutes. Save the tempo.</item>
+        <item>The fast work is done. Bring everything down.</item>
+        <item>This is the work. Short horizon, steady form.</item>
+        <item>Three kilometres left. Focus, do not force.</item>
+        <item>Three patient kilometres. Protect the day.</item>
+        <item>Two hundred to go. Fast feet, relaxed shoulders.</item>
+        <item>Two patient kilometres. Save the work for later.</item>
+        <item>Use aid-station walk breaks or reduce pace before small issues compound.</item>
+        <item>Use compact steps, a slight lean from the ankles, and active arms; walk or jog the recovery safely.</item>
+        <item>Use the final kilometre progressively: first hold form, then lift cadence toward the finish.</item>
+        <item>Use the first kilometre to settle breathing, cadence, and posture.</item>
+        <item>Very easy</item>
+        <item>Very easy jog or walk</item>
+        <item>Walk and notice whether your body loosens, stays the same, or feels worse.</item>
+        <item>Walk any run interval or end the running portion early; completing every repeat is optional.</item>
+        <item>Walk briefly at an aid point or reduce pace if fueling, heat, or hills raise the effort.</item>
+        <item>Walk easily and finish as soon as you feel settled.</item>
+        <item>Walk easily until breathing settles and finish without rushing.</item>
+        <item>Walk if easy jogging does not feel restorative.</item>
+        <item>Walk naturally and let your breathing and joints warm gradually.</item>
+        <item>Walk or stop; there is nothing to complete at the expense of recovery.</item>
+        <item>Walk the cooldown.</item>
+        <item>Walk the final minutes.</item>
+        <item>Walk the full cooldown.</item>
+        <item>Walk until your body feels ready to jog.</item>
+        <item>Walk, stop at aid, or end the attempt if symptoms or conditions make continuing unsafe.</item>
+        <item>Warm first. Speed comes after eight minutes.</item>
+        <item>Warm gradually and wait for the timed transition before increasing effort.</item>
+        <item>Warm up and inspect the hill.</item>
+        <item>Warm up gradually and identify safe landmarks for the faster blocks.</item>
+        <item>You did the work. Walk it down gently.</item>
+    </string-array>
+</resources>

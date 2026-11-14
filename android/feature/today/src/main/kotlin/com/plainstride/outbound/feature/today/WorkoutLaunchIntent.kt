@@ -19,6 +19,7 @@ data class WorkoutLaunchIntent(
     val source: String,
     val guideLine: String? = null,
     val structuredSteps: List<com.plainstride.outbound.core.model.StandaloneWorkoutStep> = emptyList(),
+    val guideInstructions: com.plainstride.outbound.core.model.GuideInstructions? = null,
     val performedWorkoutReference: com.plainstride.outbound.core.model.PerformedWorkoutReference? = null,
 )
 
@@ -37,5 +38,6 @@ fun ActivitySuggestion.toWorkoutLaunchIntent(source: String): WorkoutLaunchInten
         intensityModel = this.intensityModel,
         steps = this.steps.toList(),
         structuredSteps = this.effectiveWorkout?.steps.orEmpty(),
+        guideInstructions = this.effectiveWorkout?.guideInstructions,
         source = source,
     )

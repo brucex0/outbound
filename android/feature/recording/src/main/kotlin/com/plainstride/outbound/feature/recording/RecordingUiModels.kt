@@ -43,6 +43,7 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val title: String? = null,
     val goal: RecordingGoal = RecordingGoal(),
     val workoutSteps: List<StructuredWorkoutStep> = emptyList(),
+    val guideInstructions: com.plainstride.outbound.core.model.GuideInstructions? = null,
     val entrySource: String = "quick_start",
     val suggestionId: String? = null,
     val plannedWorkoutId: String? = null,

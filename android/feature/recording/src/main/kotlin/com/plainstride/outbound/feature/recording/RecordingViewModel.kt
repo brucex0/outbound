@@ -594,10 +594,13 @@ class RecordingViewModel @Inject constructor(
         "group_participant_location_unavailable", mapOf(AnalyticsProperty.SourceType to source),
     ))
 
-    fun trackDashboardChanged(expanded: Boolean) = analytics.record(AnalyticsEvent(
-        "activity_dashboard_changed",
-        mapOf(AnalyticsProperty.Result to if (expanded) "expanded" else "compact"),
-    ))
+    fun trackDashboardChanged(expanded: Boolean) {
+        analytics.record(AnalyticsEvent("activity_dashboard_changed",
+            mapOf(AnalyticsProperty.Result to if (expanded) "expanded" else "compact")))
+        if (expanded && mutableState.value.launch.workoutPhases().isNotEmpty()) analytics.record(AnalyticsEvent(
+            "feature_exposed", mapOf(AnalyticsProperty.Feature to "live_workout_structure"),
+        ))
+    }
     fun newCommandId(): String = UUID.randomUUID().toString()
     fun markSaved() {
         savedSessionCompleted = true
@@ -613,31 +616,20 @@ class RecordingViewModel @Inject constructor(
         val current = mutableState.value.launch
         if (enabled) routeBeforeSimulation = current.followedRoute
         val route = if (enabled) HarvestRunSimulation.route else if (current.followedRoute?.id == HarvestRunSimulation.ROUTE_ID) routeBeforeSimulation else current.followedRoute
-        mutableState.value = mutableState.value.copy(
-            launch = current.copy(
-                activityKind = ActivityKind.RUNNING,
-                title = null,
-                goal = RecordingGoal(),
-                workoutSteps = emptyList(),
-                suggestionId = null,
-                plannedWorkoutId = null,
-                performedWorkoutReference = null,
-                standaloneWorkoutId = null,
-                standaloneWorkoutCatalogVersion = null,
-                workoutDetail = null,
-                workoutGuideline = null,
-                privateTrainingSignal = null,
-                workoutPhase = null,
-                workoutTargetPaceSecondsPerKilometer = null,
-                workoutFasterToleranceSeconds = null,
-                workoutSlowerToleranceSeconds = null,
-                workoutRecognizesTargetLock = false,
-                raceIntent = null,
-                simulatedRunEnabled = enabled,
-                followedRoute = route,
-                indoor = false,
-            ),
+        // Simulation changes the location source; a selected run remains the prescription.
+        val running = if (current.activityKind == ActivityKind.RUNNING) current else RecordingLaunchConfiguration(
+            activityKind = ActivityKind.RUNNING,
+            entrySource = current.entrySource,
+            voiceGuideEnabled = current.voiceGuideEnabled,
+            aiCoachEnabled = current.aiCoachEnabled,
+            activityEventId = current.activityEventId,
+            activityEventTitle = current.activityEventTitle,
         )
+        mutableState.value = mutableState.value.copy(launch = running.copy(
+            simulatedRunEnabled = enabled,
+            followedRoute = route,
+            indoor = false,
+        ))
         analytics.record(AnalyticsEvent("activity_configuration_changed", mapOf(
             AnalyticsProperty.ChangeType to "run_simulation",
             AnalyticsProperty.SelectionType to if (enabled) "enabled" else "disabled",

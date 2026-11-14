@@ -6,6 +6,14 @@
     "zh-Hans": "values-zh-rCN"
   },
   "modules": [
+    {
+      "keyPrefix": "curated.phase",
+      "editorialCatalog": "../../ios/Outbound/Outbound/CuratedWorkouts.xcstrings",
+      "workoutSource": "../../backend/src/data/standaloneWorkouts.json",
+      "resourceRoot": "android/feature/today/src/main/res",
+      "file": "curated_workout_phases.xml"
+    },
+    { "keyPrefix": "session.phase", "androidPrefix": "recording_phase_", "resourceRoot": "android/feature/recording/src/main/res", "file": "workout_phases.xml" },
     { "keyPrefix": "fox.companion", "androidPrefix": "fox_companion_", "resourceRoot": "android/app/src/main/res", "file": "fox_companion.xml" },
     { "keyPrefix": "running_cadence", "androidPrefix": "running_cadence_", "resourceRoot": "android/core/designsystem/src/main/res", "file": "running_cadence.xml" },
     { "keyPrefix": "app", "androidPrefix": "", "resourceRoot": "android/app/src/main/res", "file": "strings.xml" },

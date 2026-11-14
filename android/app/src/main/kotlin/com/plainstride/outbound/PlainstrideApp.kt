@@ -1705,7 +1705,8 @@ private fun RecordingLaunchConfiguration.withTodayRoute(
     val preservesWorkoutStructure = activityKind == routeLaunch.activityKind
     return copy(
         activityKind = routeLaunch.activityKind,
-        title = route.name,
+        title = title.takeIf { preservesWorkoutStructure } ?: route.name,
+        guideInstructions = guideInstructions.takeIf { preservesWorkoutStructure },
         workoutSteps = workoutSteps.takeIf { preservesWorkoutStructure }.orEmpty(),
         plannedWorkoutId = plannedWorkoutId.takeIf { preservesWorkoutStructure },
         performedWorkoutReference = performedWorkoutReference.takeIf { preservesWorkoutStructure },
@@ -1732,7 +1733,9 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?, athleteR
         TodayGoalChoice.DISTANCE -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = distanceMeters)
         TodayGoalChoice.TIME -> RecordingGoal(RecordingGoalType.TIME, targetDurationSeconds = durationSeconds)
         TodayGoalChoice.CALORIES -> RecordingGoal(RecordingGoalType.CALORIES, targetCalories = calories)
-        TodayGoalChoice.CURATED -> RecordingGoal(RecordingGoalType.WORKOUT, targetDurationSeconds = workout?.targetDurationSeconds?.toLong() ?: durationSeconds)
+        TodayGoalChoice.CURATED -> workout?.targetDistanceMeters?.takeIf { it.isFinite() && it > 0 }
+            ?.let { RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = it) }
+            ?: RecordingGoal(RecordingGoalType.WORKOUT, targetDurationSeconds = workout?.targetDurationSeconds?.toLong() ?: durationSeconds)
         TodayGoalChoice.FREE -> RecordingGoal()
     }
     return RecordingLaunchConfiguration(
@@ -1760,6 +1763,8 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?, athleteR
                 recognizesTargetLock = it.coachingTarget?.recognizesTargetLock == true,
             )
         }.orEmpty(),
+        guideInstructions = workout?.guideInstructions.takeIf { goal == TodayGoalChoice.CURATED },
+        workoutDetail = workout?.detail,
         entrySource = "today_manual",
         standaloneWorkoutId = workout?.id,
         standaloneWorkoutCatalogVersion = curatedWorkoutCatalogVersion,

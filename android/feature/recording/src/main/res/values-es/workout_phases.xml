@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="recording_phase_completed">Completada</string>
+    <string name="recording_phase_current">Ahora</string>
+    <string name="recording_phase_distance_remaining">Quedan %1$s</string>
+    <string name="recording_phase_upcoming">A continuación</string>
+</resources>

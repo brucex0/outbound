@@ -14,6 +14,8 @@ import java.io.InputStream
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -65,9 +67,9 @@ class LiveCoachStreamReader(input: InputStream) {
 }
 
 interface CoachAudioOutput {
-    suspend fun playPcm(chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean
+    suspend fun playPcm(isValid: () -> Boolean = { true }, chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean
     /** Notifies on first rendered frame and returns only after drain or failure. */
-    suspend fun playWav(bytes: ByteArray, onPlaybackStarted: () -> Unit = {}): Boolean
+    suspend fun playWav(bytes: ByteArray, isValid: () -> Boolean = { true }, onPlaybackStarted: () -> Unit = {}): Boolean
     fun stop()
 }
 
@@ -99,16 +101,20 @@ class AndroidCoachAudioOutput @Inject constructor(
 
     init { audioManager.registerAudioDeviceCallback(deviceCallback, null) }
 
-    override suspend fun playPcm(chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean =
-        playAudio(null, chunks = chunks)
+    override suspend fun playPcm(isValid: () -> Boolean, chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean =
+        playAudio(null, isValid = isValid, chunks = chunks)
 
     private suspend fun playAudio(
         pcm: ByteArray?,
+        isValid: () -> Boolean = { true },
         onPlaybackStarted: () -> Unit = {},
         chunks: suspend ((ByteArray) -> Unit) -> Unit,
     ): Boolean =
         playbackMutex.withLock {
             withContext(Dispatchers.IO) {
+                val playbackContext = currentCoroutineContext()
+                playbackContext.ensureActive()
+                if (!isValid()) return@withContext false
                 if (!focus()) {
                     android.util.Log.w("PlainstrideAudio", "operation=request_focus result=denied")
                     return@withContext false
@@ -137,8 +143,12 @@ class AndroidCoachAudioOutput @Inject constructor(
                 val playbackResult = runCatching {
                     // Static WAVs are loaded before play: short countdown words must not wait
                     // for a streaming buffer to fill before the device starts rendering.
+                    playbackContext.ensureActive()
+                    if (!isValid()) throw CancellationException("Cue expired before audio output")
                     if (pcm == null) current.play()
                     val write: (ByteArray) -> Unit = { bytes ->
+                        playbackContext.ensureActive()
+                        if (!isValid()) throw CancellationException("Cue expired during audio output")
                         check(generation == stopGeneration)
                         var offset = 0
                         while (offset < bytes.size) {
@@ -148,7 +158,12 @@ class AndroidCoachAudioOutput @Inject constructor(
                             writtenBytes += count
                         }
                     }
-                    if (pcm == null) chunks(write) else { write(pcm); current.play() }
+                    if (pcm == null) chunks(write) else {
+                        write(pcm)
+                        playbackContext.ensureActive()
+                        if (!isValid()) throw CancellationException("Cue expired before audio output")
+                        current.play()
+                    }
                     val expectedFrames = writtenBytes / BYTES_PER_FRAME
                     val drainMilliseconds = (writtenBytes.toLong() * 1_000 / BYTES_PER_SECOND + 750).coerceAtLeast(750)
                     withTimeoutOrNull(drainMilliseconds) {
@@ -177,9 +192,9 @@ class AndroidCoachAudioOutput @Inject constructor(
             }
         }
 
-    override suspend fun playWav(bytes: ByteArray, onPlaybackStarted: () -> Unit): Boolean {
+    override suspend fun playWav(bytes: ByteArray, isValid: () -> Boolean, onPlaybackStarted: () -> Unit): Boolean {
         val pcm = WavPcm.decode(bytes) ?: return false
-        return playAudio(pcm, onPlaybackStarted) { }
+        return playAudio(pcm, isValid, onPlaybackStarted) { }
     }
 
     override fun stop() {
@@ -276,10 +291,12 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
         fixedCueKey: String? = FixedCueKeys.forMoment(request.moment),
         localOnly: Boolean = false,
         onTranscript: (String) -> Unit = {},
+        isValid: () -> Boolean = { true },
     ): PlaybackResult {
+        if (!isValid()) return PlaybackResult(PlaybackSource.None, false)
         if (localOnly) {
             val audio = packs.cachedAudio(fixedCueKey.orEmpty(), selection, fallbackText)
-            val played = audio != null && output.playWav(audio)
+            val played = audio != null && output.playWav(audio, isValid = isValid)
             if (!played) android.util.Log.w("PlainstrideLiveCoach", "Sudden speed cue unavailable key=$fixedCueKey")
             return result(if (played) PlaybackSource.FixedPack else PlaybackSource.None, played, request.moment)
         }
@@ -287,7 +304,7 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
 
         if (planHash != null && phraseId != null) {
             plannedCache.audio(planHash, selection.voiceProfileId, phraseId)?.let { audio ->
-                if (output.playWav(audio)) {
+                if (output.playWav(audio, isValid = isValid)) {
                     if (token != null && sessionId != null) {
                         reportingScope.launch { repository.recordCachedUse(token, sessionId, request) }
                     }
@@ -321,6 +338,7 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
                     check(metadata.cueRequestId == request.cueRequestId && metadata.moment == request.moment)
                     check(runCatching { Instant.parse(metadata.expiresAt).isAfter(Instant.now()) }.getOrDefault(false))
                     recordProvider(metadata, startedAtNanos, mode, accessReason)
+                    if (!isValid()) return PlaybackResult(PlaybackSource.None, false)
                     onTranscript(metadata.transcript)
                     // Never speak an older fixed script under the replacement text.
                     if (metadata.source == CueSource.Fixed || metadata.source == CueSource.Cached) {
@@ -333,7 +351,7 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
                         check(firstAudio?.type == FRAME_AUDIO && firstAudio.payload.isNotEmpty())
                         source.timeout().clearDeadline()
                         recordFirstAudio(startedAtNanos)
-                        val played = output.playPcm { write ->
+                        val played = output.playPcm(isValid = isValid) { write ->
                             var audioByteCount = firstAudio.payload.size
                             check(audioByteCount <= MAX_STREAM_PCM_BYTES)
                             write(firstAudio.payload)
@@ -369,8 +387,9 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
             }
         }
 
+        if (!isValid()) return PlaybackResult(PlaybackSource.None, false)
         packs.audio(fixedCueKey.orEmpty(), selection, fallbackText)?.let { audio ->
-            if (output.playWav(audio)) return result(PlaybackSource.FixedPack, true, request.moment)
+            if (output.playWav(audio, isValid = isValid)) return result(PlaybackSource.FixedPack, true, request.moment)
         }
         return result(PlaybackSource.None, false, request.moment)
     }

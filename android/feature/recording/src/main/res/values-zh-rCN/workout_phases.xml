@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="recording_phase_completed">已完成</string>
+    <string name="recording_phase_current">当前</string>
+    <string name="recording_phase_distance_remaining">还剩%1$s</string>
+    <string name="recording_phase_upcoming">接下来</string>
+</resources>

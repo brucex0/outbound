@@ -31,6 +31,11 @@ internal fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfigurati
                 fasterToleranceSeconds = it.coachingTarget?.pace?.fasterToleranceSeconds,
                 slowerToleranceSeconds = it.coachingTarget?.pace?.slowerToleranceSeconds)
         }.ifEmpty { steps.map { StructuredWorkoutStep(it) } },
+        // Distance/calorie replacements are continuous targets. Only an authored
+        // distance timeline supplies sections to an otherwise distance-only launch.
+        guideInstructions = guideInstructions?.takeIf { instructions ->
+            targetCalories == null && (distanceMeters == null || instructions.segments.any { it.trigger.type == "distance" })
+        },
         entrySource = source,
         suggestionId = suggestionId,
         plannedWorkoutId = plannedWorkoutId,
