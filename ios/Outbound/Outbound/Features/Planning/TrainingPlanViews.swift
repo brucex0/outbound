@@ -301,6 +301,8 @@ struct ActiveTrainingPlanDetailView: View {
     var onChangePlan: (() -> Void)? = nil
     var onEndPlan: (() -> Void)? = nil
     var benchmarkSaveOverride: ((RunningBenchmarkReport?) async throws -> Void)? = nil
+    @State private var expandedScheduleWeeks: Set<Date> = []
+    @State private var initializedScheduleDisclosurePlanID: String?
 
     var body: some View {
         ScrollView {
@@ -334,16 +336,7 @@ struct ActiveTrainingPlanDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(scheduleGroups) { group in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(group.title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                            ForEach(groupedByDay(group.workouts)) { day in
-                                ForEach(day.primaryWorkouts) { primary in
-                                    scheduledWorkoutRow(primary, mobility: primary.id == day.primaryWorkouts.first?.id ? day.mobility : [])
-                                }
-                                ForEach(day.standalone) { workout in scheduledWorkoutRow(workout) }
-                            }
-                        }
-                        .padding(.top, 6)
+                        scheduleWeekView(group)
                     }
                     ForEach(week.notes, id: \.self) { note in
                         Label(note, systemImage: "info.circle.fill")
@@ -385,7 +378,6 @@ struct ActiveTrainingPlanDetailView: View {
                 }
                 if let benchmark = activePlan.runningBenchmark {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(String(localized: "plan.details.running_benchmark", defaultValue: "Running benchmark")).font(.headline)
                         RunningBenchmarkManagementRow(context: benchmark, saveOverride: benchmarkSaveOverride)
                     }
                 }
@@ -393,6 +385,8 @@ struct ActiveTrainingPlanDetailView: View {
             .padding()
         }
         .navigationTitle("Plan Details")
+        .onAppear(perform: initializeScheduleDisclosureIfNeeded)
+        .onChange(of: activePlan.id) { _, _ in initializeScheduleDisclosureIfNeeded() }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Done") {
@@ -511,26 +505,33 @@ struct ActiveTrainingPlanDetailView: View {
     }
 
     private var scheduleGroups: [TrainingPlanWorkoutWeekGroup] {
-        let calendar = PlanningCalendarContext.accountCalendar()
+        let calendar = activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
         let start = activePlan.calendar?.planStartDate.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) } ?? activePlan.createdAt
         let anchor = calendar.dateInterval(of: .weekOfYear, for: start)?.start ?? calendar.startOfDay(for: start)
-        let dated = scheduleWorkouts.compactMap { workout -> (Int, TrainingPlanWorkout)? in
-            guard let date = workout.logicalScheduledDate,
+        let dated = scheduleWorkouts.compactMap { workout -> (Int, Date, TrainingPlanWorkout)? in
+            guard let date = workout.scheduledDateKey.flatMap({ PlanningCalendarContext.logicalDate($0, calendar: calendar) }) ?? workout.logicalScheduledDate,
                   let days = calendar.dateComponents([.day], from: anchor, to: calendar.startOfDay(for: date)).day else { return nil }
-            return (max(0, days / 7), workout)
+            return (max(0, days / 7), date, workout)
         }
         let grouped = Dictionary(grouping: dated, by: { $0.0 })
         var groups = grouped.keys.sorted().compactMap { index -> TrainingPlanWorkoutWeekGroup? in
             guard let start = calendar.date(byAdding: .day, value: index * 7, to: anchor),
                   let end = calendar.date(byAdding: .day, value: 6, to: start),
-                  let entries = grouped[index]?.map(\.1) else { return nil }
+                  let entries = grouped[index]?.map(\.2) else { return nil }
             let format = String(localized: "plan.details.workout_week", defaultValue: "Week %1$d · %2$@–%3$@")
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.timeZone = calendar.timeZone
+            formatter.setLocalizedDateFormatFromTemplate("MMM d")
             let title = String(format: format, index + 1,
-                               start.formatted(date: .abbreviated, time: .omitted),
-                               end.formatted(date: .abbreviated, time: .omitted))
-            return TrainingPlanWorkoutWeekGroup(index: index, title: title, workouts: entries.sorted { ($0.logicalScheduledDate ?? .distantPast) < ($1.logicalScheduledDate ?? .distantPast) })
+                               formatter.string(from: start), formatter.string(from: end))
+            return TrainingPlanWorkoutWeekGroup(index: index, title: title, workouts: entries.sorted {
+                let left = $0.scheduledDateKey.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) } ?? $0.logicalScheduledDate ?? .distantPast
+                let right = $1.scheduledDateKey.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) } ?? $1.logicalScheduledDate ?? .distantPast
+                return left < right
+            })
         }
-        let undated = scheduleWorkouts.filter { $0.logicalScheduledDate == nil }
+        let undated = scheduleWorkouts.filter { $0.scheduledDateKey == nil && $0.logicalScheduledDate == nil }
         if !undated.isEmpty {
             groups.append(TrainingPlanWorkoutWeekGroup(
                 index: Int.min,
@@ -539,6 +540,79 @@ struct ActiveTrainingPlanDetailView: View {
             ))
         }
         return groups
+    }
+
+    private var currentAccountWeekMonday: Date {
+        let calendar = activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
+        let today = calendar.startOfDay(for: Date())
+        return calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+    }
+
+    private func scheduleWeekMonday(for index: Int) -> Date {
+        let calendar = activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
+        let start = activePlan.calendar?.planStartDate.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) } ?? activePlan.createdAt
+        let anchor = calendar.dateInterval(of: .weekOfYear, for: start)?.start ?? calendar.startOfDay(for: start)
+        return calendar.date(byAdding: .day, value: index * 7, to: anchor) ?? anchor
+    }
+
+    private func calendarDatesEqual(_ lhs: Date, _ rhs: Date) -> Bool {
+        let calendar = activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
+        return calendar.isDate(lhs, inSameDayAs: rhs)
+    }
+
+    private func initializeScheduleDisclosureIfNeeded() {
+        guard initializedScheduleDisclosurePlanID != activePlan.id else { return }
+        expandedScheduleWeeks = [currentAccountWeekMonday]
+        initializedScheduleDisclosurePlanID = activePlan.id
+    }
+
+    @ViewBuilder
+    private func scheduleWeekView(_ group: TrainingPlanWorkoutWeekGroup) -> some View {
+        if group.index == Int.min {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(group.title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                scheduleWorkoutRows(group.workouts)
+            }
+            .padding(.top, 6)
+        } else {
+            let weekMonday = scheduleWeekMonday(for: group.index)
+            let expanded = expandedScheduleWeeks.contains(where: { calendarDatesEqual($0, weekMonday) })
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                    if expanded { expandedScheduleWeeks = expandedScheduleWeeks.filter { !calendarDatesEqual($0, weekMonday) } }
+                    else { expandedScheduleWeeks.insert(weekMonday) }
+                    Task { await analytics?.track(.init(.featureExposed, properties: [
+                        .feature: .string("plan_schedule_week_toggled"),
+                        .result: .string(expanded ? "collapsed" : "expanded"),
+                    ])) }
+                } label: {
+                    HStack {
+                        Text(group.title).font(.subheadline.weight(.semibold))
+                        Spacer(minLength: 8)
+                        Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(group.title)
+                .accessibilityValue(expanded ? String(localized: "plan.details.week_expanded", defaultValue: "Expanded") : String(localized: "plan.details.week_collapsed", defaultValue: "Collapsed"))
+                .accessibilityHint(String(localized: "plan.details.week_toggle_hint", defaultValue: "Shows or hides this week's workouts"))
+                if expanded { scheduleWorkoutRows(group.workouts) }
+            }
+            .padding(.top, 6)
+        }
+    }
+
+    @ViewBuilder
+    private func scheduleWorkoutRows(_ workouts: [TrainingPlanWorkout]) -> some View {
+        ForEach(groupedByDay(workouts)) { day in
+            ForEach(day.primaryWorkouts) { primary in
+                scheduledWorkoutRow(primary, mobility: primary.id == day.primaryWorkouts.first?.id ? day.mobility : [])
+            }
+            ForEach(day.standalone) { workout in scheduledWorkoutRow(workout) }
+        }
     }
 
     @ViewBuilder

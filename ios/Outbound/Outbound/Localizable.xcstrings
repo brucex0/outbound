@@ -75825,6 +75825,190 @@
         "es": { "stringUnit": { "state": "translated", "value": "Esfuerzo %1$d–%2$d/10 · Muy suave; puedes hablar con comodidad" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "用力程度 %1$d–%2$d/10 · 非常轻松，可以正常交谈" } }
       }
+    },
+    "planning.benchmark.summary_title": {
+      "comment": "Heading for the compact benchmark summary in active Plan Details.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running benchmark"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Referencia de carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步能力参考"
+          }
+        }
+      }
+    },
+    "planning.benchmark.add": {
+      "comment": "Action to add a running benchmark from active Plan Details.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加"
+          }
+        }
+      }
+    },
+    "planning.benchmark.edit": {
+      "comment": "Action to edit the running benchmark from active Plan Details.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑"
+          }
+        }
+      }
+    },
+    "planning.benchmark.result_summary": {
+      "comment": "Source and date of the saved running benchmark; values are localized by the caller.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "plan.details.workout_week": {
+      "comment": "Schedule week heading: week number, account-local Monday label, and account-local Sunday label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Week %1$d · %2$@–%3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semana %1$d · %2$@–%3$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %1$d 周 · %2$@–%3$@"
+          }
+        }
+      }
+    },
+    "plan.details.week_expanded": {
+      "comment": "Accessibility state of a dated schedule week disclosure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expanded"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expandida"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已展开"
+          }
+        }
+      }
+    },
+    "plan.details.week_collapsed": {
+      "comment": "Accessibility state of a dated schedule week disclosure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapsed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contraída"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已折叠"
+          }
+        }
+      }
+    },
+    "plan.details.week_toggle_hint": {
+      "comment": "Accessibility hint for the dated schedule week disclosure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows or hides this week's workouts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra u oculta los entrenamientos de esta semana"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示或隐藏本周训练"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

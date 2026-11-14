@@ -52,20 +52,38 @@ struct RunningBenchmarkManagementRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-            Button {
-                editing = true
-                Task { await analytics?.track(.init(.planningSurfaceOpened, properties: [.sourceType: .string("running_benchmark"), .entrySource: .string("plan_details")])) }
-            } label: {
-                Text(benchmarkText("title")).font(.subheadline.weight(.semibold)).frame(minHeight: 44, alignment: .leading)
-            }.buttonStyle(.plain).foregroundStyle(.tint)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center) {
+                    Text(benchmarkText("summary_title")).font(.title3.weight(.semibold))
+                    Spacer(minLength: 8)
+                    benchmarkAction
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(benchmarkText("summary_title")).font(.title3.weight(.semibold))
+                    benchmarkAction
+                }
+            }
             if let report = context.fitness?.report {
-                Text("\(benchmarkText(report.source == "race" ? "race" : "time_trial")) · \(benchmarkLogicalDateLabel(report.date) ?? benchmarkText("fallback"))")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(String(format: benchmarkText("result_summary"), benchmarkText(report.source == "race" ? "race" : "time_trial"), benchmarkLogicalDateLabel(report.date) ?? benchmarkText("fallback")))
+                    .font(.body).foregroundStyle(.secondary)
             }
             Text(benchmarkText(context.fitness?.status == "eligible" ? "estimate_detail" : context.fitness?.status == "stale" ? "stale" : "fallback"))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(.body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .sheet(isPresented: $editing) { NavigationStack { RunningBenchmarkEditor(context: context, saveOverride: saveOverride) } }
+    }
+
+    private var benchmarkAction: some View {
+        Button {
+            editing = true
+            Task { await analytics?.track(.init(.planningSurfaceOpened, properties: [.sourceType: .string("running_benchmark"), .entrySource: .string("plan_details")])) }
+        } label: {
+            Text(benchmarkText(context.fitness?.report == nil ? "add" : "edit"))
+                .frame(minWidth: 44, minHeight: 44, alignment: .center)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.tint)
     }
 }
 
