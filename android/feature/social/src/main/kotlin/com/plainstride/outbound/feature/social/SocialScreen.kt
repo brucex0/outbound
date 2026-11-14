@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -2287,7 +2288,17 @@ private fun profileActionFeedback(): (Boolean) -> Unit {
 
 
 @Composable
-fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, onOpen: () -> Unit, onToggleLiveMap: () -> Unit, joined: Boolean, onJoinChanged: (Boolean) -> Unit) {
+fun TodayGroupActivityCard(
+    event: SocialEvent,
+    sharing: Boolean,
+    busy: Boolean,
+    onOpen: () -> Unit,
+    onToggleLiveMap: () -> Unit,
+    joined: Boolean,
+    onJoinChanged: (Boolean) -> Unit,
+    planLabel: String? = null,
+    onOpenPlan: (() -> Unit)? = null,
+) {
     val theme = LocalPlainstrideThemeColors.current
     val foreground = theme.heroForeground
     val secondary = foreground.copy(alpha = 0.65f)
@@ -2356,6 +2367,17 @@ fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, 
                             disabledUncheckedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
                         ),
                         modifier = Modifier.semantics { contentDescription = locationLabel })
+                }
+            }
+            if (planLabel != null && onOpenPlan != null) {
+                TextButton(
+                    onClick = onOpenPlan,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = foreground),
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(planLabel)
                 }
             }
         }

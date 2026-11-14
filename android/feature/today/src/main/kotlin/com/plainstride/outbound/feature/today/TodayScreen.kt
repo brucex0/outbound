@@ -220,7 +220,7 @@ fun TodayRoute(
     onMessage: suspend (TodayMessage) -> Unit,
     initialWorkoutId: String? = null,
     guidanceContent: @Composable () -> Unit = {},
-    groupActivityContent: (@Composable () -> Unit)? = null,
+    groupActivityContent: (@Composable (planLabel: String?, onOpenPlan: (() -> Unit)?) -> Unit)? = null,
     startRequest: Int = 0,
     refreshRequest: Int = 0,
     mapLocation: android.location.Location? = null,
@@ -428,7 +428,7 @@ fun TodayScreen(
     onLaunchConfigurationChanged: (String, String) -> Unit = { _, _ -> },
     calorieEstimate:suspend (TodayActivityChoice,Int)->PlannedCalorieEstimate?={_,_->null},
     guidanceContent: @Composable () -> Unit = {},
-    groupActivityContent: (@Composable () -> Unit)? = null,
+    groupActivityContent: (@Composable (planLabel: String?, onOpenPlan: (() -> Unit)?) -> Unit)? = null,
     startRequest: Int = 0,
     initialWorkoutId: String? = null,
     locationGranted: Boolean = false,
@@ -542,6 +542,10 @@ fun TodayScreen(
         if (photo != null) setupPhoto = photo
     }
     val suggestion = state.primarySuggestion
+    val fallbackPlanAction: (() -> Unit)? =
+        if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED && !state.scheduledRestDay && suggestion == null) {
+            { openPlanDetails("today_planned_card_plan") }
+        } else null
     LaunchedEffect(activityChoice, calories, goalChoice) {
         caloriePlan = if (goalChoice == TodayGoalChoice.CALORIES) {
             calorieEstimate(activityChoice, calories)
@@ -553,6 +557,10 @@ fun TodayScreen(
     val raceGuideline = racePlan?.let { raceExecution(it, unitSystem) }
     val launchPreparedActivity = launch@ {
         if (activityChoice == TodayActivityChoice.PLANNED) {
+            if (state.scheduledRestDay) {
+                Toast.makeText(context, context.getString(R.string.today_scheduled_rest_body), Toast.LENGTH_SHORT).show()
+                return@launch
+            }
             if (state.restRecommended || state.mutationInFlight) return@launch
             if (suggestion != null) {
                 onStart(suggestion, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
@@ -638,14 +646,18 @@ fun TodayScreen(
                     )
                 }
                 when {
-                    groupActivityContent != null -> groupActivityContent()
+                    groupActivityContent != null -> groupActivityContent.invoke(
+                        if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED) stringResource(R.string.today_plan) else null,
+                        if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED) ({ openPlanDetails("today_planned_card_plan") }) else null,
+                    )
                     state.pendingWorkoutToday != null && activityChoice == TodayActivityChoice.PLANNED -> Card {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(state.pendingWorkoutToday!!.title, style = MaterialTheme.typography.titleLarge)
                             Text(stringResource(R.string.plan_details_pending), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            fallbackPlanAction?.let { TodayPlanAction(onClick = it) }
                         }
                     }
-                    state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
+                    state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton(onOpenPlan = fallbackPlanAction)
                     suggestion != null && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
                         suggestion = suggestion,
                         stale = state.isStale,
@@ -688,17 +700,13 @@ fun TodayScreen(
                                 stringResource(R.string.today_change_rest_body),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            fallbackPlanAction?.let { TodayPlanAction(onClick = it) }
                         }
                     }
                     confirmedNoPlan && activityChoice == TodayActivityChoice.PLANNED -> NoPlanCard(
                         onStartFreestyle = { onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) },
                         onSetUpPlan = onSetUpPlan,
                     )
-                }
-                if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED && !state.scheduledRestDay && (suggestion == null || groupActivityContent != null)) {
-                    OutlinedButton(onClick = { openPlanDetails("today_planned_card_plan") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text(stringResource(R.string.plan_details_title))
-                    }
                 }
                 if (activityChoice != TodayActivityChoice.PLANNED && goalChoice != TodayGoalChoice.FREE) {
                     ManualGoalCard(goalChoice, racePlan, unitSystem, curatedWorkout, distanceMeters, durationSeconds, calories,caloriePlan, autoStopAtGoal) {
@@ -1328,11 +1336,6 @@ private fun WorkoutRecommendationCard(
                 }
                 LaunchedEffect(Unit) { onRecoveryAdviceShown() }
             }
-            if (minimized && onOpenPlan != null) {
-                TextButton(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.plan_details_title))
-                }
-            }
             if (!minimized) {
                 if (!scheduledRest) {
                     weather?.let {
@@ -1375,7 +1378,7 @@ private fun WorkoutRecommendationCard(
                     ) {
                         Icon(Icons.Default.CalendarMonth, null)
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(if (onOpenPlan != null) R.string.plan_details_title else R.string.today_details))
+                        Text(stringResource(if (onOpenPlan != null) R.string.today_plan else R.string.today_details))
                     }
                     if (!scheduledRest) {
                         TextButton(onClick = onChange, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
@@ -1641,10 +1644,20 @@ private fun NoPlanCard(onStartFreestyle: () -> Unit, onSetUpPlan: () -> Unit) {
 }
 
 @Composable
-private fun TodaySkeleton() {
+private fun TodayPlanAction(onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 48.dp)) {
+        Icon(Icons.Default.CalendarMonth, contentDescription = null)
+        Spacer(Modifier.width(6.dp))
+        Text(stringResource(R.string.today_plan))
+    }
+}
+
+@Composable
+private fun TodaySkeleton(onOpenPlan: (() -> Unit)? = null) {
     Card {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             repeat(3) { index -> Spacer(Modifier.fillMaxWidth(if (index == 1) .72f else 1f).height(if (index == 0) 24.dp else 18.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) }
+            onOpenPlan?.let { TodayPlanAction(onClick = it) }
         }
     }
 }

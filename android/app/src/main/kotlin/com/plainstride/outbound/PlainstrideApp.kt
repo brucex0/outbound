@@ -854,10 +854,12 @@ private fun SignedInApp(
                             viewModel = todayViewModel,
                             activeSession = hasActiveSession,
                             groupActivityContent = todayGroupEvent?.takeIf { !hasActiveSession }?.let { event ->
-                                { com.plainstride.outbound.feature.social.TodayGroupActivityCard(event,
+                                { planLabel, onOpenPlan -> com.plainstride.outbound.feature.social.TodayGroupActivityCard(event,
                                     recordingSafetyViewModel.coordinator.isSharingEvent(event.id), groupRunJoining || recordingSafetyViewModel.coordinator.hasDifferentActiveGroup(event.id),
                                     { navController.navigate(AppDetailRoutes.event(event.id, "today_group_activity")) },
                                     { toggleActivityLiveMap(event.id) },
+                                    planLabel = planLabel,
+                                    onOpenPlan = onOpenPlan,
                                     joined = selectedRecordingEventId == event.id,
                                     onJoinChanged = { joined ->
                                         selectedRecordingEventId = event.id.takeIf { joined }
