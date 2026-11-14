@@ -64,10 +64,14 @@ private val fullDateFormat: DateTimeFormatter get() = DateTimeFormatter.ofLocali
 internal val PlannedWorkout.isOptional: Boolean get() = prescription?.get("optional")?.toString() == "true"
 private val PlannedWorkout.isOptionalMobility: Boolean get() = isOptional && (modality == Modality.mobility || stimulus == TrainingStimulus.mobility)
 
+/** Keep current-window records on duplicate IDs, while retaining upcoming-only protected issued rows. */
+internal fun PlanningState.issuedPlanWorkouts(): List<PlannedWorkout> =
+    (workouts + upcoming).distinctBy { it.id }
+
 /** An optional add-on keeps its own prescription/status and belongs to only the first primary. */
 internal fun PlanningState.optionalMobilityFor(workout: PlannedWorkout): List<PlannedWorkout> {
     val day = planningLogicalDate(workout.scheduledDate) ?: return emptyList()
-    val sameDay = workouts.filter { planningLogicalDate(it.scheduledDate) == day }
+    val sameDay = issuedPlanWorkouts().filter { planningLogicalDate(it.scheduledDate) == day }
     if (sameDay.firstOrNull { !it.isOptionalMobility }?.id != workout.id) return emptyList()
     return sameDay.filter { it.isOptionalMobility }
 }
@@ -84,7 +88,7 @@ private fun PlanningState.issuedWeeks(): List<IssuedWeek> {
             }
         }
     val planMonday = anchor?.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    return workouts.groupBy { planningLogicalDate(it.scheduledDate)?.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) }
+    return issuedPlanWorkouts().groupBy { planningLogicalDate(it.scheduledDate)?.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) }
         .entries.sortedWith(compareBy(nullsLast()) { it.key }).map { (monday, rows) ->
             IssuedWeek(monday, if (monday != null && planMonday != null) (ChronoUnit.WEEKS.between(planMonday, monday).toInt() + 1).coerceAtLeast(1) else null,
                 rows.sortedBy { it.scheduledDate })
@@ -166,7 +170,7 @@ internal fun CompactPlanPhaseSummary(planning: PlanningState, today: LocalDate, 
         phases.forEach { phase ->
             val start = planningLogicalDate(phase.startDate)
             val end = planningLogicalDate(phase.endDate)
-            val issuedDates = planning.workouts.filterNot { it.isOptional }.mapNotNull { planningLogicalDate(it.scheduledDate) }
+            val issuedDates = planning.issuedPlanWorkouts().filterNot { it.isOptional }.mapNotNull { planningLogicalDate(it.scheduledDate) }
                 .filter { start != null && end != null && it >= start && it <= end }
             val first = issuedDates.minOrNull()
             val last = issuedDates.maxOrNull()

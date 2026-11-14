@@ -58,7 +58,7 @@ internal fun PlanningState.planWeekSnapshot(
         weekStart = weekStart,
         weekEnd = weekEnd,
         isPartialWeek = calendar?.isPartialWeek ?: (index == 1 && start.dayOfWeek != java.time.DayOfWeek.MONDAY),
-        workouts = workouts.filter { workout ->
+        workouts = issuedPlanWorkouts().filter { workout ->
             planningLogicalDate(workout.scheduledDate)?.let { it >= weekStart && it < weekEnd } == true
         }.sortedBy { it.scheduledDate },
     )

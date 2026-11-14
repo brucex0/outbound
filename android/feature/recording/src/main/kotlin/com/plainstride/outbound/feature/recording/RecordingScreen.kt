@@ -1852,15 +1852,17 @@ private data class WorkoutStepProgress(
 private fun CurrentWorkoutStep(elapsedSeconds: Long, steps: List<StructuredWorkoutStep>) {
     val progress = currentWorkoutStep(elapsedSeconds, steps) ?: return
     Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                Text("${progress.index + 1}/${progress.count}", Modifier.padding(horizontal = 9.dp, vertical = 5.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                    Text("${progress.index + 1}/${progress.count}", Modifier.padding(horizontal = 9.dp, vertical = 5.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                }
+                Text(formatDuration(progress.remainingSeconds), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             }
-            Column(Modifier.weight(1f)) {
-                Text(progress.step.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                progress.step.detail?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(progress.step.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                progress.step.detail?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            Text(formatDuration(progress.remainingSeconds), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
         }
     }
 }

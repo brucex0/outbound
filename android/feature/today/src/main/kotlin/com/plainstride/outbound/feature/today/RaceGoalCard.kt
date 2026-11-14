@@ -38,6 +38,7 @@ internal fun RaceGoalCard(state: PlanningState, units: MeasurementUnitSystem, on
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.today_race_goal_title), style = MaterialTheme.typography.titleMedium)
+            goal.targetEventName?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.titleLarge) }
             goal.targetDistanceMeters?.let { meters ->
                 val metric = units == MeasurementUnitSystem.metric
                 val value = if (metric) meters / 1000 else meters / 1609.344

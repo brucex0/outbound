@@ -127,11 +127,11 @@ internal fun ActivePlanDetailsSheet(
         PlanSectionCard(title = stringResource(R.string.plan_workout_your_schedule)) {
             // Only an unmatched same-day recommendation needs its own summary. A matched
             // adaptation belongs to its issued row and detail, with the original status.
-            if (todaySuggestion?.primary != null && planning.workouts.none { it.id == todaySuggestion.primary?.plannedWorkoutId }) {
+            if (todaySuggestion?.primary != null && planning.issuedPlanWorkouts().none { it.id == todaySuggestion.primary?.plannedWorkoutId }) {
                 RecommendationDetails(todaySuggestion.primary!!, todaySuggestion.guideLine)
                 onChangeWorkout?.let { change -> PlanDetailsAction(stringResource(R.string.today_change_workout), !busy, onClick = change) }
             }
-            if (planning.workouts.isEmpty()) {
+            if (planning.issuedPlanWorkouts().isEmpty()) {
                 val syncing = !planning.cachedScheduleCoverageAvailable || planning.currentVersion == null
                 Text(stringResource(if (syncing) R.string.plan_details_loading else R.string.plan_workout_none_scheduled), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (syncing) TextButton(onClick = onRefresh, enabled = !busy) { Text(stringResource(R.string.today_retry)) }
@@ -157,7 +157,7 @@ internal fun ActivePlanDetailsSheet(
             PlanSectionCard(stringResource(R.string.plan_workout_benchmark)) { RunningBenchmarkManagementRow(it, onUpdateRunningBenchmark, onRunningBenchmarkOpened) }
         }
     }
-    planning.workouts.firstOrNull { it.id == selectedWorkoutId }?.let { workout ->
+    planning.issuedPlanWorkouts().firstOrNull { it.id == selectedWorkoutId }?.let { workout ->
         ScheduledPlanWorkoutPage(
             workout = workout,
             suggestion = todaySuggestion?.takeIf { workout.isFor(today) && it.primary?.plannedWorkoutId == workout.id },
