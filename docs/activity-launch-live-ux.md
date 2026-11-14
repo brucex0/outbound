@@ -196,3 +196,9 @@ The fullscreen recording surface owns the live assistant launcher. The outer Rec
 - Android participant pins retain their icon descriptors across live animation frames and interpolate location updates. Selecting a participant follows their incoming positions; selecting another pin or pressing recenter resumes following after a map gesture. Pin selections use the existing participant-focus analytics event with source `map_pin`, without participant identifiers or coordinates.
 
 - Other-runner pins match iOS: 34dp colored initials circles, bold white lettering, 3dp white rings, and soft shadows. Blue/green/purple/pink/teal colors are stable per participant on Android. Stale fill fades to 52% while initials and the ring remain opaque; selected pins keep their participant color. Existing participant-focus analytics applies.
+
+## Authored live goals
+
+- Typed distance, time, and calorie targets are authoritative. Timed phase totals are the fallback for structured workouts without an explicit duration; explanations, weekly mileage, and estimates must not become structured workout targets. Text parsing remains only for unstructured intents without authored targets.
+- A time-goal workout uses elapsed/target time for the main metric, with progress capped at 100% while elapsed time continues past the goal. Distance stays measured distance unless an explicit distance target is authored. The expanded supporting Time tile shows elapsed time without repeating the target, and metric values stay on one line with scaling.
+- Existing goal-threshold and saved goal-completion analytics use this same resolved goal; no exact targets or explanation text are added to analytics.

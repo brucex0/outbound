@@ -365,7 +365,11 @@ struct SessionIntent: Identifiable, Hashable {
 
     var resolvedTargetDistanceMeters: Double? {
         if let targetDistanceMeters { return targetDistanceMeters }
-        guard targetCalories == nil else { return nil }
+        // Authored targets and phase prescriptions outrank descriptive text. A
+        // planning explanation can mention weekly totals or estimated distances.
+        guard targetCalories == nil, targetDurationSeconds == nil,
+              estimatedDistanceMeters == nil, workoutSteps.isEmpty,
+              workoutReference == nil else { return nil }
         guard preparedRoute == nil else { return nil }
         return SessionIntentGoalParser.distanceMeters(from: title)
             ?? SessionIntentGoalParser.distanceMeters(from: detail)
@@ -373,8 +377,11 @@ struct SessionIntent: Identifiable, Hashable {
 
     var resolvedTargetDurationSeconds: Int? {
         if let targetDurationSeconds { return targetDurationSeconds }
-        guard targetCalories == nil else { return nil }
+        guard targetCalories == nil, targetDistanceMeters == nil else { return nil }
         guard preparedRoute == nil else { return nil }
+        let phaseDuration = workoutSteps.reduce(0) { $0 + max(0, $1.durationSeconds) }
+        if phaseDuration > 0 { return phaseDuration }
+        guard estimatedDurationSeconds == nil, workoutReference == nil else { return nil }
         return SessionIntentGoalParser.durationSeconds(from: detail)
     }
 

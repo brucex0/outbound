@@ -966,7 +966,7 @@ struct SessionStatusCard: View {
                         spacing: 10
                     ) {
                         ExpandedSessionMetric(
-                            value: displayedElapsedText,
+                            value: elapsedText,
                             label: String(localized: "summary.stats.time", defaultValue: "Time")
                         )
                         ExpandedSessionMetric(
@@ -1807,7 +1807,8 @@ private struct ExpandedSessionMetric: View {
                 .font(.title2.weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
 
             Text(label)
                 .font(.caption2.weight(.semibold))

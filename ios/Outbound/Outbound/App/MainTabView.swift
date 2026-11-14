@@ -818,7 +818,9 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
                 id: id, sport: sport, title: catalogWorkout.title, detail: catalogWorkout.detail,
                 guideLine: catalogWorkout.guideLine, startLabel: catalogWorkout.startLabel,
                 targetDistanceMeters: catalogWorkout.targetDistanceMeters,
-                targetDurationSeconds: catalogWorkout.targetDistanceMeters == nil ? catalogWorkout.steps.reduce(0) { $0 + $1.durationSeconds } : nil,
+                targetDurationSeconds: catalogWorkout.targetDistanceMeters == nil
+                    ? catalogWorkout.targetDurationSeconds ?? catalogWorkout.steps.reduce(0) { $0 + $1.durationSeconds }
+                    : nil,
                 estimatedDurationSeconds: catalogWorkout.targetDistanceMeters.map { Int(($0 / 1000 * 420).rounded()) },
                 allowsCalorieGoal: effectiveWorkout != nil ? allowsCalorieGoal : catalogWorkout.intent.allowsCalorieGoal,
                 workoutSteps: catalogWorkout.steps, coachingTarget: catalogWorkout.coachingTarget,
