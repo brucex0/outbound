@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.15 Submission Sheet
+# TestFlight and App Store 1.7.16 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.15`
-- Build: `69`
+- Version: `1.7.16`
+- Build: `70`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -20,11 +20,18 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 ## Submission Status
 
-- Version 1.7.15 (69) completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 11, 2026 (Pacific), from source `c09174f241d1ed8cda17432f676cfb325e7b0a2b`. English beta notes were published and assignment to internal TestFlight group `Plainstride Team` was confirmed.
-- Submitted through App Store Connect on November 11, 2026 at 2:34 PM Pacific. The version is **Waiting for Review**, submission `bba96776-83c5-433b-ade3-f20c1d0733f3`, with automatic release after approval and immediate availability to all users configured.
-- Version 1.7.14 (68) is confirmed **Ready for Distribution**. Its listing and screenshots were retained.
-- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.15-69/`; the 72,804,550-byte IPA SHA-256 is `cea03b52ea341c4f409be05d237468743be5ae7d72a86290714635f6fb779f62`; upload ID `1364ffe8-bf1b-4749-aabd-5267ef5b1f86`. All 14 upload chunks were accepted, with transient broken-pipe errors on several chunks recovered by the bounded retry logic.
-- No tests or physical-device acceptance were run. Release compilation succeeded with existing compiler warnings; it does not confirm device behavior.
+- Version 1.7.16 (70) completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, and binary delivery on November 13, 2026 (Pacific), from source `04755cff`. Apple processing completed at 22:31 Pacific; English beta notes and assignment to `Plainstride Team` were confirmed.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.16-70/`; the 73,197,471-byte IPA SHA-256 is `1ffda84a5ad42aee935ce93591147b7fe73b85a12fb5f6621238a36ee0230f82`; upload ID `5c9def8c-97d6-4d4b-9223-a13b1fb75b32`. All 14 chunks were accepted after resuming the same IPA. See the runbook incident for recovered SSL/broken-pipe failures.
+- Submitted 1.7.16 (70) through App Store Connect on November 13, 2026 at 22:32 Pacific. Confirmed **Waiting for Review**, submission `dd1f5155-c36a-455a-bbc6-5e94e7470929`, with automatic release after approval and immediate availability to all users configured. This is a public App Review submission; approval and public availability remain pending.
+- English (U.S.) Promotional Text was initially blank, restored exactly from the live listing, and verified before saving, after saving/reload, immediately before submission, and after submission/reload. The read-only API also confirmed the exact promotional text, approved What's New, attached build, `AFTER_APPROVAL`, and `WAITING_FOR_REVIEW`.
+- Version 1.7.15 (69) is confirmed **Ready for Distribution** in App Store Connect on November 13, 2026. Its live promotional text was preserved.
+- No tests or physical-device acceptance were run for this release. Release compilation succeeded with existing compiler warnings; it does not confirm device behavior.
+
+### Previous Release: 1.7.15 (69)
+
+- Completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 11, 2026 (Pacific), from source `c09174f241d1ed8cda17432f676cfb325e7b0a2b`. English beta notes were published and assignment to internal TestFlight group `Plainstride Team` was confirmed.
+- Submitted November 11, 2026 at 2:34 PM Pacific, submission `bba96776-83c5-433b-ade3-f20c1d0733f3`, with automatic release after approval. Now **Ready for Distribution**.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.15-69/`; the 72,804,550-byte IPA SHA-256 is `cea03b52ea341c4f409be05d237468743be5ae7d72a86290714635f6fb779f62`; upload ID `1364ffe8-bf1b-4749-aabd-5267ef5b1f86`.
 
 ### Previous Release: 1.7.14 (68)
 
@@ -43,7 +50,7 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 - Existing App Store localization: English (U.S.) only; in-app Spanish and Simplified Chinese support are unchanged.
 - Subtitle: `Daily Plans & Live Guidance`. The requested `Daily Plans & Live Run Guidance` is 31 characters and Apple rejected it.
-- Promotional text: `Know what to run today with personalized workouts, live guidance, and flexible race plans. Track your progress and share the journey with friends.`
+- Promotional text: use the approved **App Store Promotional Text** below.
 - Description opens: “Know what to run today. Get a personalized workout, hear guidance during your run, and adjust your training when life changes.” The remaining walking, cycling, and social copy is retained.
 - Keywords: `walk,hike,bike,GPS,tracker,race,workout,training,pace,marathon,5K,fitness,health,cadence,10K`. Inspected and replaced the previous field; no keyword-demand claim is implied.
 - Eight screenshots lead with “Know What to Run Today,” live workout guidance, and race planning. Live sharing shows fictional Sage Runner with populated stats and voice Cheers.
@@ -86,16 +93,20 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Use complete live map control height after collapse
-- [iOS] Improve warm-up row visibility and touch target
-- [iOS] Reset stale live card drag height
-- [iOS] Preserve account goals while statistics load
-- [iOS] Record repository reconciliation runtime checks
-- Plus 13 more fixes and improvements
+- [iOS] Stabilize Curated Workouts presentation and scrolling
+- [iOS] Clarify Plan Details schedule and benchmark
+- [iOS] Brighten Today Start icon
+- [iOS] Add shared guided workout phase translations
+- [iOS] Show curated distance phases and preserve route guide cues
+- Plus 14 more fixes and improvements
 
 ### App Store What's New
 
-Improved the live workout map and made planned workouts easier to follow. Fixed layout and touch-target issues across the activity experience.
+Training plans now show clearer phases, benchmark guidance, and weekly schedules. Curated workouts show distance-based phases and keep route cues available during guided sessions. We also improved workout launch and live workout controls.
+
+### App Store Promotional Text
+
+Know what to run today with personalized workouts, live guidance, and flexible race plans. Track your progress and share the journey with friends.
 
 ### How to Report Feedback
 
@@ -142,7 +153,7 @@ Plainstride provides general fitness guidance and is not a medical service. All 
 These fields are not required to begin TestFlight, but preparing them now avoids a second metadata pass.
 
 - Subtitle: `Your adaptive running guide`
-- Promotional text: `A running companion that adapts today's workout to your goals, readiness, recent training, and real life.`
+- Promotional text: preserve the exact approved **App Store Promotional Text** above; this early draft is not a source for overwriting current listing copy.
 - Keywords: `running,run tracker,training plan,AI guide,GPS,workout,fitness,pace,marathon,5K`
 
 ### Description

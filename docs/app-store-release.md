@@ -107,8 +107,16 @@ version metadata. The workflow never accepts legal agreements automatically.
 Prepared-IPA and setup-only retries skip build-only prerequisites.
 
 The public command creates or reconciles the App Store draft before compiling or
-uploading, so a missing create-version permission fails early. Bruce’s default
-Developer key supports binary upload and TestFlight setup, but **not public
+uploading, so a missing create-version permission fails early. It reads
+`promotionalText` for the configured draft locale and fails closed unless it is
+readable and exactly matches the nonblank **App Store Promotional Text** in the
+reviewed submission sheet (at most 170 characters). It checks again after metadata saves, immediately before submission, and after
+submission. The helper never writes promotional text or overwrites live copy.
+Preserve the live copy in that section by default. For an intentional change
+approved by the owner, update and review the sheet first, set that exact copy in
+the draft through App Store Connect, and rerun; do not silently rewrite live copy.
+
+Bruce’s default Developer key supports binary upload and TestFlight setup, but **not public
 version management**. With that key, prepare/upload the intended marketing version
 without `--public-release`, then finish in the signed-in App Store Connect UI:
 
@@ -117,9 +125,16 @@ without `--public-release`, then finish in the signed-in App Store Connect UI:
 ```
 
 In Distribution, create that version, attach the processed build, copy the saved
-**App Store What’s New**, choose automatic release after approval, save, add for
-review, and submit the draft. Verify **Waiting for Review**. Do not claim a
-TestFlight upload is a public submission. For unattended public submission, the
+**App Store What’s New**, and choose automatic release after approval. Before
+saving, compare **Promotional Text** with the approved **App Store Promotional
+Text** in the submission sheet and the current live version in the same locale.
+Apple can initialize this field empty on a new version. Preserve the exact live
+copy unless Bruce approved a reviewed sheet change. Set that exact expected
+text in the draft; do not edit the live listing. Save, reload, and verify that the complete text remains identical before **Add for Review**
+and **Submit**. Reopen the submitted version and verify the same text afterward.
+A blank, unreadable, or changed field blocks submission until reconciled. Record
+the locale and before/after verification in the submission sheet. Verify
+**Waiting for Review**. Do not claim a TestFlight upload is a public submission. For unattended public submission, the
 owner must provide a suitable App Manager/Admin API key through the existing
 `ASC_KEY_*` variables; the workflow never broadens key permissions itself.
 
@@ -191,6 +206,39 @@ After clearing the legacy reservation, deliver the preserved IPA with
 `--upload-only`. Use `--latest` on the status helper for a read-only overview.
 
 ### Incident lessons retained
+
+- **November 13, 2026 — release-sheet guard mismatch:** preparing 1.7.16 (70)
+  stopped before building because the publish helper still
+  required an `Archive 1.7.15 (69)` checklist entry. The current sheet records
+  the completed build and its preserved IPA/checkpoint instead. The failure
+  was deterministic; local project metadata was briefly changed and restored,
+  and no archive or upload was created. The helper now
+  validates the exact release-sheet title, version, and build identity without
+  requiring an obsolete checklist item. Sheet identity is now validated before
+  the first local metadata write; rerun the same intended release after
+  confirming those identity fields. No IPA recovery is needed.
+
+- **November 13, 2026 — 1.7.16 (70), binary delivery:** upload
+  `5c9def8c-97d6-4d4b-9223-a13b1fb75b32` remained `AWAITING_UPLOAD`
+  with chunks 1–10 accepted and no build record after bounded `Errno::EPIPE`
+  and `OpenSSL::SSL::SSLError` retries at chunk 11. The exact preserved
+  73,197,471-byte IPA (SHA-256
+  `1ffda84a5ad42aee935ce93591147b7fe73b85a12fb5f6621238a36ee0230f82`)
+  resumed without rebuilding or deleting its reservation. A later retry
+  accepted chunks 11–14; an observed `SSL_read: sslv3 alert bad record mac`
+  during chunk 12 recovered within bounded retries. All bytes were accepted
+  at 22:22 Pacific. Apple processing completed at 22:31; beta setup succeeded.
+  Public submission reached **Waiting for Review** at 22:32 with automatic
+  release after approval. See the submission sheet for IDs and listing checks.
+  These errors do not establish the network root cause.
+- **November 13, 2026 — promotional text preservation:** the new 1.7.16
+  draft started with empty Promotional Text although live 1.7.15 retained
+  the approved copy. The exact live text was copied into the draft and
+  verified before saving, after saving/reload, before submission, and after
+  submission/reload; read-only API confirmation also passed. The default
+  Developer key can read `promotionalText`; public API submission now checks
+  it without mutation. The manual UI route requires the same before-save,
+  after-save, and after-submission comparisons on every release.
 
 - **September 29, 2026 — 1.7.4 (48):** multiple clients remained stuck on an
   old reservation. Clearing it and resending the same IPA on the same network

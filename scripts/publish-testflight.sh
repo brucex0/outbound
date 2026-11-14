@@ -253,6 +253,7 @@ RUBY
   } 2>&1)" || fail "$documented_release_notes"
 
 app_store_release_notes=""
+app_store_promotional_text=""
 if [[ "$submit_public_release" == true ]]; then
   app_store_release_notes="$({ RELEASE_DOC="$RELEASE_DOC" ruby <<'RUBY'
 path = ENV.fetch("RELEASE_DOC")
@@ -265,6 +266,16 @@ abort "App Store release notes exceed the 4,000-character limit" if notes.length
 puts notes
 RUBY
     } 2>&1)" || fail "$app_store_release_notes"
+  app_store_promotional_text="$({ RELEASE_DOC="$RELEASE_DOC" ruby <<'RUBY'
+text = File.read(ENV.fetch("RELEASE_DOC"), encoding: "UTF-8")
+match = text.match(/^### App Store Promotional Text\s*$\n(.*?)(?=^###?\s|\z)/m)
+abort "release document is missing App Store Promotional Text" unless match
+copy = match[1].strip
+abort "App Store Promotional Text must not be empty" if copy.empty?
+abort "App Store Promotional Text exceeds Apple's 170-character limit" if copy.length > 170
+puts copy
+RUBY
+    } 2>&1)" || fail "$app_store_promotional_text"
 fi
 
 if [[ "$dry_run" == false && "$beta_setup_only" == false && -z "$upload_only_ipa" && -n "$(git status --porcelain --untracked-files=no)" ]]; then
@@ -522,6 +533,18 @@ urlencode() {
   jq -rn --arg value "$1" '$value | @uri'
 }
 
+# Never infer that Apple copied promotional text into a new version. The
+# reviewed release sheet is authoritative, including intentional future edits.
+# This guard reads the draft and never changes any listing copy.
+verify_promotional_text() {
+  local version_id="$1" draft_localizations draft_copy
+  [[ -n "${app_store_promotional_text//[[:space:]]/}" ]] || fail "Expected App Store Promotional Text is blank"
+  draft_localizations="$(asc_request GET "/v1/appStoreVersions/$(urlencode "$version_id")/appStoreVersionLocalizations?limit=200&fields%5BappStoreVersionLocalizations%5D=locale%2CpromotionalText")"
+  draft_copy="$(jq -er --arg locale "$app_store_locale" '[.data[] | select(.attributes.locale == $locale)] | if length == 1 and (.[0].attributes.promotionalText | type) == "string" then .[0].attributes.promotionalText else error("missing promotional text") end' <<<"$draft_localizations")" || fail "Cannot read draft ${app_store_locale} promotional text; inspect App Store Connect"
+  [[ "$draft_copy" == "$app_store_promotional_text" ]] || fail "Promotional text is blank or differs from the approved ${app_store_locale} copy in ${RELEASE_DOC}. Set the draft to the reviewed copy in App Store Connect and rerun; no listing copy was overwritten."
+  log "Verified ${app_store_locale} promotional text matches ${RELEASE_DOC}"
+}
+
 if [[ "$dry_run" == true ]]; then
   log "Dry run complete; no files changed"
   exit 0
@@ -547,10 +570,15 @@ if [[ "$submit_public_release" == true && "$beta_setup_only" == false ]]; then
     [[ "$manual_release" == false ]] || preflight_release_type="MANUAL"
     preflight_payload="$(jq -cn --arg app_id "$preflight_app_id" --arg version "$marketing_version" --arg release_type "$preflight_release_type" \
       '{data:{type:"appStoreVersions",attributes:{platform:"IOS",versionString:$version,releaseType:$release_type},relationships:{app:{data:{type:"apps",id:$app_id}}}}}')"
-    asc_request POST "/v1/appStoreVersions" "$preflight_payload" >/dev/null || \
+    preflight_created="$(asc_request POST "/v1/appStoreVersions" "$preflight_payload")" || \
       fail "Public-release preflight failed before build changes. Use an App Manager/Admin API key, or upload with --version and finish submission in App Store Connect."
+    preflight_version_id="$(jq -r '.data.id // empty' <<<"$preflight_created")"
     log "Prepared App Store version ${marketing_version}"
+  else
+    preflight_version_id="$(jq -r --arg version "$marketing_version" '.data[] | select(.attributes.versionString == $version) | .id' <<<"$preflight_versions")"
   fi
+  [[ -n "$preflight_version_id" ]] || fail "App Store preflight returned no version ID"
+  verify_promotional_text "$preflight_version_id"
 fi
 
 if [[ "$beta_setup_only" == false && "$use_asc_api_key" == true && "$asc_upload_method" == altool ]]; then
@@ -576,6 +604,15 @@ fi
 
 if [[ "$beta_setup_only" == false ]]; then
 if [[ -z "$upload_only_ipa" ]]; then
+# Validate every release-sheet prerequisite before the first local write.
+RELEASE_DOC="$RELEASE_DOC" OLD_VERSION="$current_marketing_version" OLD_BUILD="$current_build" ruby <<'RUBY'
+text = File.read(ENV.fetch("RELEASE_DOC"), encoding: "UTF-8")
+["# TestFlight and App Store #{ENV.fetch('OLD_VERSION')} Submission Sheet",
+ "- Version: `#{ENV.fetch('OLD_VERSION')}`", "- Build: `#{ENV.fetch('OLD_BUILD')}`"].each do |expected|
+  abort "release document is missing: #{expected}" unless text.include?(expected)
+end
+RUBY
+
 PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" WATCH_BUNDLE_ID="$WATCH_BUNDLE_ID" OLD_VERSION="$current_marketing_version" NEW_VERSION="$marketing_version" OLD_BUILD="$current_build" NEW_BUILD="$next_build" ruby <<'RUBY'
 path = ENV.fetch("PROJECT_FILE")
 bundle_ids = [ENV.fetch("APP_BUNDLE_ID"), ENV.fetch("EXTENSION_BUNDLE_ID"), ENV.fetch("WATCH_BUNDLE_ID")]
@@ -625,8 +662,7 @@ text = File.read(path, encoding: "UTF-8")
 replacements = {
   "# TestFlight and App Store #{old_version} Submission Sheet" => "# TestFlight and App Store #{new_version} Submission Sheet",
   "- Version: `#{old_version}`" => "- Version: `#{new_version}`",
-  "- Build: `#{old_build}`" => "- Build: `#{new_build}`",
-  "Archive `#{old_version} (#{old_build})`" => "Archive `#{new_version} (#{new_build})`"
+  "- Build: `#{old_build}`" => "- Build: `#{new_build}`"
 }
 replacements.each do |before, after|
   abort "release document is missing: #{before}" unless text.include?(before)
@@ -1074,6 +1110,8 @@ if [[ "$submit_public_release" == true ]]; then
       ;;
   esac
 
+  verify_promotional_text "$app_store_version_id"
+
   if [[ "$public_submission_needed" == true ]]; then
     if [[ "$app_store_version_state" == "READY_FOR_REVIEW" && "$attached_build_id" != "$build_id" ]]; then
       fail "App Store version ${marketing_version} is already ready for review with a different build attached"
@@ -1152,10 +1190,13 @@ if [[ "$submit_public_release" == true ]]; then
       log "App Store version ${marketing_version} is already in the review submission"
     fi
 
+    # Re-read after metadata saves, immediately before the irreversible submission.
+    verify_promotional_text "$app_store_version_id"
     submit_review_payload="$(jq -cn \
       --arg submission_id "$review_submission_id" \
       '{data:{type:"reviewSubmissions",id:$submission_id,attributes:{submitted:true}}}')"
     asc_request PATCH "/v1/reviewSubmissions/${encoded_review_submission_id}" "$submit_review_payload" >/dev/null
+    verify_promotional_text "$app_store_version_id"
     log "Submitted Plainstride ${marketing_version} (${next_build}) to App Review"
   fi
 
