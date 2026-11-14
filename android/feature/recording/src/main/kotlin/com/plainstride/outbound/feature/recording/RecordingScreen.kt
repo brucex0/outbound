@@ -188,6 +188,8 @@ fun RecordingRoute(
     saveActivityPhotosToAlbum: Boolean = true,
     onPhotoAlbumPermissionDenied: () -> Unit = {},
     onPrepareActivityStart: () -> Unit = {},
+    allowActivityStart: () -> Boolean = { true },
+    onActivityStarted: () -> Unit = {},
     modifier: Modifier = Modifier,
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     weightKilograms: Double? = null,
@@ -389,7 +391,27 @@ fun RecordingRoute(
         pendingMotionStart = true
     }
 
+    fun cancelStart() {
+        locationWaitJob?.cancel()
+        locationWaitJob = null
+        showGpsWait = false
+        pendingMotionStart = false
+        pendingStartAfterSettings = false
+        viewModel.cancelCountdown()
+        onExit()
+    }
+
+    fun validatePendingStart(): Boolean {
+        // Planning changes only invalidate preparation, never an already-issued
+        // start command or a recovered/active recording.
+        if (viewModel.state.value.startRequested || viewModel.snapshot.value.status != RecordingStatus.IDLE) return true
+        if (allowActivityStart()) return true
+        cancelStart()
+        return false
+    }
+
     fun beginCountdown() {
+        if (!validatePendingStart()) return
         val startState = viewModel.state.value
         val configuration = startState.launch
         if (configuration.activityKind in setOf(ActivityKind.RUNNING, ActivityKind.WALKING) &&
@@ -422,8 +444,10 @@ fun RecordingRoute(
                     }
                 }
                 showGpsWait = false
+                if (!validatePendingStart()) return@launch
                 if (configuration.activityKind in setOf(ActivityKind.WALKING, ActivityKind.HIKING)) {
                     viewModel.start(accountId, permissionState())
+                    onActivityStarted()
                 } else {
                     viewModel.beginCountdown()
                 }
@@ -432,16 +456,6 @@ fun RecordingRoute(
                 locationWaitJob = null
             }
         }
-    }
-
-    fun cancelStart() {
-        locationWaitJob?.cancel()
-        locationWaitJob = null
-        showGpsWait = false
-        pendingMotionStart = false
-        pendingStartAfterSettings = false
-        viewModel.cancelCountdown()
-        onExit()
     }
 
     LaunchedEffect(pendingMotionStart) {
@@ -537,6 +551,7 @@ fun RecordingRoute(
 
     LaunchedEffect(ui.countdown) {
         val current = ui.countdown ?: return@LaunchedEffect
+        if (!validatePendingStart()) return@LaunchedEffect
         if (BuildConfig.DEBUG) Log.d("RecordingStart", "countdown_step=$current voiceReady=${ui.countdownVoiceReady}")
         val minimumBeat = if (current == 0) 420L else 1_000L
         if (ui.countdownVoiceReady) {
@@ -545,6 +560,7 @@ fun RecordingRoute(
         } else {
             delay(minimumBeat)
         }
+        if (!validatePendingStart()) return@LaunchedEffect
         if (current > 0) viewModel.updateCountdown(current - 1)
         else {
             val permission = permissionState()
@@ -562,7 +578,9 @@ fun RecordingRoute(
                         return@LaunchedEffect
                     }
                 }
+                if (!validatePendingStart()) return@LaunchedEffect
                 viewModel.start(accountId, permission)
+                onActivityStarted()
             }
         }
     }

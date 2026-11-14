@@ -195,7 +195,7 @@ fun TodayRoute(
     viewModel: TodayViewModel,
     activeSession: Boolean,
     completedToday: Boolean,
-    onStartWorkout: (WorkoutLaunchIntent, TodayLaunchOptions) -> Unit,
+    onStartWorkout: (WorkoutLaunchIntent, TodayLaunchOptions, () -> Boolean, () -> Unit) -> Unit,
     onStartFreestyle: (TodayLaunchOptions) -> Unit,
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
@@ -266,12 +266,19 @@ fun TodayRoute(
         weather = weather,
         onRefresh = viewModel::refresh,
         onStart = { suggestion, source, options ->
-            viewModel.trackWorkoutStarted(source)
-            onStartWorkout(viewModel.launchIntent(suggestion, source), options)
+            val stillCurrentPlannedStart = {
+                val latest = viewModel.state.value
+                // Personalization can revise the prescription without changing its ID.
+                !latest.restRecommended && !latest.mutationInFlight && latest.primarySuggestion == suggestion
+            }
+            if (stillCurrentPlannedStart()) {
+                onStartWorkout(viewModel.launchIntent(suggestion, source), options, stillCurrentPlannedStart) {
+                    viewModel.trackWorkoutStarted(source)
+                }
+            }
         },
         onStartChangedRun = { reason, minutes, options ->
             val source = "today_changed_run"
-            viewModel.trackWorkoutStarted(source)
             onStartWorkout(WorkoutLaunchIntent(
                 suggestionId = "changed-${reason.wireValue}-$minutes",
                 plannedWorkoutId = null,
@@ -286,7 +293,7 @@ fun TodayRoute(
                 steps = emptyList(),
                 source = source,
                 guideLine = context.getString(R.string.today_changed_run_guide),
-            ), options)
+            ), options, { true }) { viewModel.trackWorkoutStarted(source) }
         },
         onStartFreestyle = onStartFreestyle,
         onReturnToSession = onReturnToSession,
@@ -547,8 +554,11 @@ fun TodayScreen(
     val launchPreparedActivity = launch@ {
         if (activityChoice == TodayActivityChoice.PLANNED) {
             if (state.restRecommended || state.mutationInFlight) return@launch
-            suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) }
-                ?: onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
+            if (suggestion != null) {
+                onStart(suggestion, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
+            } else if (activePlan == null && confirmedNoPlan) {
+                onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
+            }
         } else {
             val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
             if (goalChoice == TodayGoalChoice.RACE && racePlan == null) { showsRacePlanner = true; return@launch }
@@ -656,11 +666,26 @@ fun TodayScreen(
                         onChange = { onWorkoutChangeOpened(); showsChange = true },
                         onOpenPlan = if (hasPlanDetails) ({ openPlanDetails("today_planned_card_plan") }) else null,
                     )
+                    state.scheduledRestDay && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
+                        suggestion = null,
+                        stale = false,
+                        updatedAtEpochMs = null,
+                        completedToday = false,
+                        recoveryChangeRecommended = false,
+                        onRecoveryAdviceShown = {},
+                        weather = null,
+                        minimized = false,
+                        scheduledRest = true,
+                        onToggleMinimized = {},
+                        onOpen = {},
+                        onChange = {},
+                        onOpenPlan = { openPlanDetails("today_planned_card_plan") },
+                    )
                     state.restRecommended && activityChoice == TodayActivityChoice.PLANNED -> Card {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(stringResource(R.string.today_change_rest_heading), style = MaterialTheme.typography.titleLarge)
                             Text(
-                                stringResource(if (state.scheduledRestDay) R.string.today_scheduled_rest_body else R.string.today_change_rest_body),
+                                stringResource(R.string.today_change_rest_body),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -672,7 +697,7 @@ fun TodayScreen(
                         onRefresh = onRefresh,
                     )
                 }
-                if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED && (suggestion == null || groupActivityContent != null)) {
+                if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED && !state.scheduledRestDay && (suggestion == null || groupActivityContent != null)) {
                     OutlinedButton(onClick = { openPlanDetails("today_planned_card_plan") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text(stringResource(R.string.plan_details_title))
                     }
@@ -1256,7 +1281,7 @@ private fun GoalValueDialog(goal: TodayGoalChoice, distanceMeters: Double, durat
 
 @Composable
 private fun WorkoutRecommendationCard(
-    suggestion: ActivitySuggestion,
+    suggestion: ActivitySuggestion?,
     stale: Boolean,
     updatedAtEpochMs: Long?,
     completedToday: Boolean,
@@ -1270,23 +1295,32 @@ private fun WorkoutRecommendationCard(
     onOpenPlan: (() -> Unit)? = null,
     warmupDuration: String? = null,
     onOpenWarmup: () -> Unit = {},
+    scheduledRest: Boolean = false,
 ) {
     val toggleDescription = stringResource(if (minimized) R.string.today_expand_card else R.string.today_collapse_card)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpen)) {
+                Column(Modifier.weight(1f).then(if (scheduledRest) Modifier else Modifier.clickable(role = Role.Button, onClick = onOpen))) {
                     Text(stringResource(if (completedToday) R.string.today_up_next else R.string.today_workout), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    Text(suggestion.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        if (scheduledRest) stringResource(R.string.today_scheduled_rest_body) else suggestion?.title.orEmpty(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = if (scheduledRest) Int.MAX_VALUE else 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                Text(stringResource(R.string.today_minutes, suggestion.durationMinutes), style = MaterialTheme.typography.titleSmall)
-                TextButton(
-                    onClick = onToggleMinimized,
-                    modifier = Modifier.size(48.dp).semantics {
-                        contentDescription = toggleDescription
-                    },
-                ) {
-                    Text(if (minimized) "⌄" else "⌃", style = MaterialTheme.typography.titleLarge)
+                suggestion?.let { Text(stringResource(R.string.today_minutes, it.durationMinutes), style = MaterialTheme.typography.titleSmall) }
+                if (!scheduledRest) {
+                    TextButton(
+                        onClick = onToggleMinimized,
+                        modifier = Modifier.size(48.dp).semantics {
+                            contentDescription = toggleDescription
+                        },
+                    ) {
+                        Text(if (minimized) "⌄" else "⌃", style = MaterialTheme.typography.titleLarge)
+                    }
                 }
             }
             if (recoveryChangeRecommended) {
@@ -1302,45 +1336,55 @@ private fun WorkoutRecommendationCard(
                 }
             }
             if (!minimized) {
-                weather?.let {
-                    Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = if (it.unsafe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                PhasePreview(suggestion.steps)
-                if (stale) Text(
-                    stringResource(R.string.today_cached_at, updatedAtEpochMs?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }.orEmpty()),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
-                warmupDuration?.let { duration ->
-                    val hint = stringResource(R.string.today_planned_warmup_hint)
-                    Row(
-                        Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                            .clickable(role = Role.Button, onClickLabel = hint, onClick = onOpenWarmup),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            stringResource(R.string.today_planned_warmup_title),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(duration, style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"))
-                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                if (!scheduledRest) {
+                    weather?.let {
+                        Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = if (it.unsafe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    suggestion?.let { PhasePreview(it.steps) }
+                    if (stale) Text(
+                        stringResource(R.string.today_cached_at, updatedAtEpochMs?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }.orEmpty()),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                    warmupDuration?.takeIf { suggestion != null }?.let { duration ->
+                        val hint = stringResource(R.string.today_planned_warmup_hint)
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                .clickable(role = Role.Button, onClickLabel = hint, onClick = onOpenWarmup),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                stringResource(R.string.today_planned_warmup_title),
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(duration, style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"))
+                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
-                HorizontalDivider()
+                if (!scheduledRest) HorizontalDivider()
                 Row(Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onOpenPlan ?: onOpen, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    TextButton(
+                        onClick = onOpenPlan ?: onOpen,
+                        modifier = Modifier.then(
+                            if (scheduledRest) Modifier.heightIn(min = 48.dp)
+                            else Modifier.weight(1f).heightIn(min = 48.dp),
+                        ),
+                    ) {
                         Icon(Icons.Default.CalendarMonth, null)
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(if (onOpenPlan != null) R.string.plan_details_title else R.string.today_details))
                     }
-                    TextButton(onClick = onChange, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                        Icon(Icons.Default.Edit, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.today_change))
+                    if (!scheduledRest) {
+                        TextButton(onClick = onChange, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            Icon(Icons.Default.Edit, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.today_change))
+                        }
                     }
                 }
             }

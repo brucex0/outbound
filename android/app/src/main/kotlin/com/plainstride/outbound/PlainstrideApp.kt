@@ -356,6 +356,8 @@ private fun SignedInApp(
     var recordingLaunchCamera by remember(accountId) {
         mutableStateOf<MapCameraSnapshot?>(null)
     }
+    var recordingStartValidation by remember(accountId) { mutableStateOf<() -> Boolean>({ true }) }
+    var recordingStartAccepted by remember(accountId) { mutableStateOf<(() -> Unit)?>(null) }
     remember(accountId) {
         com.plainstride.outbound.core.data.AccountConfigurationStore.activate(context, accountId)
         true
@@ -532,8 +534,9 @@ private fun SignedInApp(
             integrationViewModel.trackPushPermissionPromptExposed("social")
         }
     }
-    fun launchTodayRecording() {
+    fun launchTodayRecording(allowLaunch: () -> Boolean = { true }, onAccepted: () -> Unit = {}) {
         if (todayStartJob?.isActive == true) return
+        if (!allowLaunch()) return
         val cameraAtStart = todayCameraReader?.invoke()?.takeIf { it.zoom > 0f }
         val changedRun = recordingLaunch.entrySource == "today_changed_run"
         val configuration = recordingLaunch.copy(
@@ -543,6 +546,7 @@ private fun SignedInApp(
         todayStartJob = scope.launch {
             try {
                 recordingViewModel.configure(configuration, measurementUnitSystem)
+                if (!allowLaunch()) return@launch
                 val permission = recordingLocationPermission(context)
                 val hasPermission = permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE
                 val needsMotion = configuration.activityKind in setOf(ActivityKind.RUNNING, ActivityKind.WALKING) &&
@@ -550,15 +554,29 @@ private fun SignedInApp(
                     !context.getSharedPreferences("motion_permission", android.content.Context.MODE_PRIVATE).getBoolean("requested", false) &&
                     context.checkSelfPermission(android.Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED &&
                     context.getSystemService(android.hardware.SensorManager::class.java)?.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_DETECTOR) != null
+                var recordingStarted = false
                 if (configuration.startImmediately && !needsMotion && hasPermission && (configuration.indoor || recordingViewModel.hasRecentStartLocation())) {
                     voicePreparation.preparation.activityWillStart(configuration.voiceGuideEnabled)
                     // Resolve recovery before a direct Walk/Hike start so entering
                     // the recording route cannot recover the new session as paused.
                     recordingViewModel.recover(requireNotNull(accountId), permission)
+                    if (!allowLaunch()) return@launch
                     if (configuration.activityKind in setOf(ActivityKind.WALKING, ActivityKind.HIKING)) {
                         recordingViewModel.start(requireNotNull(accountId), permission)
-                    } else recordingViewModel.beginCountdown()
+                        recordingStarted = true
+                    } else {
+                        recordingViewModel.beginCountdown()
+                    }
                 }
+                // An issued start command owns a live session; do not abandon it
+                // because a planning refresh arrives after that boundary.
+                if (!recordingStarted && !allowLaunch()) {
+                    recordingViewModel.cancelCountdown()
+                    return@launch
+                }
+                recordingStartValidation = allowLaunch
+                recordingStartAccepted = if (recordingStarted) null else onAccepted
+                if (recordingStarted) onAccepted()
                 recordingLaunch = configuration
                 recordingLaunchCamera = cameraAtStart
                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
@@ -849,10 +867,10 @@ private fun SignedInApp(
                                     }) }
                             },
                             completedToday = integration.completedToday,
-                            onStartWorkout = { intent, options ->
+                            onStartWorkout = { intent, options, allowLaunch, onAccepted ->
                                 val launch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,aiCoachEnabled=options.aiCoachEnabled,companionType=options.companionType)
                                 recordingLaunch = if (intent.source == "today_changed_run") launch.copy(startImmediately = false, autoStopAtGoal = false) else launch.withTodayRoute(todaySelectedRoute, todayRouteReversed)
-                                launchTodayRecording()
+                                launchTodayRecording(allowLaunch, onAccepted)
                             },
                             onStartFreestyle = { options ->
                                 recordingLaunch = RecordingLaunchConfiguration(
@@ -1284,6 +1302,16 @@ private fun SignedInApp(
                 )
             }
             composable(RECORDING_ROUTE) {
+                if (recordingLaunch.entrySource == "today_planned") {
+                    val shellEntry = remember(navController) { navController.getBackStackEntry(APP_SHELL_ROUTE) }
+                    val todayViewModel: TodayViewModel = hiltViewModel(shellEntry)
+                    val recordingState by recordingViewModel.state.collectAsStateWithLifecycle()
+                    LaunchedEffect(todayViewModel, recordingState.startRequested) {
+                        // Today stops collecting off-screen. Keep the validation
+                        // snapshot live through arbitrarily long permission/GPS waits.
+                        if (!recordingState.startRequested) todayViewModel.state.collect { }
+                    }
+                }
                 val feedbackCoach: com.plainstride.outbound.feature.livecoach.LiveCoachViewModel = hiltViewModel()
                 val coachFeedback by feedbackCoach.feedback.collectAsStateWithLifecycle()
                 val coachAdvice by feedbackCoach.advice.collectAsStateWithLifecycle()
@@ -1305,6 +1333,16 @@ private fun SignedInApp(
                     initialMapCamera = recordingLaunchCamera,
                     onPrepareActivityStart = {
                         voicePreparation.preparation.activityWillStart(recordingViewModel.state.value.launch.voiceGuideEnabled)
+                    },
+                    allowActivityStart = {
+                        recordingLaunch.entrySource != "today_planned" || recordingStartValidation()
+                    },
+                    onActivityStarted = {
+                        if (recordingLaunch.entrySource in setOf("today_planned", "today_changed_run")) {
+                            val accepted = recordingStartAccepted
+                            recordingStartAccepted = null
+                            accepted?.invoke()
+                        }
                     },
                     isOffline = connectivityState.isOffline,
                     unitSystem = measurementUnitSystem,
