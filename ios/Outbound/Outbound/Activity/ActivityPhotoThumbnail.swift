@@ -4,45 +4,26 @@ struct ActivityPhotoThumbnail<Content: View>: View {
     let caption: String
     let isSelected: Bool
     let action: () -> Void
-    let longPressAction: (() -> Void)?
     let content: Content
 
     init(
         caption: String,
         isSelected: Bool,
         action: @escaping () -> Void,
-        longPressAction: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.caption = caption
         self.isSelected = isSelected
         self.action = action
-        self.longPressAction = longPressAction
         self.content = content()
     }
 
     var body: some View {
-        Group {
-            // Selected tiles reserve long press for native drag and drop.
-            if isSelected || longPressAction == nil {
-                thumbnail.onTapGesture(perform: action)
-            } else {
-                thumbnail.gesture(
-                    LongPressGesture(minimumDuration: 0.35)
-                        .exclusively(before: TapGesture())
-                        .onEnded { gesture in
-                            switch gesture {
-                            case .first(true): longPressAction?()
-                            case .second: action()
-                            default: break
-                            }
-                        }
-                )
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { action() }
+        thumbnail
+            .onTapGesture(perform: action)
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { action() }
     }
 
     private var thumbnail: some View {

@@ -524,8 +524,7 @@ struct PostRunSummaryView: View {
         ActivityPhotoThumbnail(
             caption: finishPhotoCaption(photo, index: index),
             isSelected: selectedPhotoIDs.contains(photo.id),
-            action: { handlePhotoTap(photo) },
-            longPressAction: { togglePhotoSelection(photo.id) }
+            action: { handlePhotoTap(photo) }
         ) {
             Image(uiImage: photo.image)
                 .resizable()
@@ -535,7 +534,7 @@ struct PostRunSummaryView: View {
         .accessibilityLabel(finishPhotoCaption(photo, index: index))
         .accessibilityIdentifier("FinishPhotoThumbnail-\(index)")
         .accessibilityAddTraits(selectedPhotoIDs.contains(photo.id) ? .isSelected : [])
-        .accessibilityHint(String(localized: "summary.photos.long_press_hint", defaultValue: "Long press to select, then drag to reorder"))
+        .accessibilityHint(String(localized: "summary.photos.long_press_hint", defaultValue: "Touch and hold to select; drag to reorder"))
     }
 
     private func handlePhotoTap(_ photo: PostRunPhoto) {

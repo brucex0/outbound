@@ -73,7 +73,7 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
             .coordinatedTooltip(
                 .photoManagement,
                 isEligible: photos.count >= 2 && selectedPhotoIDs.isEmpty,
-                text: String(localized: "tooltip.photos", defaultValue: "Press and hold to select, delete, or reorder photos"),
+                text: String(localized: "tooltip.photos", defaultValue: "Touch and hold a photo to select it; drag to reorder"),
                 arrowEdge: .bottom
             )
 
@@ -86,24 +86,36 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 12) {
                         ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                            if selectedPhotoIDs.contains(photo.id) {
-                                thumbnail(photo, index)
-                                    .draggable(photo.id.uuidString)
-                                    .dropDestination(for: String.self) { identifiers, _ in
-                                        guard let identifier = identifiers.first,
-                                              let sourceID = UUID(uuidString: identifier)
-                                        else { return false }
-                                        return onMove(sourceID, photo.id)
+                            thumbnail(photo, index)
+                                // Keep one stable drag source on every tile. Installing it only
+                                // after a selection long press loses the gesture that is in flight.
+                                .onDrag {
+                                    selectedPhotoIDs.insert(photo.id)
+                                    return NSItemProvider(object: photo.id.uuidString as NSString)
+                                }
+                                .dropDestination(for: String.self) { identifiers, _ in
+                                    guard identifiers.count == 1,
+                                          let identifier = identifiers.first,
+                                          let sourceID = UUID(uuidString: identifier),
+                                          photos.contains(where: { $0.id == sourceID })
+                                    else { return false }
+                                    return onMove(sourceID, photo.id)
+                                }
+                                .accessibilityAction(named: String(localized: "summary.photos.select", defaultValue: "Select or deselect photo")) {
+                                    if selectedPhotoIDs.contains(photo.id) {
+                                        selectedPhotoIDs.remove(photo.id)
+                                    } else {
+                                        selectedPhotoIDs.insert(photo.id)
                                     }
-                            } else {
-                                thumbnail(photo, index)
-                                    .dropDestination(for: String.self) { identifiers, _ in
-                                        guard let identifier = identifiers.first,
-                                              let sourceID = UUID(uuidString: identifier)
-                                        else { return false }
-                                        return onMove(sourceID, photo.id)
-                                    }
-                            }
+                                }
+                                .accessibilityAction(named: String(localized: "summary.photos.move_earlier", defaultValue: "Move photo earlier")) {
+                                    guard index > 0 else { return }
+                                    _ = onMove(photo.id, photos[index - 1].id)
+                                }
+                                .accessibilityAction(named: String(localized: "summary.photos.move_later", defaultValue: "Move photo later")) {
+                                    guard index + 1 < photos.count else { return }
+                                    _ = onMove(photo.id, photos[index + 1].id)
+                                }
                         }
                     }
                     .padding(.horizontal, 20)

@@ -7562,19 +7562,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Press and hold to select, delete, or reorder photos"
+            "value": "Touch and hold a photo to select it; drag to reorder"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mantén pulsado para seleccionar, eliminar o reordenar fotos"
+            "value": "Mantén pulsada una foto para seleccionarla; arrástrala para reordenar"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "长按以选择、删除或重新排序照片"
+            "value": "长按照片以选择，拖动以调整顺序"
           }
         }
       }
@@ -42411,6 +42411,75 @@
         }
       }
     },
+    "summary.photos.select": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select or deselect photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionar o deseleccionar foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择或取消选择照片"
+          }
+        }
+      }
+    },
+    "summary.photos.move_earlier": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move photo earlier"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover foto antes"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将照片向前移"
+          }
+        }
+      }
+    },
+    "summary.photos.move_later": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move photo later"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover foto después"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将照片向后移"
+          }
+        }
+      }
+    },
     "summary.photos.long_press_hint": {
       "comment": "Accessibility hint explaining inline photo selection and reordering.",
       "extractionState": "manual",
@@ -42418,19 +42487,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Long press to select, then drag to reorder"
+            "value": "Touch and hold to select; drag to reorder"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mantén pulsado para seleccionar y arrastra para reordenar"
+            "value": "Mantén pulsado para seleccionar; arrastra para reordenar"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "长按选择，然后拖动排序"
+            "value": "长按选择，拖动排序"
           }
         }
       }
