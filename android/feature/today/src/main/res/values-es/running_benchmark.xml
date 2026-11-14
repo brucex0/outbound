@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="benchmark_title">Carrera o contrarreloj reciente</string>
+    <string name="benchmark_title">Referencia de carrera</string>
+    <string name="benchmark_add">Añadir</string>
+    <string name="benchmark_edit">Editar</string>
+    <string name="benchmark_result_summary">%1$s · %2$s</string>
     <string name="benchmark_detail">Opcional. Usa un resultado reciente de carrera a esfuerzo máximo, no un entrenamiento ni tu tiempo objetivo.</string>
     <string name="benchmark_source">Tipo de resultado</string>
     <string name="benchmark_race">Carrera</string>

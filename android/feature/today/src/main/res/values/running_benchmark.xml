@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="benchmark_title">Recent race or time trial</string>
+    <string name="benchmark_title">Running benchmark</string>
+    <string name="benchmark_add">Add</string>
+    <string name="benchmark_edit">Edit</string>
+    <string name="benchmark_result_summary">%1$s · %2$s</string>
     <string name="benchmark_detail">Optional. Use a recent maximal running result, not a training run or your desired goal time.</string>
     <string name="benchmark_source">Result type</string>
     <string name="benchmark_race">Race</string>

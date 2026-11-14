@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="benchmark_title">近期比赛或计时测试</string>
+    <string name="benchmark_title">跑步能力参考</string>
+    <string name="benchmark_add">添加</string>
+    <string name="benchmark_edit">编辑</string>
+    <string name="benchmark_result_summary">%1$s · %2$s</string>
     <string name="benchmark_detail">可不填。请使用近期全力跑步成绩，而非日常训练或期望的目标时间。</string>
     <string name="benchmark_source">成绩类型</string>
     <string name="benchmark_race">比赛</string>

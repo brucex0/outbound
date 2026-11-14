@@ -29,8 +29,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -79,6 +79,7 @@ internal fun ActivePlanDetailsSheet(
     onPhaseSummaryShown: () -> Unit = {},
     onChangeWorkout: (() -> Unit)? = null,
     onRunningBenchmarkOpened: () -> Unit = {},
+    onPlanScheduleWeekToggled: (Boolean) -> Unit = {},
     onUpdateRunningBenchmark: suspend (String, com.plainstride.outbound.core.model.RunningBenchmarkReport?) -> Boolean = { _, _ -> false },
 ) {
     val plan = planning.plan ?: return
@@ -136,7 +137,7 @@ internal fun ActivePlanDetailsSheet(
                 Text(stringResource(if (syncing) R.string.plan_details_loading else R.string.plan_workout_none_scheduled), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (syncing) TextButton(onClick = onRefresh, enabled = !busy) { Text(stringResource(R.string.today_retry)) }
             }
-            IssuedPlanSchedule(planning, todaySuggestion, today, units) { workout ->
+            IssuedPlanSchedule(planning, todaySuggestion, today, units, onWeekToggled = onPlanScheduleWeekToggled) { workout ->
                 selectedWorkoutId = workout.id
                 onWorkoutDetailsOpened()
             }
@@ -154,7 +155,7 @@ internal fun ActivePlanDetailsSheet(
             PlanSectionCard(stringResource(R.string.plan_workout_training_context)) { RunningProgrammeNotice(it) }
         }
         planning.goal?.takeIf { com.plainstride.outbound.core.model.Modality.run in it.activities }?.let {
-            PlanSectionCard(stringResource(R.string.plan_workout_benchmark)) { RunningBenchmarkManagementRow(it, onUpdateRunningBenchmark, onRunningBenchmarkOpened) }
+            PlanSectionCard(title = null) { RunningBenchmarkManagementRow(it, onUpdateRunningBenchmark, onRunningBenchmarkOpened) }
         }
     }
     planning.issuedPlanWorkouts().firstOrNull { it.id == selectedWorkoutId }?.let { workout ->
@@ -381,14 +382,14 @@ private fun planTitle(planning: PlanningState): String {
 }
 
 @Composable
-internal fun PlanSectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun PlanSectionCard(title: String?, content: @Composable ColumnScope.() -> Unit) {
     Card(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+            title?.let { Text(it, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium) }
             content()
         }
     }

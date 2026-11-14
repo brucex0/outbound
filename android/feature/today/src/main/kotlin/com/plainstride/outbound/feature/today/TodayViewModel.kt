@@ -225,6 +225,13 @@ class TodayViewModel @Inject constructor(
         }
     }
 
+    fun trackPlanScheduleWeekToggled(expanded: Boolean) = analytics.record(AnalyticsEvent(
+        "feature_exposed", mapOf(
+            AnalyticsProperty.Feature to "plan_schedule_week_toggled",
+            AnalyticsProperty.Result to if (expanded) "expanded" else "collapsed",
+        ),
+    ))
+
     fun trackDailyRecommendationDetailsOpened(entrySource: String) = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
         AnalyticsProperty.SourceType to "daily_recommendation_details",
         AnalyticsProperty.EntrySource to entrySource,

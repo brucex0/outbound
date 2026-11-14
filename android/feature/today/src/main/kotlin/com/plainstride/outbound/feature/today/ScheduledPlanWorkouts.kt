@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -26,6 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,6 +40,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.plainstride.outbound.core.model.ActivitySuggestion
@@ -101,22 +108,53 @@ internal fun IssuedPlanSchedule(
     todaySuggestion: ActivitySuggestionEnvelope?,
     today: LocalDate,
     units: MeasurementUnitSystem,
+    onWeekToggled: (Boolean) -> Unit = {},
     onOpen: (PlannedWorkout) -> Unit,
 ) {
-    planning.issuedWeeks().forEach { week ->
+    val weeks = planning.issuedWeeks()
+    val currentMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    val currentWeekIndex = weeks.indexOfFirst { it.monday == currentMonday }
+    var expandedWeeks by rememberSaveable(planning.plan?.id) { mutableStateOf<Set<String>>(emptySet()) }
+    var initializedWeekDisclosure by rememberSaveable(planning.plan?.id) { mutableStateOf(false) }
+    LaunchedEffect(planning.plan?.id, weeks.mapNotNull { it.monday }) {
+        if (!initializedWeekDisclosure && weeks.any { it.monday != null }) {
+            expandedWeeks = weeks.getOrNull(currentWeekIndex)?.monday?.toString()?.let(::setOf) ?: emptySet()
+            initializedWeekDisclosure = true
+        }
+    }
+    weeks.forEachIndexed { index, week ->
+        val weekKey = week.monday?.toString()
+        val expanded = week.monday == null || weekKey in expandedWeeks
         Column(Modifier.fillMaxWidth().padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val range = week.monday?.let { "${it.format(dateFormat)}–${it.plusDays(6).format(dateFormat)}" }
-            Text(
+            val title =
                 when {
                     range == null -> stringResource(R.string.plan_workout_undated)
                     week.number != null -> stringResource(R.string.plan_workout_week, week.number, range)
                     else -> range
-                },
-                Modifier.semantics { heading() },
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            week.workouts.groupBy { planningLogicalDate(it.scheduledDate)?.toString() ?: "undated-${it.id}" }.forEach { (_, day) ->
+                }
+            if (week.monday == null) {
+                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                val expandedLabel = stringResource(R.string.plan_workout_expanded)
+                val collapsedLabel = stringResource(R.string.plan_workout_collapsed)
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) {
+                        val stableKey = requireNotNull(weekKey)
+                        expandedWeeks = if (expanded) expandedWeeks - stableKey else expandedWeeks + stableKey
+                        onWeekToggled(!expanded)
+                    }.semantics {
+                        heading()
+                        stateDescription = if (expanded) expandedLabel else collapsedLabel
+                    }.padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (expanded) week.workouts.groupBy { planningLogicalDate(it.scheduledDate)?.toString() ?: "undated-${it.id}" }.forEach { (_, day) ->
                 val primary = day.filterNot { it.isOptionalMobility }
                 (primary.ifEmpty { day }).forEach { workout ->
                     val adapted = todaySuggestion?.primary?.takeIf { workout.isFor(today) && it.plannedWorkoutId == workout.id }

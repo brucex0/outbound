@@ -9,12 +9,17 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.plainstride.outbound.core.model.PlannedWorkout
@@ -40,15 +45,22 @@ import kotlinx.serialization.json.doubleOrNull
 internal fun RunningBenchmarkManagementRow(goal: TrainingGoal, onSave: suspend (String, RunningBenchmarkReport?) -> Boolean, onOpened: () -> Unit) {
     var editing by remember(goal.id) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        TextButton(onClick = { editing = true; onOpened() }) { Text(stringResource(R.string.benchmark_title)) }
-        goal.currentRunningFitness?.report?.let { report ->
-            Text("${stringResource(if (report.source == "race") R.string.benchmark_race else R.string.benchmark_time_trial)} · ${LocalDate.parse(report.date).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(stringResource(R.string.benchmark_title), Modifier.weight(1f, fill = false).semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            TextButton(onClick = { editing = true; onOpened() }) { Text(stringResource(if (goal.currentRunningFitness?.report == null) R.string.benchmark_add else R.string.benchmark_edit)) }
         }
-        Text(stringResource(when (goal.currentRunningFitness?.status) {
+        goal.currentRunningFitness?.report?.let { report ->
+            Text(stringResource(R.string.benchmark_result_summary, stringResource(if (report.source == "race") R.string.benchmark_race else R.string.benchmark_time_trial), LocalDate.parse(report.date).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val statusText = stringResource(when (goal.currentRunningFitness?.status) {
             "eligible" -> R.string.benchmark_estimate_detail
             "stale" -> R.string.benchmark_stale
             else -> R.string.benchmark_fallback
-        }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        })
+        Text(statusText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     if (editing) RunningBenchmarkEditor(goal, onDismiss = { editing = false }, onSave = onSave)
 }
