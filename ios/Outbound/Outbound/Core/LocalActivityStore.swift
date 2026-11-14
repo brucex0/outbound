@@ -104,8 +104,8 @@ actor ActivityPersistence {
     func applyRemoteBaseline(_ activity: SavedActivity, expectedGeneration: UInt64?) throws -> Bool {
         try LocalActivityStore.applyRemoteBaseline(activity, expectedGeneration: expectedGeneration)
     }
-    func mergePhotoMetadata(_ photos: [SavedPhoto], for id: UUID, appendIfGeneration: UInt64? = nil) throws {
-        try LocalActivityStore.mergePhotoMetadata(photos, for: id, appendIfGeneration: appendIfGeneration)
+    func mergePhotoMetadata(_ photos: [SavedPhoto], for id: UUID, appendIfGeneration: UInt64? = nil, order: [String]? = nil) throws {
+        try LocalActivityStore.mergePhotoMetadata(photos, for: id, appendIfGeneration: appendIfGeneration, order: order)
     }
     func generation(for id: UUID) throws -> UInt64? {
         try LocalActivityStore.generation(for: id)
@@ -679,7 +679,7 @@ private nonisolated enum LocalActivityStore {
         return true
     }
 
-    static func mergePhotoMetadata(_ photos: [SavedPhoto], for id: UUID, appendIfGeneration: UInt64?) throws {
+    static func mergePhotoMetadata(_ photos: [SavedPhoto], for id: UUID, appendIfGeneration: UInt64?, order: [String]?) throws {
         var manifest = try readManifest()
         guard let index = manifest.records.firstIndex(where: { $0.owner == ActivityAccountBoundary.context.owner && $0.activity.id == id }) else { return }
         let current = manifest.records[index].activity
@@ -693,7 +693,10 @@ private nonisolated enum LocalActivityStore {
                 remoteThumbnailURL: remote.remoteThumbnailURL ?? photo.remoteThumbnailURL, isImported: photo.isImported)
         }
         if appendIfGeneration == manifest.records[index].generation {
-            merged += photos.filter { candidate in !merged.contains(where: { $0.id == candidate.id }) }.sorted { $0.takenAt < $1.takenAt }
+            merged += photos.filter { candidate in !merged.contains(where: { $0.id == candidate.id }) }
+            if current.sync?.isSynced == true {
+                merged = orderedSavedPhotos(merged, clientPhotoIDs: order)
+            }
         }
         manifest.records[index].activity = current.withPhotos(merged)
         try writeManifest(manifest)
@@ -979,6 +982,7 @@ nonisolated struct ActivityRecordingSessionMetadata: Codable, Hashable {
 }
 
 nonisolated struct ActivityClientExtras: Codable, Hashable {
+    let photoOrder: [String]?
     let sessionEffortRating: Int?
     let performedWorkoutReference: PerformedWorkoutReference?
     let plannedWorkoutCompletionQuality: String?
@@ -999,6 +1003,7 @@ nonisolated struct ActivityClientExtras: Codable, Hashable {
     let recognitionBadgeIDs: [RecognitionBadgeID]
 
     init(from activity: SavedActivity) {
+        photoOrder = activity.photos.map { $0.id.uuidString }
         sessionEffortRating = activity.sessionEffortRating
         performedWorkoutReference = activity.performedWorkoutReference
         plannedWorkoutCompletionQuality = activity.plannedWorkoutCompletionQuality
@@ -1933,4 +1938,14 @@ nonisolated enum ActivityPhotoPersistenceError: LocalizedError {
         case .imageTooLarge: "The activity photo could not be compressed below 5 MB."
         }
     }
+}
+
+nonisolated func orderedSavedPhotos(_ photos: [SavedPhoto], clientPhotoIDs order: [String]?) -> [SavedPhoto] {
+    guard let order else { return photos }
+    let ranks = Dictionary(order.enumerated().map { ($0.element.lowercased(), $0.offset) }, uniquingKeysWith: { first, _ in first })
+    return photos.enumerated().sorted {
+        let lhs = ranks[$0.element.id.uuidString.lowercased()] ?? Int.max
+        let rhs = ranks[$1.element.id.uuidString.lowercased()] ?? Int.max
+        return lhs == rhs ? $0.offset < $1.offset : lhs < rhs
+    }.map(\.element)
 }

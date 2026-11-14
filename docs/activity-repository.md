@@ -20,6 +20,8 @@ Open when changing activity durability, account ownership, upload acknowledgemen
 
 ## Acceptance and reconciliation
 
+- iOS sends its persisted photo sequence as `clientData.photoOrder`. Photo metadata restoration retains incoming order and applies an explicit remote order only to the same synced generation; upload acknowledgements never reorder local photos. Own Social covers and carousel use local saved order while cached or awaiting sync. Image files, EXIF handling and offline cache behavior are unchanged.
+
 - Activity create/update/dedup transactions hold the planning-user lock and return `reconciliation` with `planningRevision`, `statisticsRevision` and the exact canonical completion association or null. Association and watermarks are captured **inside** that accepted transaction.
 - `User.planningStateRevision` is a serialized **observation watermark**. Assembling a planning snapshot also increments it under the same lock. It is deliberately not a count of all source mutations. A later snapshot is ordered after an accepted activity; clients reject lower snapshot revisions. Plan version remains a separate prescription concept.
 - The authoritative per-account planning and complete statistics baselines are encoded in the atomic manifest. A read revision is accepted only after its baseline commits; statistics writes also check their invalidation ticket; accepted planning commands atomically persist their baseline and statistics invalidation. UserDefaults is incidental/guest cache, not the acknowledgement boundary.

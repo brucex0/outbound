@@ -110,7 +110,7 @@ final class ActivityStore: ObservableObject {
     private var resolvedRouteVersions: Set<String> = []
     private var detailRefreshIDs: Set<UUID> = []
     private var isRestoringPhotos = false
-    private var pendingRemotePhotos: [UUID: [RemoteActivityPhoto]] = [:]
+    private var pendingRemotePhotos: [UUID: (photos: [RemoteActivityPhoto], order: [String]?)] = [:]
     @Published private(set) var accountStatistics: AccountStatisticsSnapshot?
     @Published private(set) var statisticsAreCached = true
     @Published private(set) var statisticsIsLoading = false
@@ -1187,8 +1187,8 @@ final class ActivityStore: ObservableObject {
                     try ActivityAccountBoundary.validate()
                     await refreshRepositoryProjection()
                     try ActivityAccountBoundary.validate()
-                    pendingRemotePhotos[canonicalID] = remote.photos ?? []
-                    await restoreRemotePhotos(remote.photos ?? [], activityID: canonicalID)
+                    pendingRemotePhotos[canonicalID] = (remote.photos ?? [], remote.clientData?.photoOrder)
+                    await restoreRemotePhotos(remote.photos ?? [], activityID: canonicalID, order: remote.clientData?.photoOrder)
                     try ActivityAccountBoundary.validate()
                     sortActivitiesByStartTime()
                     activityRevision += 1
@@ -1229,6 +1229,12 @@ final class ActivityStore: ObservableObject {
                     .sync,
                     "Activity upload completed source=\(activity.source.kind.rawValue) route_included=\(uploadableRoute(for: activity) != nil)"
                 )
+                if !activity.photos.isEmpty {
+                    await analyticsManager?.track(.init(.featureExposed, properties: [
+                        .feature: .string("activity_photo_order_synced"),
+                        .countBucket: .string(ProductAnalyticsBucket.count(activity.photos.count))
+                    ]))
+                }
                 await syncPhotosIfPossible(activityID: activity.id)
             } catch {
                 if case let APIError.http(statusCode, _, code) = error,
@@ -1338,7 +1344,7 @@ final class ActivityStore: ObservableObject {
             defer { isRestoringPhotos = false }
             while let (activityID, photos) = pendingRemotePhotos.first {
                 pendingRemotePhotos.removeValue(forKey: activityID)
-                await restoreRemotePhotos(photos, activityID: activityID)
+                await restoreRemotePhotos(photos.photos, activityID: activityID, order: photos.order)
             }
         }
     }
@@ -1452,7 +1458,7 @@ final class ActivityStore: ObservableObject {
                 await refreshRepositoryProjection()
                 activityRevision += 1
                 restoredCount += 1
-                pendingRemotePhotos[activityID] = remote.photos ?? []
+                pendingRemotePhotos[activityID] = (remote.photos ?? [], clientExtras.photoOrder)
             }
             return (remoteCount, restoredCount, deletedCount)
         }
@@ -1578,14 +1584,14 @@ final class ActivityStore: ObservableObject {
         }
     }
 
-    private func restoreRemotePhotos(_ remotePhotos: [RemoteActivityPhoto], activityID: UUID) async {
+    private func restoreRemotePhotos(_ remotePhotos: [RemoteActivityPhoto], activityID: UUID, order: [String]?) async {
         return await ActivityAccountBoundary.withAccount {
             let base: ActivityUploadSnapshot
             do { guard let value = try await persistence.uploadSnapshot(for: activityID) else { return }; base = value }
             catch { ActivityDiagnosticLog.error(.persistence, "Photo restore snapshot failed error=\(ActivityDiagnosticLog.errorCategory(error))"); return }
             let initial = base.activity
             var photos = initial.photos
-            var changed = false
+            var changed = orderedSavedPhotos(initial.photos, clientPhotoIDs: order).map(\.id) != initial.photos.map(\.id)
             for remote in remotePhotos {
                 if let index = photos.firstIndex(where: { $0.id.uuidString.caseInsensitiveCompare(remote.clientPhotoId) == .orderedSame }) {
                     let local = photos[index]
@@ -1611,7 +1617,6 @@ final class ActivityStore: ObservableObject {
                 changed = true
             }
             guard changed else { return }
-            photos.sort { $0.takenAt < $1.takenAt }
             // Downloads suspend the actor; retain any edits made while they were in flight.
             guard let latest = activity(id: activityID) else { return }
             let initialIDs = Set(initial.photos.map(\.id))
@@ -1621,10 +1626,9 @@ final class ActivityStore: ObservableObject {
                 guard let remote = metadataByID[local.id] else { return local }
                 return copy(local, remotePhotoId: remote.remotePhotoId, remoteUploadedAt: remote.remoteUploadedAt, remoteThumbnailURL: remote.remoteThumbnailURL)
             } + restoredPhotos.filter { restored in !latest.photos.contains(where: { $0.id == restored.id }) })
-                .sorted { $0.takenAt < $1.takenAt }
             let current = copy(latest, photos: mergedPhotos, sync: latest.sync)
             do {
-                try await persistence.mergePhotoMetadata(current.photos, for: activityID, appendIfGeneration: base.generation)
+                try await persistence.mergePhotoMetadata(current.photos, for: activityID, appendIfGeneration: base.generation, order: order)
                 await refreshRepositoryProjection()
                 activityRevision += 1
             } catch {

@@ -1134,7 +1134,7 @@ struct SocialHomeView: View {
                     }
                     SquarePreviewLayout {
                         ZStack(alignment: .bottom) {
-                            SocialRoutePreviewImage(activity: activity)
+                            SocialRoutePreviewImage(activity: activity, usesLocalPhotos: post.isCurrentUser)
                             HStack(spacing: 0) {
                                 socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
                                 socialStat(activity.durationSecs.map(socialDuration) ?? "—", "activity.metric.moving_time")
@@ -2922,7 +2922,7 @@ private struct SocialNotificationActivityView: View {
                             }
                             SquarePreviewLayout {
                                 ZStack(alignment: .bottom) {
-                                    SocialRoutePreviewImage(activity: activity)
+                                    SocialRoutePreviewImage(activity: activity, usesLocalPhotos: post.isCurrentUser)
                                     HStack(spacing: 0) {
                                         stat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", String(localized: "Distance"))
                                         stat(activity.durationSecs.map(duration) ?? "—", String(localized: "activity.metric.moving_time", defaultValue: "Moving Time"))
@@ -4096,6 +4096,7 @@ struct SocialPersonProfileView: View {
 }
 
 struct SocialActivityDetailView: View {
+    @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var recognitionStore: RecognitionStore
@@ -4116,7 +4117,8 @@ struct SocialActivityDetailView: View {
             ActivityDetailView(
                 activity: activity.savedActivity(
                     postCreatedAt: currentPost.createdAt,
-                    photosOverride: fullPhotoMetadata
+                    photosOverride: fullPhotoMetadata,
+                    localPhotosOverride: currentPost.isCurrentUser ? activityStore.activities.first(where: { $0.sync?.serverActivityId == activity.id })?.photos : nil
                 ),
                 eventAttribution: activity.eventAttribution,
                 usesStoredActivity: false,
@@ -4368,7 +4370,7 @@ private struct ActivityMilestoneCompactBanner: View {
 }
 
 private extension TogetherActivityDTO {
-    func savedActivity(postCreatedAt: Date, photosOverride: [TogetherActivityPhotoDTO]? = nil) -> SavedActivity {
+    func savedActivity(postCreatedAt: Date, photosOverride: [TogetherActivityPhotoDTO]? = nil, localPhotosOverride: [SavedPhoto]? = nil) -> SavedActivity {
         let duration = max(0, durationSecs ?? 0)
         let resolvedStartedAt = startedAt ?? postCreatedAt.addingTimeInterval(TimeInterval(-duration))
         let resolvedEndedAt = endedAt ?? resolvedStartedAt.addingTimeInterval(TimeInterval(duration))
@@ -4424,7 +4426,7 @@ private extension TogetherActivityDTO {
             elevationGainM: elevationM,
             energyKilocalories: energyKilocalories,
             route: routePoints.isEmpty ? nil : SavedRoute(points: routePoints),
-            photos: savedPhotos,
+            photos: localPhotosOverride ?? savedPhotos,
             sync: nil
         )
     }
@@ -4564,12 +4566,19 @@ struct SocialAvatar: View {
 }
 
 private struct SocialRoutePreviewImage: View {
+    @EnvironmentObject private var activityStore: ActivityStore
     let activity: TogetherActivityDTO
+    var usesLocalPhotos = false
 
     @State private var image: UIImage?
 
     private var primaryPhotoURL: URL? {
-        activity.photos?.first?.thumbnailUrl.map(APIClient.shared.mediaURL(_:))
+        if usesLocalPhotos, let local = activityStore.activities.first(where: {
+            $0.sync?.serverActivityId == activity.id || $0.id.uuidString.caseInsensitiveCompare(activity.id) == .orderedSame
+        }) {
+            return local.photos.first.flatMap { activityStore.imageURL(for: $0) }
+        }
+        return activity.photos?.first?.thumbnailUrl.map(APIClient.shared.mediaURL(_:))
     }
 
     var body: some View {
@@ -4579,6 +4588,7 @@ private struct SocialRoutePreviewImage: View {
                     LocalImageView(url: primaryPhotoURL, maxPixelSize: 720) {
                         placeholder
                     }
+                    .id(primaryPhotoURL)
                 } else if let image {
                     Image(uiImage: image)
                         .resizable()
@@ -4597,7 +4607,7 @@ private struct SocialRoutePreviewImage: View {
         )
         // The compact server polyline is already a content identity. Hashing and
         // decoding it belongs in the cache actor, not every main-thread layout.
-        .task(id: activity.id + "|" + (activity.route?.encodedPolyline ?? "")) {
+        .task(id: activity.id + "|" + (activity.route?.encodedPolyline ?? "") + "|" + (primaryPhotoURL?.absoluteString ?? "")) {
             guard primaryPhotoURL == nil else { return }
             guard let preview = await SocialRoutePreviewCache.shared.image(for: activity),
                   !Task.isCancelled else { return }
