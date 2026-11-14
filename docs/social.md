@@ -174,9 +174,9 @@ Production schema rollout uses the Cloud Run database job documented in `docs/ba
 
 ## Android Shared Connection State
 
-- Social, Me, and accepted-connection pickers observe the account/locale-scoped Room `social.home/current` snapshot through `SocialRepository.observeHome`.
+- Social and accepted-connection pickers observe the account/locale-scoped Room `social.home/current` snapshot through `SocialRepository.observeHome`. Me no longer presents a connection roster.
 - Full refresh, lightweight connection refresh, and connection pagination publish their roster/cursor to that same snapshot. ViewModels do not keep a separately refreshed roster. Repository writes are serialized, retain the loaded page range, and preserve unrelated cached feed/Group data and its expiry on roster-only updates.
-- The app shell refreshes inbox and connections on foreground entry, every 30 seconds while resumed, and on foreground push receipt, regardless of the selected tab. Social additionally refreshes active-now state while visible. Me does not need to be reopened for a newly accepted connection to appear.
+- The app shell refreshes inbox and connections on foreground entry, every 30 seconds while resumed, and on foreground push receipt, regardless of the selected tab. Social additionally refreshes active-now state while visible.
 - Regression coverage lives in `NavigationInteractionTest`: Social quick refresh → Me, push → bell and roster, missing push callback → foreground poll, and pagination retention across consumers.
 - Verification (2026-10-31): 25 app interaction tests and 5 profile-control tests passed with `ANDROID_SERIAL=emulator-5556 ./android/test-navigation.sh`; debug assembly and release Kotlin compilation passed. Push tests exercise the foreground invalidation signal and missed-callback polling against local HTTP fixtures; live FCM delivery was not replayed.
 
