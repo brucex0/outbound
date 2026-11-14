@@ -934,7 +934,6 @@ private fun SignedInApp(
                             },
                             inboxCount = NotificationPresentationPolicy.attentionCount(integration.notifications),
                             onNotifications = { navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true } },
-                            connections = integration.connections,
                             insights = integration.insights.map { MeInsight(it.id, it.label, it.value, it.confidence.replaceFirstChar(Char::uppercase)) },
                             milestones = buildList {
                                 addAll(integration.recognitions.map { MeMilestone("${it.badgeId}:${it.awardedAt}", it.badgeId.replace('_', ' ').replaceFirstChar(Char::uppercase)) })
@@ -954,14 +953,6 @@ private fun SignedInApp(
                             onRefreshToday = todayViewModel::refresh,
                             statisticsCached = integration.progress.isCached,
                             onMyQrCode = { navController.navigate(MY_QR_ROUTE) { launchSingleTop = true } },
-                            onConnections = {
-                                navController.navigate(AppDetailRoutes.connections("me_preview")) { launchSingleTop = true }
-                            },
-                            onConnectionProfile = { person ->
-                                sharedSocialViewModel.prepareProfile(person) {
-                                    navController.navigate(AppDetailRoutes.profile(person.id, "me_preview")) { launchSingleTop = true }
-                                }
-                            },
                             onMyRoutes = {
                                 integrationViewModel.scope(com.plainstride.outbound.feature.community.RouteScope.MINE)
                                 navController.navigate(COMMUNITY_ROUTES_ROUTE) { launchSingleTop = true }

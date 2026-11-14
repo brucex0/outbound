@@ -317,7 +317,7 @@ internal fun DebugActivityRepositoryHarness(settingsViewModel: com.plainstride.o
                     planSummary = planning?.let { com.plainstride.outbound.feature.settings.MePlanSummary(it.value.plan?.currentPhase, null, null, it.value.plan == null) },
                     statisticsAvailable = statistics != null, statisticsCached = offline || projection?.baseline?.statisticsDirty == true,
                     onRefreshStatistics = { action { fixture.activities.refreshStatistics(fixture.account) } }, onRefreshToday = { fixture.reads.updateCalendar() },
-                    onConnectionProfile = {}, onMessage = {},
+                    onMessage = {},
                 )
             }
         }

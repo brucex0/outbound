@@ -97,7 +97,6 @@ import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
 import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
 import com.plainstride.outbound.core.designsystem.plainstrideThemeColors
 import com.plainstride.outbound.feature.social.SocialAvatar
-import com.plainstride.outbound.feature.social.SocialConnectionsPreview
 import com.plainstride.outbound.feature.social.SocialPerson
 import com.plainstride.outbound.feature.social.R as SocialR
 import java.time.Instant
@@ -164,7 +163,6 @@ fun MeRoute(
     onReplayOnboarding: () -> Unit,
     inboxCount: Int = 0,
     onNotifications: () -> Unit = {},
-    connections: List<SocialPerson> = emptyList(),
     insights: List<MeInsight> = emptyList(),
     milestones: List<MeMilestone> = emptyList(),
     accountWeeklyMinutes: Int = 0,
@@ -176,8 +174,6 @@ fun MeRoute(
     statisticsAvailable: Boolean = false,
     statisticsCached: Boolean = false,
     onMyQrCode: () -> Unit = {},
-    onConnections: () -> Unit = {},
-    onConnectionProfile: (SocialPerson) -> Unit,
     onMyRoutes: () -> Unit = {},
     onOpenProgressInsights: () -> Unit = {},
     onMeDestination: (String) -> Unit = {},
@@ -213,11 +209,9 @@ fun MeRoute(
     when (page) {
         MePage.Overview -> MeOverview(
             state, onSettings = { page = MePage.Settings }, onRefresh = { viewModel.refresh(); onRefreshStatistics(); onRefreshToday() },
-            connections, insights, personalMilestones, planSummary,
+            insights, personalMilestones, planSummary,
             accountWeeklyMinutes, accountWeeklyDistanceMeters, weeklyRunGoal, statisticsAvailable, statisticsCached,
             onMyQrCode = onMyQrCode,
-            onConnections = { onMeDestination("connections"); onConnections() },
-            onConnectionProfile = { onMeDestination("connection_profile"); onConnectionProfile(it) },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
             onOpenProgressInsights = onOpenProgressInsights,
             inboxCount = inboxCount,
@@ -256,7 +250,6 @@ private fun MeOverview(
     state: SettingsUiState,
     onSettings: () -> Unit,
     onRefresh: () -> Unit,
-    connections: List<SocialPerson>,
     insights: List<MeInsight>,
     milestones: List<PersonalMilestone>,
     planSummary: MePlanSummary?,
@@ -266,8 +259,6 @@ private fun MeOverview(
     statisticsAvailable: Boolean,
     statisticsCached: Boolean,
     onMyQrCode: () -> Unit,
-    onConnections: () -> Unit,
-    onConnectionProfile: (SocialPerson) -> Unit,
     onMyRoutes: () -> Unit,
     onOpenProgressInsights: () -> Unit,
     inboxCount: Int,
@@ -317,14 +308,6 @@ private fun MeOverview(
                 }
             } }
             item { benefitsContent() }
-            item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    SectionTitle(stringResource(R.string.me_connections))
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onConnections, Modifier.padding(end = 12.dp)) { Text(stringResource(SocialR.string.social_all)) }
-                }
-            }
-            item { SocialConnectionsPreview(connections, onOpenAll = onConnections, onOpenProfile = onConnectionProfile) }
             item {
                 Row(
                     Modifier.fillMaxWidth().padding(start = 20.dp, top = 10.dp, end = 20.dp, bottom = 2.dp),
