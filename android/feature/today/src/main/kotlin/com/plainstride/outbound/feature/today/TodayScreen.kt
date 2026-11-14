@@ -542,10 +542,6 @@ fun TodayScreen(
         if (photo != null) setupPhoto = photo
     }
     val suggestion = state.primarySuggestion
-    val fallbackPlanAction: (() -> Unit)? =
-        if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED && !state.scheduledRestDay && suggestion == null) {
-            { openPlanDetails("today_planned_card_plan") }
-        } else null
     LaunchedEffect(activityChoice, calories, goalChoice) {
         caloriePlan = if (goalChoice == TodayGoalChoice.CALORIES) {
             calorieEstimate(activityChoice, calories)
@@ -654,10 +650,9 @@ fun TodayScreen(
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(state.pendingWorkoutToday!!.title, style = MaterialTheme.typography.titleLarge)
                             Text(stringResource(R.string.plan_details_pending), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            fallbackPlanAction?.let { TodayPlanAction(onClick = it) }
                         }
                     }
-                    state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton(onOpenPlan = fallbackPlanAction)
+                    state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
                     suggestion != null && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
                         suggestion = suggestion,
                         stale = state.isStale,
@@ -700,7 +695,6 @@ fun TodayScreen(
                                 stringResource(R.string.today_change_rest_body),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            fallbackPlanAction?.let { TodayPlanAction(onClick = it) }
                         }
                     }
                     confirmedNoPlan && activityChoice == TodayActivityChoice.PLANNED -> NoPlanCard(
@@ -1644,20 +1638,10 @@ private fun NoPlanCard(onStartFreestyle: () -> Unit, onSetUpPlan: () -> Unit) {
 }
 
 @Composable
-private fun TodayPlanAction(onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.heightIn(min = 48.dp)) {
-        Icon(Icons.Default.CalendarMonth, contentDescription = null)
-        Spacer(Modifier.width(6.dp))
-        Text(stringResource(R.string.today_plan))
-    }
-}
-
-@Composable
-private fun TodaySkeleton(onOpenPlan: (() -> Unit)? = null) {
+private fun TodaySkeleton() {
     Card {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             repeat(3) { index -> Spacer(Modifier.fillMaxWidth(if (index == 1) .72f else 1f).height(if (index == 0) 24.dp else 18.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) }
-            onOpenPlan?.let { TodayPlanAction(onClick = it) }
         }
     }
 }
