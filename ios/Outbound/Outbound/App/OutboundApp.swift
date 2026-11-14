@@ -197,9 +197,7 @@ struct OutboundApp: App {
                 }
             }
             .id(startupDestination)
-            .transition(.opacity.combined(with: .scale(scale: 0.99)))
         }
-        .animation(.easeInOut(duration: 0.28), value: startupDestination)
         .task(id: authStore.startupResolutionKey) {
             await resolveStartupDestination()
         }
@@ -559,21 +557,15 @@ private struct AppLaunchView: View {
             Color("LaunchBackground")
                 .ignoresSafeArea()
 
-            Image("LaunchMark")
+            Image("LaunchLockup")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 112, height: 112)
-                .clipped()
-
-            Text(String(localized: "Plainstride"))
-                .font(.system(.headline, design: .rounded, weight: .semibold))
-                .tracking(1.2)
-                .foregroundStyle(.primary)
-                .offset(y: 80)
+                .frame(width: 200)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Plainstride"))
     }
 }
 

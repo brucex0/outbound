@@ -123,6 +123,8 @@
     <dict>
         <key>UIColorName</key>
         <string>LaunchBackground</string>
+        <key>UIImageName</key>
+        <string>LaunchLockup</string>
     </dict>
 
     <key>UISupportedInterfaceOrientations~iphone</key>
