@@ -82,6 +82,7 @@ extension ActivityFlowCoordinator {
     }
 
     func startRecording() {
+        guard !self.rejectBlockedPlannedStartIfNeeded() else { return }
         guard self.canStartRecording, !self.isCountingDown else { return }
         guard !self.isStartingActivity else { return }
 #if DEBUG
@@ -108,6 +109,7 @@ extension ActivityFlowCoordinator {
     }
 
     func ensureLocationReadyThenStart(isUserInitiated: Bool = true) {
+        guard !self.rejectBlockedPlannedStartIfNeeded() else { return }
         guard self.canStartRecording, !self.isCountingDown else { return }
 #if DEBUG
         if self.isRunSimulationEnabled {
@@ -132,6 +134,7 @@ extension ActivityFlowCoordinator {
     }
 
     func beginLocationWait() {
+        guard !self.rejectBlockedPlannedStartIfNeeded() else { return }
         let isFirstEntry = !self.isWaitingForLocation
         self.isWaitingForLocation = true
         self.launchCoordinator.beginPreflight()
@@ -194,6 +197,7 @@ extension ActivityFlowCoordinator {
 
     func retryBlockedStartIfNeeded() {
         guard self.isWaitingForLocation, self.recorder.state == .idle else { return }
+        guard !self.rejectBlockedPlannedStartIfNeeded() else { return }
         self.isWaitingForLocation = false
         if self.activeIntent != nil {
             // A countdown completed while waiting on location; finish that
@@ -221,11 +225,8 @@ extension ActivityFlowCoordinator {
     }
 
     func beginStartRecording() {
+        guard !self.rejectBlockedPlannedStartIfNeeded() else { return }
         guard self.canStartRecording, !self.isCountingDown, !self.isStartingActivity else { return }
-        guard !(self.setup.selectedWorkoutChoice == .planned && self.dependencies.trainingPlanStore.shouldBlockPlannedLaunch) else {
-            self.showSetupToast(self.dependencies.trainingPlanStore.plannedLaunchBlockedMessage)
-            return
-        }
         self.guide.setSpeechEnabled(self.voiceGuideSpeechEnabled)
         self.isStartingActivity = true
         var recordingIntent = self.setup.plannedIntent
@@ -588,6 +589,7 @@ extension ActivityFlowCoordinator {
     }
 
     func completeStartCountdown() {
+        guard !self.rejectBlockedPlannedStartIfNeeded() else { return }
         guard self.recorder.state == .idle,
               self.review.pendingActivity == nil,
               self.sessionController.phase == .countdown || self.sessionController.phase == .preflighting else {
@@ -754,6 +756,40 @@ extension ActivityFlowCoordinator {
         }
         // The companion choice belongs to the retained setup, not the canceled
         // countdown, so the next start keeps it when the sport stays eligible.
+    }
+
+    @discardableResult
+    private func rejectBlockedPlannedStartIfNeeded() -> Bool {
+        let phase = self.sessionController.phase
+        guard self.setup.selectedWorkoutChoice == .planned,
+              self.dependencies.trainingPlanStore.shouldBlockPlannedLaunch,
+              self.recorder.state == .idle,
+              self.review.pendingActivity == nil,
+              phase == .setup || phase == .preflighting || phase == .countdown
+        else { return false }
+
+        let message = self.dependencies.trainingPlanStore.plannedLaunchBlockedMessage
+        let hasPendingStart = self.isStartingActivity || self.isWaitingForLocation
+            || self.isCountingDown || self.launchCoordinator.phase != .idle
+            || self.showCamera
+        if hasPendingStart {
+            self.countdown.countdownTask?.cancel()
+            self.countdown.countdownTask = nil
+            self.countdown.countdownStep = nil
+            self.isStartingActivity = false
+            self.isWaitingForLocation = false
+            self.isLocationPermissionModalPresented = false
+            self.launchCoordinator.cancel()
+            self.recorder.locationManager.cancelPreparation()
+            self.dependencies.phoneWorkoutCoordinator.cancelPreparation()
+            self.guide.deactivate()
+            self.activeIntent = nil
+            self.sessionController.prepare(intent: self.setup.plannedIntent)
+            self.showCamera = false
+            self.host.onLiveSurfaceVisibilityChange?(false)
+        }
+        self.showSetupToast(message)
+        return true
     }
 
     var isCountingDown: Bool {

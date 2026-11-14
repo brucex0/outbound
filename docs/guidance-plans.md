@@ -31,6 +31,7 @@ This structure works for race preparation and for non-race use cases.
 - Missed days should trigger re-entry, not failure language.
 - Today should always surface a clear next step.
 - An active-plan day without a required workout is a rest day. `today` must be null and Today must not borrow the next scheduled workout; keep that workout in the dated plan schedule/upcoming list. Completed-today optional recovery and explicit skip/illness guidance remain separate states.
+- On iOS, selecting Planned on a known scheduled rest day keeps the planned-workout card structure: its “Today’s workout” header shows the wrapping rest message, and its usual Plan action remains available. Workout details, duration, phases, warm-up, Change, and collapse controls are hidden; activity launch remains blocked and returns to Today if rest is detected during preflight.
 - A plan should adapt to real behavior, not only to a setup survey.
 - AI should personalize and explain, but core progression rules should stay deterministic.
 - The system must support sports beyond running.
