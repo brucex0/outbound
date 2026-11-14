@@ -1,5 +1,6 @@
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Save and edit share the same photo management layout and drag gestures.
 /// Callers retain image loading, draft ownership, preview, persistence and analytics.
@@ -12,6 +13,10 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
     let onRemove: () -> Void
     let onMove: (UUID, UUID) -> Bool
     @ViewBuilder let thumbnail: (Photo, Int) -> Thumbnail
+
+    private var photoDragType: UTType {
+        UTType(exportedAs: "ai.plainstride.activity-photo", conformingTo: .data)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -84,22 +89,26 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
+                    HStack(spacing: 12) {
                         ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                             thumbnail(photo, index)
                                 // Keep one stable drag source on every tile. Installing it only
                                 // after a selection long press loses the gesture that is in flight.
                                 .onDrag {
                                     selectedPhotoIDs.insert(photo.id)
-                                    return NSItemProvider(object: photo.id.uuidString as NSString)
+                                    let provider = NSItemProvider()
+                                    let data = Data(photo.id.uuidString.utf8)
+                                    provider.registerDataRepresentation(
+                                        forTypeIdentifier: photoDragType.identifier,
+                                        visibility: .ownProcess
+                                    ) { completion in
+                                        completion(data, nil)
+                                        return nil
+                                    }
+                                    return provider
                                 }
-                                .dropDestination(for: String.self) { identifiers, _ in
-                                    guard identifiers.count == 1,
-                                          let identifier = identifiers.first,
-                                          let sourceID = UUID(uuidString: identifier),
-                                          photos.contains(where: { $0.id == sourceID })
-                                    else { return false }
-                                    return onMove(sourceID, photo.id)
+                                .onDrop(of: [photoDragType], isTargeted: nil) { providers in
+                                    acceptPhotoDrop(providers, destinationID: photo.id)
                                 }
                                 .accessibilityAction(named: String(localized: "summary.photos.select", defaultValue: "Select or deselect photo")) {
                                     if selectedPhotoIDs.contains(photo.id) {
@@ -130,6 +139,33 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
         .padding(.top, 8)
         .padding(.bottom, 8)
         .accessibilityElement(children: .contain)
+    }
+
+    /// Use the same explicit representation at both ends of the native drag.
+    /// Decode the actual payload rather than relying on selection or stale drag state.
+    private func acceptPhotoDrop(_ providers: [NSItemProvider], destinationID: UUID) -> Bool {
+        guard providers.count == 1, let provider = providers.first,
+              provider.hasItemConformingToTypeIdentifier(photoDragType.identifier) else { return false }
+        provider.loadDataRepresentation(forTypeIdentifier: photoDragType.identifier) { data, error in
+            if let error {
+                let failure = error as NSError
+                if failure.domain == NSCocoaErrorDomain && failure.code == NSUserCancelledError { return }
+                ActivityDiagnosticLog.error(.persistence, "Activity photo drop failed: operation=load_payload domain=\(failure.domain) code=\(failure.code)")
+                return
+            }
+            guard let data,
+                  let identifier = String(data: data, encoding: .utf8),
+                  let sourceID = UUID(uuidString: identifier) else {
+                ActivityDiagnosticLog.error(.persistence, "Activity photo drop failed: unavailable or invalid local drag payload")
+                return
+            }
+            Task { @MainActor in
+                // The draft may have changed while the provider was loading.
+                // Each caller validates both UUIDs against its current array.
+                _ = onMove(sourceID, destinationID)
+            }
+        }
+        return true
     }
 
 }
