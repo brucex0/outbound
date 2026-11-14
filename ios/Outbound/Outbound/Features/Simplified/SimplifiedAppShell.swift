@@ -2449,8 +2449,6 @@ private struct SimplifiedMeView: View {
     @State private var trainingProfileSex: TrainingProfileSex?
     @State private var showsCycleAwareCheckIn = false
     @State private var showsManualWorkoutEntry = false
-    @State private var showsConnections = false
-    @State private var showsAddConnection = false
     @State private var showsSocialInbox = false
     @State private var showsQRCode = false
     @State private var showsProfilePhotoPreview = false
@@ -2531,7 +2529,6 @@ private struct SimplifiedMeView: View {
                         }
                     }
                     benefitsNavigationCard
-                    connectionsPreview
                     NavigationLink {
                         RunnerProgressView()
                     } label: {
@@ -2751,10 +2748,6 @@ private struct SimplifiedMeView: View {
             }
             .background(OutboundPalette.background)
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
-            .sheet(isPresented: $showsAddConnection) {
-                AddConnectionSheet()
-            }
             .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }
             .navigationDestination(isPresented: $showsQRCode) {
                 InvitationCodeView(entrySource: "me_profile_card")
@@ -2915,14 +2908,10 @@ private struct SimplifiedMeView: View {
         ]))
         async let profileLoad: Void = loadProfile()
         async let trainingProfileLoad: Void = loadTrainingProfile()
-        async let connectionsLoad: Void = loadConnectionsIfNeeded()
         async let featureControlsLoad: Void = loadFeatureControls()
-        _ = await (profileLoad, trainingProfileLoad, connectionsLoad, featureControlsLoad)
+        _ = await (profileLoad, trainingProfileLoad, featureControlsLoad)
         await analyticsManager?.track(.init(.featureExposed, properties: [
             .feature: .string("me_weekly_run_goal"),
-        ]))
-        await analyticsManager?.track(.init(.featureExposed, properties: [
-            .feature: .string("me_connections_preview"),
         ]))
     }
 
@@ -2934,23 +2923,6 @@ private struct SimplifiedMeView: View {
                 .feature: .string("me_plus_paywall_entry"),
             ]))
         }
-    }
-
-    private func loadConnectionsIfNeeded() async {
-        guard !socialStore.hasLoadedConnections else { return }
-        await socialStore.refreshConnections()
-    }
-
-    private var connectionsPreview: some View {
-        SocialConnectionsPreviewCard(
-            connections: socialStore.connections
-                .filter { $0.status == "accepted" }
-                .sorted(by: SocialConnectionDTO.previewOrder),
-            isLoading: socialStore.isConnectionsLoading && !socialStore.hasLoadedConnections,
-            entrySource: "me_connections_preview",
-            onAdd: openAddConnection,
-            onOpenAll: openConnections
-        )
     }
 
     private var benefitsNavigationCard: some View {
@@ -3013,24 +2985,6 @@ private struct SimplifiedMeView: View {
             await analyticsManager?.track(.init(.meDestinationOpened, properties: [
                 .destination: .string(destination),
                 .entrySource: .string("me"),
-            ]))
-        }
-    }
-
-    private func openConnections() {
-        showsConnections = true
-        Task {
-            await analyticsManager?.track(.init(.connectionsOpened, properties: [
-                .entrySource: .string("me_preview"),
-            ]))
-        }
-    }
-
-    private func openAddConnection() {
-        showsAddConnection = true
-        Task {
-            await analyticsManager?.track(.init(.connectionsOpened, properties: [
-                .entrySource: .string("me_add"),
             ]))
         }
     }
