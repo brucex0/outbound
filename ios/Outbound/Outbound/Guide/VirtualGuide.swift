@@ -217,6 +217,8 @@ final class VirtualGuide: NSObject, ObservableObject {
         suppressedMomentTypes: Set<LiveGuidanceMomentType> = []
     ) {
         let activityType = (sessionIntent?.resolvedActivityType ?? .running).rawValue
+        ActivityDiagnosticLog.notice(.lifecycle,
+            "Guide activated speech_enabled=\(speechEnabled) ai_coach_enabled=\(coachingEnabled) running=\(activityType == ActivityType.running.rawValue)")
         guidanceEventHandler?(.eligibilityResolved(
             activityType: activityType,
             result: activityType == ActivityType.running.rawValue ? "running_ai_eligible" : "pacer_only"

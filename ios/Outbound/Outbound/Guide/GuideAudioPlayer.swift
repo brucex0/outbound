@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import OSLog
 
 enum GuideAudioPlaybackRoute: String, Equatable {
     case cloudStream = "cloud_stream"
@@ -27,6 +28,8 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
     var eventHandler: ((GuideSpeechEvent) -> Void)?
     var playbackRouteHandler: ((GuideAudioPlaybackRoute) -> Void)?
     private(set) var isSpeaking = false
+
+    private static let logger = Logger(subsystem: "plainstride.outbound", category: "GuideAudio")
 
     private var player: AVAudioPlayer?
     private var queuedAudio: [Data] = []
@@ -109,6 +112,9 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
                     self.pcmStreamEnded = true
                     self.finishPCMIfReady()
                 } catch {
+                    if !Task.isCancelled, !(error is CancellationError) {
+                        Self.logFailure("stream_read", error: error)
+                    }
                     if !self.pcmPlaybackStarted {
                         self.handlePCMFailureBeforePlayback(fallbackData: fallbackData)
                     } else {
@@ -119,6 +125,7 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
             }
             return true
         } catch {
+            Self.logFailure("stream_start", error: error)
             if let fallbackData { return play(fallbackData, interrupt: interrupt) }
             finishSpeaking()
             return false
@@ -146,6 +153,7 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         self.player = nil
         guard flag else {
+            Self.logger.error("Guide playback failed operation=recording_finish")
             finishSpeaking()
             return
         }
@@ -172,16 +180,19 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
         do {
             try Self.activateAudioSession()
             guard player.play() else {
+                Self.logger.error("Guide playback failed operation=recording_resume")
                 finishSpeaking()
                 return
             }
             isSpeaking = true
         } catch {
+            Self.logFailure("recording_resume", error: error)
             finishSpeaking()
         }
     }
 
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Self.logFailure("recording_decode", error: error)
         finishSpeaking()
     }
 
@@ -204,8 +215,12 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
                 emitPlaybackRoute(.recordedAudio)
                 eventHandler?(.didStart)
             }
-            if !isSpeaking { finishSpeaking() }
+            if !isSpeaking {
+                Self.logger.error("Guide playback failed operation=recording_start result=rejected")
+                finishSpeaking()
+            }
         } catch {
+            Self.logFailure("recording_start", error: error)
             finishSpeaking()
         }
     }
@@ -220,7 +235,11 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
         sequenceCompletion = nil
         stopPCMResources()
         #if os(iOS)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            Self.logFailure("session_deactivate", error: error)
+        }
         #endif
         if shouldEmitFinish { eventHandler?(.didFinish) }
     }
@@ -262,6 +281,7 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
 
     private func handlePCMFailureBeforePlayback(fallbackData: Data?) {
         guard !pcmPlaybackStarted else { return }
+        Self.logger.error("Guide playback unavailable operation=stream_first_audio fallback=\(fallbackData != nil, privacy: .public)")
         streamTask?.cancel()
         stopPCMResources()
         if let fallbackData {
@@ -291,6 +311,12 @@ final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAud
         guard !didEmitPlaybackRoute else { return }
         didEmitPlaybackRoute = true
         playbackRouteHandler?(route)
+    }
+
+    private static func logFailure(_ operation: String, error: Error?) {
+        // Never log error descriptions: providers can include content or URLs.
+        let code = (error as NSError?)?.code ?? 0
+        logger.error("Guide playback failed operation=\(operation, privacy: .public) code=\(code, privacy: .public)")
     }
 
     private static func activateAudioSession() throws {

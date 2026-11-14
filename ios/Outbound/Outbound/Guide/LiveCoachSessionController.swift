@@ -66,7 +66,19 @@ final class LiveCoachSessionController {
             companionBrief: companionBrief, unitSystem: unitSystem, weatherSnapshot: weatherSnapshot, isIndoor: isIndoor)
         request.preparationId = LiveCoachPreparationStore.shared.preparationID(for: request)
         createTask = Task {
-            let response = try await APIClient.shared.createLiveCoachSession(request)
+            let response: CreateLiveCoachSessionResponse
+            do {
+                response = try await APIClient.shared.createLiveCoachSession(request)
+            } catch {
+                // Audio setup is independent of recording. Report once here even
+                // when no later cue awaits this task (for example with AI Coach off).
+                if !Task.isCancelled, !(error is CancellationError), expectedGeneration == generation {
+                    ActivityDiagnosticLog.error(.lifecycle,
+                        "Coach session creation failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                    LiveCoachPreparationStore.shared.eventHandler?("start", "failure")
+                }
+                throw error
+            }
             if Task.isCancelled || expectedGeneration != generation {
                 // The server may have created a session just before cancellation.
                 // End that specific response without attaching it to a new run.
@@ -446,14 +458,33 @@ final class LiveCoachSessionController {
         }
         return .init(
             title: intent.title,
-            detail: intent.detail,
-            guideLine: intent.guideLine,
+            // Planned workout explanations also appear on Today and can exceed
+            // the coaching API's 400 UTF-16-unit metadata limit. Bound this
+            // projection only; retain the full prescription and local guidance.
+            detail: boundedContextText(intent.detail, maximumUTF16Count: 400),
+            guideLine: boundedContextText(intent.guideLine, maximumUTF16Count: 400),
             targetDistanceMeters: intent.resolvedTargetDistanceMeters,
             targetDurationSeconds: intent.resolvedTargetDurationSeconds,
             targetCalories: intent.resolvedTargetCalories,
             steps: steps,
             route: routeDTO(intent.preparedRoute)
         )
+    }
+
+    private static func boundedContextText(_ text: String, maximumUTF16Count: Int) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.utf16.count > maximumUTF16Count else { return trimmed }
+        var result = ""
+        var count = 0
+        // Zod uses JavaScript string length (UTF-16), not Swift Character count.
+        // Keep graphemes intact, including emoji and combining marks.
+        for character in trimmed {
+            let width = String(character).utf16.count
+            guard count + width <= maximumUTF16Count else { break }
+            result.append(character)
+            count += width
+        }
+        return result
     }
 
     private static func routeDTO(
