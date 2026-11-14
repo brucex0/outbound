@@ -36,12 +36,12 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
                     Button {
                         selectedPhotoIDs.removeAll()
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: "checkmark")
                             .frame(width: 32, height: 32)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(String(localized: "common.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel(String(localized: "common.done", defaultValue: "Done"))
                     .accessibilityIdentifier("\(identifierPrefix)CancelPhotoSelectionButton")
                 } else {
                     Button {
