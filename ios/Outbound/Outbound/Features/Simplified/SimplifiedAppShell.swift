@@ -1369,7 +1369,9 @@ private struct SimplifiedTodayView: View {
         VStack(spacing: OutboundSpacing.compact) {
             if let activityEventToday {
                 activityEventCard(activityEventToday)
-            } else if launchGoalMode == .planned && trainingPlanStore.shouldBlockPlannedLaunch {
+            } else if launchGoalMode == .planned
+                && trainingPlanStore.shouldBlockPlannedLaunch
+                && !trainingPlanStore.isScheduledRestDay {
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         Text(String(localized: "Rest today")).font(.headline)
@@ -1512,29 +1514,19 @@ private struct SimplifiedTodayView: View {
 
     private var plannedWorkoutCard: some View {
         OutboundCard {
-            VStack(spacing: isPlannedWorkoutCardMinimized ? 0 : OutboundSpacing.standard) {
-                HStack(spacing: OutboundSpacing.compact) {
+            plannedWorkoutCardContent
+        }
+    }
+
+    @ViewBuilder
+    private var plannedWorkoutCardContent: some View {
+        VStack(spacing: trainingPlanStore.isScheduledRestDay || !isPlannedWorkoutCardMinimized ? OutboundSpacing.standard : 0) {
+            HStack(spacing: OutboundSpacing.compact) {
+                if trainingPlanStore.isScheduledRestDay {
+                    plannedWorkoutHeaderContent
+                } else {
                     Button(action: openPlannedWorkoutDetails) {
-                        HStack(spacing: OutboundSpacing.standard) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(trainingPlanStore.activitySuggestion?.relationship == "optionalRecovery" ? "Up next" : "Today’s workout")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(theme.accentColor)
-                                    .textCase(.uppercase)
-                                Text(todayWorkoutName)
-                                    .font((isPlannedWorkoutCardMinimized ? Font.headline : .title3).weight(.bold))
-                                    .foregroundStyle(OutboundPalette.primaryText)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.85)
-                            }
-                            Spacer(minLength: 8)
-                            Text(todayTotalDuration)
-                                .font(.subheadline.weight(.semibold).monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
+                        plannedWorkoutHeaderContent
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint(String(localized: "Opens workout details"))
@@ -1553,67 +1545,74 @@ private struct SimplifiedTodayView: View {
                             : String(localized: "Collapse workout card")
                     )
                 }
+            }
 
-                if trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true {
-                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                        Text(String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain."))
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Button(String(localized: "today.change.sheet_title", defaultValue: "Change workout")) { openWorkoutChange() }
-                            .font(.subheadline.weight(.semibold))
-                            .frame(minHeight: 44)
-                            .accessibilityIdentifier("todayRecoveryChange")
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .task {
-                        await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("planned_workout_recovery_advice")]))
-                    }
+            if !trainingPlanStore.isScheduledRestDay,
+               trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                    Text(String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain."))
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(String(localized: "today.change.sheet_title", defaultValue: "Change workout")) { openWorkoutChange() }
+                        .font(.subheadline.weight(.semibold))
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("todayRecoveryChange")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .task {
+                    await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("planned_workout_recovery_advice")]))
+                }
+            }
+
+            if !trainingPlanStore.isScheduledRestDay && !isPlannedWorkoutCardMinimized {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                    WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
+                    CompactIntervalPreview(phases: todayPhases)
                 }
 
-                if !isPlannedWorkoutCardMinimized {
-                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                        WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
-                        CompactIntervalPreview(phases: todayPhases)
-                    }
-
-                    if activitySessionState == .idle, !isActivityFullscreenVisible, activeRunIntent.resolvedActivityType == .running {
-                        Button {
-                            Task {
-                                await analyticsManager?.track(.init(.featureExposed, properties: [
-                                    .feature: .string("planned_workout_warmup"),
-                                    .result: .string("opened")
-                                ]))
-                            }
-                            showsStretch = true
-                        } label: {
-                            HStack(spacing: OutboundSpacing.compact) {
-                                Text(String(localized: "record.planned_warmup.title", defaultValue: "Warm-up exercises"))
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(theme.accentColor)
-                                Spacer(minLength: 8)
-                                Text(plannedWorkoutWarmupRoutine.calculatedDuration)
-                                    .font(.caption.weight(.semibold).monospacedDigit())
-                                    .foregroundStyle(.primary)
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                            .contentShape(Rectangle())
+                if activitySessionState == .idle, !isActivityFullscreenVisible, activeRunIntent.resolvedActivityType == .running {
+                    Button {
+                        Task {
+                            await analyticsManager?.track(.init(.featureExposed, properties: [
+                                .feature: .string("planned_workout_warmup"),
+                                .result: .string("opened")
+                            ]))
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityHint(String(localized: "record.planned_warmup.hint", defaultValue: "Opens the warm-up routine without starting your workout."))
-                    }
-
-                    HStack(spacing: 0) {
-                        Button(action: onOpenPlan) {
-                            Label(String(localized: "Plan"), systemImage: "calendar")
+                        showsStretch = true
+                    } label: {
+                        HStack(spacing: OutboundSpacing.compact) {
+                            Text(String(localized: "record.planned_warmup.title", defaultValue: "Warm-up exercises"))
                                 .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity, minHeight: 40)
+                                .foregroundStyle(theme.accentColor)
+                            Spacer(minLength: 8)
+                            Text(plannedWorkoutWarmupRoutine.calculatedDuration)
+                                .font(.caption.weight(.semibold).monospacedDigit())
+                                .foregroundStyle(.primary)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(String(localized: "record.planned_warmup.hint", defaultValue: "Opens the warm-up routine without starting your workout."))
+                }
+            }
 
+            if trainingPlanStore.isScheduledRestDay || !isPlannedWorkoutCardMinimized {
+                HStack(spacing: 0) {
+                    Button(action: onOpenPlan) {
+                        Label(String(localized: "Plan"), systemImage: "calendar")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: trainingPlanStore.isScheduledRestDay ? 44 : 40)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(String(localized: "Open plan details"))
+                    .accessibilityIdentifier("todayScheduledRestPlan")
+
+                    if !trainingPlanStore.isScheduledRestDay {
                         Button {
                             openWorkoutChange()
                         } label: {
@@ -1628,8 +1627,45 @@ private struct SimplifiedTodayView: View {
                     }
                 }
             }
-            .animation(.snappy, value: isPlannedWorkoutCardMinimized)
         }
+        .animation(.snappy, value: isPlannedWorkoutCardMinimized)
+    }
+
+    private var plannedWorkoutHeaderContent: some View {
+        HStack(spacing: OutboundSpacing.standard) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(plannedWorkoutHeaderOverline)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.accentColor)
+                    .textCase(.uppercase)
+                Text(trainingPlanStore.isScheduledRestDay ? trainingPlanStore.plannedLaunchBlockedMessage : todayWorkoutName)
+                    .font(trainingPlanStore.isScheduledRestDay
+                        ? .title3.weight(.bold)
+                        : (isPlannedWorkoutCardMinimized ? Font.headline : .title3).weight(.bold))
+                    .foregroundStyle(OutboundPalette.primaryText)
+                    .lineLimit(trainingPlanStore.isScheduledRestDay ? nil : 1)
+                    .minimumScaleFactor(trainingPlanStore.isScheduledRestDay ? 1 : 0.85)
+                    .fixedSize(horizontal: false, vertical: trainingPlanStore.isScheduledRestDay)
+            }
+            .frame(maxWidth: trainingPlanStore.isScheduledRestDay ? .infinity : nil, alignment: .leading)
+
+            if !trainingPlanStore.isScheduledRestDay {
+                Spacer(minLength: 8)
+                Text(todayTotalDuration)
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var plannedWorkoutHeaderOverline: String {
+        guard !trainingPlanStore.isScheduledRestDay else { return String(localized: "Today’s workout") }
+        return trainingPlanStore.activitySuggestion?.relationship == "optionalRecovery"
+            ? String(localized: "Up next")
+            : String(localized: "Today’s workout")
     }
 
     private var plannedWorkoutWarmupRoutine: StretchRoutine {

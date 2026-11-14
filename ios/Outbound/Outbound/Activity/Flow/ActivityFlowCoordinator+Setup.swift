@@ -154,6 +154,17 @@ extension ActivityFlowCoordinator {
         switch choice {
         case .planned:
             guard !self.dependencies.trainingPlanStore.shouldBlockPlannedLaunch else {
+                if self.dependencies.trainingPlanStore.isScheduledRestDay {
+                    self.setup.selectedWorkoutChoice = .planned
+                    self.setup.selectedGoalMode = .planned
+                    if trackChange {
+                        self.track(.init(.activityConfigurationChanged, properties: [
+                            .changeType: .string("workout_type"),
+                            .selectionType: .string(choice.analyticsValue)
+                        ]))
+                    }
+                    return
+                }
                 self.showSetupToast(self.dependencies.trainingPlanStore.plannedLaunchBlockedMessage)
                 return
             }
