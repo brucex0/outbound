@@ -72,7 +72,6 @@ private struct CompactNavigationBar: View {
     let selection: SimplifiedAppTab
     let showsStart: Bool
     let accentColor: Color
-    let actionColor: Color
     let onSelect: (SimplifiedAppTab) -> Void
     let onStart: () -> Void
 
@@ -120,7 +119,7 @@ private struct CompactNavigationBar: View {
         } label: {
             Image(systemName: symbol)
                 .font(.system(size: iconSize, weight: .semibold))
-                .foregroundStyle(isStart ? actionColor : isSelected ? accentColor : .primary)
+                .foregroundStyle(isStart || isSelected ? accentColor : .primary)
                 .frame(width: FixedTabBarLayout.selectedIconDiameter, height: FixedTabBarLayout.selectedIconDiameter)
                 .background {
                     if isSelected {
@@ -712,7 +711,6 @@ struct SimplifiedAppShell: View {
                 selection: selection,
                 showsStart: selection == .today && activitySessionState == .idle,
                 accentColor: guideCatalog.selectedTheme.accentColor,
-                actionColor: theme.actionColor,
                 onSelect: selectTabWithoutAnimation,
                 onStart: onContextualStart
             )
