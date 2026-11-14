@@ -3,7 +3,6 @@ package com.plainstride.outbound.feature.livecoach
 import com.plainstride.outbound.feature.recording.WorkoutGuidanceReport
 import com.plainstride.outbound.feature.recording.WorkoutGuidanceFeedback
 import android.util.Log
-import android.icu.text.BreakIterator
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
@@ -26,7 +25,8 @@ import com.plainstride.outbound.feature.livecoach.audio.LiveCoachPlaybackService
 import com.plainstride.outbound.feature.livecoach.audio.LocalizedFallbackPhrases
 import com.plainstride.outbound.feature.livecoach.audio.PlannedAudioCache
 import com.plainstride.outbound.feature.livecoach.network.CoachPreparation
-import com.plainstride.outbound.feature.livecoach.network.ClientWorkout
+import com.plainstride.outbound.feature.livecoach.network.WorkoutExecution
+import com.plainstride.outbound.feature.livecoach.network.WorkoutIssuance
 import com.plainstride.outbound.feature.livecoach.network.CoachingContract
 import com.plainstride.outbound.feature.livecoach.network.CreateSessionRequest
 import com.plainstride.outbound.feature.livecoach.network.CreateSessionResponse
@@ -692,7 +692,7 @@ class LiveCoachViewModel @Inject constructor(
         return CreateSessionRequest(
             clientSessionId = clientSessionId,
             workoutId = launch.plannedWorkoutId,
-            workoutRef = launch.standaloneWorkoutId?.let {
+            workoutRef = launch.standaloneWorkoutId?.takeIf { launch.plannedWorkoutId == null }?.let {
                 WorkoutReference(id = it, version = launch.standaloneWorkoutCatalogVersion)
             },
             locale = supportedLocale(),
@@ -714,7 +714,12 @@ class LiveCoachViewModel @Inject constructor(
                     )
                 },
             ),
-            clientWorkout = launch.clientWorkout(),
+            execution = launch.coachExecution(),
+            workoutIssuance = launch.performedWorkoutReference?.takeIf { launch.plannedWorkoutId != null }?.let {
+                WorkoutIssuance(id = it.issuanceId, revision = it.revision)
+            },
+            workoutEditId = launch.performedWorkoutReference?.workoutEditId,
+            workoutRevision = launch.performedWorkoutReference?.workoutRevision,
             environment = Environment(
                 timeZoneIdentifier = ZoneId.systemDefault().id,
                 indoor = launch.indoor,
@@ -1120,31 +1125,21 @@ private fun RecordingLaunchConfiguration.goalType(): String = when {
     else -> goal.type.name.lowercase(Locale.ROOT)
 }
 
-private fun RecordingLaunchConfiguration.clientWorkout(): ClientWorkout? {
-    if (title.isNullOrBlank() && workoutSteps.isEmpty() && followedRoute == null) return null
-    return ClientWorkout(
-        title = title?.takeIf(String::isNotBlank) ?: activityKind.name.lowercase(Locale.ROOT),
-        detail = workoutDetail.orEmpty().boundedCoachContext(),
-        guideLine = listOfNotNull(
-            workoutGuideline?.takeIf(String::isNotBlank),
-            privateTrainingSignal?.takeIf(String::isNotBlank)?.let { "private_training_signal:$it" },
-        ).joinToString(" · ").boundedCoachContext(),
+private fun RecordingLaunchConfiguration.coachExecution(): WorkoutExecution {
+    return WorkoutExecution(
         targetDistanceMeters = goal.targetDistanceMeters,
         targetDurationSeconds = goal.targetDurationSeconds?.toInt(),
         targetCalories = goal.targetCalories,
-        steps = workoutSteps.map { step ->
+        // Owned saved prescriptions are resolved by the server, not copied from UI text.
+        steps = (if (plannedWorkoutId == null && standaloneWorkoutId == null) workoutSteps else emptyList()).map { step ->
             WorkoutStep(
-                label = step.title,
                 durationSeconds = step.durationSeconds ?: 0,
-                detail = step.detail,
-                phase = step.phase?.takeIf(::isSupportedPhase),
+                phase = step.phase?.takeIf(::isSupportedPhase) ?: "open",
                 targetPaceSecondsPerKilometer = step.targetPaceSecondsPerKilometer.validPace(),
             )
         },
         route = followedRoute?.let { route ->
             WorkoutRoute(
-                name = route.name,
-                shape = route.shape,
                 direction = if (route.reverse) "reverse" else "forward",
                 distanceMeters = route.distanceMeters,
                 elevationGainMeters = route.elevationGainMeters,
@@ -1154,16 +1149,6 @@ private fun RecordingLaunchConfiguration.clientWorkout(): ClientWorkout? {
             )
         },
     )
-}
-
-/** Bound request metadata only; keep the full local workout and instruction text. */
-private fun String.boundedCoachContext(): String {
-    val text = trim()
-    // The backend's 400-character limit uses UTF-16, as does Kotlin String.length.
-    if (text.length <= 400) return text
-    val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(text) }
-    val end = if (boundaries.isBoundary(400)) 400 else boundaries.preceding(400)
-    return text.substring(0, end.coerceAtLeast(0))
 }
 
 private fun Double?.validPace() = this?.takeIf { it.isFinite() && it in 60.0..3_600.0 }

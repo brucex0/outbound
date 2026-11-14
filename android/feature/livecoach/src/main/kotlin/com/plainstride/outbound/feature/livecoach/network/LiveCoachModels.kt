@@ -68,21 +68,23 @@ import kotlinx.serialization.Serializable
 @Serializable data class VoiceProfile(val id: String, val displayName: String, val description: String, val style: String, val presentation: String, val previewAssetId: String)
 
 @Serializable data class CreateSessionRequest(
-    val contractVersion: Int = 1, val clientSessionId: String, val deferPlanning: Boolean = true, val preparationId: String? = null, val workoutId: String? = null,
+    val contractVersion: Int = 2, val clientSessionId: String, val deferPlanning: Boolean = true, val preparationId: String? = null, val workoutId: String? = null,
     val workoutRef: WorkoutReference? = null, val locale: String, val coachPersonaId: String,
     val voiceProfileId: String, val coachingContract: CoachingContract, val measurementUnitSystem: String,
-    val sessionIntent: SessionIntent, val clientWorkout: ClientWorkout? = null,
+    val sessionIntent: SessionIntent, val execution: WorkoutExecution,
+    val workoutIssuance: WorkoutIssuance? = null, val workoutEditId: String? = null, val workoutRevision: String? = null,
     val environment: Environment? = null, val appDistributionHint: String = "global",
 )
 @Serializable data class WorkoutReference(val source: String = "standalone_catalog", val id: String, val version: Int? = null)
 @Serializable data class SessionIntent(val activityType: String, val goalType: String, val race: RaceIntent? = null)
 @Serializable data class RaceIntent(val distanceMeters: Double, val goalMode: String, val goalTimeSeconds: Int? = null, val targetPaceSecondsPerKilometer: Double? = null, val pacingStrategy: String, val recommendationSource: String)
-@Serializable data class ClientWorkout(val title: String, val detail: String, val guideLine: String, val targetDistanceMeters: Double? = null, val targetDurationSeconds: Int? = null, val targetCalories: Int? = null, val steps: List<WorkoutStep>, val route: WorkoutRoute? = null)
-@Serializable data class WorkoutStep(val label: String, val durationSeconds: Int, val detail: String? = null, val phase: String? = null, val targetPaceSecondsPerKilometer: Double? = null, val transitionInstruction: String? = null, val transitionLeadSeconds: Int? = null, val transitionCountdown: String? = null)
-@Serializable data class WorkoutRoute(val name: String? = null, val shape: String? = null, val direction: String? = null, val distanceMeters: Double? = null, val elevationGainMeters: Double? = null, val approximateStartLatitude: Double? = null, val approximateStartLongitude: Double? = null, val approximateStartAltitudeMeters: Double? = null)
+@Serializable data class WorkoutIssuance(val id: String, val revision: String)
+@Serializable data class WorkoutExecution( val targetDistanceMeters: Double? = null, val targetDurationSeconds: Int? = null, val targetCalories: Int? = null, val steps: List<WorkoutStep>, val route: WorkoutRoute? = null)
+@Serializable data class WorkoutStep(val durationSeconds: Int, val phase: String, val targetPaceSecondsPerKilometer: Double? = null, val transitionLeadSeconds: Int? = null, val transitionCountdown: String? = null)
+@Serializable data class WorkoutRoute(val direction: String? = null, val distanceMeters: Double? = null, val elevationGainMeters: Double? = null, val approximateStartLatitude: Double? = null, val approximateStartLongitude: Double? = null, val approximateStartAltitudeMeters: Double? = null)
 @Serializable data class Environment(val timeZoneIdentifier: String? = null, val indoor: Boolean, val approximateLocation: ApproximateLocation? = null, val weather: Weather? = null)
-@Serializable data class ApproximateLocation(val placeName: String? = null, val latitude: Double? = null, val longitude: Double? = null, val altitudeMeters: Double? = null)
-@Serializable data class Weather(val observedAt: String, val condition: String, val temperatureCelsius: Double, val apparentTemperatureCelsius: Double, val windKilometersPerHour: Double, val precipitationChance: Double, val impact: String, val headline: String, val guidance: String? = null, val bestWindow: String? = null)
+@Serializable data class ApproximateLocation( val latitude: Double? = null, val longitude: Double? = null, val altitudeMeters: Double? = null)
+@Serializable data class Weather(val observedAt: String, val temperatureCelsius: Double, val apparentTemperatureCelsius: Double, val windKilometersPerHour: Double, val precipitationChance: Double, val impact: String)
 
 @Serializable data class CreateSessionResponse(val contractVersion: Int, val sessionId: String, val contextVersion: Int, val expiresAt: String, val effectiveMode: LiveCoachMode, val dynamicCoachingAvailable: Boolean, val access: Access, val audioPack: AudioPackRef, val limits: Limits, val guidancePlan: GuidancePlan, val guidancePlanHash: String, val planner: Planner, val preparation: SessionPreparation? = null)
 @Serializable data class Limits(val cueValidityMilliseconds: Int, val maximumDynamicCues: Int)
