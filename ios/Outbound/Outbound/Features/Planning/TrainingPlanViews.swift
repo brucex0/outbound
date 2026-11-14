@@ -291,6 +291,7 @@ struct TrainingPlanRecommendationDetailView: View {
 
 struct ActiveTrainingPlanDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analytics
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
 
     let activePlan: ActiveTrainingPlan
@@ -309,17 +310,6 @@ struct ActiveTrainingPlanDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(String(localized: "plan.details.your_scheduled_workouts", defaultValue: "Your schedule"))
                         .font(.headline)
-                    if let context = week.calendar {
-                        Text(context.localizedPeriod).font(.subheadline).foregroundStyle(.secondary)
-                        if context.isPartialWeek {
-                            Text(String(localized: "plan.calendar.partial_week", defaultValue: "Partial first week · starts on your plan start date", table: "PlanningCalendar"))
-                                .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    if let throughDate = scheduleCoverageDate {
-                        Text(String(format: String(localized: "plan.details.scheduled_through", defaultValue: "Scheduled through %@"), throughDate.formatted(date: .abbreviated, time: .omitted)))
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    }
 
                     if let todaySuggestion, !scheduleWorkouts.contains(where: { $0.id == todaySuggestion.suggestedSession.plannedWorkoutID }) {
                         VStack(alignment: .leading, spacing: 5) {
@@ -366,7 +356,7 @@ struct ActiveTrainingPlanDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                 if activePlan.raceGoal?.targetDate != nil, let roadmap = activePlan.roadmap {
-                    TrainingPlanRoadmapSection(roadmap: roadmap)
+                    compactPhaseSummary(roadmap)
                 } else if activePlan.raceGoal?.targetDate != nil {
                     Text(String(localized: "plan.details.roadmap_syncing", defaultValue: "The training roadmap will appear when the latest plan details finish syncing."))
                         .font(.caption)
@@ -440,15 +430,84 @@ struct ActiveTrainingPlanDetailView: View {
         return "\(measurementPreferences.unitSystem.distanceValue(meters: meters).formatted(.number.precision(.fractionLength(1)))) \(measurementPreferences.unitSystem.distanceUnit)"
     }
 
-    private var scheduleCoverageDate: Date? {
-        if activePlan.plannedSchedule != nil, activePlan.raceGoal != nil, let value = activePlan.roadmap?.detailedThroughDate {
-            return raceDate(value)
-        }
-        return scheduleWorkouts.compactMap(\.logicalScheduledDate).max()
-    }
-
     private var scheduleWorkouts: [TrainingPlanWorkout] {
         activePlan.plannedSchedule ?? week.scheduledWorkouts
+    }
+
+    @ViewBuilder
+    private func compactPhaseSummary(_ roadmap: RaceGoalRoadmap) -> some View {
+        let calendar = activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
+        let todayKey = logicalDateKey(Date(), calendar: calendar)
+        let displayedPhases = roadmap.phases.filter { String($0.endDate.prefix(10)) >= todayKey }
+        if !displayedPhases.isEmpty {
+            OutboundCard {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                    Text(String(localized: "plan.details.training_phases", defaultValue: "Training phases"))
+                        .font(.headline)
+                    ForEach(displayedPhases, id: \.phase) { phase in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(String(localized: String.LocalizationValue("today.race_goal." + phase.phase)))
+                                .font(.subheadline.weight(phase.phase == roadmap.currentPhase ? .semibold : .regular))
+                            Text(phaseStatus(phase, calendar: calendar))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+            }
+            .onAppear {
+                Task {
+                    await analytics?.track(.init(.featureExposed, properties: [
+                        .feature: .string("plan_phase_summary"),
+                        .result: .string("shown")
+                    ]))
+                }
+            }
+        }
+    }
+
+    private func phaseStatus(_ phase: RaceGoalRoadmap.Phase, calendar: Calendar) -> String {
+        let startKey = String(phase.startDate.prefix(10))
+        let endKey = String(phase.endDate.prefix(10))
+        let issued = scheduleWorkouts.compactMap { workout -> (String, Date)? in
+            guard !workout.isOptional else { return nil }
+            let key = workout.scheduledDateKey.map { String($0.prefix(10)) }
+                ?? workout.logicalScheduledDate.map { logicalDateKey($0, calendar: calendar) }
+            guard let key, key >= startKey, key <= endKey,
+                  let date = workout.scheduledDateKey.flatMap({ PlanningCalendarContext.logicalDate($0, calendar: calendar) }) ?? workout.logicalScheduledDate else {
+                return nil
+            }
+            return (key, date)
+        }
+        if let first = issued.min(by: { $0.0 < $1.0 })?.1,
+           let last = issued.max(by: { $0.0 < $1.0 })?.1 {
+            let sameDay = calendar.isDate(first, inSameDayAs: last)
+            if sameDay {
+                let formatter = DateFormatter()
+                formatter.calendar = calendar
+                formatter.timeZone = calendar.timeZone
+                formatter.setLocalizedDateFormatFromTemplate("MMM d y")
+                return String(format: String(localized: "plan.details.phase_scheduled_range", defaultValue: "Scheduled %@"), formatter.string(from: first))
+            }
+            let formatter = DateIntervalFormatter()
+            formatter.calendar = calendar
+            formatter.timeZone = calendar.timeZone
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            let interval = formatter.string(from: first, to: last)
+            return String(format: String(localized: "plan.details.phase_scheduled_range", defaultValue: "Scheduled %@"), interval)
+        }
+        let todayKey = logicalDateKey(Date(), calendar: calendar)
+        if startKey > todayKey {
+            return String(localized: "plan.details.phase_to_be_scheduled", defaultValue: "To be scheduled")
+        }
+        return String(localized: "plan.details.phase_no_workouts_scheduled", defaultValue: "No workouts scheduled")
+    }
+
+    private func logicalDateKey(_ date: Date, calendar: Calendar) -> String {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
     }
 
     private var scheduleGroups: [TrainingPlanWorkoutWeekGroup] {

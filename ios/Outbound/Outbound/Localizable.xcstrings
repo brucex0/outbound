@@ -75491,6 +75491,62 @@
         }
       }
     },
+    "plan.details.training_phases": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": { "state": "translated", "value": "Training phases" }
+        },
+        "es": {
+          "stringUnit": { "state": "translated", "value": "Fases de entrenamiento" }
+        },
+        "zh-Hans": {
+          "stringUnit": { "state": "translated", "value": "训练阶段" }
+        }
+      }
+    },
+    "plan.details.phase_scheduled_range": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": { "state": "translated", "value": "Scheduled %@" }
+        },
+        "es": {
+          "stringUnit": { "state": "translated", "value": "Programado %@" }
+        },
+        "zh-Hans": {
+          "stringUnit": { "state": "translated", "value": "已安排：%@" }
+        }
+      }
+    },
+    "plan.details.phase_to_be_scheduled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": { "state": "translated", "value": "To be scheduled" }
+        },
+        "es": {
+          "stringUnit": { "state": "translated", "value": "Pendiente de programación" }
+        },
+        "zh-Hans": {
+          "stringUnit": { "state": "translated", "value": "待安排" }
+        }
+      }
+    },
+    "plan.details.phase_no_workouts_scheduled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": { "state": "translated", "value": "No workouts scheduled" }
+        },
+        "es": {
+          "stringUnit": { "state": "translated", "value": "No hay entrenamientos programados" }
+        },
+        "zh-Hans": {
+          "stringUnit": { "state": "translated", "value": "暂无已安排的训练" }
+        }
+      }
+    },
     "plan.details.training_context": {
       "extractionState": "manual",
       "localizations": {
