@@ -8,6 +8,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -98,7 +99,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Today
-import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Groups2
@@ -741,7 +742,6 @@ private fun SignedInApp(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
                         tonalElevation = 0.dp,
                     ) {
-                        val themeColors = LocalPlainstrideThemeColors.current
                         TopLevelDestination.entries.forEach { destination ->
                             val isContextualStart = destination == TopLevelDestination.Today && contextualStart
                             NavigationBarItem(
@@ -754,24 +754,37 @@ private fun SignedInApp(
                                     }
                                 },
                                 icon = {
-                                    val iconTint = when {
-                                        isContextualStart -> themeColors.action
-                                        destination == primaryDestination -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    if (isContextualStart) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.PlayArrow,
+                                                contentDescription = stringResource(TodayR.string.today_start),
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(32.dp),
+                                            )
+                                        }
+                                    } else {
+                                        Icon(
+                                            imageVector = when (destination) {
+                                                TopLevelDestination.Social -> Icons.Outlined.PeopleAlt
+                                                TopLevelDestination.Today -> Icons.Default.AutoAwesome
+                                                else -> Icons.Default.Person
+                                            },
+                                            contentDescription = stringResource(destination.label),
+                                            tint = if (destination == primaryDestination) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                            modifier = Modifier.size(32.dp),
+                                        )
                                     }
-                                    Icon(
-                                        imageVector = when {
-                                            isContextualStart -> Icons.Default.PlayCircle
-                                            destination == TopLevelDestination.Social -> Icons.Outlined.PeopleAlt
-                                            destination == TopLevelDestination.Today -> Icons.Default.AutoAwesome
-                                            else -> Icons.Default.Person
-                                        },
-                                        contentDescription = stringResource(
-                                            if (isContextualStart) TodayR.string.today_start else destination.label,
-                                        ),
-                                        tint = iconTint,
-                                        modifier = Modifier.size(if (isContextualStart) 40.dp else 32.dp),
-                                    )
                                 },
                                 label = null,
                                 alwaysShowLabel = false,
