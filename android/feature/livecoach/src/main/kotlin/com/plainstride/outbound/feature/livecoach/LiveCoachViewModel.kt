@@ -3,6 +3,7 @@ package com.plainstride.outbound.feature.livecoach
 import com.plainstride.outbound.feature.recording.WorkoutGuidanceReport
 import com.plainstride.outbound.feature.recording.WorkoutGuidanceFeedback
 import android.util.Log
+import android.icu.text.BreakIterator
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
@@ -1123,11 +1124,11 @@ private fun RecordingLaunchConfiguration.clientWorkout(): ClientWorkout? {
     if (title.isNullOrBlank() && workoutSteps.isEmpty() && followedRoute == null) return null
     return ClientWorkout(
         title = title?.takeIf(String::isNotBlank) ?: activityKind.name.lowercase(Locale.ROOT),
-        detail = workoutDetail.orEmpty(),
+        detail = workoutDetail.orEmpty().boundedCoachContext(),
         guideLine = listOfNotNull(
             workoutGuideline?.takeIf(String::isNotBlank),
             privateTrainingSignal?.takeIf(String::isNotBlank)?.let { "private_training_signal:$it" },
-        ).joinToString(" · "),
+        ).joinToString(" · ").boundedCoachContext(),
         targetDistanceMeters = goal.targetDistanceMeters,
         targetDurationSeconds = goal.targetDurationSeconds?.toInt(),
         targetCalories = goal.targetCalories,
@@ -1153,6 +1154,16 @@ private fun RecordingLaunchConfiguration.clientWorkout(): ClientWorkout? {
             )
         },
     )
+}
+
+/** Bound request metadata only; keep the full local workout and instruction text. */
+private fun String.boundedCoachContext(): String {
+    val text = trim()
+    // The backend's 400-character limit uses UTF-16, as does Kotlin String.length.
+    if (text.length <= 400) return text
+    val boundaries = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(text) }
+    val end = if (boundaries.isBoundary(400)) 400 else boundaries.preceding(400)
+    return text.substring(0, end.coerceAtLeast(0))
 }
 
 private fun Double?.validPace() = this?.takeIf { it.isFinite() && it in 60.0..3_600.0 }
