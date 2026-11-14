@@ -690,11 +690,9 @@ fun TodayScreen(
                             )
                         }
                     }
-                    state.hasNoCachedSuggestion -> NoSuggestionCard(
-                        noPlan = confirmedNoPlan,
+                    confirmedNoPlan && activityChoice == TodayActivityChoice.PLANNED -> NoPlanCard(
                         onStartFreestyle = { onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) },
                         onSetUpPlan = onSetUpPlan,
-                        onRefresh = onRefresh,
                     )
                 }
                 if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED && !state.scheduledRestDay && (suggestion == null || groupActivityContent != null)) {
@@ -1631,14 +1629,13 @@ private fun TodayGoalChoice.valueResource() = when (this) {
 }
 
 @Composable
-private fun NoSuggestionCard(noPlan: Boolean, onStartFreestyle: () -> Unit, onSetUpPlan: () -> Unit, onRefresh: () -> Unit) {
+private fun NoPlanCard(onStartFreestyle: () -> Unit, onSetUpPlan: () -> Unit) {
     OutlinedCard {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(if (noPlan) R.string.today_no_plan else R.string.today_offline_title), style = MaterialTheme.typography.titleLarge)
-            Text(stringResource(if (noPlan) R.string.today_no_plan_body else R.string.today_offline_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.today_no_plan), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.today_no_plan_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(onClick = onStartFreestyle, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(stringResource(R.string.today_freestyle)) }
-            if (noPlan) TextButton(onClick = onSetUpPlan) { Text(stringResource(R.string.today_set_up_plan)) }
-            else TextButton(onClick = onRefresh) { Text(stringResource(R.string.today_retry)) }
+            TextButton(onClick = onSetUpPlan) { Text(stringResource(R.string.today_set_up_plan)) }
         }
     }
 }
