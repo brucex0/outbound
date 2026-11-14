@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_workout_back">返回</string>
+    <string name="plan_workout_title">训练</string>
+    <string name="plan_workout_race_goal_details">比赛目标详情</string>
+    <string name="plan_workout_weekly_rhythm">每周计划 %1$d 次训练</string>
+    <string name="plan_workout_your_schedule">训练日程</string>
+    <string name="plan_workout_none_scheduled">目前没有安排训练。</string>
+    <string name="plan_workout_undated">已保存的训练 · 日期暂不可用</string>
+    <string name="plan_workout_date_unavailable">日期暂不可用</string>
+    <string name="plan_workout_week">第 %1$d 周 · %2$s</string>
+    <string name="plan_workout_open_hint">打开训练详情</string>
+    <string name="plan_workout_training_phases">训练阶段</string>
+    <string name="plan_workout_phase_scheduled">已安排：%1$s</string>
+    <string name="plan_workout_phase_later">待安排</string>
+    <string name="plan_workout_phase_empty">暂无训练安排</string>
+    <string name="plan_workout_training_context">训练背景</string>
+    <string name="plan_workout_benchmark">跑步能力参考</string>
+    <string name="plan_workout_optional_mobility">可选灵活性练习</string>
+    <string name="plan_workout_effort_scale">用 1–10 分表示你的主观用力感，分数越高越费力。</string>
+    <string name="plan_workout_effort_range">用力感 %1$d–%2$d/10</string>
+    <string name="plan_workout_effort_easy">用力感 %1$d–%2$d/10 · 非常轻松，可以轻松交谈</string>
+    <string name="plan_workout_pace_range">估算配速 %1$s–%2$s</string>
+    <string name="plan_workout_calories">%1$d 千卡</string>
+    <string name="plan_workout_kilometers">%1$s 公里</string>
+    <string name="plan_workout_miles">%1$s 英里</string>
+    <string name="plan_workout_seconds">%1$d 秒</string>
+    <string name="plan_workout_minutes_seconds">%1$d 分 %2$d 秒</string>
+    <string name="plan_workout_sync_conflict">已保存 · 计划同步需要处理</string>
+    <string name="plan_workout_expanded">已展开</string>
+    <string name="plan_workout_collapsed">已收起</string>
+</resources>

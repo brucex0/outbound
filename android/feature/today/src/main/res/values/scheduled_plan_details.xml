@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_workout_back">Back</string>
+    <string name="plan_workout_title">Workout</string>
+    <string name="plan_workout_race_goal_details">Race goal details</string>
+    <string name="plan_workout_weekly_rhythm">%1$d planned sessions each week</string>
+    <string name="plan_workout_your_schedule">Your schedule</string>
+    <string name="plan_workout_none_scheduled">No workouts are scheduled right now.</string>
+    <string name="plan_workout_undated">Saved workouts · dates unavailable</string>
+    <string name="plan_workout_date_unavailable">Date unavailable</string>
+    <string name="plan_workout_week">Week %1$d · %2$s</string>
+    <string name="plan_workout_open_hint">Opens workout details</string>
+    <string name="plan_workout_training_phases">Training phases</string>
+    <string name="plan_workout_phase_scheduled">Scheduled %1$s</string>
+    <string name="plan_workout_phase_later">To be scheduled</string>
+    <string name="plan_workout_phase_empty">No workouts scheduled</string>
+    <string name="plan_workout_training_context">Training context</string>
+    <string name="plan_workout_benchmark">Running benchmark</string>
+    <string name="plan_workout_optional_mobility">Optional mobility</string>
+    <string name="plan_workout_effort_scale">Effort is how hard it feels on a 1–10 scale.</string>
+    <string name="plan_workout_effort_range">Effort %1$d–%2$d/10</string>
+    <string name="plan_workout_effort_easy">Effort %1$d–%2$d/10 · Very easy, comfortable conversation</string>
+    <string name="plan_workout_pace_range">Estimated pace %1$s–%2$s</string>
+    <string name="plan_workout_calories">%1$d kcal</string>
+    <string name="plan_workout_kilometers">%1$s km</string>
+    <string name="plan_workout_miles">%1$s mi</string>
+    <string name="plan_workout_seconds">%1$d sec</string>
+    <string name="plan_workout_minutes_seconds">%1$d min %2$d sec</string>
+    <string name="plan_workout_sync_conflict">Saved · plan sync needs attention</string>
+    <string name="plan_workout_expanded">Expanded</string>
+    <string name="plan_workout_collapsed">Collapsed</string>
+</resources>

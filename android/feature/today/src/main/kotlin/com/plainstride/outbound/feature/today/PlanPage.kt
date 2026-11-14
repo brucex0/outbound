@@ -42,6 +42,7 @@ internal fun PlanPage(
     onDone: () -> Unit = onDismiss,
     dismissEnabled: Boolean = true,
     contentSpacing: Dp = 20.dp,
+    onBack: (() -> Unit)? = null,
     bottomActions: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -64,6 +65,11 @@ internal fun PlanPage(
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainerLow) {
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    onBack?.let { back ->
+                        TextButton(onClick = back, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text(stringResource(R.string.plan_workout_back))
+                        }
+                    }
                     if (scrollState.value > collapsedTitleThreshold) {
                         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     } else Spacer(Modifier.weight(1f))

@@ -45,21 +45,10 @@ internal fun RaceGoalCard(state: PlanningState, units: MeasurementUnitSystem, on
             }
             goalDate(goal.targetDate)?.let { date ->
                 Text(displayDate(date))
-                Text(stringResource(R.string.today_race_goal_countdown, ChronoUnit.DAYS.between(LocalDate.now(), date).coerceAtLeast(0).toInt()))
+                Text(stringResource(R.string.today_race_goal_countdown, ChronoUnit.DAYS.between(LocalDate.now(state.calendar?.zone() ?: java.time.ZoneId.systemDefault()), date).coerceAtLeast(0).toInt()))
             }
             Text(if (goal.eventIntent == "targetTime") "${stringResource(R.string.today_race_goal_finish_time)}: ${clock(goal.targetTimeSeconds ?: 0)}" else stringResource(if (goal.eventIntent == "perform") R.string.today_race_goal_perform else R.string.today_race_goal_finish))
-            val roadmap = state.roadmap
-            if (roadmap != null) {
-                Text(stringResource(R.string.today_race_goal_phase, phaseTitle(roadmap.currentPhase)), style = MaterialTheme.typography.titleSmall)
-                Text(stringResource(R.string.today_race_goal_roadmap), style = MaterialTheme.typography.titleMedium)
-                roadmap.phases.forEach { phase ->
-                    Text(phaseTitle(phase.phase), style = if (phase.phase == roadmap.currentPhase) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium)
-                    val start = goalDate(phase.startDate); val end = goalDate(phase.endDate)
-                    if (start != null && end != null) Text("${displayDate(start)} – ${displayDate(end)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                goalDate(roadmap.detailedThroughDate)?.let { Text(stringResource(R.string.today_race_goal_window, displayDate(it)), style = MaterialTheme.typography.bodyMedium) }
-                Text(stringResource(R.string.today_race_goal_rolling), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            goal.daysPerWeekTarget?.let { Text(stringResource(R.string.today_race_goal_days, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             val adjustmentKey = state.latestAdjustment?.message
             val adjustmentLabel = when {
                 state.latestAdjustment?.eventType in listOf("workoutMissed", "workoutSkipped") -> R.string.today_race_goal_missed
@@ -69,21 +58,11 @@ internal fun RaceGoalCard(state: PlanningState, units: MeasurementUnitSystem, on
                 else -> null
             }
             adjustmentLabel?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            if (state.plan?.source == "generated") OutlinedButton(onClick = { editing = true; onOpen() }) { Text(stringResource(R.string.today_race_goal_edit)) }
+            if (state.plan?.source == "generated") TextButton(onClick = { editing = true; onOpen() }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.today_race_goal_edit)) }
         }
     }
     if (editing) RaceGoalEditor(goal, onDismiss = { editing = false }, onSave = onSave)
 }
-
-@Composable
-private fun phaseTitle(phase: String): String = stringResource(when (phase) {
-    "build" -> R.string.today_race_goal_build
-    "sharpen" -> R.string.today_race_goal_sharpen
-    "taper" -> R.string.today_race_goal_taper
-    "recovery" -> R.string.today_race_goal_recovery
-    "maintenance" -> R.string.today_race_goal_maintenance
-    else -> R.string.today_race_goal_base
-})
 
 @Composable
 private fun RaceGoalEditor(goal: TrainingGoal, onDismiss: () -> Unit, onSave: suspend (String, RaceGoalUpdateRequest) -> Boolean) {

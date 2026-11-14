@@ -136,13 +136,7 @@ internal fun BenchmarkPhasePaces(workout: PlannedWorkout, units: MeasurementUnit
     Text(stringResource(R.string.benchmark_phase_paces), style = MaterialTheme.typography.labelMedium)
     phases.forEach { step ->
         val target = step.target ?: return@forEach
-        val pace = target["pace"] as? JsonObject ?: return@forEach
-        fun number(key: String) = (pace[key] as? JsonPrimitive)?.doubleOrNull
-        val center = number("targetSecondsPerKilometer") ?: return@forEach
-        val fast = number("fasterToleranceSeconds") ?: return@forEach
-        val slow = number("slowerToleranceSeconds") ?: fast
-        val lower = SessionFormatting.pace(center - fast, units) ?: return@forEach
-        val upper = SessionFormatting.pace(center + slow, units) ?: return@forEach
+        val (lower, upper) = estimatedPhasePace(target, units) ?: return@forEach
         val unit = stringResource(if (units == MeasurementUnitSystem.metric) R.string.benchmark_per_km else R.string.benchmark_per_mile)
         val faster = String.format(Locale.getDefault(), "%d:%02d%s", lower.minutes, lower.seconds, unit)
         val slower = String.format(Locale.getDefault(), "%d:%02d%s", upper.minutes, upper.seconds, unit)
@@ -151,4 +145,18 @@ internal fun BenchmarkPhasePaces(workout: PlannedWorkout, units: MeasurementUnit
             Text(stringResource(R.string.benchmark_phase_effort, rpe.joinToString("–") { (it as? JsonPrimitive)?.content ?: "" }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+/** Only explicit current-fitness estimates may become displayed pace ranges. */
+internal fun estimatedPhasePace(target: JsonObject, units: MeasurementUnitSystem): Pair<com.plainstride.outbound.core.model.activity.PaceMeasurement, com.plainstride.outbound.core.model.activity.PaceMeasurement>? {
+    if ((target["paceEstimatePolicy"] as? JsonPrimitive)?.content != "reported-maximal-running-v1") return null
+    val pace = target["pace"] as? JsonObject ?: return null
+    fun number(key: String) = (pace[key] as? JsonPrimitive)?.doubleOrNull
+    val center = number("targetSecondsPerKilometer") ?: return null
+    val fast = number("fasterToleranceSeconds") ?: return null
+    val slow = number("slowerToleranceSeconds") ?: fast
+    if (!fast.isFinite() || fast < 0 || !slow.isFinite() || slow < 0) return null
+    val lower = SessionFormatting.pace(center - fast, units) ?: return null
+    val upper = SessionFormatting.pace(center + slow, units) ?: return null
+    return lower to upper
 }

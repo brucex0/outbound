@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plan_workout_back">Atrás</string>
+    <string name="plan_workout_title">Entrenamiento</string>
+    <string name="plan_workout_race_goal_details">Detalles del objetivo de carrera</string>
+    <string name="plan_workout_weekly_rhythm">%1$d sesiones previstas por semana</string>
+    <string name="plan_workout_your_schedule">Tu calendario</string>
+    <string name="plan_workout_none_scheduled">No hay entrenamientos programados por ahora.</string>
+    <string name="plan_workout_undated">Entrenamientos guardados · fechas no disponibles</string>
+    <string name="plan_workout_date_unavailable">Fecha no disponible</string>
+    <string name="plan_workout_week">Semana %1$d · %2$s</string>
+    <string name="plan_workout_open_hint">Abre los detalles del entrenamiento</string>
+    <string name="plan_workout_training_phases">Fases de entrenamiento</string>
+    <string name="plan_workout_phase_scheduled">Programado: %1$s</string>
+    <string name="plan_workout_phase_later">Pendiente de programar</string>
+    <string name="plan_workout_phase_empty">Sin entrenamientos programados</string>
+    <string name="plan_workout_training_context">Contexto del entrenamiento</string>
+    <string name="plan_workout_benchmark">Referencia de carrera</string>
+    <string name="plan_workout_optional_mobility">Movilidad opcional</string>
+    <string name="plan_workout_effort_scale">El esfuerzo indica lo intenso que se siente, en una escala del 1 al 10.</string>
+    <string name="plan_workout_effort_range">Esfuerzo %1$d–%2$d/10</string>
+    <string name="plan_workout_effort_easy">Esfuerzo %1$d–%2$d/10 · Muy suave, puedes conversar cómodamente</string>
+    <string name="plan_workout_pace_range">Ritmo estimado %1$s–%2$s</string>
+    <string name="plan_workout_calories">%1$d kcal</string>
+    <string name="plan_workout_kilometers">%1$s km</string>
+    <string name="plan_workout_miles">%1$s mi</string>
+    <string name="plan_workout_seconds">%1$d s</string>
+    <string name="plan_workout_minutes_seconds">%1$d min %2$d s</string>
+    <string name="plan_workout_sync_conflict">Guardado · revisa la sincronización del plan</string>
+    <string name="plan_workout_expanded">Expandido</string>
+    <string name="plan_workout_collapsed">Contraído</string>
+</resources>

@@ -21,7 +21,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -39,9 +38,9 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import com.plainstride.outbound.core.model.ActivitySuggestion
@@ -53,10 +52,7 @@ import com.plainstride.outbound.core.model.TrainingStimulus
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.Locale
-import kotlin.math.ceil
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,24 +70,25 @@ internal fun ActivePlanDetailsSheet(
     onEndPlan: () -> Unit,
     onEndConfirmation: () -> Unit,
     onRefresh: () -> Unit,
+    onWorkoutDetailsOpened: () -> Unit = {},
+    onPhaseSummaryShown: () -> Unit = {},
     onChangeWorkout: (() -> Unit)? = null,
     onRunningBenchmarkOpened: () -> Unit = {},
     onUpdateRunningBenchmark: suspend (String, com.plainstride.outbound.core.model.RunningBenchmarkReport?) -> Boolean = { _, _ -> false },
 ) {
     val plan = planning.plan ?: return
-    val week = planning.planWeekSnapshot()
     val today = LocalDate.now(planning.calendar?.zone() ?: java.time.ZoneId.systemDefault())
-    val todayWorkout = week?.workouts?.firstOrNull { it.isFor(today) && it.status !in TERMINAL_WORKOUT_STATUSES }
     val todaySuggestion = suggestion?.takeIf {
-        !suggestionStale &&
-            it.planContext?.planId == plan.id &&
+        !suggestionStale && it.planContext?.planId == plan.id &&
             it.isCurrent(zone = planning.calendar?.zone() ?: java.time.ZoneOffset.UTC)
     }
+    var selectedWorkoutId by rememberSaveable(plan.id) { mutableStateOf<String?>(null) }
+    var showsRaceGoal by rememberSaveable(plan.id) { mutableStateOf(false) }
     var confirmsEnd by rememberSaveable(plan.id) { mutableStateOf(false) }
     PlanDetailsSheet(onDismiss = onDismiss) {
         PlanDetailsHeading(
-            title = planTitle(planning),
-            subtitle = planning.currentVersion?.summary,
+            title = listOfNotNull(planTitle(planning), planning.goal?.targetDistanceMeters?.let { workoutDistance(it, units) }).joinToString(" · "),
+            subtitle = null,
             actions = {
                 PlanDetailsAction(stringResource(R.string.plan_details_change), !busy, onClick = onChangePlan)
                 PlanDetailsAction(stringResource(R.string.plan_details_end), !busy, destructive = true) {
@@ -100,102 +97,62 @@ internal fun ActivePlanDetailsSheet(
                 }
             },
         )
-        planning.currentVersion?.engineDecision?.takeIf { it.programme != null || it.programmeDoseStatus == "needs_review" || it.programmeTimelineStatus == "needs_review" }?.let { RunningProgrammeNotice(it) }
-        if (stale) Text(stringResource(R.string.plan_details_cached), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
-        if (week != null) {
-            val stats = listOfNotNull(
-                stringResource(R.string.plan_details_length) to (week.totalWeeks?.let { stringResource(R.string.plan_details_week_count, it) } ?: stringResource(R.string.plan_details_length_unspecified)),
-                (stringResource(R.string.plan_details_current_week) to (week.totalWeeks?.takeIf { week.currentWeek <= it }?.let { stringResource(R.string.plan_details_week_of, week.currentWeek, it) } ?: week.currentWeek.toString())),
-                stringResource(R.string.plan_details_sessions) to week.targetSessions.toString(),
-                stringResource(R.string.plan_details_time) to stringResource(R.string.today_minutes, week.targetMinutes),
-            )
-            PlanDetailsStats(stats)
-            planning.goal?.daysPerWeekTarget?.takeIf { it != week.targetSessions }?.let {
-                Text(stringResource(R.string.plan_details_preferred, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        if (planning.goal?.targetDate != null) {
+            val disclosureState = stringResource(if (showsRaceGoal) R.string.plan_workout_expanded else R.string.plan_workout_collapsed)
+            PlanDetailsAction(stringResource(R.string.plan_workout_race_goal_details), true, modifier = Modifier.semantics { stateDescription = disclosureState }) { showsRaceGoal = !showsRaceGoal }
+            if (showsRaceGoal) RaceGoalCard(planning, units, onRaceGoalOpened, onUpdateRaceGoal)
+        } else planning.goal?.daysPerWeekTarget?.let {
+            Text(stringResource(R.string.plan_workout_weekly_rhythm, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        planning.goal?.takeIf { com.plainstride.outbound.core.model.Modality.run in it.activities }?.let { RunningBenchmarkManagementRow(it, onUpdateRunningBenchmark, onRunningBenchmarkOpened) }
-        if (planning.goal?.type == "eventPreparation") RaceGoalCard(planning, units, onRaceGoalOpened, onUpdateRaceGoal)
-        if (week == null) {
-            Text(stringResource(R.string.plan_details_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (stale) {
+            Text(stringResource(R.string.plan_details_cached), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
             TextButton(onClick = onRefresh, enabled = !busy) { Text(stringResource(R.string.today_retry)) }
-        } else {
-            PlanSectionCard(title = stringResource(R.string.plan_details_this_week)) {
-                val periodFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-                Text("${week.weekStart.format(periodFormatter)}–${week.weekEnd.minusDays(1).format(periodFormatter)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (week.isPartialWeek) Text(stringResource(R.string.plan_calendar_partial_week), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(stringResource(phaseLabel(plan.currentPhase)), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    if (week.targetSessions == 0 && !planning.cachedScheduleCoverageAvailable) stringResource(R.string.plan_calendar_connect) else if (week.targetSessions == 0) stringResource(R.string.plan_calendar_no_scheduled) else pluralStringResource(R.plurals.plan_calendar_progress, week.targetSessions, week.completedSessions, week.targetSessions, week.completedMinutes, week.targetMinutes),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                if (week.pendingSessions > 0) Text(pluralStringResource(R.plurals.plan_pending_sessions, week.pendingSessions, week.pendingSessions), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                LinearProgressIndicator(progress = { week.progress }, modifier = Modifier.fillMaxWidth())
-                planning.latestAdjustment?.message?.takeIf { it.isNotBlank() }?.let {
-                    Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+        }
+        PlanSectionCard(title = stringResource(R.string.plan_workout_your_schedule)) {
+            // Only an unmatched same-day recommendation needs its own summary. A matched
+            // adaptation belongs to its issued row and detail, with the original status.
+            if (todaySuggestion?.primary != null && planning.workouts.none { it.id == todaySuggestion.primary?.plannedWorkoutId }) {
+                RecommendationDetails(todaySuggestion.primary!!, todaySuggestion.guideLine)
+                onChangeWorkout?.let { change -> PlanDetailsAction(stringResource(R.string.today_change_workout), !busy, onClick = change) }
             }
-            PlanSectionCard(title = stringResource(R.string.plan_details_today)) {
-                when {
-                    todaySuggestion?.primary != null -> {
-                        val envelope = todaySuggestion
-                        val primary = envelope.primary!!
-                        RecommendationDetails(primary, envelope.guideLine)
-                        if (envelope.relationship == "adjustedFromPlan") {
-                            planning.latestAdjustment?.message?.takeIf { it.isNotBlank() }?.let {
-                                Text(it, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                        primary.steps.forEach { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-                        onChangeWorkout?.let { change ->
-                            PlanDetailsAction(stringResource(R.string.today_change_workout), !busy, onClick = change)
-                        }
-                    }
-                    todayWorkout != null -> {
-                        Text(todayWorkout.title, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            stringResource(R.string.plan_details_recommendation_detail, ceil(todayWorkout.durationSeconds / 60.0).toInt(), stringResource(stimulusLabel(todayWorkout.stimulus))),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                        workoutDescription(todayWorkout)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    }
-                    else -> Text(stringResource(R.string.plan_details_no_session), style = MaterialTheme.typography.titleMedium)
-                }
+            if (planning.workouts.isEmpty()) {
+                val syncing = !planning.cachedScheduleCoverageAvailable || planning.currentVersion == null
+                Text(stringResource(if (syncing) R.string.plan_details_loading else R.string.plan_workout_none_scheduled), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (syncing) TextButton(onClick = onRefresh, enabled = !busy) { Text(stringResource(R.string.today_retry)) }
             }
-            PlanSectionCard(title = stringResource(R.string.plan_details_schedule)) {
-                Text(stringResource(R.string.plan_details_schedule_adapts), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (week.workouts.isEmpty()) Text(stringResource(R.string.plan_details_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                week.workouts.forEach { workout ->
-                    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                "${workout.scheduledDate.localizedPlanDate()} · ${workout.title}",
-                                Modifier.weight(1f),
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                            if (workout.prescription?.get("optional")?.toString() == "true") {
-                                Text(stringResource(R.string.today_race_goal_optional), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                        Text(
-                            stringResource(R.string.plan_details_workout_detail, ceil(workout.durationSeconds / 60.0).toInt(), stringResource(stimulusLabel(workout.stimulus))),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                        Text(stringResource(statusLabel(workout.status)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        workoutDescription(workout)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-                        BenchmarkPhasePaces(workout, units)
-                    }
-                }
-            }
-            if (planning.goal?.targetDate != null) {
-                if (planning.roadmap == null) Text(stringResource(R.string.plan_details_roadmap_syncing), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else PlanSectionCard(title = stringResource(R.string.plan_details_what_comes_next)) {
-                Text(planning.currentVersion?.summary.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(stringResource(R.string.plan_details_rolling_outlook), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            IssuedPlanSchedule(planning, todaySuggestion, today, units) { workout ->
+                selectedWorkoutId = workout.id
+                onWorkoutDetailsOpened()
             }
         }
+        if (planning.goal?.targetDate != null) {
+            if (planning.roadmap != null) CompactPlanPhaseSummary(planning, today, onPhaseSummaryShown)
+            else Text(stringResource(R.string.plan_details_roadmap_syncing), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else PlanSectionCard(title = stringResource(R.string.plan_details_what_comes_next)) {
+            planning.currentVersion?.summary?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(stringResource(R.string.plan_details_rolling_outlook), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        planning.currentVersion?.engineDecision?.takeIf { it.programme != null || it.programmeDoseStatus == "needs_review" || it.programmeTimelineStatus == "needs_review" }?.let {
+            PlanSectionCard(stringResource(R.string.plan_workout_training_context)) { RunningProgrammeNotice(it) }
+        }
+        planning.goal?.takeIf { com.plainstride.outbound.core.model.Modality.run in it.activities }?.let {
+            PlanSectionCard(stringResource(R.string.plan_workout_benchmark)) { RunningBenchmarkManagementRow(it, onUpdateRunningBenchmark, onRunningBenchmarkOpened) }
+        }
+    }
+    planning.workouts.firstOrNull { it.id == selectedWorkoutId }?.let { workout ->
+        ScheduledPlanWorkoutPage(
+            workout = workout,
+            suggestion = todaySuggestion?.takeIf { workout.isFor(today) && it.primary?.plannedWorkoutId == workout.id },
+            mobility = planning.optionalMobilityFor(workout),
+            adjustment = planning.latestAdjustment?.message,
+            units = units,
+            onBack = { selectedWorkoutId = null },
+            onDone = onDismiss,
+            onChangeWorkout = onChangeWorkout?.takeIf { workout.isFor(today) && workout.status !in TERMINAL_WORKOUT_STATUSES },
+            busy = busy,
+        )
     }
     if (confirmsEnd) AlertDialog(
         onDismissRequest = { confirmsEnd = false },
@@ -306,11 +263,11 @@ private fun PlanDetailsHeading(title: String, subtitle: String?, actions: @Compo
 }
 
 @Composable
-private fun PlanDetailsAction(label: String, enabled: Boolean, destructive: Boolean = false, onClick: () -> Unit) {
+private fun PlanDetailsAction(label: String, enabled: Boolean, destructive: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
     TextButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.heightIn(min = 48.dp),
+        modifier = modifier.heightIn(min = 48.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 0.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary),
     ) { Text(label) }
@@ -353,7 +310,7 @@ private fun RecommendationDetails(workout: ActivitySuggestion, guideLine: String
 
 private val TERMINAL_WORKOUT_STATUSES = setOf("completed", "pending", "skipped", "missed", "cancelled", "canceled")
 
-private fun PlannedWorkout.isFor(date: LocalDate): Boolean = planningLogicalDate(scheduledDate) == date
+internal fun PlannedWorkout.isFor(date: LocalDate): Boolean = planningLogicalDate(scheduledDate) == date
 
 @Composable
 private fun planTitle(planning: PlanningState): String {
@@ -393,7 +350,7 @@ private fun planTitle(planning: PlanningState): String {
 }
 
 @Composable
-private fun PlanSectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun PlanSectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(
         Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -407,21 +364,20 @@ private fun PlanSectionCard(title: String, content: @Composable ColumnScope.() -
 }
 
 @Composable
-private fun workoutDescription(workout: PlannedWorkout): String? = workout.prescription
+internal fun workoutDescription(workout: PlannedWorkout): String? = workout.prescription
     ?.get("summary")?.let { it as? JsonPrimitive }?.contentOrNull?.takeIf { it.isNotBlank() }
 
-private fun String.localizedPlanDate(): String = planningLogicalDate(this)
-    ?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) ?: this
-
-private fun phaseLabel(phase: String): Int = when (phase) {
+internal fun phaseLabel(phase: String): Int = when (phase) {
     "base" -> R.string.plan_details_phase_base
     "build" -> R.string.plan_details_phase_build
     "sharpen" -> R.string.plan_details_phase_sharpen
     "taper" -> R.string.plan_details_phase_taper
+    "recovery" -> R.string.today_race_goal_recovery
+    "maintenance" -> R.string.today_race_goal_maintenance
     else -> R.string.plan_details_active_plan
 }
 
-private fun stimulusLabel(stimulus: TrainingStimulus): Int = when (stimulus) {
+internal fun stimulusLabel(stimulus: TrainingStimulus): Int = when (stimulus) {
     TrainingStimulus.easyAerobic -> R.string.plan_details_stimulus_easy
     TrainingStimulus.longEndurance -> R.string.plan_details_stimulus_long
     TrainingStimulus.threshold -> R.string.plan_details_stimulus_threshold
@@ -432,8 +388,9 @@ private fun stimulusLabel(stimulus: TrainingStimulus): Int = when (stimulus) {
     TrainingStimulus.skill -> R.string.plan_details_stimulus_skill
 }
 
-private fun statusLabel(status: String): Int = when (status) {
-    "pending" -> R.string.plan_details_pending
+internal fun statusLabel(status: String): Int = when (status) {
+    "pending", "pending_sync" -> R.string.plan_details_pending
+    "sync_conflict" -> R.string.plan_workout_sync_conflict
     "completed" -> R.string.plan_details_completed
     "skipped" -> R.string.plan_details_skipped
     "missed" -> R.string.plan_details_missed
