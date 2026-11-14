@@ -474,6 +474,7 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Initial short-session and optional-mobility edits reuse `plan_intake_answer_edited` with bounded `selection_type=short_sessions|optional_mobility`, `source_type=conversation`.
 - Backend operational `generated_window_refreshed` records bounded reason (`goal_updated|policy_updated|refill`), phase, and required-session count only. It is a privacy-safe service diagnostic, not a client analytics event.
 - Opening an iOS or Android scheduled workout detail from Plan Details uses `feature_exposed` with fixed `feature=plan_workout_details` and `result=opened`; workout IDs, titles, phases, dates, duration and effort targets are excluded. Phases appear on that detail page without a separate expansion event.
+- Expanding or collapsing a dated Plan Details schedule week uses `feature_exposed` with fixed `feature=plan_schedule_week_toggled` and `result=expanded|collapsed`. Week numbers, dates, timezone, schedule contents and identifiers are excluded.
 
 - Backend `catalog_programme_decision` operational analytics records only bounded `outcome=initial|same_week|advanced|repeated|completed`, existing planning-event trigger or `refill`, and `result=version_created`. It excludes programme/runner/workout IDs, dates, readiness/effort values, activity facts and text. `catalog_programme_failed` diagnostics contain only operation and bounded failure category.
 - Backend `scheduled_rest_day` operational analytics records only bounded `result=rest_recommended` and `source=active_plan` when an active plan has no required workout today. Dates, timezone values, identifiers and workout details are excluded.
@@ -489,6 +490,7 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - iOS/Android optional session effort uses `feature_exposed` only with bounded `feature=session_effort_optional|session_effort_selected|session_effort_cleared|session_effort_saved`. Selection values, rating, duration×effort, activity IDs and feedback content are excluded; saved exposure follows durable local save. Categorical feedback events stay separate.
 
 - Running benchmarks emit only bounded status/source/presence and operation/category through `running_benchmark_updated`, `running_benchmark_validation`, `running_benchmark_fallback` and version decision metadata. Distance, time, date, pace, performance estimate, goal/activity identifiers and user text are excluded. Expected invalid input is validation flow, not an error log.
+- Opening or editing the benchmark summary in Plan Details continues to use the existing bounded `planning_surface_opened(source_type=running_benchmark, entry_source=plan_details)` event; summary visibility itself adds no event.
 
 - The optional benchmark editor uses `planning_surface_opened` with `source_type=running_benchmark`, `entry_source=plan_details`; `feature_exposed` uses bounded `feature=running_benchmark_saved|running_benchmark_removed|running_benchmark_save` and success/failure only. Report fields, dates, pace estimates, rating, identifiers and entered content are excluded.
 
