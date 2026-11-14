@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,11 +22,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -99,7 +104,18 @@ internal fun ActivePlanDetailsSheet(
         )
         if (planning.goal?.targetDate != null) {
             val disclosureState = stringResource(if (showsRaceGoal) R.string.plan_workout_expanded else R.string.plan_workout_collapsed)
-            PlanDetailsAction(stringResource(R.string.plan_workout_race_goal_details), true, modifier = Modifier.semantics { stateDescription = disclosureState }) { showsRaceGoal = !showsRaceGoal }
+            PlanDetailsAction(
+                stringResource(R.string.plan_workout_race_goal_details),
+                true,
+                modifier = Modifier.semantics { stateDescription = disclosureState },
+                trailingContent = {
+                    Icon(
+                        imageVector = if (showsRaceGoal) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+            ) { showsRaceGoal = !showsRaceGoal }
             if (showsRaceGoal) RaceGoalCard(planning, units, onRaceGoalOpened, onUpdateRaceGoal)
         } else planning.goal?.daysPerWeekTarget?.let {
             Text(stringResource(R.string.plan_workout_weekly_rhythm, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -263,14 +279,29 @@ private fun PlanDetailsHeading(title: String, subtitle: String?, actions: @Compo
 }
 
 @Composable
-private fun PlanDetailsAction(label: String, enabled: Boolean, destructive: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun PlanDetailsAction(
+    label: String,
+    enabled: Boolean,
+    destructive: Boolean = false,
+    modifier: Modifier = Modifier,
+    trailingContent: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
     TextButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 48.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 0.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary),
-    ) { Text(label) }
+    ) {
+        if (trailingContent == null) {
+            Text(label)
+        } else {
+            Text(label, modifier = Modifier.weight(1f, fill = false))
+            Spacer(Modifier.width(8.dp))
+            trailingContent()
+        }
+    }
 }
 
 @Composable
