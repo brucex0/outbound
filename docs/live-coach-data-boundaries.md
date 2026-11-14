@@ -138,5 +138,5 @@ The same bounded planner context may now be prepared on workout selection, befor
 
 - Build: `cd backend && npm run build`; focused provider/database-free check: `node backend/scripts/check-live-coach-structured-contract.mjs`.
 - Build iOS and Android; do not infer audibility, background execution or music mixing from compilation. No schema migration or account-data reset is required.
-- Deploy backend support before installing/releasing contract-2 app builds. The currently deployed contract-1 server rejects contract 2; installing a new app first would disable cloud coaching. Retain server contract 1 until the public iOS release policy explicitly retires it.
+- Backend support was deployed on 2026-11-14 as `outbound-api-00199-8ml` before installing the contract-2 iOS build on Bruce main; see `backend-deploy.md` for actual evidence and remaining device checks. Deploy backend support before installing/releasing contract-2 app builds. The currently deployed contract-1 server rejects contract 2; installing a new app first would disable cloud coaching. Retain server contract 1 until the public iOS release policy explicitly retires it.
 - Context version 5 changes preparation hashes, preventing old unstructured context from attaching to a new preparation. Existing active sessions retain their pinned plan.

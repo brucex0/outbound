@@ -518,3 +518,12 @@ Coaching preplanning adds `LiveCoachPreparation` and `LiveCoachSession.preparati
 ## Per-user live location consent guard
 
 `PATCH /v1/live/group-runs/:id/participants/me/location` updates only an active/stale membership through one conditional database write. A checkpoint arriving after Leave or Finish returns `409` and cannot reactivate that participant. Only an explicit join can enable sharing again. `group_live_location_update` logs bounded rejection result/reason/status without identifiers or location. No schema migration or data reset is required.
+
+
+## Structured Live Coaching Contract — 2026-11-14
+
+- Backend `ee237415`, iOS `767f9889`, Android `c26820ef` add request contract 2. Field ownership, bounds and retained released-iOS ingress are documented in `live-coach-data-boundaries.md`.
+- Deployed merged main to `outbound-api-00199-8ml`; traffic is 100%. `/health` passed. The helper's standard schema synchronization completed as `outbound-db-push-v4jxb`; this feature adds no schema fields or custom data migration. Existing production planner, audio, access and paid-mode settings were preserved.
+- Unauthenticated, synthetic contract probes passed on both the service URL and the exact mobile API hostname: a valid structured request reaches authentication (`401 authentication_required`); a request containing execution prose fails validation (`400 invalid_coaching_request`). These probes do not create sessions or mutate account data and do not establish AI/audio delivery.
+- TypeScript build, focused provider/database-free contract checks, Android livecoach Kotlin compile, iOS compile and signed build, actual Swift request encoding against the backend schema, scoped diff review and design-system check passed. No full test suite, simulator or emulator run was performed.
+- Installed the signed updated app on Bruce main. Launch failed with CoreDevice `Locked` because the phone was locked. Physical listening, real authenticated coaching, countdown, music mixing and background lifecycle remain unverified. Open the installed app after unlocking the phone to continue device verification. No mobile store release was submitted.
