@@ -38,7 +38,7 @@ for (let round = 0; round < rounds; round++) {
             success = reply.trim().length > 0;
           } else {
             const context: LiveCoachCompiledContext = {
-              version: 4, measurementUnitSystem: "metric", runnerModelVersion: "synthetic-empty", locale,
+              version: 5, measurementUnitSystem: "metric", runnerModelVersion: "synthetic-empty", locale,
               activityType: "running", goalType: "distance", race: null,
               bio: { biography: null, ageYears: null, sexAtBirth: null, heightCentimeters: null, weightKilograms: null,
                 goalSummary: null, scheduleSummary: null, comfortableDurationMinutes: null, recentSessionsPerWeek: null,

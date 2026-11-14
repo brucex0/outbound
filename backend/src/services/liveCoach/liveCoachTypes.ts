@@ -43,7 +43,7 @@ export type LiveCoachCueResult =
   | "budget_exhausted";
 
 export type CreateLiveCoachSessionInput = {
-  contractVersion: 1;
+  contractVersion: 1 | 2;
   clientSessionId: string;
   preparationId?: string;
   deferPlanning?: boolean;
@@ -68,7 +68,10 @@ export type CreateLiveCoachSessionInput = {
       recommendationSource: "training_history" | "manual" | "insufficient_history";
     };
   };
+  // Version 1 is retained only for currently released iOS requests.
   clientWorkout?: LiveCoachClientWorkout;
+  execution?: LiveCoachExecution;
+  workoutIssuance?: { id: string; revision: string };
   environment?: LiveCoachEnvironmentInput;
   appDistributionHint?: "global";
 };
@@ -108,6 +111,20 @@ export type LiveCoachClientWorkout = {
   };
 };
 
+export type LiveCoachExecution = {
+  targetDistanceMeters?: number;
+  targetDurationSeconds?: number;
+  targetCalories?: number;
+  steps: Array<{
+    durationSeconds: number;
+    phase: "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
+    targetPaceSecondsPerKilometer?: number;
+    transitionLeadSeconds?: number;
+    transitionCountdown?: "none" | "five_second";
+  }>;
+  route?: Omit<NonNullable<LiveCoachClientWorkout["route"]>, "name" | "shape">;
+};
+
 export type LiveCoachEnvironmentInput = {
   timeZoneIdentifier?: string;
   indoor: boolean;
@@ -119,13 +136,13 @@ export type LiveCoachEnvironmentInput = {
   };
   weather?: {
     observedAt: string;
-    condition: string;
+    condition?: string;
     temperatureCelsius: number;
     apparentTemperatureCelsius: number;
     windKilometersPerHour: number;
     precipitationChance: number;
     impact: "none" | "advisory" | "caution" | "unsafe";
-    headline: string;
+    headline?: string;
     guidance?: string;
     bestWindow?: string;
   };

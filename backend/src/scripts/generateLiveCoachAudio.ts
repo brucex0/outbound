@@ -212,7 +212,7 @@ for (const voiceProfileId of voiceProfileIds) {
             semanticMoment: entry.cueKey,
             stableInstructions: stableLiveCoachInstructions(locale, "metric"),
             compiledContext: {
-              version: 4,
+              version: 5,
               measurementUnitSystem: "metric",
               runnerModelVersion: "fixed-asset",
               locale,

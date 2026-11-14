@@ -94,11 +94,11 @@ export async function effectiveWorkout(db: DB, userId: string, primary: Activity
   let steps: StandaloneWorkoutCatalogItem["steps"] = workout?.blocks.flatMap((block) => block.steps.length ? block.steps.map((step, index) => ({
     id: `${block.sortOrder}-${index}`, label: step.label, durationSeconds: step.durationSeconds ?? block.durationSeconds ?? 0,
     detail: step.detail ?? undefined,
-    coachingTarget: { phase: phase(step.kind, block.blockType), recognizesTargetLock: false,
+    coachingTarget: { phase: plannedStepPhase(step.kind, block.blockType), recognizesTargetLock: false,
       ...(readPace(step.target) ? { pace: readPace(step.target)!,
         ...((step.target as Record<string, unknown> | null)?.paceEstimatePolicy === "reported-maximal-running-v1" ? { paceEstimatePolicy: "reported-maximal-running-v1" } : {}) } : {}) },
   })) : [{ id: `${block.sortOrder}`, label: block.blockType, durationSeconds: block.durationSeconds ?? 0,
-    coachingTarget: { phase: phase(block.blockType, block.blockType), recognizesTargetLock: false } }]) ?? [{ id: "main", label: primary.title,
+    coachingTarget: { phase: plannedStepPhase(block.blockType, block.blockType), recognizesTargetLock: false } }]) ?? [{ id: "main", label: primary.title,
     durationSeconds: primary.durationSeconds ?? primary.durationMinutes * 60,
     coachingTarget: { phase: "easy", recognizesTargetLock: false } }];
   if (!workout && primary.steps.length > 1) {
@@ -140,7 +140,7 @@ export async function storedEffectiveWorkout(db: DB, userId: string, primary: Ac
   }
   return effectiveWorkout(db, userId, primary);
 }
-function phase(kind: string, block: string): "warmup" | "cooldown" | "work" | "walk" | "recovery" | "easy" {
+export function plannedStepPhase(kind: string, block: string): "warmup" | "cooldown" | "work" | "walk" | "recovery" | "easy" {
   if (/warm/i.test(kind + block)) return "warmup";
   if (/cool/i.test(kind + block)) return "cooldown";
   if (/interval|tempo|threshold|speed|fartlek|hill|^work$|repeat/i.test(kind) || /interval|repeat/i.test(block)) return "work";

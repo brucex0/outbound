@@ -25,20 +25,27 @@ There is no device-to-Google credential and no TTS WebSocket. The device keeps o
 
 ## Device To Plainstride At Session Start
 
-The authenticated request contains:
+Current iOS/Android builds send request contract **2**, shared by workout selection/preparation and session creation. The strict schema is `backend/src/services/liveCoach/liveCoachRequestContract.ts`.
 
-- opaque client session ID, optional internal workout ID, and optional standalone-catalog `{source, id, version}` reference;
-- locale, metric/imperial preference, activity type, and goal type;
-- product coach persona, product voice profile, and coaching contract;
-- client workout title, detail, guide line, target duration/distance, typed phases, resolved pace targets, and route summary;
-- route name/shape/direction, calculated distance/elevation gain, and approximate start coordinate/altitude when a route was selected;
-- time-zone identifier, indoor flag, approximate place/coordinate/altitude, and the latest WeatherKit condition, temperature, apparent temperature, wind, precipitation chance, impact, headline, guidance, and best window.
+| Field | Bound | Consumer/purpose |
+| --- | --- | --- |
+| Session/preparation/workout/edit IDs and revisions | UUID session; IDs 120–160 characters; revision 64 lowercase hex characters | Account-owned lookup, plan reuse, exact issued/edit snapshot resolution |
+| Locale, units, sport, goal, persona, voice, coaching contract, race strategy/source | Closed enums/registered IDs | Planner language/style, eligibility, deterministic goal/race guidance |
+| `execution` goal targets | Distance ≤1,000 km; duration ≤24 h; calories ≤20,000; positive values | Actual recording target, independent of saved prescription estimates; selected distance/time/calorie goal requires its numeric target |
+| Custom `execution.steps` | ≤80; total ≤24 h; duration 0–24 h; closed phase enum; pace 60–3,600 s/km; lead 1–30 s; countdown enum | Phase-aware coaching and deterministic transition policy |
+| Referenced workouts | No client steps; planned ID or catalog ID/version, optional issued ID/revision and edit ID/revision | Backend resolves authored phases/instructions; supplied issued references must match the exact runner and planned workout. Without an issuance reference, the current owned prescription is used. Invalid supplied references fail; they never silently select another workout. |
+| Route summary | Direction enum; distance/elevation with numeric bounds; latitude/longitude/altitude with geographic bounds | Terrain/direction context; provider coordinates rounded to two decimals. No name, display description or geometry |
+| Environment | Timezone identifier ≤100 characters, indoor boolean; optional approximate coordinates and timestamped numeric weather/impact enum | Freshness and safety gates; no place names, weather headlines/advice or best-window prose |
+
+Contract 2 rejects `clientWorkout`, display titles/descriptions/guidelines, step labels/details/instruction prose, arbitrary training-signal suffixes and unknown keys. Client custom steps carry phase/target/policy; readable saved-workout instructions come from the backend's prescription/catalog. Full device UI text and local recording instructions are unchanged. Request body limit: 128 KiB; schema errors expose only bounded structural paths and error codes.
+
+The backend still accepts request contract 1 for currently released iOS builds. Its obsolete `detail`/`guideLine` strings have a 16,000-unit ingress ceiling and are discarded before compilation; they are not passed to the planner. Version 1 display titles, step text and route names are also absent from the compiled client execution projection. This server ingress path is not an Android legacy-data reader or migration.
 
 The client never sends an account/user ID. Plainstride derives identity from the access token.
 
 ## Plainstride Context Compiler
 
-The backend adds only data for the authenticated runner and bounds every list/string before calling the planner (compiled context version 4):
+The backend adds only data for the authenticated runner and bounds every list/string before calling the planner (compiled context version 5):
 
 - bio/survey: biography, age, sex at birth, height, weight, goal/schedule summaries, comfortable duration, recent/target frequency, preferred long-run day, guidance-detail preference, and declared constraints;
 - coaching profile: fitness level, weekly volume, preferred pace, strengths, weaknesses, goals, records, and bounded recent memory summary;
@@ -52,6 +59,9 @@ The backend adds only data for the authenticated runner and bounds every list/st
 The compiler omits name, username, email, login-provider IDs, access tokens, device IDs, contacts, photos, raw route geometry, raw GPS track, user/session/cue IDs, the standalone catalog wrapper, source bibliography, editorial metadata, and unrelated workouts. Coordinates are rounded to two decimal places before serialization. Serialized context is capped at an estimated 20,000 tokens and stored with a SHA-256 hash.
 
 The one-time planner creates a session-specific phrase library. The phone later selects a planned phrase from a detected semantic moment and workout phase; live cue delivery does not ask an LLM to reason over telemetry again. The planner prioritizes safety, typed targets and workout prescription, fresh readiness/environment, recent measured training and reported feedback, then confidence-ranked runner insights, beliefs, and preferences. It treats context text as data, distinguishes confirmed beliefs from hypotheses, weighs insight confidence/evidence count/update age, and ignores stale readiness/weather rather than speaking as if old information is current. Effort/recovery beliefs older than 28 days are historical unless current evidence confirms them; preferences may guide style until contradicted. Each generated cue must give one grounded action or execution focus, not generic encouragement. Repeating a phrase across moments or alternatives invalidates the plan and selects the deterministic fallback. Workout-step instructions preserve actual purpose, effort, and work/recovery sequence; explicit prescribed pace and duration targets may be spoken in the selected measurement units. Live measurements still come from deterministic device announcements; the start planner must not invent them. Local GPS evidence timestamps used by the detector are not added to provider context or product analytics.
+
+
+The structural request does not remove intentional runner-authored context from the authenticated backend: biography, constraints, readiness/feedback notes and bounded coaching memory remain deliberate planner inputs with their existing limits. Authored catalog instructions also remain text because their wording carries execution meaning. Display prose is not a substitute for those inputs; changing their privacy/retention scope is a separate product decision.
 
 ## Plainstride To The Planner
 
@@ -123,3 +133,10 @@ The backend forwards Google audio chunks in a length-prefixed response with meta
 ## Preparation Lifetime
 
 The same bounded planner context may now be prepared on workout selection, before recording starts. Preparation does not add fields or send a second language. It stores an account-owned context/hash and validated result with a 15-minute expiry; fallback results expire after 30 seconds. Expired records cannot be attached or generated and are purged on account preparation or daily maintenance. Start recompiles context and applies current safety/access gates before reuse. Existing session retention remains unchanged.
+
+## Contract Verification And Rollout
+
+- Build: `cd backend && npm run build`; focused provider/database-free check: `node backend/scripts/check-live-coach-structured-contract.mjs`.
+- Build iOS and Android; do not infer audibility, background execution or music mixing from compilation. No schema migration or account-data reset is required.
+- Deploy backend support before installing/releasing contract-2 app builds. The currently deployed contract-1 server rejects contract 2; installing a new app first would disable cloud coaching. Retain server contract 1 until the public iOS release policy explicitly retires it.
+- Context version 5 changes preparation hashes, preventing old unstructured context from attaching to a new preparation. Existing active sessions retain their pinned plan.

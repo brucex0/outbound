@@ -80,7 +80,7 @@ export type LiveCoachRunnerInsight = {
 };
 
 export type LiveCoachCompiledContext = {
-  version: 4;
+  version: 5;
   measurementUnitSystem: "metric" | "imperial";
   runnerModelVersion: string;
   locale: SupportedAILocale;
@@ -131,9 +131,6 @@ export type LiveCoachCompiledContext = {
     blocks: unknown[];
   } | null;
   clientWorkout: {
-    title: string;
-    detail: string;
-    guideLine: string;
     targetDistanceMeters: number | null;
     targetDurationSeconds: number | null;
     targetCalories: number | null;

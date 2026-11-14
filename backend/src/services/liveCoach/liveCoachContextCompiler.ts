@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import type { LiveCoachCompiledContext } from "../aiProviders/types.js";
 import { standaloneWorkoutCatalog, type StandaloneWorkoutCatalogItem } from "../../data/standaloneWorkouts.js";
+import { plannedStepPhase } from "../planning/workoutEdits.js";
 import { AIProviderError } from "../aiProviders/errors.js";
 import type {
   CompiledLiveCoachSessionContext,
@@ -17,7 +18,7 @@ export async function compileLiveCoachContext(
   prisma: PrismaClient,
   userId: string,
   input: Pick<CreateLiveCoachSessionInput,
-    "workoutId" | "workoutRef" | "workoutEditId" | "workoutRevision" | "measurementUnitSystem" | "locale" | "sessionIntent" | "clientWorkout" | "environment">
+    "workoutId" | "workoutRef" | "workoutEditId" | "workoutRevision" | "workoutIssuance" | "execution" | "measurementUnitSystem" | "locale" | "sessionIntent" | "clientWorkout" | "environment">
 ): Promise<CompiledLiveCoachSessionContext> {
   if (input.workoutId && input.workoutRef) {
     throw new AIProviderError("not_eligible", "Only one selected workout source may be used.");
@@ -87,7 +88,7 @@ export async function compileLiveCoachContext(
     }),
   ]);
 
-  if (input.workoutId && !workout && !input.clientWorkout) {
+  if (input.workoutId && !workout) {
     throw new AIProviderError("not_eligible", "The selected workout is unavailable for this runner.");
   }
   if (Boolean(input.workoutEditId) !== Boolean(input.workoutRevision)) throw new AIProviderError("not_eligible", "The workout revision is incomplete.");
@@ -96,16 +97,42 @@ export async function compileLiveCoachContext(
     plannedWorkoutId: input.workoutId ?? null, operation: { not: "skip" },
   } }) : null;
   if (input.workoutEditId && !edit) throw new AIProviderError("not_eligible", "The performed workout revision is unavailable.");
-  const effective = (edit?.afterWorkout as unknown as { effectiveWorkout?: StandaloneWorkoutCatalogItem } | undefined)?.effectiveWorkout;
+  const issued = input.workoutIssuance ? await prisma.workoutPrescriptionRevision.findFirst({
+    where: { id: input.workoutIssuance.id, revision: input.workoutIssuance.revision,
+      plannedWorkoutId: input.workoutId, plannedWorkout: { userId } },
+  }) : null;
+  if (input.workoutIssuance && !issued) throw new AIProviderError("not_eligible", "The issued workout revision is unavailable.");
+  const issuedEffective = (issued?.snapshot as unknown as { effectiveWorkout?: StandaloneWorkoutCatalogItem } | undefined)?.effectiveWorkout;
+  if (issued && !issuedEffective) throw new AIProviderError("not_eligible", "The issued execution snapshot is unavailable.");
+  const effective = issuedEffective ?? (edit?.afterWorkout as unknown as { effectiveWorkout?: StandaloneWorkoutCatalogItem } | undefined)?.effectiveWorkout;
   const prescription = workout?.prescription as Record<string, unknown> | undefined;
   const catalogReference = typeof prescription?.catalogWorkoutId === "string" && typeof prescription.catalogVersion === "number"
     ? { source: "standalone_catalog" as const, id: prescription.catalogWorkoutId, version: prescription.catalogVersion } : undefined;
   const workoutExecution = resolveWorkoutExecution(catalogReference ?? input.workoutRef, effective);
+  const selectedCatalog = effective ?? standaloneWorkoutCatalog.workouts.find((value) => value.id === (catalogReference ?? input.workoutRef)?.id);
+  // Readable instructions come from the owned prescription/catalog, never display prose.
+  const savedSteps = selectedCatalog?.steps.map((step) => ({
+    durationSeconds: step.durationSeconds, phase: step.coachingTarget?.phase,
+    targetPaceSecondsPerKilometer: step.coachingTarget?.pace?.targetSecondsPerKilometer,
+    transitionLeadSeconds: step.transitionLeadSeconds, transitionCountdown: step.transitionCountdown,
+  })) ?? workout?.blocks.flatMap((block) => block.steps.length ? block.steps.map((step) => ({
+    durationSeconds: step.durationSeconds ?? block.durationSeconds ?? 0,
+    phase: plannedStepPhase(step.kind, block.blockType),
+    targetPaceSecondsPerKilometer: (step.target as { pace?: { targetSecondsPerKilometer?: number } } | null)?.pace?.targetSecondsPerKilometer,
+  })) : [{ durationSeconds: block.durationSeconds ?? 0, phase: plannedStepPhase(block.blockType, block.blockType) }]);
+  const projection = input.execution ?? input.clientWorkout;
+  const execution = projection || savedSteps ? {
+    targetDistanceMeters: projection?.targetDistanceMeters,
+    targetDurationSeconds: projection?.targetDurationSeconds,
+    targetCalories: projection?.targetCalories,
+    steps: savedSteps ?? projection?.steps ?? [],
+    route: projection?.route,
+  } : undefined;
 
   const sevenDayActivities = activities.filter((activity) => activity.startedAt >= sevenDaysAgo);
   const olderBaselineActivities = activities.filter((activity) => activity.startedAt < sevenDaysAgo);
   const context: LiveCoachCompiledContext = {
-    version: 4,
+    version: 5,
     measurementUnitSystem: input.measurementUnitSystem,
     runnerModelVersion: latestModel?.id ?? "runner-model-empty",
     locale: input.locale,
@@ -180,7 +207,7 @@ export async function compileLiveCoachContext(
         })),
       })),
     } : null,
-    clientWorkout: sanitizeClientWorkout(input.clientWorkout),
+    clientWorkout: sanitizeClientWorkout(execution),
     workoutExecution,
     readiness: readiness ? {
       choice: clip(readiness.choice, 24),
@@ -279,28 +306,25 @@ function resolveWorkoutExecution(
   };
 }
 
-function sanitizeClientWorkout(workout: LiveCoachClientWorkout | undefined): LiveCoachCompiledContext["clientWorkout"] {
+function sanitizeClientWorkout(workout: {
+  targetDistanceMeters?: number; targetDurationSeconds?: number; targetCalories?: number;
+  steps: Array<{ durationSeconds: number; phase?: string; targetPaceSecondsPerKilometer?: number;
+    transitionLeadSeconds?: number; transitionCountdown?: string }>;
+  route?: LiveCoachClientWorkout["route"];
+} | undefined): LiveCoachCompiledContext["clientWorkout"] {
   if (!workout) return null;
   return {
-    title: clip(workout.title, 120),
-    detail: clip(workout.detail, 400),
-    guideLine: clip(workout.guideLine, 400),
     targetDistanceMeters: finiteNumber(workout.targetDistanceMeters),
     targetDurationSeconds: finiteNumber(workout.targetDurationSeconds),
     targetCalories: finiteNumber(workout.targetCalories),
     steps: workout.steps.slice(0, 80).map((step) => ({
-      label: clip(step.label, 100),
       durationSeconds: step.durationSeconds,
-      detail: nullableClip(step.detail, 240),
-      phase: step.phase ?? null,
+      phase: step.phase ?? "open",
       targetPaceSecondsPerKilometer: finiteNumber(step.targetPaceSecondsPerKilometer),
-      transitionInstruction: nullableClip(step.transitionInstruction, 300),
       transitionLeadSeconds: step.transitionLeadSeconds ?? null,
       transitionCountdown: step.transitionCountdown ?? null,
     })),
     route: workout.route ? {
-      name: nullableClip(workout.route.name, 120),
-      shape: nullableClip(workout.route.shape, 40),
       direction: workout.route.direction ?? null,
       distanceMeters: finiteNumber(workout.route.distanceMeters),
       elevationGainMeters: finiteNumber(workout.route.elevationGainMeters),
@@ -334,13 +358,13 @@ function sanitizeEnvironment(
     } : null,
     weather: environment?.weather ? {
       observedAt: environment.weather.observedAt,
-      condition: clip(environment.weather.condition, 100),
+      condition: clip(environment.weather.condition ?? "", 100),
       temperatureCelsius: rounded(environment.weather.temperatureCelsius, 1),
       apparentTemperatureCelsius: rounded(environment.weather.apparentTemperatureCelsius, 1),
       windKilometersPerHour: rounded(environment.weather.windKilometersPerHour, 1),
       precipitationChance: rounded(environment.weather.precipitationChance, 2),
       impact: environment.weather.impact,
-      headline: clip(environment.weather.headline, 180),
+      headline: clip(environment.weather.headline ?? "", 180),
       guidance: nullableClip(environment.weather.guidance, 300),
       bestWindow: nullableClip(environment.weather.bestWindow, 160),
       relevantSignals,
