@@ -1,6 +1,14 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "session.phase.distance_remaining": {
+      "comment": "Distance remaining in the current guided workout section.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%@ left" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Quedan %@" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "还剩%@" } }
+      }
+    },
     "plan_builder.baseline.run_frequency": {
       "localizations": {
         "en": {

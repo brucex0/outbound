@@ -104,6 +104,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var pendingMoment: DetectedLiveGuidanceMoment?
     private var queuedMoments: [DetectedLiveGuidanceMoment] = []
     private var processedWorkoutCueIDs: Set<String> = []
+    private var routeDeferredWorkoutCueIDs: Set<String> = []
     private var lastWorkoutCueSnapshot: ActiveSessionSnapshot?
     private var didQueueInitialWorkoutInstruction = false
 
@@ -252,6 +253,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         pendingMoment = nil
         queuedMoments = []
         processedWorkoutCueIDs = []
+        routeDeferredWorkoutCueIDs = []
         lastWorkoutCueSnapshot = nil
         didQueueInitialWorkoutInstruction = false
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0, unitSystem: unitSystem) } ?? ""
@@ -471,6 +473,11 @@ final class VirtualGuide: NSObject, ObservableObject {
     // MARK: - Private
 
     private func processPendingMoment(using snapshot: ActiveSessionSnapshot) {
+        if let pendingMoment, catalogInstructionHasEnded(pendingMoment, at: snapshot) {
+            self.pendingMoment = nil
+            advancePendingMoment()
+            return
+        }
         if let pendingMoment,
            [.earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability, .paceDrift, .targetLocked, .rhythmRecovery, .recoveryTooHard, .raceLateFade, .racePaceLocked].contains(pendingMoment.type),
            snapshot.paceEvidenceTimestamp == nil || snapshot.elapsedSeconds - pendingMoment.detectedAtElapsedSeconds > 10 {
@@ -566,6 +573,18 @@ final class VirtualGuide: NSObject, ObservableObject {
         moment: DetectedLiveGuidanceMoment
     ) {
         latestAnalysis = analysis
+        let currentSnapshot = snapshotHistory.last ?? snapshot
+        if catalogInstructionHasEnded(moment, at: currentSnapshot) {
+            if pendingMoment == nil { advancePendingMoment() }
+            return
+        }
+        // A route warning can arrive while cloud audio is being prepared.
+        // Keep the workout instruction queued until the route has released speech.
+        if moment.type == .workoutInstruction,
+           routeSpeechQuietUntil.map({ Date() < $0 }) == true {
+            enqueue(moment)
+            return
+        }
         guard analysis.expiresAt > Date() else {
             guidanceEventHandler?(.providerResult(
                 source: analysis.source,
@@ -829,11 +848,13 @@ final class VirtualGuide: NSObject, ObservableObject {
             let state = workoutCueTriggerState(
                 cue.trigger,
                 previous: lastWorkoutCueSnapshot,
-                current: snapshot
+                current: snapshot,
+                deferredForRoute: routeDeferredWorkoutCueIDs.contains(cue.id)
             )
             guard state != .notReached else { continue }
             guard state == .due else {
                 processedWorkoutCueIDs.insert(cue.id)
+                routeDeferredWorkoutCueIDs.remove(cue.id)
                 continue
             }
             let scheduledTip = cue.id.hasPrefix("execution_coaching.")
@@ -844,9 +865,13 @@ final class VirtualGuide: NSObject, ObservableObject {
                       lastGuideSpeechElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 45 }) ?? true,
                       routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { continue }
             }
+            guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else {
+                routeDeferredWorkoutCueIDs.insert(cue.id)
+                continue
+            }
             processedWorkoutCueIDs.insert(cue.id)
+            routeDeferredWorkoutCueIDs.remove(cue.id)
             if scheduledTip { guidanceEventHandler?(.executionCoaching(result: "scheduled")) }
-            guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { continue }
 
             // Catalog cues are already localized by withCatalogVersion. Keep the
             // selected instruction useful while cloud preparation is pending.
@@ -918,23 +943,42 @@ final class VirtualGuide: NSObject, ObservableObject {
     private func workoutCueTriggerState(
         _ trigger: SessionWorkoutCueTrigger,
         previous: ActiveSessionSnapshot?,
-        current: ActiveSessionSnapshot
+        current: ActiveSessionSnapshot,
+        deferredForRoute: Bool = false
     ) -> WorkoutCueTriggerState {
+        guard !workoutCueHasEnded(trigger, at: current) else { return .missed }
         switch trigger.type {
         case .elapsedTime:
             guard let start = trigger.startSeconds else { return .missed }
             guard current.elapsedSeconds >= start else { return .notReached }
             if start == 0, previous == nil { return current.elapsedSeconds <= 20 ? .due : .missed }
-            guard current.elapsedSeconds - start <= 20 else { return .missed }
+            guard current.elapsedSeconds - start <= 20
+                    || (deferredForRoute && trigger.endSeconds != nil) else { return .missed }
             return .due
         case .distance:
             guard let start = trigger.startMeters else { return .missed }
-            if start == 0, previous == nil { return .due }
+            if start == 0, previous == nil { return current.distanceMeters <= 75 ? .due : .missed }
             guard current.distanceMeters >= start else { return .notReached }
-            guard current.distanceMeters - start <= 75 else { return .missed }
+            guard current.distanceMeters - start <= 75
+                    || (deferredForRoute && trigger.endMeters != nil) else { return .missed }
             guard hasReliableDistanceProgress(current) else { return .notReached }
             return .due
         }
+    }
+
+    private func workoutCueHasEnded(_ trigger: SessionWorkoutCueTrigger, at snapshot: ActiveSessionSnapshot) -> Bool {
+        switch trigger.type {
+        case .elapsedTime:
+            trigger.endSeconds.map { snapshot.elapsedSeconds >= $0 } ?? false
+        case .distance:
+            trigger.endMeters.map { snapshot.distanceMeters >= $0 } ?? false
+        }
+    }
+
+    private func catalogInstructionHasEnded(_ moment: DetectedLiveGuidanceMoment, at snapshot: ActiveSessionSnapshot) -> Bool {
+        guard let instructionID = moment.instructionID,
+              let cue = sessionIntent?.workoutCues.first(where: { $0.id == instructionID }) else { return false }
+        return workoutCueHasEnded(cue.trigger, at: snapshot)
     }
 
     private func enqueue(_ moment: DetectedLiveGuidanceMoment) {

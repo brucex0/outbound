@@ -1061,24 +1061,24 @@ struct SessionStatusCard: View {
 
     @ViewBuilder
     private var liveWorkoutStructure: some View {
-        let steps = displayIntent.workoutSteps.filter { $0.durationSeconds > 0 }
-        if !steps.isEmpty {
+        let phases = liveWorkoutPhases
+        if !phases.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text(String(localized: "today.phases", defaultValue: "Workout phases"))
                     .font(.headline)
                     .foregroundStyle(.primary)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
-                        let isCurrent = currentStepProgress?.index == index
-                        let isUpcoming = currentStepProgress.map { index > $0.index } ?? false
+                    ForEach(Array(phases.enumerated()), id: \.element.id) { index, phase in
+                        let isCurrent = currentPhaseProgress?.index == index
+                        let isUpcoming = currentPhaseProgress.map { index > $0.index } ?? false
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(step.label)
+                                    Text(phase.label)
                                         .font(.subheadline.weight(isCurrent ? .bold : .semibold))
                                         .foregroundStyle(.primary)
-                                    if let detail = step.detail, !detail.isEmpty {
+                                    if let detail = phase.detail, !detail.isEmpty {
                                         Text(detail)
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
@@ -1086,9 +1086,7 @@ struct SessionStatusCard: View {
                                 }
                                 Spacer(minLength: 8)
                                 VStack(alignment: .trailing, spacing: 3) {
-                                    Text(Duration.seconds(step.durationSeconds), format: .units(
-                                        allowed: [.hours, .minutes, .seconds], width: .abbreviated
-                                    ).locale(AppLanguage.speechLocale))
+                                    Text(phaseExtentText(phase))
                                         .font(.subheadline.monospacedDigit().weight(.semibold))
                                         .foregroundStyle(.primary)
                                     if isCurrent {
@@ -1102,10 +1100,10 @@ struct SessionStatusCard: View {
                                     }
                                 }
                             }
-                            if isCurrent, let progress = currentStepProgress {
+                            if isCurrent, let progress = currentPhaseProgress {
                                 ProgressView(value: progress.progress)
                                     .tint(theme.accentColor)
-                                    .accessibilityLabel(step.label)
+                                    .accessibilityLabel(phase.label)
                                     .accessibilityValue(Text("\(Int((progress.progress * 100).rounded()))%"))
                             }
                         }
@@ -1423,13 +1421,13 @@ struct SessionStatusCard: View {
 
     @ViewBuilder
     private var extraCountdownStrip: some View {
-        if currentStepProgress != nil || secondaryRouteName != nil {
+        if currentPhaseProgress != nil || secondaryRouteName != nil {
             SessionCountdownStrip(
-                progressText: currentStepProgress.map { progress in
+                progressText: currentPhaseProgress.map { progress in
                     String(localized: "session.step.progress", defaultValue: "\(progress.index + 1) of \(progress.count)")
                 },
-                title: currentStepProgress?.step.label,
-                remainingText: currentStepProgress.map(stepRemainingText),
+                title: currentPhaseProgress?.phase.label,
+                remainingText: currentPhaseProgress.map(phaseRemainingText),
                 routeName: secondaryRouteName,
                 tint: theme.accentColor
             )
@@ -1630,36 +1628,90 @@ struct SessionStatusCard: View {
         return compactDistanceProgressText(targetMeters: targetDistanceMeters)
     }
 
-    private var currentStepProgress: (index: Int, count: Int, step: SessionIntentStep, progress: Double)? {
-        let steps = displayIntent.workoutSteps.filter { $0.durationSeconds > 0 }
-        guard !steps.isEmpty else { return nil }
-
-        var remainingElapsed = elapsedSeconds
-        for (index, step) in steps.enumerated() {
-            if remainingElapsed < step.durationSeconds {
-                return (
-                    index,
-                    steps.count,
-                    step,
-                    Double(max(0, remainingElapsed)) / Double(step.durationSeconds)
-                )
-            }
-            remainingElapsed -= step.durationSeconds
-        }
-
-        guard let finalStep = steps.last else { return nil }
-        return (steps.count - 1, steps.count, finalStep, 1)
+    // Timed prescriptions keep their authored steps. Distance-guided catalog
+    // workouts express the same phase sequence through their instruction ranges.
+    private struct LiveWorkoutPhase: Identifiable {
+        let id: String
+        let label: String
+        let detail: String?
+        let trigger: SessionWorkoutCueTrigger
     }
 
-    private func stepRemainingText(
-        _ stepProgress: (index: Int, count: Int, step: SessionIntentStep, progress: Double)
+    private var liveWorkoutPhases: [LiveWorkoutPhase] {
+        let timedSteps = displayIntent.workoutSteps.filter { $0.durationSeconds > 0 }
+        if !timedSteps.isEmpty {
+            var start = 0
+            return timedSteps.map { step in
+                defer { start += step.durationSeconds }
+                return LiveWorkoutPhase(
+                    id: step.id, label: step.label, detail: step.detail,
+                    trigger: .init(type: .elapsedTime, startMeters: nil, endMeters: nil,
+                                   startSeconds: start, endSeconds: start + step.durationSeconds)
+                )
+            }
+        }
+        return displayIntent.workoutCues.compactMap { cue in
+            switch cue.trigger.type {
+            case .distance:
+                guard let start = cue.trigger.startMeters, let end = cue.trigger.endMeters,
+                      start.isFinite, end.isFinite, end > start else { return nil }
+            case .elapsedTime:
+                guard let start = cue.trigger.startSeconds, let end = cue.trigger.endSeconds,
+                      end > start else { return nil }
+            }
+            return LiveWorkoutPhase(id: cue.id, label: cue.effort.feel,
+                                    detail: cue.instruction, trigger: cue.trigger)
+        }
+    }
+
+    private var currentPhaseProgress: (index: Int, count: Int, phase: LiveWorkoutPhase, progress: Double)? {
+        let phases = liveWorkoutPhases
+        for (index, phase) in phases.enumerated() {
+            let start: Double
+            let end: Double
+            let current: Double
+            switch phase.trigger.type {
+            case .distance:
+                start = phase.trigger.startMeters ?? 0
+                end = phase.trigger.endMeters ?? start
+                current = distanceMeters
+            case .elapsedTime:
+                start = Double(phase.trigger.startSeconds ?? 0)
+                end = Double(phase.trigger.endSeconds ?? 0)
+                current = Double(elapsedSeconds)
+            }
+            if current < end {
+                return (index, phases.count, phase, min(1, max(0, (current - start) / (end - start))))
+            }
+        }
+        guard let finalPhase = phases.last else { return nil }
+        return (phases.count - 1, phases.count, finalPhase, 1)
+    }
+
+    private func phaseExtentText(_ phase: LiveWorkoutPhase) -> String {
+        switch phase.trigger.type {
+        case .distance:
+            let units = measurementPreferences.unitSystem
+            return "\(units.distanceString(meters: phase.trigger.startMeters ?? 0)) – \(units.distanceString(meters: phase.trigger.endMeters ?? 0))"
+        case .elapsedTime:
+            let seconds = (phase.trigger.endSeconds ?? 0) - (phase.trigger.startSeconds ?? 0)
+            return Duration.seconds(seconds).formatted(.units(
+                allowed: [.hours, .minutes, .seconds], width: .abbreviated
+            ).locale(AppLanguage.speechLocale))
+        }
+    }
+
+    private func phaseRemainingText(
+        _ phaseProgress: (index: Int, count: Int, phase: LiveWorkoutPhase, progress: Double)
     ) -> String {
-        let elapsedBeforeStep = displayIntent.workoutSteps
-            .prefix(stepProgress.index)
-            .reduce(0) { $0 + max(0, $1.durationSeconds) }
-        let elapsedInStep = max(0, elapsedSeconds - elapsedBeforeStep)
-        let remaining = max(0, stepProgress.step.durationSeconds - elapsedInStep)
-        return remaining.formatted()
+        switch phaseProgress.phase.trigger.type {
+        case .distance:
+            let remaining = max(0, (phaseProgress.phase.trigger.endMeters ?? 0) - distanceMeters)
+            return String(format: String(localized: "session.phase.distance_remaining", defaultValue: "%@ left"),
+                          measurementPreferences.unitSystem.distanceString(meters: remaining))
+        case .elapsedTime:
+            return max(0, (phaseProgress.phase.trigger.endSeconds ?? 0) - elapsedSeconds).formatted()
+        }
     }
 
     private func compactDistanceProgressText(targetMeters: Double) -> String {

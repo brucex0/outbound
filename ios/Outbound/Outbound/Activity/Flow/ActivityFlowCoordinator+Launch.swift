@@ -478,13 +478,17 @@ extension ActivityFlowCoordinator {
         self.isRunSimulationEnabled = enabled
 
         if enabled {
-            self.setup.selectedWorkoutChoice = .sport(.run)
-            self.setup.selectedGoalMode = .freestyle
-            self.setup.manualActivityGoal = .freestyle
-            self.setup.plannedWorkoutIntent = nil
-            self.setup.curatedWorkoutIntent = nil
-            self.setup.plannedIntent = .freestyleRun
-            self.setup.intentBeforeSelectedRoute = nil
+            // The simulation supplies movement and a route, not a replacement
+            // workout. Keep a selected running prescription and its guide cues.
+            if self.setup.setupActivityType != .running {
+                self.setup.selectedWorkoutChoice = .sport(.run)
+                self.setup.selectedGoalMode = .freestyle
+                self.setup.manualActivityGoal = .freestyle
+                self.setup.plannedWorkoutIntent = nil
+                self.setup.curatedWorkoutIntent = nil
+                self.setup.plannedIntent = .freestyleRun
+                self.setup.intentBeforeSelectedRoute = nil
+            }
             self.setup.isIndoorSession = false
             self.applyRoute(HarvestHalfMarathonSimulation.route)
             self.isRunSimulationEnabled = true
