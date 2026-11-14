@@ -1,3 +1,4 @@
+import { orderedActivityPhotos } from "../services/activityPhotoOrder.js";
 import { reconcileUploadedWorkout } from "../services/planning/workoutCompletion.js";
 import { PerformedWorkoutConflictError } from "../services/planning/workoutIssuance.js";
 import { lockPlanningUser } from "../services/planning/persistence.js";
@@ -106,7 +107,7 @@ function serializeActivity(activity: Prisma.ActivityGetPayload<{ include: { phot
       deletedAt: activity.deletedAt,
       createdAt: activity.createdAt,
       updatedAt: activity.updatedAt,
-      photos: activity.photos.map((photo) => ({
+      photos: orderedActivityPhotos(activity.photos, activity.clientData).map((photo) => ({
         id: photo.id,
         clientPhotoId: photo.clientPhotoId,
         thumbnailUrl: `/media/activity-photos/${photo.id}/thumbnail`,
@@ -150,6 +151,7 @@ router.get("/:id", async (c) => {
   const { routeBlob, routeMetadata, ...activityWithoutRouteBlob } = activity;
   return c.json({
     ...activityWithoutRouteBlob,
+    photos: orderedActivityPhotos(activity.photos, activity.clientData),
     route: decodeStoredActivityRoute(routeBlob, routeMetadata),
   });
 });
@@ -276,7 +278,7 @@ const createSchema = z.object({
     })
     .optional()
     .nullable(),
-  clientData: z.object({ performedWorkoutReference: z.unknown().optional(), plannedWorkoutCompletionQuality: z.enum(["completed", "feltEasy", "tooHard", "cutShort", "notCompleted"]).optional(), sessionEffortRating: z.number().int().min(1).max(10).nullable().optional() }).passthrough().optional(),
+  clientData: z.object({ photoOrder: z.array(z.string().uuid()).max(1000).optional(), performedWorkoutReference: z.unknown().optional(), plannedWorkoutCompletionQuality: z.enum(["completed", "feltEasy", "tooHard", "cutShort", "notCompleted"]).optional(), sessionEffortRating: z.number().int().min(1).max(10).nullable().optional() }).passthrough().optional(),
   clientUpdatedAt: z.string().datetime().optional(),
   recognitionContext: z.object({
     timeZoneIdentifier: z.string().trim().max(100),

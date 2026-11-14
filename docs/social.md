@@ -1,5 +1,11 @@
 # Social
 
+## Activity photo order
+
+- The accepted activity `clientData.photoOrder` snapshot stores ordered client photo UUIDs before media uploads. Activity reads, feed previews, group results and the full carousel apply this order; media upload completion never writes the order. Older records without it fall back to capture time and client photo UUID for deterministic ties. No schema change or image reencoding is needed.
+- Feed metadata waits for the designated first photo to upload instead of temporarily promoting a later photo. It is limited after ordering, so a manually selected cover outside the earliest two captures remains eligible. Private client extras are never serialized in Social payloads.
+- Existing records gain an explicit order on their next activity save/sync. This change does not rewrite historical account data. Server behavior requires deploying the backend change.
+
 ## Friend profile activity history
 
 - `GET /v1/social/posts?userId=<id>&cursor=<opaque cursor>` returns `posts` and `nextFeedCursor`; omit `userId` for the connection feed.

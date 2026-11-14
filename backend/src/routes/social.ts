@@ -1275,6 +1275,7 @@ router.get("/posts/:id/photos", async (c) => {
     select: {
       activity: {
         select: {
+          clientData: true,
           photos: {
             select: {
               id: true,
@@ -1295,7 +1296,7 @@ router.get("/posts/:id/photos", async (c) => {
   });
   const photos = post?.activity?.photos ?? [];
   return c.json({
-    photos: socialFeedPhotoMetadata(photos, photos.length, photos.length).photos,
+    photos: socialFeedPhotoMetadata(photos, photos.length, photos.length, post?.activity?.clientData).photos,
   });
 });
 
@@ -1505,6 +1506,7 @@ const socialActivitySelect = {
 
 const socialPostActivitySelect = {
   ...socialActivitySelect,
+  clientData: true,
   photos: {
     select: {
       id: true,
@@ -1519,7 +1521,6 @@ const socialPostActivitySelect = {
       captureContext: true,
     },
     orderBy: { takenAt: "asc" as const },
-    take: 2,
   },
   _count: { select: { photos: true } },
 } as const;
@@ -1591,9 +1592,12 @@ async function postPayload(
         routeBlob: undefined,
         routeMetadata: undefined,
         _count: undefined,
+        clientData: undefined,
         ...socialFeedPhotoMetadata(
           post.activity.photos,
           post.activity._count?.photos ?? post.activity.photos.length,
+          undefined,
+          post.activity.clientData,
         ),
         recognitions: resolvedRecognitions,
         eventAttribution,
@@ -1896,11 +1900,14 @@ function activityEventResultsPayload(activity: any, currentUserId: string, conne
         routeBlob: undefined,
         routeMetadata: undefined,
         _count: undefined,
+        clientData: undefined,
         posts: undefined,
         // Photos require explicit post sharing, even when connection-visible stats are available.
         ...socialFeedPhotoMetadata(
           participant.userId === currentUserId || participant.recordedActivity.posts.length > 0 ? participant.recordedActivity.photos : [],
           participant.userId === currentUserId || participant.recordedActivity.posts.length > 0 ? participant.recordedActivity._count.photos : 0,
+          undefined,
+          participant.recordedActivity.clientData,
         ),
       } : null,
     })),
