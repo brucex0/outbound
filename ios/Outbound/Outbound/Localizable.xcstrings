@@ -1,8 +1,77 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "session.phase.current": {
+      "comment": "Live workout phase status. [android:session.phase]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Now"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前"
+          }
+        }
+      }
+    },
+    "session.phase.upcoming": {
+      "comment": "Live workout phase status. [android:session.phase]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up next"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A continuación"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接下来"
+          }
+        }
+      }
+    },
+    "session.phase.completed": {
+      "comment": "Live workout phase status. [android:session.phase]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completada"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成"
+          }
+        }
+      }
+    },
     "session.phase.distance_remaining": {
-      "comment": "Distance remaining in the current guided workout section.",
+      "comment": "Distance remaining in the current guided workout section. [android:session.phase]",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "%@ left" } },
         "es": { "stringUnit": { "state": "translated", "value": "Quedan %@" } },

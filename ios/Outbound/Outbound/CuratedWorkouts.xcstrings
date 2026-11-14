@@ -108,6 +108,12 @@
             "state": "translated",
             "value": "快速而克制"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rápido pero contenido"
+          }
         }
       }
     },
@@ -118,6 +124,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "平稳加速，稳住呼吸，第一分钟不要急着追配速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acelera de forma gradual, estabiliza la respiración y evita pasar el primer minuto persiguiendo un ritmo."
           }
         }
       }
@@ -130,6 +142,12 @@
             "state": "translated",
             "value": "快而从容，留出加力的余地。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rápido y tranquilo. Deja margen para aumentar después."
+          }
         }
       }
     },
@@ -140,6 +158,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果一开始就感到吃力，立即减速，重新找回节奏。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si el comienzo ya te resulta forzado, baja el esfuerzo de inmediato y recupera tu ritmo."
           }
         }
       }
@@ -152,6 +176,12 @@
             "state": "translated",
             "value": "强度高、节奏稳、可重复"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intenso, rítmico y repetible"
+          }
         }
       }
     },
@@ -162,6 +192,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在最长的中段保持身体挺拔、肩膀放松、节奏均匀。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén una postura erguida, hombros relajados y un ritmo constante durante el tramo más largo."
           }
         }
       }
@@ -174,6 +210,12 @@
             "state": "translated",
             "value": "身体挺拔，守住节奏。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén una postura erguida. Conserva el ritmo."
+          }
         }
       }
     },
@@ -184,6 +226,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "略微缩短步幅，不要硬追配速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acorta un poco la zancada en lugar de forzar el ritmo."
           }
         }
       }
@@ -196,6 +244,12 @@
             "state": "translated",
             "value": "高强度但可控"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intenso con control"
+          }
         }
       }
     },
@@ -206,6 +260,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "开始逐步加力，摆臂紧凑，落脚保持在身体下方。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza a aumentar el esfuerzo poco a poco, con los brazos cerca del cuerpo y apoyando los pies debajo de ti."
           }
         }
       }
@@ -218,6 +278,12 @@
             "state": "translated",
             "value": "开始加力，先跑顺，再跑快。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza a aumentar el esfuerzo. Primero fluidez, después velocidad."
+          }
         }
       }
     },
@@ -228,6 +294,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果姿态开始走样，保持当前强度，不再加速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si la técnica empieza a deteriorarse, mantén el esfuerzo actual sin acelerar."
           }
         }
       }
@@ -240,6 +312,12 @@
             "state": "translated",
             "value": "以能维持的最强力度收尾"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El final más fuerte que puedas mantener"
+          }
         }
       }
     },
@@ -250,6 +328,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "提高步频，朝终点坚定前进，面部和肩膀保持放松。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aumenta la cadencia y sigue con decisión hasta la meta, sin tensar la cara ni los hombros."
           }
         }
       }
@@ -262,6 +346,12 @@
             "state": "translated",
             "value": "还剩200米，脚步轻快，肩膀放松。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan doscientos metros. Pies rápidos y hombros relajados."
+          }
         }
       }
     },
@@ -272,6 +362,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "尽量保持良好姿态，以稳定的强度跑到终点。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén la mejor técnica posible y un esfuerzo constante hasta la meta."
           }
         }
       }
@@ -416,6 +512,12 @@
             "state": "translated",
             "value": "积极而克制"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decidido y contenido"
+          }
         }
       }
     },
@@ -426,6 +528,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "找到高效的脚步节奏，不跟跑他人，也不随早期配速波动而加速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra unos pasos eficientes y deja pasar a otros corredores o los cambios de ritmo iniciales."
           }
         }
       }
@@ -438,6 +546,12 @@
             "state": "translated",
             "value": "先稳下来，后面再发力。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero encuentra tu ritmo. El trabajo viene después."
+          }
         }
       }
     },
@@ -448,6 +562,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "减速到呼吸与跑姿重新协调。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el esfuerzo hasta que la respiración y la técnica vuelvan a estar coordinadas."
           }
         }
       }
@@ -460,6 +580,12 @@
             "state": "translated",
             "value": "有力、均匀的节奏"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo firme y constante"
+          }
         }
       }
     },
@@ -470,6 +596,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "中间1.5公里保持目视前方、摆臂稳定、配速均匀。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira al frente, mantén los brazos tranquilos y el ritmo constante durante el kilómetro y medio central."
           }
         }
       }
@@ -482,6 +614,12 @@
             "state": "translated",
             "value": "守住一个节奏，放松地投入。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un solo ritmo. Haz el esfuerzo sin tensión."
+          }
         }
       }
     },
@@ -492,6 +630,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果过早感到吃力，稍微减速，优先保持姿态。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja un poco el ritmo y cuida la técnica si el esfuerzo sube demasiado pronto."
           }
         }
       }
@@ -504,6 +648,12 @@
             "state": "translated",
             "value": "高强度、有意识地发力"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intenso y consciente"
+          }
         }
       }
     },
@@ -514,6 +664,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "逐步加力，不要刻意增大步幅。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aumenta el esfuerzo poco a poco sin alargar la zancada."
           }
         }
       }
@@ -526,6 +682,12 @@
             "state": "translated",
             "value": "还剩1公里，用步频带动提速。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queda un kilómetro. Aumenta el esfuerzo subiendo la cadencia."
+          }
         }
       }
     },
@@ -536,6 +698,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果加力会影响姿态，就保持当前节奏。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén el ritmo actual si aumentarlo perjudicaría la técnica."
           }
         }
       }
@@ -548,6 +716,12 @@
             "state": "translated",
             "value": "有力收尾"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Final fuerte"
+          }
         }
       }
     },
@@ -558,6 +732,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "最后400米坚定发力，提高步频时肩膀依然放松。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concéntrate en los últimos 400 metros y mantén los hombros relajados mientras aumenta la cadencia."
           }
         }
       }
@@ -570,6 +750,12 @@
             "state": "translated",
             "value": "还剩400米，坚定向前，保持放松。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan cuatrocientos metros. Mantén la determinación y la relajación."
+          }
         }
       }
     },
@@ -580,6 +766,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "以今天能维持的最佳强度有力跑到终点。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre con fuerza hasta la meta al mayor esfuerzo que puedas mantener hoy."
           }
         }
       }
@@ -713,6 +905,12 @@
             "state": "translated",
             "value": "从容、可控"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paciente y controlado"
+          }
         }
       }
     },
@@ -723,6 +921,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "用第一公里稳住呼吸、步频和姿态。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa el primer kilómetro para estabilizar la respiración, la cadencia y la postura."
           }
         }
       }
@@ -735,6 +939,12 @@
             "state": "translated",
             "value": "第一公里别着急，找到节奏。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primer kilómetro con paciencia. Encuentra tu ritmo."
+          }
         }
       }
     },
@@ -745,6 +955,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在感到吃力之前减速，或短暂步行恢复。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el ritmo o añade una pausa breve caminando antes de que el esfuerzo resulte forzado."
           }
         }
       }
@@ -757,6 +973,12 @@
             "state": "translated",
             "value": "稳定、可重复"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Constante y repetible"
+          }
         }
       }
     },
@@ -767,6 +989,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保持选定的强度，留意肩膀放松，避免不必要的加速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén el esfuerzo elegido, comprueba que los hombros estén relajados y evita acelerones innecesarios."
           }
         }
       }
@@ -779,6 +1007,12 @@
             "state": "translated",
             "value": "中段跑顺，守住稳定节奏。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tramo central fluido. Un ritmo constante."
+          }
         }
       }
     },
@@ -789,6 +1023,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择一种过了终点还能再跑1公里的配速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un ritmo que pudieras mantener un kilómetro más después de la meta."
           }
         }
       }
@@ -801,6 +1041,12 @@
             "state": "translated",
             "value": "专注、可控"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concentrado y controlado"
+          }
         }
       }
     },
@@ -811,6 +1057,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果仍然从容，逐步加力；否则保持原有的稳定强度。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si sigues sintiendo control, aumenta el esfuerzo poco a poco; si no, mantén el mismo esfuerzo constante."
           }
         }
       }
@@ -823,6 +1075,12 @@
             "state": "translated",
             "value": "还剩1.5公里，掌控配速后再加力。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queda un kilómetro y medio. Aumenta el esfuerzo solo si controlas el ritmo."
+          }
         }
       }
     },
@@ -833,6 +1091,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果呼吸或姿态开始失控，保持强度，不再加速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén el esfuerzo sin acelerar si empeoran la respiración o la técnica."
           }
         }
       }
@@ -845,6 +1109,12 @@
             "state": "translated",
             "value": "提高步频，面部和双手放松，跑过目标距离。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aumenta la cadencia, mantén la cara y las manos relajadas y sigue corriendo hasta completar la distancia."
+          }
         }
       }
     },
@@ -856,6 +1126,12 @@
             "state": "translated",
             "value": "还剩500米，保持有力姿态跑到终点。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan quinientos metros. Mantén una técnica sólida hasta la meta."
+          }
         }
       }
     },
@@ -866,6 +1142,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "稳稳地跑完，无需冲刺。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina con confianza y a ritmo constante, sin esprintar."
           }
         }
       }
@@ -999,6 +1281,12 @@
             "state": "translated",
             "value": "从容、有氧"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paciente y aeróbico"
+          }
         }
       }
     },
@@ -1009,6 +1297,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "起步强度低于后段计划，让身体逐渐适应距离。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza por debajo del esfuerzo que esperas mantener después y deja que el cuerpo entre en calor a lo largo del recorrido."
           }
         }
       }
@@ -1021,6 +1315,12 @@
             "state": "translated",
             "value": "前2公里耐心些，把发力留给后面。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dos kilómetros con paciencia. Reserva el esfuerzo para después."
+          }
         }
       }
     },
@@ -1031,6 +1331,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果呼吸上升太快，减速或提前短暂步行。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el ritmo o introduce una pausa caminando pronto si la respiración se acelera demasiado."
           }
         }
       }
@@ -1043,6 +1349,12 @@
             "state": "translated",
             "value": "均匀、省力的节奏"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo constante y eficiente"
+          }
         }
       }
     },
@@ -1053,6 +1365,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保持省力的配速，定期检查姿态，一公里一公里地跑。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén un ritmo eficiente, revisa la postura de vez en cuando y recorre la ruta kilómetro a kilómetro."
           }
         }
       }
@@ -1065,6 +1383,12 @@
             "state": "translated",
             "value": "中段顺畅巡航，摆臂稳，脚步匀。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén el ritmo en el tramo central. Brazos tranquilos y pasos constantes."
+          }
         }
       }
     },
@@ -1075,6 +1399,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "降低强度，直到能不喘气地说完一句短句。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el esfuerzo hasta poder decir una frase corta sin jadear."
           }
         }
       }
@@ -1087,6 +1417,12 @@
             "state": "translated",
             "value": "专注、有目标"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concentrado y decidido"
+          }
         }
       }
     },
@@ -1097,6 +1433,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "疲劳增加时保持专注，只有配速和姿态仍然可控时才轻轻加力。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén la concentración a medida que aumenta la fatiga; sube el esfuerzo poco a poco solo si controlas el ritmo y la técnica."
           }
         }
       }
@@ -1109,6 +1451,12 @@
             "state": "translated",
             "value": "还剩3公里，专注就好，不要硬撑。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan tres kilómetros. Concéntrate, sin forzar."
+          }
         }
       }
     },
@@ -1119,6 +1467,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保持稳定，或用短暂步行重整状态，不要让姿态散掉。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén el esfuerzo o camina un momento para recuperarte antes de que se deteriore la técnica."
           }
         }
       }
@@ -1131,6 +1485,12 @@
             "state": "translated",
             "value": "有力、可控地收尾"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Final fuerte y controlado"
+          }
         }
       }
     },
@@ -1141,6 +1501,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "最后1公里逐步加力：先守住姿态，再提高步频冲向终点。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprovecha el último kilómetro de forma progresiva: primero conserva la técnica y después aumenta la cadencia hacia la meta."
           }
         }
       }
@@ -1153,6 +1519,12 @@
             "state": "translated",
             "value": "最后1公里，稳稳加力，自信完赛。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un kilómetro. Aumenta el esfuerzo con control y termina con confianza."
+          }
         }
       }
     },
@@ -1163,6 +1535,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保持当前强度，均匀跑过终点。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén el esfuerzo actual y un ritmo constante hasta cruzar la meta."
           }
         }
       }
@@ -1296,6 +1674,12 @@
             "state": "translated",
             "value": "刻意保留余力"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contención deliberada"
+          }
         }
       }
     },
@@ -1306,6 +1690,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "必要时不跟随人群或手表配速，建立放松的呼吸和省力的步幅。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si hace falta, olvídate del grupo o del reloj; busca una respiración relajada y una zancada eficiente."
           }
         }
       }
@@ -1318,6 +1708,12 @@
             "state": "translated",
             "value": "前3公里耐心些，为全程留余地。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tres kilómetros con paciencia. Cuida la sesión de hoy."
+          }
         }
       }
     },
@@ -1328,6 +1724,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "尽早减速；现在的小调整，胜过后面的被迫大调整。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el ritmo pronto; un pequeño ajuste ahora cuesta menos que una corrección grande después."
           }
         }
       }
@@ -1340,6 +1742,12 @@
             "state": "translated",
             "value": "舒适、可持续"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómodo y sostenible"
+          }
         }
       }
     },
@@ -1350,6 +1758,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "锁定能重复的节奏，按练习过的时间补水、补给。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra un ritmo repetible y sigue los horarios de hidratación y alimentación que has practicado."
           }
         }
       }
@@ -1362,6 +1776,12 @@
             "state": "translated",
             "value": "稳住节奏，照常补给，今天不尝试新方法。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estabiliza el ritmo y aliméntate como has practicado. Hoy, nada nuevo."
+          }
         }
       }
     },
@@ -1372,6 +1792,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果补给、炎热或坡度让强度升高，在补给点短暂步行或减速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina un momento en un avituallamiento o baja el ritmo si la alimentación, el calor o las cuestas aumentan el esfuerzo."
           }
         }
       }
@@ -1384,6 +1810,12 @@
             "state": "translated",
             "value": "稳定、专注"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concentración constante"
+          }
         }
       }
     },
@@ -1394,6 +1826,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "一公里一公里地跑，沿用熟悉的补给方式，疲劳时优先照顾姿态。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avanza kilómetro a kilómetro, mantén la alimentación conocida y da prioridad a la postura cuando aparezca la fatiga."
           }
         }
       }
@@ -1406,6 +1844,12 @@
             "state": "translated",
             "value": "已过半程，守住简单、稳定的节奏。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya has pasado la mitad. Mantén un ritmo constante y sencillo."
+          }
         }
       }
     },
@@ -1416,6 +1860,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在疲劳变得难以应付前，切换到预定的跑走交替模式。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasa a alternar correr y caminar según lo previsto antes de que la fatiga se convierta en un problema grave."
           }
         }
       }
@@ -1428,6 +1878,12 @@
             "state": "translated",
             "value": "后程专注发力"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concentración en el tramo final de carrera"
+          }
         }
       }
     },
@@ -1438,6 +1894,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "上坡、逆风时维持强度；只有呼吸、姿态和补给都稳定时才加力。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén el esfuerzo en las cuestas y con viento en contra; auméntalo solo si la respiración, la técnica y la alimentación siguen estables."
           }
         }
       }
@@ -1450,6 +1912,12 @@
             "state": "translated",
             "value": "还剩5公里，先专注，再加力。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan cinco kilómetros. Primero concéntrate, después aumenta el esfuerzo."
+          }
         }
       }
     },
@@ -1460,6 +1928,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "保持强度或加入短暂步行；安全完成最重要。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén o añade pausas cortas caminando; terminar con seguridad es la prioridad."
           }
         }
       }
@@ -1472,6 +1946,12 @@
             "state": "translated",
             "value": "以安全范围内的最佳状态收尾"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El mejor final que puedas hacer con seguridad"
+          }
         }
       }
     },
@@ -1482,6 +1962,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "最后1.1公里保持紧凑姿态，确定能顺利完成后再增加强度。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre los últimos 1,1 km con pasos compactos y aumenta el esfuerzo solo cuando tengas la meta asegurada."
           }
         }
       }
@@ -1494,6 +1980,12 @@
             "state": "translated",
             "value": "最后1.1公里，有力、紧凑，一直向前。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Últimos 1,1 km. Con fuerza, pasos compactos y hasta el final."
+          }
         }
       }
     },
@@ -1504,6 +1996,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "以能维持的最佳强度安全前进。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigue avanzando con seguridad al mayor esfuerzo que puedas mantener."
           }
         }
       }
@@ -1659,6 +2157,12 @@
             "state": "translated",
             "value": "轻松到几乎觉得太慢"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Casi demasiado suave"
+          }
         }
       }
     },
@@ -1669,6 +2173,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "让兴奋自然过去，不把它变成速度；稳住呼吸，留出周围空间。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deja pasar la emoción sin convertirla en velocidad; encuentra una respiración tranquila y espacio a tu alrededor."
           }
         }
       }
@@ -1681,6 +2191,12 @@
             "state": "translated",
             "value": "前5公里保护体力，轻松就是任务。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cinco kilómetros para cuidarte. Hoy toca ir suave."
+          }
         }
       }
     },
@@ -1691,6 +2207,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果起步感觉不够克制，立即减速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el ritmo de inmediato si no sientes que te estás conteniendo al principio."
           }
         }
       }
@@ -1703,6 +2225,12 @@
             "state": "translated",
             "value": "省力、熟悉"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eficiente y familiar"
+          }
         }
       }
     },
@@ -1713,6 +2241,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "稳定重复跑姿，开始严格执行训练中练习过的补给和补水流程。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra una técnica constante y empieza exactamente la rutina de alimentación e hidratación que has practicado al entrenar."
           }
         }
       }
@@ -1725,6 +2259,12 @@
             "state": "translated",
             "value": "按熟悉的方式来：轻松节奏，熟悉补给。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazlo como siempre. Ritmo suave y alimentación conocida."
+          }
         }
       }
     },
@@ -1735,6 +2275,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在小问题累积之前，利用补给站步行休息或减速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina en los avituallamientos o baja el ritmo antes de que se acumulen los pequeños problemas."
           }
         }
       }
@@ -1747,6 +2293,12 @@
             "state": "translated",
             "value": "稳定、耐心"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paciencia constante"
+          }
         }
       }
     },
@@ -1757,6 +2309,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "把赛道分成小段，沿用熟悉的补给方式，30公里之前抵住提速比赛的冲动。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Divide el recorrido en tramos cortos, mantén la alimentación conocida y resiste las ganas de competir antes del kilómetro 30."
           }
         }
       }
@@ -1769,6 +2327,12 @@
             "state": "translated",
             "value": "耐心跑过30公里，一公里一公里从容积累。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paciencia hasta el kilómetro treinta. Sigue sumando kilómetros con calma."
+          }
         }
       }
     },
@@ -1779,6 +2343,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "根据炎热、坡度、肠胃问题或强度上升调整；环境变了，就不要固守原配速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adapta el esfuerzo al calor, las cuestas, las molestias de estómago o el aumento de la fatiga; si las condiciones cambian, el ritmo inicial deja de ser el objetivo."
           }
         }
       }
@@ -1791,6 +2361,12 @@
             "state": "translated",
             "value": "深入发力、保持可控"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trabajo intenso y controlado"
+          }
         }
       }
     },
@@ -1801,6 +2377,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "专注姿态、紧凑脚步和下一个路标，保持强度，不硬追配速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concéntrate en la postura, los pasos compactos y el siguiente punto de referencia; mantén el esfuerzo sin forzar el ritmo."
           }
         }
       }
@@ -1813,6 +2395,12 @@
             "state": "translated",
             "value": "现在进入关键段，目标放近，姿态稳住。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí está el trabajo. Piensa en el próximo tramo y mantén la técnica."
+          }
         }
       }
     },
@@ -1823,6 +2411,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在情况变得不安全前，主动采用跑走交替并寻求赛道支援。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterna correr y caminar de forma planificada y busca ayuda en el recorrido antes de que la situación deje de ser segura."
           }
         }
       }
@@ -1835,6 +2429,12 @@
             "state": "translated",
             "value": "安全范围内的最佳强度"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El mayor esfuerzo que puedas mantener con seguridad"
+          }
         }
       }
     },
@@ -1845,6 +2445,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "把决策简化为姿态、方向、补给和下一公里。状态稳定且接近终点时才增加强度。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simplifica las decisiones: técnica, dirección, avituallamiento y siguiente kilómetro. Aumenta el esfuerzo solo si tu estado es estable y la meta está cerca."
           }
         }
       }
@@ -1857,6 +2463,12 @@
             "state": "translated",
             "value": "还剩5公里，注意安全，脚步紧凑，继续向前。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan cinco kilómetros. Prioriza la seguridad, mantén pasos compactos y sigue avanzando."
+          }
         }
       }
     },
@@ -1867,6 +2479,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果症状或环境让继续前进变得不安全，请步行、到补给点停下或结束尝试。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina, detente en un puesto de ayuda o abandona el intento si los síntomas o las condiciones hacen que seguir no sea seguro."
           }
         }
       }
@@ -2374,6 +2992,12 @@
             "state": "translated",
             "value": "轻松步行"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminata suave"
+          }
         }
       }
     },
@@ -2384,6 +3008,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自然步行，让呼吸和关节逐渐适应。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina con naturalidad y deja que la respiración y las articulaciones entren en calor poco a poco."
           }
         }
       }
@@ -2396,6 +3026,12 @@
             "state": "translated",
             "value": "轻松走，不急着跑。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina suave. No hay prisa por correr."
+          }
         }
       }
     },
@@ -2406,6 +3042,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果身体还没准备好慢跑，就继续步行。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigue caminando si tu cuerpo aún no está preparado para trotar."
           }
         }
       }
@@ -2418,6 +3060,12 @@
             "state": "translated",
             "value": "轻松慢跑、充分步行恢复"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trote suave y recuperación completa caminando"
+          }
         }
       }
     },
@@ -2428,6 +3076,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "每分钟跑得轻松些，随后用足90秒步行恢复。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trota suave durante cada minuto y aprovecha los noventa segundos completos de caminata para recuperar."
           }
         }
       }
@@ -2440,6 +3094,12 @@
             "state": "translated",
             "value": "跑得轻松，走得更轻松，从容重复。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre suave y camina aún más suave. Repite con control."
+          }
         }
       }
     },
@@ -2450,6 +3110,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "任何一段跑步都可以改成步行，也可以提前结束跑步部分；无需完成所有组数。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes caminar en cualquier intervalo de carrera o terminar antes la parte de correr; no es obligatorio completar todas las repeticiones."
           }
         }
       }
@@ -2462,6 +3128,12 @@
             "state": "translated",
             "value": "放松步行"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminata relajada"
+          }
         }
       }
     },
@@ -2472,6 +3144,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "轻松步行到呼吸平稳，不急着结束。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina suave hasta estabilizar la respiración y termina sin prisa."
           }
         }
       }
@@ -2484,6 +3162,12 @@
             "state": "translated",
             "value": "训练完成了，慢慢走下来。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya has hecho el trabajo. Baja el esfuerzo caminando suavemente."
+          }
         }
       }
     },
@@ -2494,6 +3178,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果步行也不舒服，请在安全地点停下。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detente en un lugar seguro si caminar te resulta incómodo."
           }
         }
       }
@@ -2616,6 +3306,12 @@
             "state": "translated",
             "value": "轻松跑"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera suave"
+          }
         }
       }
     },
@@ -2693,6 +3389,12 @@
             "state": "translated",
             "value": "非常轻松"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muy suave"
+          }
         }
       }
     },
@@ -2703,6 +3405,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "起步比平时的轻松节奏再慢一些，让步幅自然舒展。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza más despacio que tu ritmo suave habitual y deja que la zancada se suelte de forma natural."
           }
         }
       }
@@ -2715,6 +3423,12 @@
             "state": "translated",
             "value": "起步比你认为需要的再轻松些。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza más suave de lo que crees necesario."
+          }
         }
       }
     },
@@ -2725,6 +3439,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "先步行，直到身体准备好慢跑。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina hasta que tu cuerpo esté preparado para trotar."
           }
         }
       }
@@ -2737,6 +3457,12 @@
             "state": "translated",
             "value": "能交谈、可持续"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sostenible y con margen para conversar"
+          }
         }
       }
     },
@@ -2747,6 +3473,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "以能说完整句子的速度跑，肩膀保持放松。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre a un ritmo que te permita conversar con frases completas y mantener los hombros relajados."
           }
         }
       }
@@ -2759,6 +3491,12 @@
             "state": "translated",
             "value": "轻松到明天还愿意再跑。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo bastante suave como para repetir mañana."
+          }
         }
       }
     },
@@ -2769,6 +3507,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "减速或插入步行休息，直到交谈重新变得轻松。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el ritmo o camina un momento hasta que conversar vuelva a resultar fácil."
           }
         }
       }
@@ -2781,6 +3525,12 @@
             "state": "translated",
             "value": "逐渐放松"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bajando el esfuerzo"
+          }
         }
       }
     },
@@ -2791,6 +3541,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "逐步减速，结束时比中段更从容。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el ritmo poco a poco y termina con más calma que en el tramo central."
           }
         }
       }
@@ -2803,6 +3559,12 @@
             "state": "translated",
             "value": "慢慢放下来，不用冲线加速。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el esfuerzo. Sin acelerar al final."
+          }
         }
       }
     },
@@ -2813,6 +3575,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "最后几分钟步行。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina los últimos minutos."
           }
         }
       }
@@ -3001,6 +3769,12 @@
             "state": "translated",
             "value": "毫不费力地活动"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movimiento sin esfuerzo"
+          }
         }
       }
     },
@@ -3011,6 +3785,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "步行时留意身体是逐渐放松、没有变化，还是感觉更差。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina y observa si el cuerpo se suelta, sigue igual o se encuentra peor."
           }
         }
       }
@@ -3023,6 +3803,12 @@
             "state": "translated",
             "value": "感受身体，恢复就是全部目标。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprueba cómo te sientes. Hoy solo toca recuperar."
+          }
         }
       }
     },
@@ -3033,6 +3819,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果活动使疼痛或疲劳加重，请结束训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina la sesión si moverte aumenta el dolor o la fatiga."
           }
         }
       }
@@ -3045,6 +3837,12 @@
             "state": "translated",
             "value": "非常轻松的慢跑或步行"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trote o caminata muy suaves"
+          }
         }
       }
     },
@@ -3055,6 +3853,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "只有慢跑比步行更顺畅时才跑，两者可以随时切换。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trota solo si te resulta más cómodo que caminar; alterna ambas opciones libremente."
           }
         }
       }
@@ -3067,6 +3871,12 @@
             "state": "translated",
             "value": "轻柔到能帮助恢复。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo bastante suave como para ayudarte a recuperar."
+          }
         }
       }
     },
@@ -3077,6 +3887,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "可以步行或停止；没有任何目标值得牺牲恢复。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina o detente; nada merece completarse a costa de la recuperación."
           }
         }
       }
@@ -3089,6 +3905,12 @@
             "state": "translated",
             "value": "轻松步行，感觉平稳后就结束。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina suave y termina en cuanto recuperes la calma."
+          }
         }
       }
     },
@@ -3100,6 +3922,12 @@
             "state": "translated",
             "value": "慢下来，守住恢复的收获。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el esfuerzo y conserva los beneficios de la recuperación."
+          }
         }
       }
     },
@@ -3110,6 +3938,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "提前在安全地点结束。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina antes en un lugar seguro."
           }
         }
       }
@@ -3220,6 +4054,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "轻松热身"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calentamiento suave"
           }
         }
       }
@@ -3397,6 +4237,12 @@
             "state": "translated",
             "value": "轻松跑或步行"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera suave o caminata"
+          }
         }
       }
     },
@@ -3441,6 +4287,12 @@
             "state": "translated",
             "value": "轻松、逐渐热身"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suave, entrando en calor poco a poco"
+          }
         }
       }
     },
@@ -3451,6 +4303,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "轻松跑，接近热身结束时让步频自然提升，不强迫提速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre suave y deja que la cadencia suba de forma natural hacia el final, sin forzar el ritmo."
           }
         }
       }
@@ -3463,6 +4321,12 @@
             "state": "translated",
             "value": "先热身，8分钟后再提速。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero calienta. La velocidad llega después de ocho minutos."
+          }
         }
       }
     },
@@ -3473,6 +4337,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果还没准备好，延长轻松跑，或改做30分钟轻松跑。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alarga la carrera suave o cambia la sesión por Easy 30 si aún no te sientes preparado."
           }
         }
       }
@@ -3485,6 +4355,12 @@
             "state": "translated",
             "value": "可重复的快速跑与轻松恢复交替"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzos rápidos y repetibles con recuperaciones suaves"
+          }
         }
       }
     },
@@ -3495,6 +4371,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "每个快速段都采用能均匀重复的最快配速；每次恢复都慢跑或步行，直到呼吸平稳。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre cada bloque intenso al ritmo más rápido que puedas repetir de forma constante; trota o camina en cada recuperación hasta estabilizar la respiración."
           }
         }
       }
@@ -3507,6 +4389,12 @@
             "state": "translated",
             "value": "快而可重复，恢复也是训练的一部分。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rápido y repetible. La recuperación también forma parte de la sesión."
+          }
         }
       }
     },
@@ -3517,6 +4405,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果姿态或掌控力未恢复，下一组减速、缩短或跳过。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz la siguiente repetición más despacio, acórtala u omítela si no recuperas la técnica o el control."
           }
         }
       }
@@ -3529,6 +4423,12 @@
             "state": "translated",
             "value": "立即降低强度，温和活动到呼吸平稳。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el esfuerzo de inmediato y sigue moviéndote suavemente hasta estabilizar la respiración."
+          }
         }
       }
     },
@@ -3540,6 +4440,12 @@
             "state": "translated",
             "value": "快速段结束了，全面放松下来。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El trabajo rápido ya está hecho. Baja todo el esfuerzo."
+          }
         }
       }
     },
@@ -3550,6 +4456,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "整个放松段都可以步行。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz toda la vuelta a la calma caminando."
           }
         }
       }
@@ -3694,6 +4606,12 @@
             "state": "translated",
             "value": "轻松放松跑"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelta a la calma suave"
+          }
         }
       }
     },
@@ -3738,6 +4656,12 @@
             "state": "translated",
             "value": "轻松、能交谈"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suave y con margen para conversar"
+          }
         }
       }
     },
@@ -3748,6 +4672,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "逐步热身，等计时切换后再增加强度。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calienta poco a poco y espera al cambio indicado por tiempo antes de aumentar el esfuerzo."
           }
         }
       }
@@ -3760,6 +4690,12 @@
             "state": "translated",
             "value": "先轻松跑10分钟，把发力留给节奏段。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diez minutos suaves. Reserva el esfuerzo para el tempo."
+          }
         }
       }
     },
@@ -3770,6 +4706,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "10分钟后仍没准备好，就全程保持轻松。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén toda la carrera suave si después de diez minutos aún no te sientes preparado."
           }
         }
       }
@@ -3782,6 +4724,12 @@
             "state": "translated",
             "value": "适度吃力、均匀"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exigente pero controlado y constante"
+          }
         }
       }
     },
@@ -3792,6 +4740,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "提升到还能说短句的强度，随后保持稳定，不突然加速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sube a un esfuerzo que te permita hablar en frases cortas y mantenlo sin acelerones."
           }
         }
       }
@@ -3804,6 +4758,12 @@
             "state": "translated",
             "value": "有力、均匀地跑15分钟，不是计时赛。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firme y constante. Son quince minutos, sin buscar una marca."
+          }
         }
       }
     },
@@ -3814,6 +4774,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果呼吸紊乱或配速不断下降，降低到稳定强度跑。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja a una carrera constante si la respiración se descontrola o el ritmo sigue cayendo."
           }
         }
       }
@@ -3826,6 +4792,12 @@
             "state": "translated",
             "value": "轻松恢复"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación suave"
+          }
         }
       }
     },
@@ -3836,6 +4808,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "立即降低强度，慢跑或步行，直到平静。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el esfuerzo de inmediato y trota o camina hasta recuperar la calma."
           }
         }
       }
@@ -3848,6 +4826,12 @@
             "state": "translated",
             "value": "节奏段完成，后面全程放轻松。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo terminado. Suave hasta el final."
+          }
         }
       }
     },
@@ -3858,6 +4842,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "如果轻松慢跑也不能帮助恢复，就改为步行。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina si trotar suave no te ayuda a recuperar."
           }
         }
       }
@@ -4134,6 +5124,12 @@
             "state": "translated",
             "value": "逐步热身，为快速段留意安全的路标。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calienta poco a poco e identifica referencias seguras para los bloques rápidos."
+          }
         }
       }
     },
@@ -4144,6 +5140,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "先放轻松，观察前方路线。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero, suave. Observa el recorrido que tienes por delante."
           }
         }
       }
@@ -4156,6 +5158,12 @@
             "state": "translated",
             "value": "如果路线或身体状态不合适，就全程轻松跑。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén toda la sesión suave si el recorrido o tu cuerpo no están preparados."
+          }
         }
       }
     },
@@ -4166,6 +5174,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "轻松有趣、可控的加速"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambios de ritmo variados y controlados"
           }
         }
       }
@@ -4178,6 +5192,12 @@
             "state": "translated",
             "value": "短段可以快一些，长段更克制；每次恢复都真正放轻松。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz los cambios cortos más rápidos y los largos más moderados; recupera muy suave en todos los descansos."
+          }
         }
       }
     },
@@ -4188,6 +5208,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "切换速度，保持同样放松的姿态。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia de ritmo sin perder la técnica relajada."
           }
         }
       }
@@ -4200,6 +5226,12 @@
             "state": "translated",
             "value": "如果恢复后仍未重新掌控，降低下一段加速强度或跳过。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce el siguiente cambio de ritmo u omítelo si la recuperación no te devuelve el control."
+          }
         }
       }
     },
@@ -4210,6 +5242,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "轻松跑或步行，最后不再加速。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre o camina suave, sin acelerar al final."
           }
         }
       }
@@ -4222,6 +5260,12 @@
             "state": "translated",
             "value": "金字塔完成，轻松跑回去。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pirámide terminada. Completa el resto con suavidad."
+          }
         }
       }
     },
@@ -4232,6 +5276,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "放松段步行。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz la vuelta a la calma caminando."
           }
         }
       }
@@ -4574,6 +5624,12 @@
             "state": "translated",
             "value": "轻松跑，并确认坡道和落脚处安全。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre suave y comprueba que la cuesta y el terreno sean seguros."
+          }
         }
       }
     },
@@ -4584,6 +5640,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "热身并检查坡道。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calienta e inspecciona la cuesta."
           }
         }
       }
@@ -4596,6 +5658,12 @@
             "state": "translated",
             "value": "如果环境不安全，就选择平地轻松跑。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si las condiciones no son seguras, corre suave por terreno llano."
+          }
         }
       }
     },
@@ -4606,6 +5674,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "有力上坡、充分恢复"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subida con fuerza y recuperación completa"
           }
         }
       }
@@ -4618,6 +5692,12 @@
             "state": "translated",
             "value": "脚步紧凑，从脚踝处略微前倾，积极摆臂；安全地步行或慢跑恢复。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da pasos compactos, inclínate ligeramente desde los tobillos y mueve los brazos con energía; recupera caminando o trotando con seguridad."
+          }
         }
       }
     },
@@ -4628,6 +5708,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "髋部挺起，脚步紧凑，充分恢复。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caderas altas, pasos compactos y recuperación completa."
           }
         }
       }
@@ -4640,6 +5726,12 @@
             "state": "translated",
             "value": "如果落脚或姿态不稳，可提前结束该组、步行下坡或停止整组训练。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina antes la repetición, baja caminando o detén la serie si pierdes estabilidad o control de la técnica."
+          }
         }
       }
     },
@@ -4651,6 +5743,12 @@
             "state": "translated",
             "value": "轻松离开坡道，让强度逐渐下降。"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aléjate de la cuesta con suavidad y deja que el esfuerzo baje poco a poco."
+          }
         }
       }
     },
@@ -4661,6 +5759,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "坡跑完成，从这里开始放轻松。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuestas terminadas. Desde aquí, suave."
           }
         }
       }
