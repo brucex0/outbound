@@ -103,7 +103,7 @@ struct LiveCoachAudioPackDTO: Codable, Equatable {
 }
 
 struct CreateLiveCoachSessionRequest: Encodable {
-    let contractVersion = 1
+    let contractVersion = 2
     var preparationId: String? = nil
     var deferPlanning = true
     let clientSessionId: UUID
@@ -117,7 +117,8 @@ struct CreateLiveCoachSessionRequest: Encodable {
     let coachingContract: String
     let measurementUnitSystem: String
     let sessionIntent: SessionIntentDTO
-    let clientWorkout: ClientWorkoutDTO?
+    let execution: ExecutionDTO?
+    var workoutIssuance: WorkoutIssuanceDTO? = nil
     let environment: EnvironmentDTO?
     let appDistributionHint = "global"
 
@@ -136,16 +137,15 @@ struct CreateLiveCoachSessionRequest: Encodable {
         }
     }
 
+    struct WorkoutIssuanceDTO: Encodable { let id: String; let revision: String }
+
     struct WorkoutReferenceDTO: Encodable {
         let source: String
         let id: String
         let version: Int?
     }
 
-    struct ClientWorkoutDTO: Encodable {
-        let title: String
-        let detail: String
-        let guideLine: String
+    struct ExecutionDTO: Encodable {
         let targetDistanceMeters: Double?
         let targetDurationSeconds: Int?
         let targetCalories: Int?
@@ -153,19 +153,14 @@ struct CreateLiveCoachSessionRequest: Encodable {
         let route: RouteDTO?
 
         struct StepDTO: Encodable {
-            let label: String
             let durationSeconds: Int
-            let detail: String?
             let phase: String?
             let targetPaceSecondsPerKilometer: Double?
-            let transitionInstruction: String?
             let transitionLeadSeconds: Int?
             let transitionCountdown: String?
         }
 
         struct RouteDTO: Encodable {
-            let name: String?
-            let shape: String?
             let direction: String?
             let distanceMeters: Double?
             let elevationGainMeters: Double?
@@ -182,7 +177,6 @@ struct CreateLiveCoachSessionRequest: Encodable {
         let weather: WeatherDTO?
 
         struct ApproximateLocationDTO: Encodable {
-            let placeName: String?
             let latitude: Double?
             let longitude: Double?
             let altitudeMeters: Double?
@@ -190,15 +184,11 @@ struct CreateLiveCoachSessionRequest: Encodable {
 
         struct WeatherDTO: Encodable {
             let observedAt: Date
-            let condition: String
             let temperatureCelsius: Double
             let apparentTemperatureCelsius: Double
             let windKilometersPerHour: Double
             let precipitationChance: Double
             let impact: String
-            let headline: String
-            let guidance: String?
-            let bestWindow: String?
         }
     }
 }

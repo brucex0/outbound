@@ -131,8 +131,7 @@ final class LiveCoachSessionController {
             : intent?.workoutReference
         return CreateLiveCoachSessionRequest(
             clientSessionId: UUID(),
-            workoutId: plannedWorkoutReference?.id
-                ?? (standaloneWorkoutReference == nil ? companionBrief?.workout?.id : nil),
+            workoutId: plannedWorkoutReference?.id,
             workoutEditId: intent?.workoutReference?.workoutEditId,
             workoutRevision: intent?.workoutReference?.workoutRevision,
             workoutRef: standaloneWorkoutReference.map {
@@ -157,7 +156,10 @@ final class LiveCoachSessionController {
                     )
                 }
             ),
-            clientWorkout: clientWorkout(for: intent, profile: profile),
+            execution: execution(for: intent, profile: profile),
+            workoutIssuance: plannedWorkoutReference?.performedWorkoutReference.map {
+                .init(id: $0.issuanceId, revision: $0.revision)
+            },
             environment: environment(weatherSnapshot: weatherSnapshot, isIndoor: isIndoor)
         )
     }
@@ -436,33 +438,26 @@ final class LiveCoachSessionController {
         return selected.id
     }
 
-    private static func clientWorkout(
+    private static func execution(
         for intent: SessionIntent?,
         profile: GuideProfile?
-    ) -> CreateLiveCoachSessionRequest.ClientWorkoutDTO? {
-        guard let intent else { return nil }
+    ) -> CreateLiveCoachSessionRequest.ExecutionDTO? {
+        let intent = intent ?? .freestyleRun
         let athletePace = profile?.athlete.preferredPaceSecs
-        let steps = intent.workoutSteps.map { step in
-            CreateLiveCoachSessionRequest.ClientWorkoutDTO.StepDTO(
-                label: step.label,
+        // Saved prescription steps are resolved from the owned revision/catalog.
+        let customSteps = intent.workoutReference == nil ? intent.workoutSteps : []
+        let steps = customSteps.map { step in
+            CreateLiveCoachSessionRequest.ExecutionDTO.StepDTO(
                 durationSeconds: step.durationSeconds,
-                detail: step.detail,
-                phase: step.coachingTarget?.phase.rawValue,
+                phase: step.coachingTarget?.phase.rawValue ?? "open",
                 targetPaceSecondsPerKilometer: step.coachingTarget?.pace?.resolvedTarget(
                     athleteReferencePace: athletePace
                 ),
-                transitionInstruction: step.transitionInstruction,
                 transitionLeadSeconds: step.transitionLeadSeconds,
                 transitionCountdown: step.transitionCountdown?.rawValue
             )
         }
         return .init(
-            title: intent.title,
-            // Planned workout explanations also appear on Today and can exceed
-            // the coaching API's 400 UTF-16-unit metadata limit. Bound this
-            // projection only; retain the full prescription and local guidance.
-            detail: boundedContextText(intent.detail, maximumUTF16Count: 400),
-            guideLine: boundedContextText(intent.guideLine, maximumUTF16Count: 400),
             targetDistanceMeters: intent.resolvedTargetDistanceMeters,
             targetDurationSeconds: intent.resolvedTargetDurationSeconds,
             targetCalories: intent.resolvedTargetCalories,
@@ -471,25 +466,9 @@ final class LiveCoachSessionController {
         )
     }
 
-    private static func boundedContextText(_ text: String, maximumUTF16Count: Int) -> String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.utf16.count > maximumUTF16Count else { return trimmed }
-        var result = ""
-        var count = 0
-        // Zod uses JavaScript string length (UTF-16), not Swift Character count.
-        // Keep graphemes intact, including emoji and combining marks.
-        for character in trimmed {
-            let width = String(character).utf16.count
-            guard count + width <= maximumUTF16Count else { break }
-            result.append(character)
-            count += width
-        }
-        return result
-    }
-
     private static func routeDTO(
         _ route: PreparedRoute?
-    ) -> CreateLiveCoachSessionRequest.ClientWorkoutDTO.RouteDTO? {
+    ) -> CreateLiveCoachSessionRequest.ExecutionDTO.RouteDTO? {
         guard let route, let first = route.directedPoints.first else { return nil }
         let points = route.directedPoints
         var distance = 0.0
@@ -508,8 +487,6 @@ final class LiveCoachSessionController {
             }
         }
         return .init(
-            name: route.name,
-            shape: route.routeShape,
             direction: route.direction.rawValue,
             distanceMeters: distance,
             elevationGainMeters: elevationGain,
@@ -528,7 +505,6 @@ final class LiveCoachSessionController {
             indoor: isIndoor,
             approximateLocation: weatherSnapshot.map {
                 .init(
-                    placeName: $0.placeName,
                     latitude: $0.approximateLatitude,
                     longitude: $0.approximateLongitude,
                     altitudeMeters: $0.approximateAltitudeMeters
@@ -537,15 +513,11 @@ final class LiveCoachSessionController {
             weather: weatherSnapshot.map {
                 .init(
                     observedAt: $0.fetchedAt,
-                    condition: $0.condition,
                     temperatureCelsius: $0.temperatureCelsius,
                     apparentTemperatureCelsius: $0.apparentTemperatureCelsius,
                     windKilometersPerHour: $0.windKilometersPerHour,
                     precipitationChance: $0.precipitationChance,
-                    impact: $0.impact.rawValue,
-                    headline: $0.headline,
-                    guidance: $0.guidance,
-                    bestWindow: $0.bestWindow
+                    impact: $0.impact.rawValue
                 )
             }
         )
