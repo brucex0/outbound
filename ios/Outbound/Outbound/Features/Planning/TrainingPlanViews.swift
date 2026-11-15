@@ -300,6 +300,7 @@ struct ActiveTrainingPlanDetailView: View {
     let accentColor: Color
     var onChangePlan: (() -> Void)? = nil
     var onEndPlan: (() -> Void)? = nil
+    var completedActivities: [TrainingPlanCompletedActivity] = []
     var benchmarkSaveOverride: ((RunningBenchmarkReport?) async throws -> Void)? = nil
     @State private var expandedScheduleWeeks: Set<Date> = []
     @State private var initializedScheduleDisclosurePlanID: String?
@@ -599,10 +600,31 @@ struct ActiveTrainingPlanDetailView: View {
                 .accessibilityLabel(group.title)
                 .accessibilityValue(expanded ? String(localized: "plan.details.week_expanded", defaultValue: "Expanded") : String(localized: "plan.details.week_collapsed", defaultValue: "Collapsed"))
                 .accessibilityHint(String(localized: "plan.details.week_toggle_hint", defaultValue: "Shows or hides this week's workouts"))
+                Text(completedSummary(for: group.workouts))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 if expanded { scheduleWorkoutRows(group.workouts) }
             }
             .padding(.top, 6)
         }
+    }
+
+    private func completedSummary(for workouts: [TrainingPlanWorkout]) -> String {
+        let completedIDs = Set(workouts.filter { $0.status == "completed" }.map(\.id))
+        var seen = Set<UUID>()
+        let activities = completedActivities.filter { completedIDs.contains($0.workoutID) && seen.insert($0.activityID).inserted }
+        guard Set(activities.map(\.workoutID)) == completedIDs,
+              activities.allSatisfy({ $0.durationSeconds >= 0 && $0.distanceMeters.isFinite && $0.distanceMeters >= 0 }) else {
+            return String(localized: "plan.details.completed_totals_unavailable", defaultValue: "Completed totals unavailable")
+        }
+        let seconds = activities.reduce(0) { $0 + $1.durationSeconds }
+        let duration = String(format: String(localized: "plan.details.completed_time", defaultValue: "%1$dm %2$ds"),
+                              seconds / 60, seconds % 60)
+        let meters = activities.reduce(0) { $0 + $1.distanceMeters }
+        let units = measurementPreferences.unitSystem
+        let distance = "\(units.distanceValue(meters: meters).formatted(.number.precision(.fractionLength(1)))) \(units.distanceUnit)"
+        return String(format: String(localized: "plan.details.completed_totals", defaultValue: "Completed · %1$@ · %2$@"), duration, distance)
     }
 
     @ViewBuilder
@@ -1055,7 +1077,8 @@ struct ActiveTrainingPlanDetailsProjectionView: View {
         if let plan = store.activePlan {
             if let week = store.currentWeek {
                 ActiveTrainingPlanDetailView(activePlan: plan, week: week, todaySuggestion: store.todaySuggestion,
-                    accentColor: accentColor, onChangePlan: onChangePlan, onEndPlan: onEndPlan)
+                    accentColor: accentColor, onChangePlan: onChangePlan, onEndPlan: onEndPlan,
+                    completedActivities: store.completedPlanActivities)
             } else {
                 ActiveTrainingPlanPendingDetailView(activePlan: plan, accentColor: accentColor,
                     onChangePlan: onChangePlan, onEndPlan: onEndPlan)

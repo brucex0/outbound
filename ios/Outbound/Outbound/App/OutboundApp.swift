@@ -1043,6 +1043,13 @@ struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
     }
 }
 
+struct TrainingPlanCompletedActivity {
+    let activityID: UUID
+    let workoutID: String
+    let durationSeconds: Int
+    let distanceMeters: Double
+}
+
 struct TrainingPlanWeekSnapshot: Codable, Equatable {
     var pendingSessions: Int? = nil
     var weekCoverageUnknown: Bool? = nil
@@ -1108,6 +1115,20 @@ final class TrainingPlanStore: ObservableObject {
     private(set) var serverRevision: Int?
     private var refreshTask: Task<Void, Never>?
     private var recommendationRefreshTask: Task<Void, Never>?
+
+    /// Actual recorded metrics, joined by exact completion receipt or private issuance.
+    /// Keep prescribed plan progress independent of these activity totals.
+    var completedPlanActivities: [TrainingPlanCompletedActivity] {
+        lastActivities.compactMap { activity in
+            let receipt = repositoryProjection.confirmedCompletions.first {
+                $0.status == "completed" && ($0.activityId == activity.sync?.serverActivityId
+                    || $0.activityId.lowercased() == activity.id.uuidString.lowercased())
+            }
+            guard let workoutID = receipt?.plannedWorkoutId ?? activity.performedWorkoutReference?.plannedWorkoutId else { return nil }
+            return TrainingPlanCompletedActivity(activityID: activity.id, workoutID: workoutID,
+                durationSeconds: activity.durationSecs, distanceMeters: activity.distanceM)
+        }
+    }
 
     var shouldSupersedeCalibration: Bool {
         if activitySuggestion?.shouldSupersedeCalibration == true {

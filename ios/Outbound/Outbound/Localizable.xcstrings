@@ -76124,6 +76124,75 @@
           }
         }
       }
+    },
+    "plan.details.completed_totals" : {
+      "comment": "Actual recorded time and distance for completed workouts in this plan week.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completed · %1$@ · %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completado · %1$@ · %2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成 · %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "plan.details.completed_time" : {
+      "comment": "Actual recorded time and distance for completed workouts in this plan week.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$dm %2$ds"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d min %2$d s"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d分%2$d秒"
+          }
+        }
+      }
+    },
+    "plan.details.completed_totals_unavailable" : {
+      "comment": "Actual recorded time and distance for completed workouts in this plan week.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completed totals unavailable"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totales completados no disponibles"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无已完成活动的汇总数据"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
