@@ -523,7 +523,7 @@
       }
     },
     "today.recovery.advice_label": {
-      "comment": "Today workout card recovery advice disclosure. [platform:ios]",
+      "comment": "Today workout card recovery advice disclosure. [android:today]",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -546,7 +546,7 @@
       }
     },
     "today.recovery.advice_title": {
-      "comment": "Today workout card recovery advice disclosure. [platform:ios]",
+      "comment": "Today workout card recovery advice disclosure. [android:today]",
       "localizations": {
         "en": {
           "stringUnit": {
