@@ -216,4 +216,6 @@
     <string name="today_recovery_choice">请选择一次简短、轻松的恢复训练，或跳过今天的训练。只有应用选择后，计划中的训练才会更改。</string>
     <string name="today_recovery_advice_label">建议先恢复。查看建议</string>
     <string name="today_recovery_advice_title">建议先恢复</string>
+    <string name="plan_workout_completed_totals">已完成 · %1$s · %2$s</string>
+    <string name="plan_workout_completed_totals_unavailable">暂无已完成活动的汇总数据</string>
 </resources>

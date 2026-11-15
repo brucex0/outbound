@@ -798,6 +798,7 @@ fun TodayScreen(
 
     if (showsPlanDetails && planning != null && activePlan != null) {
         ActivePlanDetailsSheet(
+            completedActivities = raceHistory,
             units = unitSystem,
             onRaceGoalOpened = onRaceGoalOpened,
             onRunningBenchmarkOpened = onRunningBenchmarkOpened,

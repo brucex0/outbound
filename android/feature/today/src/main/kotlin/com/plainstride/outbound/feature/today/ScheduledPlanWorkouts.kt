@@ -108,6 +108,7 @@ internal fun IssuedPlanSchedule(
     todaySuggestion: ActivitySuggestionEnvelope?,
     today: LocalDate,
     units: MeasurementUnitSystem,
+    completedActivities: List<com.plainstride.outbound.core.model.activity.SavedActivity> = emptyList(),
     onWeekToggled: (Boolean) -> Unit = {},
     onOpen: (PlannedWorkout) -> Unit,
 ) {
@@ -153,6 +154,17 @@ internal fun IssuedPlanSchedule(
                     Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+            if (week.monday != null) {
+                val completedIds = week.workouts.filter { it.status == "completed" }.map { it.id }.toSet()
+                val activities = completedActivities.filter { it.deletedAt == null && it.performedWorkoutReference?.plannedWorkoutId in completedIds }
+                    .distinctBy { it.serverActivityId ?: it.id }
+                val complete = activities.mapNotNull { it.performedWorkoutReference?.plannedWorkoutId }.toSet() == completedIds &&
+                    activities.all { it.durationSecs >= 0 && it.distanceM.isFinite() && it.distanceM >= 0 }
+                val summary = if (complete) stringResource(R.string.plan_workout_completed_totals,
+                    workoutDuration(activities.sumOf { it.durationSecs }), workoutDistance(activities.sumOf { it.distanceM }, units))
+                    else stringResource(R.string.plan_workout_completed_totals_unavailable)
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (expanded) week.workouts.groupBy { planningLogicalDate(it.scheduledDate)?.toString() ?: "undated-${it.id}" }.forEach { (_, day) ->
                 val primary = day.filterNot { it.isOptionalMobility }

@@ -75,6 +75,7 @@ internal fun ActivePlanDetailsSheet(
     onEndPlan: () -> Unit,
     onEndConfirmation: () -> Unit,
     onRefresh: () -> Unit,
+    completedActivities: List<com.plainstride.outbound.core.model.activity.SavedActivity> = emptyList(),
     onWorkoutDetailsOpened: () -> Unit = {},
     onPhaseSummaryShown: () -> Unit = {},
     onChangeWorkout: (() -> Unit)? = null,
@@ -137,7 +138,7 @@ internal fun ActivePlanDetailsSheet(
                 Text(stringResource(if (syncing) R.string.plan_details_loading else R.string.plan_workout_none_scheduled), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (syncing) TextButton(onClick = onRefresh, enabled = !busy) { Text(stringResource(R.string.today_retry)) }
             }
-            IssuedPlanSchedule(planning, todaySuggestion, today, units, onWeekToggled = onPlanScheduleWeekToggled) { workout ->
+            IssuedPlanSchedule(planning, todaySuggestion, today, units, completedActivities, onWeekToggled = onPlanScheduleWeekToggled) { workout ->
                 selectedWorkoutId = workout.id
                 onWorkoutDetailsOpened()
             }
