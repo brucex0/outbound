@@ -72,6 +72,14 @@ private val ThemePalettes = mapOf(
         colors(Color(0xFFFF40D4), Color(0xFF9466FF), Color(0xFFB542F5), Color(0xFFD61799))),
 )
 
+/** Semantic amber warning, independent of the chosen theme accent. */
+@Composable
+fun plainstrideWarningColor(): Color = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) {
+    Color(0xFFFF9500)
+} else {
+    Color(0xFFA65200)
+}
+
 val LocalPlainstrideThemeColors = staticCompositionLocalOf { ThemePalettes.getValue(PlainstrideThemeId.VictoryGold).dark }
 
 fun plainstrideThemeColors(theme: PlainstrideThemeId, darkTheme: Boolean): PlainstrideThemeColors {

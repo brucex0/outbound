@@ -214,4 +214,6 @@
     <string name="today_plan_incomplete_after_activity">今天已记录一次活动，但计划中的这次训练尚未完成。</string>
     <string name="today_recovery_caution">建议今天先恢复。计划中的训练尚未更改。请先选择恢复训练或跳过今天的训练，避免继续增加负荷。</string>
     <string name="today_recovery_choice">请选择一次简短、轻松的恢复训练，或跳过今天的训练。只有应用选择后，计划中的训练才会更改。</string>
+    <string name="today_recovery_advice_label">建议先恢复。查看建议</string>
+    <string name="today_recovery_advice_title">建议先恢复</string>
 </resources>

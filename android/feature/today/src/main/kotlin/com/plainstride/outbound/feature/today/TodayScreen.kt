@@ -53,6 +53,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Checkbox
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
+import com.plainstride.outbound.core.designsystem.plainstrideWarningColor
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Checklist
@@ -307,6 +309,7 @@ fun TodayRoute(
         onRaceGoalOpened = viewModel::trackRaceGoalOpened,
         onWorkoutChangeOpened = viewModel::trackWorkoutChangeOpened,
         onRecoveryAdviceShown = viewModel::trackRecoveryAdviceShown,
+        onRecoveryAdviceOpened = viewModel::trackRecoveryAdviceOpened,
         onDismissPlanPicker = viewModel::closePlanPicker,
         onRetryPlanPicker = { viewModel.openPlanPicker() },
         onChangePlan = { viewModel.openPlanPicker("plan_details_change") },
@@ -398,6 +401,7 @@ fun TodayScreen(
     onRaceGoalOpened: () -> Unit = {},
     onWorkoutChangeOpened: () -> Unit = {},
     onRecoveryAdviceShown: () -> Unit = {},
+    onRecoveryAdviceOpened: () -> Unit = {},
     onDismissPlanPicker: () -> Unit = {},
     onRetryPlanPicker: () -> Unit = {},
     onSelectPlan: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit = {},
@@ -682,6 +686,7 @@ fun TodayScreen(
                         completedToday = state.currentRecommendationSnapshot?.relationship == "optionalRecovery",
                         recoveryChangeRecommended = state.recoveryChangeRecommended,
                         onRecoveryAdviceShown = onRecoveryAdviceShown,
+                        onRecoveryAdviceOpened = onRecoveryAdviceOpened,
                         weather = weather,
                         minimized = cardMinimized,
                         warmupDuration = plannedWorkoutWarmupDuration.takeIf { !state.activeSession && suggestion.modality == Modality.run },
@@ -1313,6 +1318,7 @@ private fun WorkoutRecommendationCard(
     completedToday: Boolean,
     recoveryChangeRecommended: Boolean,
     onRecoveryAdviceShown: () -> Unit,
+    onRecoveryAdviceOpened: () -> Unit = {},
     weather: WeatherGuidance?,
     minimized: Boolean,
     onToggleMinimized: () -> Unit,
@@ -1323,38 +1329,57 @@ private fun WorkoutRecommendationCard(
     onOpenWarmup: () -> Unit = {},
     scheduledRest: Boolean = false,
 ) {
+    var showsRecoveryAdvice by rememberSaveable(suggestion?.id, recoveryChangeRecommended) { mutableStateOf(false) }
     val toggleDescription = stringResource(if (minimized) R.string.today_expand_card else R.string.today_collapse_card)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f).then(if (scheduledRest) Modifier else Modifier.clickable(role = Role.Button, onClick = onOpen))) {
-                    Text(stringResource(if (completedToday) R.string.today_up_next else R.string.today_workout), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        if (scheduledRest) stringResource(R.string.today_scheduled_rest_body) else suggestion?.title.orEmpty(),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = if (scheduledRest) Int.MAX_VALUE else 2,
-                        overflow = TextOverflow.Ellipsis,
+                        stringResource(if (completedToday) R.string.today_up_next else R.string.today_workout),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
                     )
-                }
-                suggestion?.let { Text(stringResource(R.string.today_minutes, it.durationMinutes), style = MaterialTheme.typography.titleSmall) }
-                if (!scheduledRest) {
-                    TextButton(
-                        onClick = onToggleMinimized,
-                        modifier = Modifier.size(48.dp).semantics {
-                            contentDescription = toggleDescription
-                        },
-                    ) {
-                        Text(if (minimized) "⌄" else "⌃", style = MaterialTheme.typography.titleLarge)
+                    if (recoveryChangeRecommended && !scheduledRest) {
+                        IconButton(
+                            onClick = {
+                                showsRecoveryAdvice = true
+                                onRecoveryAdviceOpened()
+                            },
+                            modifier = Modifier.size(48.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = stringResource(R.string.today_recovery_advice_label),
+                                tint = plainstrideWarningColor(),
+                            )
+                        }
+                        LaunchedEffect(Unit) { onRecoveryAdviceShown() }
                     }
                 }
-            }
-            if (recoveryChangeRecommended) {
-                Text(stringResource(R.string.today_recovery_caution), style = MaterialTheme.typography.bodyMedium)
-                TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.today_change_workout))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).then(if (scheduledRest) Modifier else Modifier.clickable(role = Role.Button, onClick = onOpen))) {
+                        Text(
+                            if (scheduledRest) stringResource(R.string.today_scheduled_rest_body) else suggestion?.title.orEmpty(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = if (scheduledRest) Int.MAX_VALUE else 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    suggestion?.let { Text(stringResource(R.string.today_minutes, it.durationMinutes), style = MaterialTheme.typography.titleSmall) }
+                    if (!scheduledRest) {
+                        TextButton(
+                            onClick = onToggleMinimized,
+                            modifier = Modifier.size(48.dp).semantics {
+                                contentDescription = toggleDescription
+                            },
+                        ) {
+                            Text(if (minimized) "⌄" else "⌃", style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
                 }
-                LaunchedEffect(Unit) { onRecoveryAdviceShown() }
             }
             if (!minimized) {
                 if (!scheduledRest) {
@@ -1410,6 +1435,18 @@ private fun WorkoutRecommendationCard(
                 }
             }
         }
+    }
+    if (showsRecoveryAdvice && recoveryChangeRecommended && !scheduledRest) {
+        AlertDialog(
+            onDismissRequest = { showsRecoveryAdvice = false },
+            title = { Text(stringResource(R.string.today_recovery_advice_title)) },
+            text = { Text(stringResource(R.string.today_recovery_caution)) },
+            confirmButton = {
+                TextButton(onClick = { showsRecoveryAdvice = false }) {
+                    Text(stringResource(R.string.today_done))
+                }
+            },
+        )
     }
 }
 

@@ -214,4 +214,6 @@
     <string name="today_plan_incomplete_after_activity">An activity is logged today. This planned session is still incomplete.</string>
     <string name="today_recovery_caution">Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain.</string>
     <string name="today_recovery_choice">Choose a short, very easy recovery workout, or skip today. Your planned workout changes only after you apply your choice.</string>
+    <string name="today_recovery_advice_label">Recovery recommended. Show advice</string>
+    <string name="today_recovery_advice_title">Recovery recommended</string>
 </resources>

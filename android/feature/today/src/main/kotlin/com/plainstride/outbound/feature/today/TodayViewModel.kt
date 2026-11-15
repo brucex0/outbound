@@ -448,6 +448,11 @@ class TodayViewModel @Inject constructor(
         AnalyticsProperty.Feature to "planned_workout_recovery_advice",
     )))
 
+    fun trackRecoveryAdviceOpened() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+        AnalyticsProperty.Feature to "planned_workout_recovery_advice",
+        AnalyticsProperty.Result to "opened",
+    )))
+
     fun trackWorkoutChangeOpened() {
         analytics.record(
         AnalyticsEvent("planning_surface_opened", mapOf(

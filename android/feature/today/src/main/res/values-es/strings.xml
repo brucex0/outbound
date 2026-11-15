@@ -214,4 +214,6 @@
     <string name="today_plan_incomplete_after_activity">Ya has registrado una actividad hoy. Esta sesión planificada sigue pendiente.</string>
     <string name="today_recovery_caution">Te recomendamos recuperarte. Tu entrenamiento planificado no ha cambiado. Elige una sesión de recuperación u omite la de hoy antes de añadir más carga.</string>
     <string name="today_recovery_choice">Elige una sesión de recuperación breve y muy suave, u omite la de hoy. Tu entrenamiento planificado solo cambia cuando aplicas tu elección.</string>
+    <string name="today_recovery_advice_label">Se recomienda recuperarse. Ver consejo</string>
+    <string name="today_recovery_advice_title">Se recomienda recuperarse</string>
 </resources>
