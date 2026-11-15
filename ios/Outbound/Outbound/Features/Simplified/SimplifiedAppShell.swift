@@ -947,6 +947,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsStretch = false
     @State private var workoutChangePresentation: TodayWorkoutEditPresentation?
     @State private var showsPlannedWorkoutDetails = false
+    @State private var showsRecoveryAdvice = false
     @State private var companionTodayMessage: String?
     @State private var companionWeatherFetchDate: Date?
     @State private var companionActivityID: UUID?
@@ -1519,47 +1520,41 @@ private struct SimplifiedTodayView: View {
     @ViewBuilder
     private var plannedWorkoutCardContent: some View {
         VStack(spacing: trainingPlanStore.isScheduledRestDay || !isPlannedWorkoutCardMinimized ? OutboundSpacing.standard : 0) {
-            HStack(spacing: OutboundSpacing.compact) {
-                if trainingPlanStore.isScheduledRestDay {
-                    plannedWorkoutHeaderContent
-                } else {
-                    Button(action: openPlannedWorkoutDetails) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: OutboundSpacing.compact) {
+                    Text(plannedWorkoutHeaderOverline)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(theme.accentColor)
+                        .textCase(.uppercase)
+                    Spacer(minLength: 0)
+                    if showsPlannedRecoveryAdvice {
+                        plannedRecoveryAdviceButton
+                    }
+                }
+                HStack(spacing: OutboundSpacing.compact) {
+                    if trainingPlanStore.isScheduledRestDay {
                         plannedWorkoutHeaderContent
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(String(localized: "Opens workout details"))
+                    } else {
+                        Button(action: openPlannedWorkoutDetails) {
+                            plannedWorkoutHeaderContent
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(String(localized: "Opens workout details"))
 
-                    Button(action: togglePlannedWorkoutCard) {
-                        Image(systemName: isPlannedWorkoutCardMinimized ? "chevron.down" : "chevron.up")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 32, height: 32)
-                            .background(Color.primary.opacity(0.06), in: Circle())
+                        Button(action: togglePlannedWorkoutCard) {
+                            Image(systemName: isPlannedWorkoutCardMinimized ? "chevron.down" : "chevron.up")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 32, height: 32)
+                                .background(Color.primary.opacity(0.06), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(
+                            isPlannedWorkoutCardMinimized
+                                ? String(localized: "Expand workout card")
+                                : String(localized: "Collapse workout card")
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        isPlannedWorkoutCardMinimized
-                            ? String(localized: "Expand workout card")
-                            : String(localized: "Collapse workout card")
-                    )
-                }
-            }
-
-            if !trainingPlanStore.isScheduledRestDay,
-               trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true {
-                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                    Text(String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain."))
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button(String(localized: "today.change.sheet_title", defaultValue: "Change workout")) { openWorkoutChange() }
-                        .font(.subheadline.weight(.semibold))
-                        .frame(minHeight: 44)
-                        .accessibilityIdentifier("todayRecoveryChange")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .task {
-                    await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("planned_workout_recovery_advice")]))
                 }
             }
 
@@ -1629,13 +1624,45 @@ private struct SimplifiedTodayView: View {
         .animation(.snappy, value: isPlannedWorkoutCardMinimized)
     }
 
+    private var showsPlannedRecoveryAdvice: Bool {
+        !trainingPlanStore.isScheduledRestDay
+            && trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true
+    }
+
+    private var plannedRecoveryAdviceButton: some View {
+        Button {
+            showsRecoveryAdvice = true
+            Task {
+                await analyticsManager?.track(.init(.featureExposed, properties: [
+                    .feature: .string("planned_workout_recovery_advice"),
+                    .result: .string("opened")
+                ]))
+            }
+        } label: {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(OutboundPalette.warning)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "today.recovery.advice_label", defaultValue: "Recovery recommended. Show advice"))
+        .accessibilityIdentifier("todayRecoveryAdvice")
+        .alert(String(localized: "today.recovery.advice_title", defaultValue: "Recovery recommended"), isPresented: $showsRecoveryAdvice) {
+            Button(String(localized: "OK"), role: .cancel) { }
+        } message: {
+            Text(String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain."))
+        }
+        .task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("planned_workout_recovery_advice")
+            ]))
+        }
+    }
+
     private var plannedWorkoutHeaderContent: some View {
         HStack(spacing: OutboundSpacing.standard) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(plannedWorkoutHeaderOverline)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(theme.accentColor)
-                    .textCase(.uppercase)
                 Text(trainingPlanStore.isScheduledRestDay ? trainingPlanStore.plannedLaunchBlockedMessage : todayWorkoutName)
                     .font(trainingPlanStore.isScheduledRestDay
                         ? .title3.weight(.bold)

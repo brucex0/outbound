@@ -149,6 +149,12 @@ enum OutboundPalette {
     static let surface = Color(uiColor: .secondarySystemBackground)
     static let primaryText = Color.primary
     static let secondaryText = Color.secondary
+    // Keep safety warnings amber across themes, with readable contrast on light cards.
+    static let warning = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? .systemOrange
+            : UIColor(red: 0.65, green: 0.32, blue: 0, alpha: 1)
+    })
     static var companion: Color { currentTheme.accentColor }
     static var action: Color { currentTheme.actionColor }
     static var heroGradient: LinearGradient { currentTheme.heroGradient }
