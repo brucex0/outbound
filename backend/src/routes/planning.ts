@@ -1,3 +1,4 @@
+import { planChangeContext, previewPlanChange, applyPlanChange, planChangeSchema, planChangeApplySchema, PlanChangeError } from "../services/planning/planChanges.js";
 import { recoveryChangeMessage } from "../services/personalization/workoutAdjustmentPolicy.js";
 import { intakeBaselineSchema } from "../services/planning/intakeBaseline.js";
 import { LongRunDaysError } from "../services/planning/longRunDays.js";
@@ -37,6 +38,26 @@ import {
 import { applyWorkoutEdit, workoutEditApplySchema, WorkoutEditError } from "../services/planning/workoutEdits.js";
 
 const router = new Hono<AppEnv>();
+
+async function planChangeFailure(c: Context<AppEnv>, operation: string, error: unknown) {
+  const status = error instanceof PlanChangeError ? error.status : 500;
+  const code = error instanceof PlanChangeError ? error.code : "plan_change_failed";
+  console.error("[planning] plan_change_failed", { operation, status, category: code, errorType: error instanceof Error ? error.name : "unknown" });
+  return c.json({ error: "The plan change could not be confirmed. Review the preview and try again.", code }, status);
+}
+router.get("/plan-changes/context", async (c) => {
+  const user = await requirePlanningUser(c); if (user instanceof Response) return user;
+  try { return c.json(await planChangeContext(user.id)); } catch (error) { return planChangeFailure(c, "context", error); }
+});
+router.post("/plan-changes/preview", zValidator("json", planChangeSchema), async (c) => {
+  const user = await requirePlanningUser(c); if (user instanceof Response) return user;
+  try { return c.json(await previewPlanChange(user.id, c.req.valid("json"))); } catch (error) { return planChangeFailure(c, "preview", error); }
+});
+router.post("/plan-changes/apply", zValidator("json", planChangeApplySchema), async (c) => {
+  const user = await requirePlanningUser(c); if (user instanceof Response) return user;
+  try { return c.json(await applyPlanChange(user.id, c.req.valid("json"))); } catch (error) { return planChangeFailure(c, "apply", error); }
+});
+
 
 router.post("/workout-edits/apply", zValidator("json", workoutEditApplySchema), async (c) => {
   const user = await requirePlanningUser(c);

@@ -1,3 +1,4 @@
+import { planPausedOn } from "./planAvailability.js";
 import { accountTimeZone, accountDateLabel } from "../accountCalendar.js";
 import { runningPlanReview, runningConstraintReview, retainRunningPlanForReview, clearRunningPlanReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
@@ -6,7 +7,7 @@ import { unexpectedRunningEffort, withSessionEffort } from "./sessionEffort.js";
 import { runningBenchmarkDecisionChanged } from "./runningBenchmark.js";
 import type { Prisma } from "@prisma/client";
 import { loadTrainingPlanCatalog } from "../trainingPlanCatalog.js";
-import { adaptPlan } from "./adaptationEngine.js";
+import { adaptPlan, adaptReturnPlan } from "./adaptationEngine.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { CATALOG_POLICY_VERSION, generateCatalogWindow, record, day, addDays } from "./catalogProgramme.js";
 import type { GeneratePlanInput } from "./generator.js";
@@ -15,11 +16,11 @@ import type { ActivityForPlanning, PlannedWorkoutForState, PlanningEventType, Re
 
 /** Caller holds the planning-user lock; original plan/edit/completion rows stay intact. */
 export async function refreshCatalogPlanInTransaction(
-  tx: Prisma.TransactionClient, userId: string, now: Date, eventType?: PlanningEventType, expectedPlanId?: string,
+  tx: Prisma.TransactionClient, userId: string, now: Date, eventType?: PlanningEventType, expectedPlanId?: string, returning = false, preview = false,
 ): Promise<boolean> {
-  if (eventType === "goalUpdated") return refreshCatalogPlanCandidate(tx, userId, now, eventType, expectedPlanId);
+  if (eventType === "goalUpdated") return refreshCatalogPlanCandidate(tx, userId, now, eventType, expectedPlanId, returning, preview);
   try {
-    const handled = await refreshCatalogPlanCandidate(tx, userId, now, eventType, expectedPlanId);
+    const handled = await refreshCatalogPlanCandidate(tx, userId, now, eventType, expectedPlanId, returning, preview);
     if (handled) await clearRunningPlanReview(tx, userId, expectedPlanId);
     return handled;
   } catch (error) {
@@ -29,12 +30,13 @@ export async function refreshCatalogPlanInTransaction(
   }
 }
 
-async function refreshCatalogPlanCandidate(tx: Prisma.TransactionClient, userId: string, now: Date, eventType?: PlanningEventType, expectedPlanId?: string): Promise<boolean> {
+async function refreshCatalogPlanCandidate(tx: Prisma.TransactionClient, userId: string, now: Date, eventType?: PlanningEventType, expectedPlanId?: string, returning = false, preview = false): Promise<boolean> {
   const plan = await tx.trainingPlan.findFirst({
     where: { userId, status: "active", source: "catalog", ...(expectedPlanId ? { id: expectedPlanId } : {}) }, orderBy: { createdAt: "desc" },
     include: { goal: true, versions: { orderBy: { versionNumber: "desc" }, take: 1, include: { workouts: true } } },
   });
   if (!plan) return false;
+  if (planPausedOn(plan.goal.constraints, accountDateLabel(now, await accountTimeZone(userId, undefined, tx)))) return true;
   const version = plan.versions[0];
   const decision = record(version?.engineDecision);
   const cursor = record(decision?.programme);
@@ -88,7 +90,7 @@ async function refreshCatalogPlanCandidate(tx: Prisma.TransactionClient, userId:
   const protectedSlots = new Set(evidence.filter((row) => ["completed", "skipped"].includes(row.status)
     || row.status === "planned" && (typeof record(row.prescription)?.workoutEditId === "string" || record(row.prescription)?.source === "explicitWorkoutChange")).map(workoutSlotKey));
   generation.workouts = generation.workouts.filter((workout) => !protectedSlots.has(workoutSlotKey(workout)));
-  const adaptation = eventType ? adaptPlan({ goal, athleteState: state, latestReadiness, eventType, now, basePlan: generation }) : null;
+  const adaptation = returning ? adaptReturnPlan({ goal, athleteState: state, latestReadiness, now, basePlan: generation }) : eventType ? adaptPlan({ goal, athleteState: state, latestReadiness, eventType, now, basePlan: generation }) : null;
   const workouts = adaptation?.workouts ?? generation.workouts;
   const engineDecision = { ...generation.engineDecision, ...adaptation?.engineDecision };
   const created = await createPlanVersionWithWorkouts(tx, {
@@ -101,7 +103,7 @@ async function refreshCatalogPlanCandidate(tx: Prisma.TransactionClient, userId:
     eventType: eventType ?? "weeklyRollover", message: adaptation?.adjustmentMessage ?? "today.race_goal.refilled",
     changedWorkoutIds: [], engineDecision: json(engineDecision),
   } });
-  console.info("[planning] catalog_programme_decision", {
+  if (!preview) console.info("[planning] catalog_programme_decision", {
     outcome: generation.engineDecision.programmeOutcome,
     reentry: record(generation.engineDecision.runWalkProgramme)?.status ?? "absent",
     timeline: generation.engineDecision.programmeTimelineStatus ?? "not_applicable",

@@ -1,3 +1,4 @@
+import { planPausedOn } from "./planAvailability.js";
 import { runningProgressionBlocked } from "./generator.js";
 import { accountTimeZone, accountDateLabel } from "../accountCalendar.js";
 import { runningConstraintReview, retainRunningPlanForReview } from "./runningPlanReview.js";
@@ -266,6 +267,11 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
     const created = await prisma.$transaction(async (tx) => {
       await lockPlanningUser(tx, event.userId);
       const current = await tx.trainingPlan.findFirst({ where: { id: plan.id, status: "active" }, include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } } });
+      const currentGoal = current ? await tx.trainingGoal.findUnique({ where: { id: current.goalId }, select: { constraints: true } }) : null;
+      if (planPausedOn(currentGoal?.constraints, accountDateLabel(new Date(), timeZone))) {
+        await tx.planningEvent.update({ where: { id: event.id }, data: { status: "ignored" } });
+        return null;
+      }
       if (!current || current.versions[0]?.id !== activeVersion?.id || current.updatedAt.getTime() !== plan.updatedAt.getTime()) {
         await tx.planningEvent.update({ where: { id: event.id }, data: { status: current ? "pending" : "ignored", runAfter: new Date() } });
         return null;

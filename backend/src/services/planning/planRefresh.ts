@@ -1,3 +1,4 @@
+import { planPausedOn } from "./planAvailability.js";
 import { accountTimeZone, accountDateLabel } from "../accountCalendar.js";
 import { runningPlanReview, runningConstraintReview, retainRunningPlanForReview, clearRunningPlanReview } from "./runningPlanReview.js";
 import { loadRunningPlanningContext } from "./runningContext.js";
@@ -7,7 +8,7 @@ import { runningBenchmarkDecisionChanged } from "./runningBenchmark.js";
 import { refreshCatalogPlanInTransaction } from "./catalogRefresh.js";
 import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "../prisma.js";
-import { adaptPlan } from "./adaptationEngine.js";
+import { adaptPlan, adaptReturnPlan } from "./adaptationEngine.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { generateNextWindow, phaseForGoal, PLANNER_POLICY_VERSION, runningProgressionBlocked, type GeneratePlanInput } from "./generator.js";
 import { createPlanVersionWithWorkouts, json, lockPlanningUser, isOptionalWorkout, workoutSlotKey } from "./persistence.js";
@@ -24,12 +25,14 @@ export async function refreshGeneratedPlan(userId: string, now = new Date()): Pr
 }
 
 export async function refreshGeneratedPlanInTransaction(
-  tx: Prisma.TransactionClient, userId: string, now: Date, force = false,
+  tx: Prisma.TransactionClient, userId: string, now: Date, force = false, returning = false, preview = false,
 ): Promise<void> {
-  if (await refreshCatalogPlanInTransaction(tx, userId, now, force ? "goalUpdated" : undefined)) return;
-  if (force) return refreshGeneratedPlanCandidate(tx, userId, now, force);
+  const availabilityPlan = await tx.trainingPlan.findFirst({ where: { userId, status: "active" }, select: { goal: { select: { constraints: true } } } });
+  if (planPausedOn(availabilityPlan?.goal.constraints, accountDateLabel(now, await accountTimeZone(userId, undefined, tx)))) return;
+  if (await refreshCatalogPlanInTransaction(tx, userId, now, force ? "goalUpdated" : undefined, undefined, returning, preview)) return;
+  if (force) return refreshGeneratedPlanCandidate(tx, userId, now, force, false, returning, preview);
   try {
-    await refreshGeneratedPlanCandidate(tx, userId, now, force);
+    await refreshGeneratedPlanCandidate(tx, userId, now, force, false, returning, preview);
     await clearRunningPlanReview(tx, userId);
   } catch (error) {
     const review = runningConstraintReview(error);
@@ -42,7 +45,7 @@ export async function validateGeneratedPlanForWrite(tx: Prisma.TransactionClient
   return refreshGeneratedPlanCandidate(tx, userId, now, true, true);
 }
 
-async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userId: string, now: Date, force: boolean, validationOnly = false): Promise<void> {
+async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userId: string, now: Date, force: boolean, validationOnly = false, returning = false, preview = false): Promise<void> {
   const plan = await tx.trainingPlan.findFirst({
     where: { userId, status: "active", source: "generated" }, orderBy: { createdAt: "desc" },
     include: { goal: true, versions: { orderBy: { versionNumber: "desc" }, take: 1, include: { workouts: true } } },
@@ -94,7 +97,7 @@ async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userI
     generation = generateNextWindow({ goal, athleteState, runWalkProgramme: runningContext?.state, progressionBlocked, planStart, previousWorkouts: version?.workouts, now, scheduleStart: windowStart, reason: "weeklyRollover" });
   }
   const latestReadiness = runningContext ? runningContext.latestReadiness : readiness.find((entry) => entry.date >= addDays(today, -1));
-  const adapted = latestReadiness && (latestReadiness.illnessOrPain || latestReadiness.energy <= 2 || latestReadiness.soreness >= 4 || latestReadiness.stress >= 4)
+  const adapted = returning ? adaptReturnPlan({ goal, athleteState, now: windowStart, latestReadiness, basePlan: generation }) : latestReadiness && (latestReadiness.illnessOrPain || latestReadiness.energy <= 2 || latestReadiness.soreness >= 4 || latestReadiness.stress >= 4)
     ? adaptPlan({ goal, athleteState, now: windowStart, eventType: "readinessSubmitted", latestReadiness, basePlan: generation }) : null;
   const workouts = applyCalorieTargets({
     workouts: (adapted?.workouts ?? generation.workouts).filter((workout) => !protectedDays.has(workoutSlotKey(workout))),
@@ -106,11 +109,11 @@ async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userI
     if (phase !== plan.currentPhase) await tx.trainingPlan.update({ where: { id: plan.id }, data: { currentPhase: phase } });
     return;
   }
-  const engineDecision = { ...generation.engineDecision, windowCheckedOn: dateKey(today), activation: policyChanged, phase };
+  const engineDecision = { ...generation.engineDecision, ...adapted?.engineDecision, windowCheckedOn: dateKey(today), activation: policyChanged, phase };
   const created = await createPlanVersionWithWorkouts(tx, {
     userId, planId: plan.id, versionNumber: (version?.versionNumber ?? 0) + 1,
     reason: force ? "goalUpdated" : policyChanged ? "policyUpdated" : "weeklyRollover",
-    summary: generation.summary, engineDecision, workouts,
+    summary: adapted?.summary ?? generation.summary, engineDecision, workouts,
   });
   await tx.trainingPlan.update({ where: { id: plan.id }, data: { currentPhase: phase } });
   await tx.planAdjustmentEvent.create({ data: {
@@ -123,7 +126,7 @@ async function refreshGeneratedPlanCandidate(tx: Prisma.TransactionClient, userI
   } });
   // Bounded operational analytics: no goal dates, distances, IDs, body data, or text.
   const progression = generation.engineDecision.genericWeekProgression as { applied?: boolean; safetyHold?: boolean } | undefined;
-  console.info("[planning] generated_window_refreshed", { reason: force ? "goal_updated" : policyChanged ? "policy_updated" : "refill", phase, runWalkOutcome: runningContext?.outcome ?? "not_applicable", reportedEffortLoadAvailable: generation.engineDecision.reportedEffortLoadAvailable === true, stagedRunningProgression: progression?.applied === true && progression.safetyHold !== true, runningProgressionHeld: progression?.safetyHold === true, structuredRunning: workouts.some((workout) => workout.prescription.runStructureVersion != null), requiredSessions: workouts.filter((workout) => workout.prescription.optional !== true).length });
+  if (!preview) console.info("[planning] generated_window_refreshed", { reason: force ? "goal_updated" : policyChanged ? "policy_updated" : "refill", phase, runWalkOutcome: runningContext?.outcome ?? "not_applicable", reportedEffortLoadAvailable: generation.engineDecision.reportedEffortLoadAvailable === true, stagedRunningProgression: progression?.applied === true && progression.safetyHold !== true, runningProgressionHeld: progression?.safetyHold === true, structuredRunning: workouts.some((workout) => workout.prescription.runStructureVersion != null), requiredSessions: workouts.filter((workout) => workout.prescription.optional !== true).length });
 }
 
 function day(value: Date) { return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())); }

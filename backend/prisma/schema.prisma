@@ -48,6 +48,7 @@ model User {
   athleteTrainingStates       AthleteTrainingState[]
   planningEvents              PlanningEvent[]
   planAdjustmentEvents        PlanAdjustmentEvent[]
+  planChangeCommands          PlanChangeCommand[]
   runnerProfile               RunnerProfile?
   calibrationProgram          CalibrationProgram?
   runnerInsights              RunnerInsight[]
@@ -1942,4 +1943,27 @@ model UserConfiguration {
   updatedAt DateTime @updatedAt
 
   @@id([userId, key])
+}
+
+// Private canonical previews and durable retry receipts; never analytics payloads.
+model PlanChangeCommand {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId String
+  idempotencyKey String
+  requestHash String
+  operation String
+  reason String?
+  baseRevision String
+  resultRevision String?
+  validForDate String
+  expiresAt DateTime
+  before Json
+  after Json
+  appliedAt DateTime?
+  undoneAt DateTime?
+  createdAt DateTime @default(now())
+  @@unique([userId, idempotencyKey])
+  @@index([userId, planId, createdAt])
 }

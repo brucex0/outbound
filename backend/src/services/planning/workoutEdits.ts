@@ -45,9 +45,13 @@ async function structure(db: DB, userId: string, primary: ActivitySuggestion | n
   if (!primary?.plannedWorkoutId) return primary?.effectiveWorkout ?? primary?.catalogWorkout ?? null;
   const workout = await db.plannedWorkout.findFirst({ where: { id: primary.plannedWorkoutId, userId }, include: workoutInclude });
   if (!workout) return null;
+  // Schedule-only pin/reservation metadata does not change execution or invalidate retained edit recipes.
+  const prescription = { ...(workout.prescription as Record<string, unknown>) };
+  delete prescription.planAdjustmentPinned;
+  delete prescription.planAdjustmentReservedDates;
   return { title: workout.title, modality: workout.modality, stimulus: workout.stimulus, status: workout.status,
     durationSeconds: workout.durationSeconds, distanceMeters: workout.distanceMeters, targetCalories: workout.targetCalories,
-    intensityModel: workout.intensityModel, intensityTarget: workout.intensityTarget, prescription: workout.prescription,
+    intensityModel: workout.intensityModel, intensityTarget: workout.intensityTarget, prescription,
     blocks: workout.blocks.map((b) => ({ blockType: b.blockType, modality: b.modality, stimulus: b.stimulus,
       durationSeconds: b.durationSeconds, distanceMeters: b.distanceMeters, repeats: b.repeats, restSeconds: b.restSeconds, metadata: b.metadata,
       steps: b.steps.map((s) => ({ label: s.label, kind: s.kind, durationSeconds: s.durationSeconds, distanceMeters: s.distanceMeters, target: s.target, detail: s.detail })) })) };
@@ -268,7 +272,8 @@ export async function applyWorkoutEdit(userId: string, input: WorkoutEditApplyIn
     if (input.plannedWorkoutId && (!planned || planned.scheduledDate.toISOString().slice(0, 10) !== input.validForDate
       || planned.planVersion.plan.status !== "active" || (planned.planVersion.plan.versions[0]?.id !== planned.planVersionId
         && typeof (planned.prescription as Record<string, unknown>).workoutEditId !== "string"
-        && (planned.prescription as Record<string, unknown>).source !== "explicitWorkoutChange"))) {
+        && (planned.prescription as Record<string, unknown>).source !== "explicitWorkoutChange"
+        && (planned.prescription as Record<string, unknown>).planAdjustmentPinned !== true))) {
       throw new WorkoutEditError(409, "The planned slot changed. Refresh before editing it.");
     }
     const beforeStructure = await structure(tx, userId, primary);

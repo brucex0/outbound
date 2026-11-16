@@ -70,6 +70,15 @@ export function adaptPlan(input: AdaptationInput): AdaptationResult {
   };
 }
 
+/** Explicit return uses existing recovery/break policies without recording a missed workout or readiness report. */
+export function adaptReturnPlan(input: Omit<AdaptationInput, "eventType">): AdaptationResult {
+  const readiness = input.latestReadiness;
+  const eventType = readiness?.illnessOrPain || input.athleteState.fatigueRisk === "high" ? "painFlagged"
+    : readiness && (readiness.energy <= 2 || readiness.soreness >= 4 || readiness.stress >= 4) ? "readinessSubmitted" : "workoutMissed";
+  const result = adaptPlan({ ...input, eventType });
+  return { ...result, summary: "Replanned for a conservative return without catch-up workouts.", engineDecision: { ...result.engineDecision, explicitReturn: true } };
+}
+
 function resultForEvent(input: AdaptationInput, base: PlanGenerationResult): PlanGenerationResult {
   if (input.eventType === "readinessSubmitted" && input.latestReadiness) {
     const lowReadiness =

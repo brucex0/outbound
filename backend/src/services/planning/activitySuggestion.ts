@@ -1,3 +1,4 @@
+import { planDateExcluded, planAvailability } from "./planAvailability.js";
 import { accountTimeZone, accountDateLabel, ACCOUNT_FIRST_WEEKDAY } from "../accountCalendar.js";
 import { StatisticsCalendar } from "../statistics/calendar.js";
 import { runningPlanReview } from "./runningPlanReview.js";
@@ -153,6 +154,13 @@ export async function buildBaseActivitySuggestion(
     activities: typedActivities,
   });
   base.runningPlanReview = runningPlanReview(latestVersion?.engineDecision);
+
+  if (plan && planDateExcluded(plan.goal.constraints, todayStart)) {
+    const paused = planAvailability(plan.goal.constraints).paused;
+    return { ...base, status: "restRecommended", source: "recovery", relationship: "rest", primary: null, alternates: [],
+      guideLine: paused ? "Your plan is paused. Resume from Plan Details when you are ready; missed workouts will not be caught up." : "You marked today unavailable. Your plan continues after this break without catch-up workouts.",
+      decision: { algorithmVersion: ALGORITHM_VERSION, reasons: [paused ? "plan_paused" : "temporarily_unavailable"], safetyFlags: [] } };
+  }
 
   if (latestReadiness?.illnessOrPain) {
     return {

@@ -1,3 +1,4 @@
+import { planAvailability } from "./planAvailability.js";
 import { accountTimeZone, accountDateLabel, planningCalendarContext } from "../accountCalendar.js";
 import { preferredLongRunDays, LongRunDaysError } from "./longRunDays.js";
 import { runningPlanReview, runningReviewDecision, clearRunningPlanReview } from "./runningPlanReview.js";
@@ -674,7 +675,7 @@ export async function assemblePlanningState(
       revision: observation.planningStateRevision,
       calendar,
       goal: goal ? { ...goal, currentRunningFitness: resolveRunningBenchmark((goal.constraints as Record<string, unknown>).runningBenchmark, new Date()), shortRunSessions: (goal.constraints as Record<string, unknown>).shortRunSessions === "true", optionalMobility: (goal.constraints as Record<string, unknown>).optionalMobility === "true" } : null,
-      plan: plan ? { ...plan, versions: undefined } : null,
+      plan: plan ? { ...plan, versions: undefined, availability: planAvailability(goal?.constraints) } : null,
       currentVersion: version ? { ...version, engineDecision: runningReviewDecision(version.engineDecision), workouts: undefined } : null,
       runningPlanReview: runningPlanReview(version?.engineDecision),
       today,

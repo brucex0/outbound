@@ -1,3 +1,5 @@
+import { raceTaperDays } from "./raceRoadmap.js";
+import { planDateExcluded, applyPlanAvailability } from "./planAvailability.js";
 import { accountDateLabel, accountTimeZone } from "../accountCalendar.js";
 import { Prisma, type TrainingPlanVersion } from "@prisma/client";
 import type { PlannedWorkoutDraft } from "./types.js";
@@ -21,16 +23,21 @@ export async function createPlanVersionWithWorkouts(
   // on a date already completed/skipped in any version of this plan.
   const effectiveFrom = input.effectiveFrom ?? new Date();
   const today = accountDateLabel(effectiveFrom, await accountTimeZone(input.userId, undefined, tx));
+  const activePlan = await tx.trainingPlan.findUniqueOrThrow({ where: { id: input.planId }, select: { goal: { select: { constraints: true, targetDate: true, activities: true, targetDistanceMeters: true } } } });
   const protectedWorkouts = await tx.plannedWorkout.findMany({
     where: { userId: input.userId, planVersion: { planId: input.planId }, status: { in: ["completed", "skipped"] } },
     select: { scheduledDate: true, prescription: true },
   });
   const edited = await tx.plannedWorkout.findMany({
     where: { userId: input.userId, planVersion: { planId: input.planId }, status: "planned", scheduledDate: { gte: today },
-      OR: [{ edits: { some: { operation: { not: "skip" } } } }, { prescription: { path: ["source"], equals: "explicitWorkoutChange" } }] },
+      OR: [{ edits: { some: { operation: { not: "skip" } } } }, { prescription: { path: ["source"], equals: "explicitWorkoutChange" } }, { prescription: { path: ["planAdjustmentPinned"], equals: true } }] },
     select: { id: true, scheduledDate: true, prescription: true },
   });
   const protectedDays = new Set([...protectedWorkouts, ...edited].map(workoutSlotKey));
+  for (const row of [...protectedWorkouts, ...edited]) {
+    const dates = (row.prescription as Record<string, unknown>)?.planAdjustmentReservedDates;
+    if (Array.isArray(dates)) for (const date of dates) if (typeof date === "string") protectedDays.add(`${date}:${isOptionalWorkout(row) ? "optional" : "required"}`);
+  }
   await tx.plannedWorkout.updateMany({
     where: { userId: input.userId, planVersion: { planId: input.planId }, status: "planned", scheduledDate: { gte: today }, id: { notIn: edited.map((row) => row.id) } },
     data: { status: "superseded" },
@@ -47,8 +54,8 @@ export async function createPlanVersionWithWorkouts(
     },
   });
 
-  for (const workout of input.workouts) {
-    if (protectedDays.has(workoutSlotKey(workout))) continue;
+  for (const workout of applyPlanAvailability(activePlan.goal.constraints, input.workouts, activePlan.goal.targetDate, raceTaperDays(activePlan.goal))) {
+    if (protectedDays.has(workoutSlotKey(workout)) || planDateExcluded(activePlan.goal.constraints, workout.scheduledDate)) continue;
     await tx.plannedWorkout.create({
       data: {
         planVersionId: version.id,
@@ -117,7 +124,7 @@ export function workoutSlotKey(workout: { scheduledDate: Date; prescription: unk
 export async function protectedEditedWorkouts(tx: Prisma.TransactionClient, userId: string, planId: string, versionId: string, since: Date) {
   return tx.plannedWorkout.findMany({
     where: { userId, planVersion: { planId }, planVersionId: { not: versionId }, status: "planned", scheduledDate: { gte: since },
-      OR: [{ edits: { some: { operation: { not: "skip" } } } }, { prescription: { path: ["source"], equals: "explicitWorkoutChange" } }] },
+      OR: [{ edits: { some: { operation: { not: "skip" } } } }, { prescription: { path: ["source"], equals: "explicitWorkoutChange" } }, { prescription: { path: ["planAdjustmentPinned"], equals: true } }] },
     orderBy: { scheduledDate: "asc" },
     include: { blocks: { orderBy: { sortOrder: "asc" }, include: { steps: { orderBy: { sortOrder: "asc" } } } } },
   });
