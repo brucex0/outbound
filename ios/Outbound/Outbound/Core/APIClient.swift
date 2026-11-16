@@ -581,6 +581,19 @@ final class APIClient {
         return try await post("/personalization/readiness", body: request)
     }
 
+    func fetchPlanChangeContext() async throws -> PlanChangeContextDTO {
+        try await get("/planning/plan-changes/context")
+    }
+
+    func previewPlanChange(_ request: PlanChangeRequestDTO) async throws -> PlanChangePreviewDTO {
+        try await post("/planning/plan-changes/preview", body: request)
+    }
+
+    func applyPlanChange(_ request: PlanChangeApplyRequestDTO, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        let response: PlanChangeApplyResponseDTO = try await post("/planning/plan-changes/apply", body: request)
+        return response.state.trainingPlanState(readiness: readiness, activitySuggestion: response.activitySuggestion)
+    }
+
     func applyWorkoutEdit(_ request: WorkoutEditApplyRequestDTO, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
         let response: WorkoutEditApplyResponseDTO = try await post("/planning/workout-edits/apply", body: request)
         return response.state.trainingPlanState(readiness: readiness, activitySuggestion: response.activitySuggestion)
@@ -1582,7 +1595,7 @@ private extension PlanningAPIStateResponse {
             focus: focus,
             sport: sport,
             titleKey: fallbackRecommendation?.template.titleKey ?? focus.adaptiveTitleKey,
-            subtitle: currentVersion?.summary ?? "Adaptive plan generated from your recent training.",
+            subtitle: currentVersion?.localizedSummary ?? "Adaptive plan generated from your recent training.",
             durationWeeks: durationWeeks,
             sessionsPerWeek: sessionsPerWeek,
             targetWeeklyMinutes: targetWeeklyMinutes,
@@ -1593,7 +1606,8 @@ private extension PlanningAPIStateResponse {
             runningBenchmark: goal.activities.contains("run") ? RunningBenchmarkContext(goalID: goal.id, fitness: goal.currentRunningFitness) : nil,
             roadmap: roadmap,
             plannedSchedule: planSchedule,
-            programmeProgress: goal.activities.contains("run") ? currentVersion?.engineDecision : nil
+            programmeProgress: goal.activities.contains("run") ? currentVersion?.engineDecision : nil,
+            availability: plan.availability
         )
 
         let completedWorkouts = weekWorkouts.filter { $0.status == "completed" }
@@ -1620,9 +1634,9 @@ private extension PlanningAPIStateResponse {
             summaryLine: TrainingPlanWeekSnapshot.progressSummary(completedSessions: completedSessions, targetSessions: targetSessions, completedMinutes: completedMinutes, targetMinutes: targetMinutes),
             guideLine: guideLine(fallbackFocus: focus),
             focus: BuiltinWorkoutText.localized(plan.currentPhase.capitalized),
-            weekSummary: currentVersion?.summary ?? "This week is being generated from your current training data.",
+            weekSummary: currentVersion?.localizedSummary ?? "This week is being generated from your current training data.",
             scheduledWorkouts: scheduledWorkouts,
-            notes: latestAdjustment.map { [String(localized: String.LocalizationValue($0.message))] } ?? []
+            notes: latestAdjustment.map { [$0.message == "plan.adjust.applied" ? planAdjustText("applied") : String(localized: String.LocalizationValue($0.message))] } ?? []
         )
 
         // Keep Today tied to the account-local scheduled date. Upcoming workouts
@@ -2261,6 +2275,8 @@ extension ActivitySuggestionResponse {
     }
 
     var localizedPlanAdvice: String? {
+        if decision.reasons.contains("plan_paused") { return planAdjustText("today_paused") }
+        if decision.reasons.contains("temporarily_unavailable") { return planAdjustText("today_unavailable") }
         if recoveryChangeRecommended {
             return String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain.")
         }
@@ -2713,10 +2729,14 @@ private struct PlanningAPIPlan: Decodable {
     let id: String
     let source: String
     let currentPhase: String
+    let availability: PlanAvailabilityDTO?
     let createdAt: String?
 }
 
 private struct PlanningAPIVersion: Decodable {
+    var localizedSummary: String {
+        summary == "Replanned for a conservative return without catch-up workouts." ? planAdjustText("return_summary") : summary
+    }
     let versionNumber: Int
     let reason: String
     let summary: String
@@ -3194,3 +3214,8 @@ enum DebugRunningPlanFixture {
     }
 }
 #endif
+
+private struct PlanChangeApplyResponseDTO: Decodable {
+    let state: PlanningAPIStateResponse
+    let activitySuggestion: ActivitySuggestionResponse
+}

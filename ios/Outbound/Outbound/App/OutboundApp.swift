@@ -1037,6 +1037,7 @@ struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
     var roadmap: RaceGoalRoadmap? = nil
     var plannedSchedule: [TrainingPlanWorkout]? = nil
     var programmeProgress: RunningProgrammeProgress? = nil
+    var availability: PlanAvailabilityDTO? = nil
 
     var localizedTitle: String {
         String(localized: String.LocalizationValue(titleKey))
@@ -1130,7 +1131,13 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
+    var planAvailabilityAdvice: String? {
+        guard let activePlan, let availability = activePlan.availability else { return nil }
+        return availability.advice(at: Date(), calendar: activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar())
+    }
+
     var shouldSupersedeCalibration: Bool {
+        if planAvailabilityAdvice != nil { return true }
         if activitySuggestion?.shouldSupersedeCalibration == true {
             return true
         }
@@ -1139,6 +1146,7 @@ final class TrainingPlanStore: ObservableObject {
     }
 
     var isScheduledRestDay: Bool {
+        if planAvailabilityAdvice != nil { return true }
         let now = Date()
         if let activitySuggestion, activitySuggestion.isValid(now: now) {
             if activitySuggestion.isScheduledRestDay { return true }
@@ -1171,6 +1179,7 @@ final class TrainingPlanStore: ObservableObject {
     }
 
     var plannedLaunchBlockedMessage: String {
+        if let planAvailabilityAdvice { return planAvailabilityAdvice }
         if currentRestRecommendation?.workoutEditOperation == "skip" {
             return String(localized: "today.edit.skipped", defaultValue: "Today’s workout has been skipped.")
         }
@@ -1371,6 +1380,24 @@ final class TrainingPlanStore: ObservableObject {
                 ActivityDiagnosticLog.error(.sync, "Planning refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 applyLocalFallback(activities: activities, readiness: readiness, phase: phase, now: now)
             }
+        }
+    }
+
+    func fetchPlanChangeContext() async throws -> PlanChangeContextDTO {
+        try await ActivityAccountBoundary.$operation.withValue(accountContext) { try await api.fetchPlanChangeContext() }
+    }
+
+    func previewPlanChange(_ request: PlanChangeRequestDTO) async throws -> PlanChangePreviewDTO {
+        try await ActivityAccountBoundary.$operation.withValue(accountContext) { try await api.previewPlanChange(request) }
+    }
+
+    func applyPlanChange(_ request: PlanChangeApplyRequestDTO, now: Date = Date()) async throws {
+        try await ActivityAccountBoundary.$operation.withValue(accountContext) {
+            refreshTask?.cancel()
+            let state = try await api.applyPlanChange(request, readiness: lastReadiness)
+            try Task.checkCancellation()
+            try await checkpointAcceptedCommand(state)
+            _ = try await commitServerState(state, now: now)
         }
     }
 

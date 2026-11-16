@@ -126,7 +126,7 @@ struct TodayChangeSheet: View {
                             }
                             Button(String(localized: "today.change.choose", defaultValue: "Choose another workout")) {
                                 editingTarget = false; showsCatalog = true
-                            }.frame(minHeight: 44).accessibilityIdentifier("todayEditChooseWorkout")
+                            }.buttonStyle(.bordered).frame(minHeight: 44).accessibilityIdentifier("todayEditChooseWorkout")
                                 .disabled(original.flatMap { SportType(rawValue: $0.modality) } == nil || (displayedOverride != nil && displayedOverride?.sport.rawValue != original?.modality))
                             reasonControl
                         } else {
@@ -150,7 +150,7 @@ struct TodayChangeSheet: View {
                     } else {
                         Button(role: .destructive) { confirmsSkip = true } label: {
                             Text(String(localized: "today.edit.skip", defaultValue: "Skip today"))
-                        }.frame(minHeight: 44).disabled(displayedOverride != nil).accessibilityIdentifier("todayEditSkip")
+                        }.buttonStyle(.bordered).frame(minHeight: 44).disabled(displayedOverride != nil).accessibilityIdentifier("todayEditSkip")
                     }
                     if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
                     if busy { ProgressView().accessibilityLabel(String(localized: "today.edit.saving", defaultValue: "Saving…")) }

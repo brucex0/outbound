@@ -291,6 +291,7 @@ struct TrainingPlanRecommendationDetailView: View {
 
 struct ActiveTrainingPlanDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @Environment(\.analyticsManager) private var analytics
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
 
@@ -304,6 +305,8 @@ struct ActiveTrainingPlanDetailView: View {
     var benchmarkSaveOverride: ((RunningBenchmarkReport?) async throws -> Void)? = nil
     @State private var expandedScheduleWeeks: Set<Date> = []
     @State private var initializedScheduleDisclosurePlanID: String?
+    @State private var showsPlanAdjustment = false
+    @State private var adjustmentSaved = false
 
     var body: some View {
         ScrollView {
@@ -386,6 +389,16 @@ struct ActiveTrainingPlanDetailView: View {
             .padding()
         }
         .navigationTitle("Plan Details")
+        .sheet(isPresented: $showsPlanAdjustment) {
+            PlanAdjustmentSheet(plan: activePlan) { adjustmentSaved = true }
+        }
+        .overlay(alignment: .top) {
+            if adjustmentSaved { Text(planAdjustText("applied")).font(.subheadline).padding().background(.regularMaterial, in: Capsule()).padding().accessibilityAddTraits(.updatesFrequently) }
+        }
+        .task(id: adjustmentSaved) {
+            guard adjustmentSaved else { return }
+            do { try await Task.sleep(for: .seconds(4)); adjustmentSaved = false } catch { /* Dismissed toast. */ }
+        }
         .onAppear(perform: initializeScheduleDisclosureIfNeeded)
         .onChange(of: activePlan.id) { _, _ in initializeScheduleDisclosureIfNeeded() }
         .toolbar {
@@ -406,6 +419,11 @@ struct ActiveTrainingPlanDetailView: View {
                     Text(goalSummary(goal)).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                 }
             }
+            OutboundPrimaryButton(title: planAdjustText("title"), systemImage: "slider.horizontal.3", expands: false) { showsPlanAdjustment = true }
+            if activePlan.availability?.paused == true {
+                if let pauseSummary { Text(pauseSummary).font(.subheadline.weight(.semibold)) }
+                Text(planAdjustText("pause_manage")).font(.footnote).foregroundStyle(.secondary)
+            }
             TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
             if activePlan.raceGoal == nil {
                 Text(String(format: String(localized: "plan.details.weekly_rhythm", defaultValue: "%d planned sessions each week"), activePlan.sessionsPerWeek))
@@ -418,6 +436,17 @@ struct ActiveTrainingPlanDetailView: View {
                 .font(.subheadline.weight(.semibold))
             }
         }
+    }
+
+    private var pauseSummary: String? {
+        guard let start = activePlan.availability?.pausedOn else { return nil }
+        let account = activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
+        let keyFormatter = DateFormatter(); keyFormatter.locale = Locale(identifier: "en_US_POSIX"); keyFormatter.calendar = account; keyFormatter.timeZone = account.timeZone; keyFormatter.dateFormat = "yyyy-MM-dd"
+        let today = keyFormatter.string(from: Date())
+        let logical = DateFormatter(); logical.locale = Locale(identifier: "en_US_POSIX"); logical.timeZone = TimeZone(secondsFromGMT: 0); logical.dateFormat = "yyyy-MM-dd"
+        let dateFormatter = DateFormatter(); dateFormatter.locale = locale; dateFormatter.timeZone = logical.timeZone; dateFormatter.setLocalizedDateFormatFromTemplate("MMMddEEE")
+        let label = logical.date(from: start).map { dateFormatter.string(from: $0) } ?? start
+        return String(format: planAdjustText(start > today ? "pause_scheduled" : "paused_since"), label)
     }
 
     private func goalSummary(_ goal: SavedRaceGoal) -> String {
@@ -972,7 +1001,7 @@ private struct TrainingPlanManagementActions: View {
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .center, spacing: OutboundSpacing.section) { actionButtons }
-            VStack(alignment: .leading, spacing: 0) { actionButtons }
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) { actionButtons }
         }
         .confirmationDialog(String(localized: "plan.details.end_title", defaultValue: "End this plan?"), isPresented: $confirmsEndPlan, titleVisibility: .visible) {
             Button("End plan", role: .destructive) { onEndPlan?() }
@@ -990,7 +1019,7 @@ private struct TrainingPlanManagementActions: View {
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
             .foregroundStyle(.tint)
             .accessibilityIdentifier("plan.details.change")
         }
@@ -1007,7 +1036,7 @@ private struct TrainingPlanManagementActions: View {
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
             .foregroundStyle(.red)
             .accessibilityIdentifier("plan.details.end")
         }

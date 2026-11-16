@@ -67,8 +67,7 @@ struct RaceGoalCard: View {
                         editing = true
                         Task { await analytics?.track(.init(.planningSurfaceOpened, properties: [.sourceType: .string("race_goal_edit"), .entrySource: .string("plan_details")])) }
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.tint)
+                    .buttonStyle(.bordered)
                     .frame(minHeight: 44, alignment: .leading)
                 }
             }
@@ -113,7 +112,7 @@ struct TrainingPlanRoadmapSection: View {
     }
 }
 
-private struct RaceGoalEditor: View {
+struct RaceGoalEditor: View {
     @EnvironmentObject private var store: TrainingPlanStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analytics

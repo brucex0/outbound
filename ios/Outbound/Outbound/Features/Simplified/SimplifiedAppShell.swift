@@ -2095,6 +2095,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayExplanation: String {
+        if let advice = trainingPlanStore.planAvailabilityAdvice { return advice }
         if let advice = trainingPlanStore.activitySuggestion?.localizedPlanAdvice { return advice }
         if let workout = currentCalibrationWorkout { return localizedAppCopy(workout.purpose) }
         if let evidence = trainingPlanStore.activitySuggestion?.primary?.why {
