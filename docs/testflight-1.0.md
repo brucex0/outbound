@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.16 Submission Sheet
+# TestFlight and App Store 1.7.17 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.16`
-- Build: `70`
+- Version: `1.7.17`
+- Build: `71`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -19,6 +19,12 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - Internal Xcode target, scheme, storage, and backend names may remain `Outbound`.
 
 ## Submission Status
+
+- Preparing version 1.7.17 (71) from current merged iOS product changes. Public submission and Apple processing are pending.
+- Current live version 1.7.16 (70) was confirmed **Ready for Distribution** by the read-only App Store Connect API on November 15, 2026 (Pacific). Its English (U.S.) promotional text exactly matches the approved copy below.
+- Production backend currently routes 100% to `outbound-api-pa-10049c21`, with its additive plan-adjustment schema already applied. Fresh production health and plan-change authentication-boundary probes returned HTTP 200 and 401 respectively; authenticated scheduling behavior was not exercised.
+
+### Previous Release: 1.7.16 (70)
 
 - Version 1.7.16 (70) completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, and binary delivery on November 13, 2026 (Pacific), from source `04755cff`. Apple processing completed at 22:31 Pacific; English beta notes and assignment to `Plainstride Team` were confirmed.
 - Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.16-70/`; the 73,197,471-byte IPA SHA-256 is `1ffda84a5ad42aee935ce93591147b7fe73b85a12fb5f6621238a36ee0230f82`; upload ID `5c9def8c-97d6-4d4b-9223-a13b1fb75b32`. All 14 chunks were accepted after resuming the same IPA. See the runbook incident for recovered SSL/broken-pipe failures.
@@ -93,16 +99,16 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Stabilize Curated Workouts presentation and scrolling
-- [iOS] Clarify Plan Details schedule and benchmark
-- [iOS] Brighten Today Start icon
-- [iOS] Add shared guided workout phase translations
-- [iOS] Show curated distance phases and preserve route guide cues
-- Plus 14 more fixes and improvements
+- [iOS] Match plan buttons to shared radius and compact padding
+- [iOS] Match plan action button styles and distribute their spacing
+- [iOS] Keep Adjust, Change and End in a compact icon-free row
+- [iOS] Add native plan adjustment flow with canonical previews
+- [iOS] Show actual completed totals in plan week headers
+- Plus 9 more fixes and improvements
 
 ### App Store What's New
 
-Training plans now show clearer phases, benchmark guidance, and weekly schedules. Curated workouts show distance-based phases and keep route cues available during guided sessions. We also improved workout launch and live workout controls.
+Adjust your training plan with clearer previews and more flexible scheduling. Plan week summaries now show actual completed totals. We also improved workout guidance, time-goal progress, and activity photo selection and ordering.
 
 ### App Store Promotional Text
 
