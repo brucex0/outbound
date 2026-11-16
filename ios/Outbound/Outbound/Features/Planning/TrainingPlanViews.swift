@@ -1007,7 +1007,7 @@ private struct TrainingPlanManagementActions: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.regular)
-        .buttonBorderShape(.roundedRectangle)
+        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
         .font(.subheadline)
         .tint(theme.actionColor)
         .confirmationDialog(String(localized: "plan.details.end_title", defaultValue: "End this plan?"), isPresented: $confirmsEndPlan, titleVisibility: .visible) {
@@ -1024,6 +1024,8 @@ private struct TrainingPlanManagementActions: View {
             Button(action: onAdjustPlan) {
                 actionLabel("action_adjust")
             }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
             .accessibilityLabel(planAdjustText("title"))
             .accessibilityIdentifier("plan.details.adjust")
         }
@@ -1034,6 +1036,8 @@ private struct TrainingPlanManagementActions: View {
             Button(action: onChangePlan) {
                 actionLabel("action_change")
             }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
             .accessibilityLabel(String(localized: "Change plan"))
             .accessibilityIdentifier("plan.details.change")
         }
@@ -1051,6 +1055,8 @@ private struct TrainingPlanManagementActions: View {
             } label: {
                 actionLabel("action_end")
             }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
             .tint(.red)
             .accessibilityLabel(String(localized: "End plan"))
             .accessibilityIdentifier("plan.details.end")
@@ -1060,8 +1066,7 @@ private struct TrainingPlanManagementActions: View {
     private func actionLabel(_ key: String) -> some View {
         Text(planAdjustText(key))
             .fixedSize(horizontal: false, vertical: true)
-            .frame(minWidth: 44, minHeight: 44)
-            .contentShape(Rectangle())
+            .frame(minWidth: 44)
     }
 }
 
