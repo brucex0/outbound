@@ -419,12 +419,11 @@ struct ActiveTrainingPlanDetailView: View {
                     Text(goalSummary(goal)).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                 }
             }
-            OutboundPrimaryButton(title: planAdjustText("title"), systemImage: "slider.horizontal.3", expands: false) { showsPlanAdjustment = true }
+            TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan, onAdjustPlan: { showsPlanAdjustment = true })
             if activePlan.availability?.paused == true {
                 if let pauseSummary { Text(pauseSummary).font(.subheadline.weight(.semibold)) }
                 Text(planAdjustText("pause_manage")).font(.footnote).foregroundStyle(.secondary)
             }
-            TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
             if activePlan.raceGoal == nil {
                 Text(String(format: String(localized: "plan.details.weekly_rhythm", defaultValue: "%d planned sessions each week"), activePlan.sessionsPerWeek))
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -993,14 +992,16 @@ private struct ScheduledPlanWorkoutDetailView: View {
 
 private struct TrainingPlanManagementActions: View {
     @Environment(\.analyticsManager) private var analyticsManager
+    @Environment(\.outboundTheme) private var theme
 
     let onChangePlan: (() -> Void)?
     let onEndPlan: (() -> Void)?
+    var onAdjustPlan: (() -> Void)? = nil
     @State private var confirmsEndPlan = false
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: OutboundSpacing.section) { actionButtons }
+            HStack(alignment: .center, spacing: OutboundSpacing.compact) { actionButtons }
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) { actionButtons }
         }
         .confirmationDialog(String(localized: "plan.details.end_title", defaultValue: "End this plan?"), isPresented: $confirmsEndPlan, titleVisibility: .visible) {
@@ -1013,14 +1014,20 @@ private struct TrainingPlanManagementActions: View {
 
     @ViewBuilder
     private var actionButtons: some View {
+        if let onAdjustPlan {
+            OutboundPrimaryButton(title: planAdjustText("action_adjust"), expands: false, action: onAdjustPlan)
+                .accessibilityLabel(planAdjustText("title"))
+                .accessibilityIdentifier("plan.details.adjust")
+        }
         if let onChangePlan {
             Button(action: onChangePlan) {
-                Text("Change plan")
+                Text(planAdjustText("action_change"))
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.bordered)
-            .foregroundStyle(.tint)
+            .tint(theme.actionColor)
+            .accessibilityLabel(String(localized: "Change plan"))
             .accessibilityIdentifier("plan.details.change")
         }
         if onEndPlan != nil {
@@ -1032,12 +1039,13 @@ private struct TrainingPlanManagementActions: View {
                     ]))
                 }
             } label: {
-                Text("End plan")
+                Text(planAdjustText("action_end"))
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.bordered)
             .foregroundStyle(.red)
+            .accessibilityLabel(String(localized: "End plan"))
             .accessibilityIdentifier("plan.details.end")
         }
     }
