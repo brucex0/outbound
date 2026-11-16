@@ -508,3 +508,9 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - iOS and Android showing the planned-workout recovery caution emit `feature_exposed` with only `feature=planned_workout_recovery_advice`. Backend `today_plan_preserved` reports only bounded result `recovery_change_recommended`; `recovery_workout_change` reports `blocked|rest_allowed|recovery_allowed`. These diagnostics contain no activity/plan/workout/runner IDs, load/readiness values, dates, prescription text or entered content. Existing Change workout and Apply events remain unchanged.
 
 - iOS emits `feature_exposed` with `feature=activity_photo_order_synced` and a coarse photo-count bucket after an activity snapshot containing ordered photos is accepted. It excludes photo/activity IDs, positions, capture timestamps and image metadata. Existing editor save and photo reorder events remain unchanged.
+
+### Explicit iOS plan adjustments
+
+- `feature_exposed` records only fixed `feature=plan_adjustment_move|availability|pause|edit_pause|resume|rebuild|end|undo` with `result=opened|previewed|applied|failed`. Applied follows accepted canonical state. The reused event editor retains its existing race-goal events.
+- Backend `plan_change_preview` and `plan_change_apply` diagnostics carry only bounded operation/result; failures carry operation/status/category/error type. Preview suppresses speculative generated/catalog refresh diagnostics.
+- Account/plan/workout/command IDs, revisions, hashes, dates, weekday selections, schedule contents, readiness responses and optional reasons are excluded. Reasons remain only in private `PlanChangeCommand` audit rows and never act as readiness evidence.

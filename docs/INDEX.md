@@ -24,6 +24,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Any iOS or Android UI change | `docs/design-system.md` — design contracts, review checklist, automated checks |
 | Activity launch dock and live recording UX | `docs/activity-launch-live-ux.md` |
 | Onboarding and plan setup | `docs/new-user-onboarding.md` |
+| iOS plan move/swap, temporary weekdays, pause/return and canonical preview/apply | `docs/plan-adjustments.md` |
 | Direct iOS workout editing, Apply/audit contract, durable session linkage | `docs/workout-edits.md` |
 | iOS and Android activity repository ownership, durable upload/read reconciliation and observable plan/statistics projections | `docs/activity-repository.md` |
 | Exact issued-workout receipts, offline activity reconciliation and private completion association | `docs/performed-workout-sync.md` |
