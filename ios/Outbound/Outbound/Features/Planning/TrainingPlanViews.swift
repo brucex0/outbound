@@ -1001,9 +1001,15 @@ private struct TrainingPlanManagementActions: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: OutboundSpacing.compact) { actionButtons }
-            VStack(alignment: .leading, spacing: OutboundSpacing.compact) { actionButtons }
+            HStack(alignment: .center, spacing: 0) { actionButtons(distributingGaps: true) }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) { actionButtons(distributingGaps: false) }
         }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .buttonBorderShape(.roundedRectangle)
+        .font(.subheadline)
+        .tint(theme.actionColor)
         .confirmationDialog(String(localized: "plan.details.end_title", defaultValue: "End this plan?"), isPresented: $confirmsEndPlan, titleVisibility: .visible) {
             Button("End plan", role: .destructive) { onEndPlan?() }
             Button("Cancel", role: .cancel) { }
@@ -1013,22 +1019,26 @@ private struct TrainingPlanManagementActions: View {
     }
 
     @ViewBuilder
-    private var actionButtons: some View {
+    private func actionButtons(distributingGaps: Bool) -> some View {
         if let onAdjustPlan {
-            OutboundPrimaryButton(title: planAdjustText("action_adjust"), expands: false, action: onAdjustPlan)
-                .accessibilityLabel(planAdjustText("title"))
-                .accessibilityIdentifier("plan.details.adjust")
+            Button(action: onAdjustPlan) {
+                actionLabel("action_adjust")
+            }
+            .accessibilityLabel(planAdjustText("title"))
+            .accessibilityIdentifier("plan.details.adjust")
+        }
+        if distributingGaps && onAdjustPlan != nil && (onChangePlan != nil || onEndPlan != nil) {
+            Spacer(minLength: OutboundSpacing.compact)
         }
         if let onChangePlan {
             Button(action: onChangePlan) {
-                Text(planAdjustText("action_change"))
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
+                actionLabel("action_change")
             }
-            .buttonStyle(.bordered)
-            .tint(theme.actionColor)
             .accessibilityLabel(String(localized: "Change plan"))
             .accessibilityIdentifier("plan.details.change")
+        }
+        if distributingGaps && onChangePlan != nil && onEndPlan != nil {
+            Spacer(minLength: OutboundSpacing.compact)
         }
         if onEndPlan != nil {
             Button(role: .destructive) {
@@ -1039,15 +1049,19 @@ private struct TrainingPlanManagementActions: View {
                     ]))
                 }
             } label: {
-                Text(planAdjustText("action_end"))
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
+                actionLabel("action_end")
             }
-            .buttonStyle(.bordered)
-            .foregroundStyle(.red)
+            .tint(.red)
             .accessibilityLabel(String(localized: "End plan"))
             .accessibilityIdentifier("plan.details.end")
         }
+    }
+
+    private func actionLabel(_ key: String) -> some View {
+        Text(planAdjustText(key))
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
     }
 }
 
