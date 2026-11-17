@@ -204,10 +204,12 @@ struct NutritionBetaEntry: View {
         let date: Date
         let context: NutritionWorkoutContext?
         let calendar: Calendar
+        let guidanceFirst: Bool
     }
     @State private var presentation: Presentation?
     var context: NutritionWorkoutContext? = nil
     var opensJournal = false
+    var opensGuidance = false
     private var calendar: Calendar { planStore.nutritionCalendar }
 
     var body: some View {
@@ -215,7 +217,7 @@ struct NutritionBetaEntry: View {
             entryButton
             .tint(theme.accentColor)
             .sheet(item: $presentation) { item in
-                NutritionJournalView(context: item.context, date: item.date, calendar: item.calendar, account: item.account, workoutOrigin: !opensJournal)
+                NutritionJournalView(context: item.context, date: item.date, calendar: item.calendar, account: item.account, workoutOrigin: !opensJournal, guidanceFirst: item.guidanceFirst)
             }
             .onChange(of: authStore.user?.id) { _, _ in presentation = nil }
             .onAppear { Task { await analyticsManager?.track(.init(.nutritionBetaExposed)) } }
@@ -238,13 +240,13 @@ struct NutritionBetaEntry: View {
             }.buttonStyle(.plain)
         } else {
             Button(action: open) {
-                Label(NutritionText.value("food_fueling"), systemImage: "fork.knife")
+                Label(NutritionText.value(opensGuidance ? "title" : "food_fueling"), systemImage: "fork.knife")
                     .fixedSize(horizontal: false, vertical: true)
             }.nutritionSecondary()
         }
     }
     private func open() {
-        presentation = .init(account: ActivityAccountBoundary.current, date: opensJournal ? Date() : context?.date ?? Date(), context: context, calendar: calendar)
+        presentation = .init(account: ActivityAccountBoundary.current, date: opensJournal ? Date() : context?.date ?? Date(), context: context, calendar: calendar, guidanceFirst: opensGuidance)
     }
 }
 
@@ -259,15 +261,18 @@ private struct NutritionJournalView: View {
     @State private var guidance: NutritionWorkoutContext?
     @State private var guidanceDraft: NutritionFoodLog?
     @State private var pendingDeletion: NutritionFoodLog?
-    @State private var scope: NutritionJournalScope = .day
+    @State private var scope: NutritionJournalScope
+    @State private var showsRootGuidance: Bool
     @State private var toast: String?
     let context: NutritionWorkoutContext?
     let calendar: Calendar
     let workoutOrigin: Bool
 
-    init(context: NutritionWorkoutContext?, date: Date, calendar: Calendar, account: ActivityAccountContext, workoutOrigin: Bool) {
+    init(context: NutritionWorkoutContext?, date: Date, calendar: Calendar, account: ActivityAccountContext, workoutOrigin: Bool, guidanceFirst: Bool = false) {
         self.context = context; self.calendar = calendar; self.workoutOrigin = workoutOrigin
         _date = State(initialValue: min(date, Date()))
+        _showsRootGuidance = State(initialValue: guidanceFirst && context != nil)
+        _scope = State(initialValue: guidanceFirst && context != nil ? .workout : .day)
         _store = StateObject(wrappedValue: NutritionLogStore(account: account))
     }
     private var entries: [NutritionFoodLog] {
@@ -288,84 +293,34 @@ private struct NutritionJournalView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: OutboundSpacing.section) {
-                    HStack(alignment: .top) {
-                        Text(NutritionText.value("journal")).font(.title2.bold()).frame(maxWidth: .infinity, alignment: .leading)
-                        OutboundCornerRibbon(title: NutritionText.value("beta")).accessibilityHidden(true)
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(NutritionText.value("journal")), \(NutritionText.value("beta"))")
-                    .accessibilityAddTraits(.isHeader)
-                    DatePicker(NutritionText.value("diary_date"), selection: $date, in: ...Date(), displayedComponents: .date)
-                        .onChange(of: date) { _, _ in scope = .day; track(.nutritionJournalDateChanged) }
-                    Text(NutritionText.value("privacy")).font(.footnote).foregroundStyle(.secondary)
-                    if let context {
-                        Button { guidance = context } label: {
-                            OutboundCard {
-                                HStack(spacing: OutboundSpacing.standard) {
-                                    Image(systemName: "fork.knife").accessibilityHidden(true)
-                                    VStack(alignment: .leading, spacing: OutboundSpacing.compact / 2) {
-                                        Text(NutritionText.value("guidance")).font(.headline)
-                                        Text(context.title).font(.subheadline)
-                                        Text(context.date, format: .dateTime.year().month().day()).font(.caption).foregroundStyle(.secondary)
-                                    }.frame(maxWidth: .infinity, alignment: .leading)
-                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary).accessibilityHidden(true)
-                                }.frame(minHeight: 44).contentShape(Rectangle())
-                            }
-                        }.buttonStyle(.plain)
-                    }
-                    OutboundPrimaryButton(title: NutritionText.value("add"), systemImage: "plus", expands: false) {
-                        editor = draft()
-                    }.disabled(!store.loaded)
-                    Picker(NutritionText.value("diary_scope"), selection: $scope) {
-                        Text(NutritionText.value("selected_date")).tag(NutritionJournalScope.day)
-                        Text(NutritionText.value("all_logs")).tag(NutritionJournalScope.history)
-                        if context != nil { Text(NutritionText.value("linked_logs")).tag(NutritionJournalScope.workout) }
-                    }.onChange(of: scope) { _, shown in if shown != .day { track(.nutritionHistoryViewed) } }
-                    if !store.loaded {
-                        Text(NutritionText.value("storage_error")).foregroundStyle(.secondary)
-                        Button(NutritionText.value("retry")) { store.reload() }.nutritionSecondary()
-                    }
-                    if scope != .day {
-                        // All-date history remains independent of mutable workouts and plans.
-                        let days = Set(entries.map { calendar.startOfDay(for: $0.consumedAt) }).sorted(by: >)
-                        if days.isEmpty { Text(NutritionText.value("meal.empty")).foregroundStyle(.secondary) }
-                        ForEach(days, id: \.self) { day in
-                            Text(day, format: .dateTime.year().month().day()).font(.title3.bold())
-                            ForEach(entries.filter { calendar.isDate($0.consumedAt, inSameDayAs: day) }) { entry in logCard(entry) }
+                if showsRootGuidance, let context {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.section) {
+                        destinationHeader("guidance")
+                        Button {
+                            scope = .workout
+                            showsRootGuidance = false
+                            track(.nutritionHistoryViewed)
+                        } label: { Label(NutritionText.value("journal"), systemImage: "book.closed") }
+                            .nutritionSecondary()
+                        NutritionGuidanceView(context: context, canLog: store.loaded) { linked, phase in
+                            var entry = draft()
+                            entry.associate(linked); entry.phase = phase
+                            editor = entry
                         }
-                    } else {
-                        ForEach(NutritionMeal.allCases) { meal in
-                            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                                Text(meal.title).font(.title3.bold())
-                                let meals = entries.filter { ($0.meal ?? NutritionMeal.suggested(at: $0.consumedAt, calendar: calendar)) == meal }
-                                if meals.isEmpty { Text(NutritionText.value("meal.empty")).font(.subheadline).foregroundStyle(.secondary) }
-                                ForEach(meals) { entry in logCard(entry) }
-                            }
-                        }
-                    }
-                    if !recent.isEmpty {
-                        Text(NutritionText.value("recent")).font(.title3.bold())
-                        Text(NutritionText.value("repeat_hint")).font(.footnote).foregroundStyle(.secondary)
-                        ForEach(recent) { entry in
-                            Button {
-                                var copy = draft()
-                                copy.description = entry.description; copy.portion = entry.portion
-                                editor = copy; track(.nutritionFoodRepeated)
-                            } label: { Label(entry.description, systemImage: "arrow.counterclockwise") }.nutritionSecondary().disabled(!store.loaded)
-                        }
-                    }
-                }.padding(OutboundSpacing.screen)
+                    }.padding(OutboundSpacing.screen)
+                } else {
+                    diaryContent
+                }
             }
             .background(OutboundPalette.background)
-            .navigationTitle(NutritionText.value("title"))
+            .navigationTitle(NutritionText.value(showsRootGuidance ? "guidance" : "title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(NutritionText.value("done")) { dismiss() } } }
             .sheet(item: $guidance, onDismiss: {
                 if let draft = guidanceDraft { editor = draft; guidanceDraft = nil }
             }) { context in
                 NavigationStack {
-                    ScrollView { NutritionGuidanceView(context: context) { linked, phase in
+                    ScrollView { NutritionGuidanceView(context: context, canLog: store.loaded) { linked, phase in
                         var entry = draft()
                         entry.associate(linked); entry.phase = phase
                         guidanceDraft = entry; guidance = nil
@@ -395,8 +350,81 @@ private struct NutritionJournalView: View {
             }
             .overlay(alignment: .top) { NutritionToast(message: toast) }
             .task(id: toast) { if toast != nil { try? await Task.sleep(for: .seconds(5)); if !Task.isCancelled { toast = nil } } }
-            .task { track(.nutritionJournalViewed) }
+            .task(id: showsRootGuidance) { if !showsRootGuidance { track(.nutritionJournalViewed) } }
         }.environment(\.calendar, calendar).environment(\.timeZone, calendar.timeZone)
+    }
+    private func destinationHeader(_ key: String) -> some View {
+        HStack(alignment: .top) {
+            Text(NutritionText.value(key)).font(.title2.bold()).frame(maxWidth: .infinity, alignment: .leading)
+            OutboundCornerRibbon(title: NutritionText.value("beta")).accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(NutritionText.value(key)), \(NutritionText.value("beta"))")
+        .accessibilityAddTraits(.isHeader)
+    }
+    private var diaryContent: some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.section) {
+            destinationHeader("journal")
+            DatePicker(NutritionText.value("diary_date"), selection: $date, in: ...Date(), displayedComponents: .date)
+                .onChange(of: date) { _, _ in scope = .day; track(.nutritionJournalDateChanged) }
+            Text(NutritionText.value("privacy")).font(.footnote).foregroundStyle(.secondary)
+            if let context {
+                Button { guidance = context } label: {
+                    OutboundCard {
+                        HStack(spacing: OutboundSpacing.standard) {
+                            Image(systemName: "fork.knife").accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact / 2) {
+                                Text(NutritionText.value("guidance")).font(.headline)
+                                Text(context.title).font(.subheadline)
+                                Text(context.date, format: .dateTime.year().month().day()).font(.caption).foregroundStyle(.secondary)
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary).accessibilityHidden(true)
+                        }.frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                }.buttonStyle(.plain)
+            }
+            OutboundPrimaryButton(title: NutritionText.value("add"), systemImage: "plus", expands: false) {
+                editor = draft()
+            }.disabled(!store.loaded)
+            Picker(NutritionText.value("diary_scope"), selection: $scope) {
+                Text(NutritionText.value("selected_date")).tag(NutritionJournalScope.day)
+                Text(NutritionText.value("all_logs")).tag(NutritionJournalScope.history)
+                if context != nil { Text(NutritionText.value("linked_logs")).tag(NutritionJournalScope.workout) }
+            }.onChange(of: scope) { _, shown in if shown != .day { track(.nutritionHistoryViewed) } }
+            if !store.loaded {
+                Text(NutritionText.value("storage_error")).foregroundStyle(.secondary)
+                Button(NutritionText.value("retry")) { store.reload() }.nutritionSecondary()
+            }
+            if scope != .day {
+                // All-date history remains independent of mutable workouts and plans.
+                let days = Set(entries.map { calendar.startOfDay(for: $0.consumedAt) }).sorted(by: >)
+                if days.isEmpty { Text(NutritionText.value("meal.empty")).foregroundStyle(.secondary) }
+                ForEach(days, id: \.self) { day in
+                    Text(day, format: .dateTime.year().month().day()).font(.title3.bold())
+                    ForEach(entries.filter { calendar.isDate($0.consumedAt, inSameDayAs: day) }) { entry in logCard(entry) }
+                }
+            } else {
+                ForEach(NutritionMeal.allCases) { meal in
+                    VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                        Text(meal.title).font(.title3.bold())
+                        let meals = entries.filter { ($0.meal ?? NutritionMeal.suggested(at: $0.consumedAt, calendar: calendar)) == meal }
+                        if meals.isEmpty { Text(NutritionText.value("meal.empty")).font(.subheadline).foregroundStyle(.secondary) }
+                        ForEach(meals) { entry in logCard(entry) }
+                    }
+                }
+            }
+            if !recent.isEmpty {
+                Text(NutritionText.value("recent")).font(.title3.bold())
+                Text(NutritionText.value("repeat_hint")).font(.footnote).foregroundStyle(.secondary)
+                ForEach(recent) { entry in
+                    Button {
+                        var copy = draft()
+                        copy.description = entry.description; copy.portion = entry.portion
+                        editor = copy; track(.nutritionFoodRepeated)
+                    } label: { Label(entry.description, systemImage: "arrow.counterclockwise") }.nutritionSecondary().disabled(!store.loaded)
+                }
+            }
+        }.padding(OutboundSpacing.screen)
     }
     private func draft(meal: NutritionMeal? = nil) -> NutritionFoodLog {
         let now = Date()
@@ -463,6 +491,7 @@ private struct NutritionGuidanceView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var showsSources = false
     let context: NutritionWorkoutContext
+    var canLog = true
     let onLog: (NutritionWorkoutContext, NutritionPhase) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.section) {
@@ -476,7 +505,7 @@ private struct NutritionGuidanceView: View {
                             HStack(alignment: .center, spacing: OutboundSpacing.standard) { foodIllustration(phase); actionText(phase) }
                             VStack(alignment: .leading, spacing: OutboundSpacing.standard) { foodIllustration(phase); actionText(phase) }
                         }
-                        Button(NutritionText.value("add")) { onLog(context, phase) }.nutritionSecondary()
+                        Button(NutritionText.value("add")) { onLog(context, phase) }.nutritionSecondary().disabled(!canLog)
                         DisclosureGroup(NutritionText.value("why")) {
                             ForEach(detailKeys(phase), id: \.self) { key in Text(NutritionText.value(key)).padding(.top, OutboundSpacing.compact) }
                         }

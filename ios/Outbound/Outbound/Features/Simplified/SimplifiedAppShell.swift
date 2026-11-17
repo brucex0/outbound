@@ -1593,34 +1593,49 @@ private struct SimplifiedTodayView: View {
                 }
             }
 
-            if trainingPlanStore.isScheduledRestDay || !isPlannedWorkoutCardMinimized {
-                HStack(spacing: 0) {
-                    Button(action: onOpenPlan) {
-                        Label(String(localized: "Plan"), systemImage: "calendar")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: trainingPlanStore.isScheduledRestDay ? 44 : 40)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(String(localized: "Open plan details"))
-                    .accessibilityIdentifier("todayScheduledRestPlan")
-
-                    if !trainingPlanStore.isScheduledRestDay {
-                        Button {
-                            openWorkoutChange()
-                        } label: {
-                            Label(String(localized: "today.change", defaultValue: "Change"), systemImage: "pencil")
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                                .frame(maxWidth: .infinity, minHeight: 40)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("todayDirectEdit")
-                    }
+            if trainingPlanStore.isScheduledRestDay {
+                Button(action: onOpenPlan) {
+                    Label(String(localized: "Plan"), systemImage: "calendar")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint(String(localized: "Open plan details"))
+                .accessibilityIdentifier("todayScheduledRestPlan")
+            } else if !isPlannedWorkoutCardMinimized {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: OutboundSpacing.compact) { plannedWorkoutActions }
+                        .fixedSize(horizontal: true, vertical: false)
+                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) { plannedWorkoutActions }
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .animation(.snappy, value: isPlannedWorkoutCardMinimized)
+    }
+
+    @ViewBuilder private var plannedWorkoutActions: some View {
+        Button(action: onOpenPlan) {
+            Label(String(localized: "Plan"), systemImage: "calendar")
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+        .frame(minHeight: 44)
+        .accessibilityHint(String(localized: "Open plan details"))
+        .accessibilityIdentifier("todayScheduledRestPlan")
+
+        Button(action: openWorkoutChange) {
+            Label(String(localized: "today.change", defaultValue: "Change"), systemImage: "pencil")
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+        .frame(minHeight: 44)
+        .accessibilityIdentifier("todayDirectEdit")
+
+        NutritionBetaEntry(context: .planned(intent: activeRunIntent, date: Date(), planID: trainingPlanStore.activePlan?.id,
+                                            calendar: trainingPlanStore.nutritionCalendar), opensGuidance: true)
+            .accessibilityIdentifier("todayNutrition")
     }
 
     private var showsPlannedRecoveryAdvice: Bool {
