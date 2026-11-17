@@ -4,7 +4,7 @@ Open when changing workout food guidance, local food logs, or their privacy boun
 
 ## Scope
 
-- iPhone first: permanent Nutrition entries on Today and Me open the date-first food diary. Today offers guidance for the actual Today suggestion when available; Me opens diary/history without requiring a workout. Nutrition also appears in Today planned-workout details, scheduled-workout details, the saved-activity celebration (including its post-save stretch variant), and private saved-activity details. No forced prompt interrupts saving an activity.
+- iPhone first: Me exposes a normal Nutrition library row after My Routes, keeping the profile first. It opens the date-first food diary for any signed-in account, with no plan or workout requirement. Today has no standalone Nutrition map card in any launch mode. Compact Food & fueling actions remain in planned/scheduled workout details, the saved-activity celebration (including its post-save stretch variant), and private saved-activity details. No forced prompt interrupts saving an activity.
 - Visual Before/During/After cards use prominent native food/drink symbols, concise actions and expandable rationale/sources. Stage actions open blank editable food drafts with exact workout/phase preselected. Suggestions never become intake without Save; diary entries do not influence guidance yet. During advice remains qualitative within the AIS endurance framework.
 - Before-workout guidance uses the displayed intent or effective scheduled workout. After-workout guidance uses the saved activity. Running, cycling and swimming are supported endurance contexts; absent/unsupported sport or nonpositive/missing duration uses general advice. Scheduled workouts require explicit supported modality.
 - `NutritionAdvice.ruleVersion = qualitative-v1` selects qualitative editorial advice. Before: under 45 minutes, 45–89 minutes, or at least 90 minutes. After: recovery food examples plus timing context. The thresholds organize advice, not clinical eligibility or precision.
@@ -13,11 +13,12 @@ Open when changing workout food guidance, local food logs, or their privacy boun
 
 ## Finding Nutrition
 
-- Nutrition entries and the sheet header use a localized diagonal Beta corner ribbon. The entry keeps a combined Nutrition/Beta accessibility name. A reserved trailing footprint keeps scaled text clear; only the extended ribbon background is trimmed flush at the top/right corner.
+- Only the diary destination header carries the localized amber/dark Beta corner ribbon. Entry controls have no ribbon or reserved ribbon footprint: workout entries are content-sized secondary Food & fueling actions; Me uses a whole-row library entry with a fork icon, title, subtitle and chevron. The entire library row is tappable.
+- The journal has one main Add action, meal sections, compact actual-food records and an explicit date/history/workout scope. Meal choice remains in the editor. A separate workout-context row opens guidance; an associated record's compact workout link opens its precise stored guidance snapshot. Empty and plan-free diaries are normal.
 
 - Before a workout: on Today, tap the planned workout title to open Details, or open a scheduled workout from the plan details page.
-- After saving: use Nutrition beneath the saved activity's sport/time/distance summary, above the celebration card. The same optional entry appears when the saved screen offers stretching; saving does not automatically open Nutrition.
-- Later: open your saved activity from your activity history. Nutrition appears below its title, above photos and statistics, rather than below elevation and splits. Social activity details do not expose it.
+- After saving: use Food & fueling beneath the saved activity's sport/time/distance summary, above the celebration card. The same optional entry appears when the saved screen offers stretching; saving does not automatically open Nutrition.
+- Later: open your saved activity from your activity history. Food & fueling appears below its title, above photos and statistics, rather than below elevation and splits. Social activity details do not expose it.
 - An account-backed sign-in is required. Debug launch flags that bypass authentication without creating a user do not expose Nutrition or enable guest food logging; real debug-persona sessions have an account ID.
 - The save flow presents a celebration or stretch screen, then Done closes the flow. It does not open `ActivityDetailView`; placing Nutrition only in saved-activity detail did not make it discoverable immediately after save.
 
@@ -72,3 +73,10 @@ The sheet exposes these sources, assumptions and the rule version under Why this
 - Today and Me now expose the diary permanently; workout routes retain exact context. Day, all-date history and exact-workout scopes are explicit. Meal sections, optional portions, repeat drafts and visual stage guidance remain local-only. The shared Beta ribbon uses warm amber with dark ink.
 - Bruce explicitly requested installation on Bruce main and **skipped UX verification** for this revision. No independent UX review or runtime UX checks were performed; no QA Pass is claimed. Build/install outcomes are recorded separately. No tests or simulator/emulator checks run.
 - Final signed incremental build passed, then installed and launched on Bruce main (2026-11-16, 23:12 Pacific). Added-line design-system checker, diff whitespace check and source localization/privacy checks passed. These results do not establish runtime UX or nutrition suitability. Existing unrelated compiler warnings remain.
+
+### Entry placement and journal density — 2026-11-17
+
+- Removed the standalone Today Nutrition card and its attribution measurement without changing existing planned/manual/live peer layout. Moved Me's entry below My Routes, after the profile and existing plan content. Removed entry ribbon spacers; the amber Beta accent remains on the journal header only.
+- Consolidated meal add controls into one main Add action; record actions use a compact menu, and workout links retain title/date/phase and exact stored guidance. Storage, scopes, draft reuse, sources, account/calendar protections and property-free analytics are unchanged. No reset or schema change.
+- Bruce authorized the change and phone installation while continuing to **skip UX verification**. No independent/runtime UX review, tests or simulator/emulator checks were performed; no QA Pass is claimed.
+- Signed build passed, then the final revision installed and launched on Bruce main on 2026-11-17 at 06:51 Pacific. Added-line design-system and diff checks passed; source checks confirmed complete EN/ES/zh-Hans strings, unchanged model/storage and guidance/editor logic, one destination ribbon, and no standalone Today card. This does not establish runtime layout or accessibility correctness.

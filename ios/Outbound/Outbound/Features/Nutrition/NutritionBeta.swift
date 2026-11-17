@@ -212,28 +212,39 @@ struct NutritionBetaEntry: View {
 
     var body: some View {
         if authStore.user?.id != nil {
-            Button { presentation = .init(account: ActivityAccountBoundary.current, date: opensJournal ? Date() : context?.date ?? Date(), context: context, calendar: calendar) } label: {
-                HStack(spacing: OutboundSpacing.compact) {
-                    Label(NutritionText.value("title"), systemImage: "fork.knife")
-                        .fixedSize(horizontal: false, vertical: true)
-                    OutboundCornerRibbon(title: NutritionText.value("beta")).hidden().accessibilityHidden(true)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(NutritionText.value("entry"))
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+            entryButton
             .tint(theme.accentColor)
-            .overlay(alignment: .topTrailing) {
-                OutboundCornerRibbon(title: NutritionText.value("beta")).accessibilityHidden(true).allowsHitTesting(false)
-            }
-            .frame(minHeight: 44)
             .sheet(item: $presentation) { item in
                 NutritionJournalView(context: item.context, date: item.date, calendar: item.calendar, account: item.account, workoutOrigin: !opensJournal)
             }
             .onChange(of: authStore.user?.id) { _, _ in presentation = nil }
             .onAppear { Task { await analyticsManager?.track(.init(.nutritionBetaExposed)) } }
         }
+    }
+    @ViewBuilder private var entryButton: some View {
+        if opensJournal {
+            Button(action: open) {
+                OutboundCard {
+                    HStack(spacing: OutboundSpacing.standard) {
+                        Image(systemName: "fork.knife").foregroundStyle(theme.accentColor).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: OutboundSpacing.compact / 2) {
+                            Text(NutritionText.value("title")).font(.headline).foregroundStyle(.primary)
+                            Text(NutritionText.value("entry_subtitle")).font(.subheadline).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary).accessibilityHidden(true)
+                    }.frame(minHeight: 44).contentShape(Rectangle())
+                }
+            }.buttonStyle(.plain)
+        } else {
+            Button(action: open) {
+                Label(NutritionText.value("food_fueling"), systemImage: "fork.knife")
+                    .fixedSize(horizontal: false, vertical: true)
+            }.nutritionSecondary()
+        }
+    }
+    private func open() {
+        presentation = .init(account: ActivityAccountBoundary.current, date: opensJournal ? Date() : context?.date ?? Date(), context: context, calendar: calendar)
     }
 }
 
@@ -282,17 +293,26 @@ private struct NutritionJournalView: View {
                         Text(NutritionText.value("journal")).font(.title2.bold()).frame(maxWidth: .infinity, alignment: .leading)
                         OutboundCornerRibbon(title: NutritionText.value("beta")).accessibilityHidden(true)
                     }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(NutritionText.value("journal")), \(NutritionText.value("beta"))")
+                    .accessibilityAddTraits(.isHeader)
                     DatePicker(NutritionText.value("diary_date"), selection: $date, in: ...Date(), displayedComponents: .date)
                         .onChange(of: date) { _, _ in scope = .day; track(.nutritionJournalDateChanged) }
                     Text(NutritionText.value("privacy")).font(.footnote).foregroundStyle(.secondary)
                     if let context {
-                        OutboundCard {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                                Text(NutritionText.value(workoutOrigin ? "workout_context" : "upcoming")).font(.headline)
-                                NutritionContextSummary(context: context)
-                                Button(NutritionText.value("guidance")) { guidance = context }.nutritionSecondary()
+                        Button { guidance = context } label: {
+                            OutboundCard {
+                                HStack(spacing: OutboundSpacing.standard) {
+                                    Image(systemName: "fork.knife").accessibilityHidden(true)
+                                    VStack(alignment: .leading, spacing: OutboundSpacing.compact / 2) {
+                                        Text(NutritionText.value("guidance")).font(.headline)
+                                        Text(context.title).font(.subheadline)
+                                        Text(context.date, format: .dateTime.year().month().day()).font(.caption).foregroundStyle(.secondary)
+                                    }.frame(maxWidth: .infinity, alignment: .leading)
+                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary).accessibilityHidden(true)
+                                }.frame(minHeight: 44).contentShape(Rectangle())
                             }
-                        }
+                        }.buttonStyle(.plain)
                     }
                     OutboundPrimaryButton(title: NutritionText.value("add"), systemImage: "plus", expands: false) {
                         editor = draft()
@@ -321,8 +341,6 @@ private struct NutritionJournalView: View {
                                 let meals = entries.filter { ($0.meal ?? NutritionMeal.suggested(at: $0.consumedAt, calendar: calendar)) == meal }
                                 if meals.isEmpty { Text(NutritionText.value("meal.empty")).font(.subheadline).foregroundStyle(.secondary) }
                                 ForEach(meals) { entry in logCard(entry) }
-                                Button { editor = draft(meal: meal) } label: { Label(meal.title, systemImage: "plus") }
-                                    .nutritionSecondary().disabled(!store.loaded)
                             }
                         }
                     }
@@ -389,27 +407,39 @@ private struct NutritionJournalView: View {
         return entry
     }
     private func logCard(_ entry: NutritionFoodLog) -> some View {
-        OutboundCard {
-            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                Text(entry.description).font(.headline)
-                if let portion = entry.portion, !portion.isEmpty { Text(portion) }
-                Text(entry.consumedAt, format: .dateTime.year().month().day().hour().minute()).font(.subheadline).foregroundStyle(.secondary)
-                if !entry.note.isEmpty { Text(entry.note) }
-                if let linked = entry.context {
-                    NutritionContextSummary(context: linked)
-                    if let phase = entry.phase { Text(phase.title).font(.subheadline) }
-                    Button(NutritionText.value("guidance")) { guidance = linked }.nutritionSecondary()
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            HStack(alignment: .top, spacing: OutboundSpacing.standard) {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact / 2) {
+                    Text(entry.description).font(.headline)
+                    if let portion = entry.portion, !portion.isEmpty { Text(portion).font(.subheadline).foregroundStyle(.secondary) }
+                    Text(entry.consumedAt, format: .dateTime.hour().minute()).font(.caption).foregroundStyle(.secondary)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                Menu {
+                    Button(NutritionText.value("edit")) { editor = entry }
+                    Button(NutritionText.value("delete"), role: .destructive) { pendingDeletion = entry }
+                } label: {
+                    Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                 }
-                ViewThatFits(in: .horizontal) {
-                    HStack { logActions(entry) }
-                    VStack(alignment: .leading) { logActions(entry) }
-                }.disabled(!store.loaded)
+                .accessibilityLabel(NutritionText.value("record_actions"))
+                .disabled(!store.loaded)
+            }
+            if !entry.note.isEmpty { Text(entry.note).font(.subheadline) }
+            if let linked = entry.context {
+                Button { guidance = linked } label: {
+                    HStack(alignment: .top, spacing: OutboundSpacing.compact) {
+                        Image(systemName: "link").accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: OutboundSpacing.compact / 2) {
+                            Text(linked.title)
+                            Text(linked.date, format: .dateTime.year().month().day())
+                            if let phase = entry.phase { Text(phase.title) }
+                        }.fixedSize(horizontal: false, vertical: true)
+                    }.font(.caption)
+                }
+                .nutritionSecondary()
+                .accessibilityHint(NutritionText.value("guidance"))
             }
         }
-    }
-    @ViewBuilder private func logActions(_ entry: NutritionFoodLog) -> some View {
-        Button(NutritionText.value("edit")) { editor = entry }.nutritionSecondary()
-        Button(NutritionText.value("delete"), role: .destructive) { pendingDeletion = entry }.nutritionSecondary()
+        .padding(.vertical, OutboundSpacing.compact)
     }
     private func track(_ name: ProductEventName) { Task { await analyticsManager?.track(.init(name)) } }
 }

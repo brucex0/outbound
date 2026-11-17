@@ -985,11 +985,6 @@ private struct SimplifiedTodayView: View {
                             .clipped()
                         }
 
-                        if activitySessionState == .idle {
-                            todayNutritionCard
-                                .padding(.horizontal, OutboundSpacing.screen)
-                                .reportsMapAttributionOcclusionHeight()
-                        }
                         if launchGoalMode == .planned
                             || activitySessionState != .idle || activityEventToday != nil {
                             todayPeerCards
@@ -1390,17 +1385,6 @@ private struct SimplifiedTodayView: View {
             if activitySessionState != .idle {
                 inProgressActivityCard
             }
-        }
-    }
-
-    private var todayNutritionCard: some View {
-        OutboundCard {
-            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                NutritionBetaEntry(context: trainingPlanStore.todaySuggestion.map {
-                    .planned(intent: $0.suggestedSession.intent, date: Date(), planID: trainingPlanStore.activePlan?.id, calendar: trainingPlanStore.nutritionCalendar)
-                }, opensJournal: true)
-                Text(NutritionText.value("entry_subtitle")).font(.subheadline).foregroundStyle(.secondary)
-            }.frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -2540,8 +2524,6 @@ private struct SimplifiedMeView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
-                    NutritionBetaEntry(opensJournal: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     OutboundCard {
                         HStack(spacing: 12) {
                             Button {
@@ -2742,6 +2724,7 @@ private struct SimplifiedMeView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    NutritionBetaEntry(opensJournal: true)
                     if showsCycleAwareGuidance {
                         OutboundCard {
                             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
