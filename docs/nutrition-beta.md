@@ -4,11 +4,19 @@ Open when changing workout food guidance, local food logs, or their privacy boun
 
 ## Scope
 
-- iPhone first: Nutrition · Beta appears in Today planned-workout details, scheduled-workout details, and private saved-activity details. No forced prompt interrupts saving an activity.
+- iPhone first: Nutrition · Beta appears in Today planned-workout details, scheduled-workout details, the saved-activity celebration (including its post-save stretch variant), and private saved-activity details. No forced prompt interrupts saving an activity.
 - Before-workout guidance uses the displayed intent or effective scheduled workout. After-workout guidance uses the saved activity. Running, cycling and swimming are supported endurance contexts; absent/unsupported sport or nonpositive/missing duration uses general advice. Scheduled workouts require explicit supported modality.
 - `NutritionAdvice.ruleVersion = qualitative-v1` selects qualitative editorial advice. Before: under 45 minutes, 45–89 minutes, or at least 90 minutes. After: recovery food examples plus timing context. The thresholds organize advice, not clinical eligibility or precision.
 - No individual dietary assessment, calculated nutrients, calorie replacement, weight-loss targets, hydration/sodium doses, or athlete carbohydrate/protein doses. Adult eligibility is not established, so guidance stays qualitative. No accuracy percentage or dietitian validation is claimed.
 - Android, cloud sync, food database lookup, live fueling reminders and full diet planning are deferred.
+
+## Finding Nutrition
+
+- Before a workout: on Today, tap the planned workout title to open Details, or open a scheduled workout from the plan details page.
+- After saving: use Nutrition · Beta beneath the saved activity's sport/time/distance summary, above the celebration card. The same optional entry appears when the saved screen offers stretching; saving does not automatically open Nutrition.
+- Later: open your saved activity from your activity history. Nutrition · Beta appears below its title, above photos and statistics, rather than below elevation and splits. Social activity details do not expose it.
+- An account-backed sign-in is required. Debug launch flags that bypass authentication without creating a user do not expose Nutrition or enable guest food logging; real debug-persona sessions have an account ID.
+- The save flow presents a celebration or stretch screen, then Done closes the flow. It does not open `ActivityDetailView`; placing Nutrition only in saved-activity detail did not make it discoverable immediately after save.
 
 ## Provenance and applicability
 
@@ -41,3 +49,9 @@ The sheet exposes these sources, assumptions and the rule version under Why this
 - Signed iPhone build passed and installed on Bruce main. Launch was blocked by the locked phone; iPhone Mirroring required Mac authentication, so no runtime UX evidence was obtained.
 - Independent UX source review found two issues, both corrected: logging controls now wait for a successful storage load, and the main logging action uses the shared primary button. No unresolved source findings remain. The design-system checker and diff check passed; English, Spanish and Simplified Chinese Nutrition resources are present in the signed app.
 - UX QA remains **Incomplete** for the runtime checks listed above. Bruce explicitly accepted this documented runtime UX waiver and authorized merge on 2026-11-16. The waiver does not establish runtime correctness or clinical validation. No test suite or simulator/emulator checks ran.
+
+### Saved-workout discoverability — 2026-11-16
+
+- The post-save celebration and stretch offer now expose Nutrition beneath the activity summary. Private saved-activity details place the same entry beneath the title. Account guards, social exclusion, localized labels and property-free analytics remain unchanged.
+- Build-only compilation, design-system checks and diff checks passed. Independent UX review found no source issues and returned **Incomplete** because runtime layout, presentation and interaction checks were not performed. No test suite or simulator checks ran.
+- Bruce explicitly authorized merge and phone installation with runtime UX QA waived for this revision on 2026-11-16. The waiver does not establish runtime correctness; phone installation is recorded separately from verification.

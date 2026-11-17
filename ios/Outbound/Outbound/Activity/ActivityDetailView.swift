@@ -472,10 +472,6 @@ struct ActivityDetailView: View {
                         }
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
-                        if usesStoredActivity && showsPrivateDetails {
-                            NutritionBetaEntry(context: .completed(currentActivity))
-                                .padding(OutboundSpacing.screen)
-                        }
                         if showsPrivateDetails { guideHeroCard(currentActivity.reflection) }
                         if let bottomContent { bottomContent }
                     }
@@ -708,6 +704,11 @@ struct ActivityDetailView: View {
                 if let companionType = currentActivity.companionType {
                     companionType.savedPill
                         .padding(.horizontal, 20)
+                }
+
+                if usesStoredActivity && showsPrivateDetails {
+                    NutritionBetaEntry(context: .completed(currentActivity))
+                        .padding(.horizontal, OutboundSpacing.screen)
                 }
             }
 

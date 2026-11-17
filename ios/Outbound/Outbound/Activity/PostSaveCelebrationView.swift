@@ -52,6 +52,7 @@ struct PostSaveActivitySummary: View {
             }
             .font(.subheadline)
             .foregroundStyle(.secondary)
+            NutritionBetaEntry(context: .completed(activity))
             PostSaveCelebrationCard(activity: activity)
                 .frame(height: 190)
             Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
