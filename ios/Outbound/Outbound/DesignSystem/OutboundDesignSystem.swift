@@ -166,6 +166,44 @@ enum OutboundPalette {
     }
 }
 
+/// A diagonal strip with flush top/right ends and space for its full scaled label.
+struct OutboundCornerRibbon: View {
+    let title: String
+
+    var body: some View {
+        OutboundCornerRibbonLayout {
+            Text(title)
+                .font(.caption2.weight(.bold))
+                .fixedSize()
+                .padding(.horizontal, OutboundSpacing.compact / 2)
+                .padding(.vertical, OutboundSpacing.compact / 4)
+                .foregroundStyle(OutboundPalette.background)
+                .background {
+                    Rectangle().fill(OutboundPalette.primaryText).scaleEffect(x: 2, y: 1)
+                }
+                .rotationEffect(.degrees(45))
+        }
+        // Trim only the extended strip ends; the layout keeps all label bounds inside.
+        .clipped()
+    }
+}
+
+private struct OutboundCornerRibbonLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let ribbon = subviews.first else { return .zero }
+        let size = ribbon.sizeThatFits(.unspecified)
+        // Reserve the rotated bounds plus room to move the strip toward the corner.
+        let side = ceil((size.width + 2 * size.height) / sqrt(2))
+        return CGSize(width: side, height: side)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let ribbon = subviews.first else { return }
+        let offset = ribbon.sizeThatFits(.unspecified).height / (2 * sqrt(2))
+        ribbon.place(at: CGPoint(x: bounds.midX + offset, y: bounds.midY - offset), anchor: .center, proposal: .unspecified)
+    }
+}
+
 struct OutboundTooltip: View {
     let text: String
     let onDismiss: () -> Void

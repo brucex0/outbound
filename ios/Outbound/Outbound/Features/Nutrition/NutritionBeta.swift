@@ -178,12 +178,24 @@ struct NutritionBetaEntry: View {
     var body: some View {
         if authStore.user?.id != nil {
             Button { presentation = .init(context: context, account: ActivityAccountBoundary.current) } label: {
-                Label(NutritionText.value("entry"), systemImage: "fork.knife")
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: OutboundSpacing.compact) {
+                    Label(NutritionText.value("title"), systemImage: "fork.knife")
+                        .fixedSize(horizontal: false, vertical: true)
+                    OutboundCornerRibbon(title: NutritionText.value("beta"))
+                        .hidden()
+                        .accessibilityHidden(true)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(NutritionText.value("entry"))
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
             .tint(theme.accentColor)
+            .overlay(alignment: .topTrailing) {
+                OutboundCornerRibbon(title: NutritionText.value("beta"))
+                    .accessibilityHidden(true)
+                    .allowsHitTesting(false)
+            }
             .frame(minHeight: 44)
             .sheet(item: $presentation) { item in
                 NutritionBetaView(context: item.context, account: item.account)
@@ -217,11 +229,19 @@ private struct NutritionBetaView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: OutboundSpacing.section) {
-                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                        Text(NutritionText.value("beta")).font(.caption.weight(.bold))
-                        Text(context.title).font(.title2.weight(.bold))
-                        Text(context.date, format: .dateTime.year().month().day()).foregroundStyle(.secondary)
-                        Text(context.phase.title).font(.headline)
+                    HStack(alignment: .top, spacing: OutboundSpacing.standard) {
+                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                            Text(context.title).font(.title2.weight(.bold))
+                            Text(context.date, format: .dateTime.year().month().day()).foregroundStyle(.secondary)
+                            Text(context.phase.title).font(.headline)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        OutboundCornerRibbon(title: NutritionText.value("beta"))
+                            .hidden()
+                            .accessibilityHidden(true)
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        OutboundCornerRibbon(title: NutritionText.value("beta"))
                     }
                     OutboundCard {
                         VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
