@@ -20,6 +20,14 @@ iOS paginated lists use `AutomaticPaginationRow` at the end of lazy content: fet
 
 My Activities, the activity feed, and Connections share this component. Keep `paginated_list_page_loaded` instrumentation in the owning page; see `docs/product-analytics.md` for allowed properties. Groups and Routes currently have no iOS load-more control; adopt this component when adding pagination.
 
+## Stable modal ownership
+
+- `Core/Presentation/StableSheetPresentation.swift` owns one UIKit hosting controller/root per opening for stateful sheets launched from frequently refreshed or responsive UI. The durable scene/flow coordinator owns the presenter; a root host supplies the current scene anchor. Entry buttons/layout candidates request presentation and do not own its binding. Parent updates never replace `rootView`.
+- Only real changes to theme, appearance, Dynamic Type, locale or layout direction update the observed appearance bridge. Each feature explicitly supplies other dependencies (including analytics), captures its opening context, and owns any intentional live model updates.
+- Nutrition uses a scene-root `NutritionPresentationCoordinator` above startup/debug routing; all entries (including both `ViewThatFits` candidates) share it. The standalone curated catalog keeps its existing activity-flow owner and data cache, using the same presentation primitive. Other audited responsive matches are content layouts or already root-owned handlers; they were not migrated.
+- Cleanup matches the opening/controller identity and runs once for interactive, programmatic or ancestor dismissal. Selection callbacks run after dismissal; a pending close survives interactive cancellation. Closing the owned root dismisses its nested sheets too. Nutrition observes account identity until the entire modal tree closes; local store operations continue validating the captured account boundary.
+- Extend this pattern to future stateful modals with the same transient-source ownership risk; do not scatter independent presenters into responsive candidates, replace hosting roots on every refresh, force random view IDs, restore scroll offsets, or freeze legitimate source updates. Ordinary sheets with stable owners are not automatically candidates for migration.
+
 ## App Entry
 
 ### Navigation Ownership

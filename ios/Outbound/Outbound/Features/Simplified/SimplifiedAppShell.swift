@@ -4506,6 +4506,7 @@ private extension RunnerConfidence {
         onGroupRunAction: {},
         onStartRun: { _ in }
     )
+        .nutritionPresentationRoot()
         .environmentObject(ActivityStore())
         .environmentObject(AuthStore())
         .environmentObject(AssistantStore())

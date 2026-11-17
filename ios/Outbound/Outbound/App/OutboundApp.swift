@@ -82,6 +82,7 @@ struct OutboundApp: App {
     var body: some Scene {
         WindowGroup {
             rootView
+                .nutritionPresentationRoot()
                 .tint(guideCatalogStore.selectedTheme.accentColor)
                 .environment(\.outboundTheme, guideCatalogStore.selectedTheme)
                 .environment(\.analyticsManager, analyticsManager)

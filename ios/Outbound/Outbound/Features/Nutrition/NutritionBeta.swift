@@ -193,20 +193,60 @@ final class NutritionLogStore: ObservableObject {
     }
 }
 
+/// Scene-owned, independent of entry/button identity and responsive layout candidates.
+@MainActor
+final class NutritionPresentationCoordinator: ObservableObject {
+    let sheet = StableSheetPresenter()
+    private var accountObservation: AnyCancellable?
+
+    func present(context: NutritionWorkoutContext?, calendar: Calendar, opensJournal: Bool, guidanceFirst: Bool,
+                 authStore: AuthStore, analytics: AnalyticsManager?) {
+        guard let userID = authStore.user?.id else { return }
+        let account = ActivityAccountBoundary.current
+        let date = opensJournal ? Date() : context?.date ?? Date()
+        var openingDismissal: StableSheetDismissal?
+        let opened = sheet.present(diagnosticName: "nutrition_sheet", onDismiss: {
+            self.accountObservation = nil
+        }) { dismiss in
+            openingDismissal = dismiss
+            return NutritionJournalView(context: context, date: date, calendar: calendar, account: account,
+                                 workoutOrigin: !opensJournal, guidanceFirst: guidanceFirst,
+                                 onClose: { dismiss() })
+                .environment(\.analyticsManager, analytics)
+        }
+        guard opened, let openingDismissal else { return }
+        // The presenter's onDismiss callback retains this coordinator until cleanup.
+        // This subscription survives removal of the originating card or scene content.
+        accountObservation = authStore.$user.map { $0?.id }.removeDuplicates().sink { currentID in
+            guard currentID != userID else { return }
+            Task { @MainActor in openingDismissal() }
+        }
+    }
+}
+
+private struct NutritionPresentationRoot<Content: View>: View {
+    @StateObject private var coordinator = NutritionPresentationCoordinator()
+    let content: Content
+    var body: some View {
+        content
+            .environmentObject(coordinator)
+            .background {
+                StableSheetPresentationHost(presenter: coordinator.sheet).frame(width: 0, height: 0)
+            }
+    }
+}
+
+extension View {
+    /// Apply at the scene root, including debug detail routes and previews.
+    func nutritionPresentationRoot() -> some View { NutritionPresentationRoot(content: self) }
+}
+
 struct NutritionBetaEntry: View {
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var planStore: TrainingPlanStore
+    @EnvironmentObject private var coordinator: NutritionPresentationCoordinator
     @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analyticsManager
-    private struct Presentation: Identifiable {
-        let id = UUID()
-        let account: ActivityAccountContext
-        let date: Date
-        let context: NutritionWorkoutContext?
-        let calendar: Calendar
-        let guidanceFirst: Bool
-    }
-    @State private var presentation: Presentation?
     var context: NutritionWorkoutContext? = nil
     var opensJournal = false
     var opensGuidance = false
@@ -216,10 +256,6 @@ struct NutritionBetaEntry: View {
         if authStore.user?.id != nil {
             entryButton
             .tint(theme.accentColor)
-            .sheet(item: $presentation) { item in
-                NutritionJournalView(context: item.context, date: item.date, calendar: item.calendar, account: item.account, workoutOrigin: !opensJournal, guidanceFirst: item.guidanceFirst)
-            }
-            .onChange(of: authStore.user?.id) { _, _ in presentation = nil }
             .onAppear { Task { await analyticsManager?.track(.init(.nutritionBetaExposed)) } }
         }
     }
@@ -246,14 +282,14 @@ struct NutritionBetaEntry: View {
         }
     }
     private func open() {
-        presentation = .init(account: ActivityAccountBoundary.current, date: opensJournal ? Date() : context?.date ?? Date(), context: context, calendar: calendar, guidanceFirst: opensGuidance)
+        coordinator.present(context: context, calendar: calendar, opensJournal: opensJournal,
+                            guidanceFirst: opensGuidance, authStore: authStore, analytics: analyticsManager)
     }
 }
 
 private enum NutritionJournalScope: String { case day, history, workout }
 
 private struct NutritionJournalView: View {
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @StateObject private var store: NutritionLogStore
     @State private var date: Date
@@ -267,9 +303,11 @@ private struct NutritionJournalView: View {
     let context: NutritionWorkoutContext?
     let calendar: Calendar
     let workoutOrigin: Bool
+    let onClose: () -> Void
 
-    init(context: NutritionWorkoutContext?, date: Date, calendar: Calendar, account: ActivityAccountContext, workoutOrigin: Bool, guidanceFirst: Bool = false) {
+    init(context: NutritionWorkoutContext?, date: Date, calendar: Calendar, account: ActivityAccountContext, workoutOrigin: Bool, guidanceFirst: Bool = false, onClose: @escaping () -> Void) {
         self.context = context; self.calendar = calendar; self.workoutOrigin = workoutOrigin
+        self.onClose = onClose
         _date = State(initialValue: min(date, Date()))
         _showsRootGuidance = State(initialValue: guidanceFirst && context != nil)
         _scope = State(initialValue: guidanceFirst && context != nil ? .workout : .day)
@@ -315,7 +353,7 @@ private struct NutritionJournalView: View {
             .background(OutboundPalette.background)
             .navigationTitle(NutritionText.value(showsRootGuidance ? "guidance" : "title"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(NutritionText.value("done")) { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(NutritionText.value("done"), action: onClose) } }
             .sheet(item: $guidance, onDismiss: {
                 if let draft = guidanceDraft { editor = draft; guidanceDraft = nil }
             }) { context in
