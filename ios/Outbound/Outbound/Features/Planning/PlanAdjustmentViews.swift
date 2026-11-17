@@ -140,12 +140,13 @@ struct PlanAdjustmentSheet: View {
             .navigationTitle(planAdjustText(preview != nil ? "review_title" : action ?? "title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Let the navigation bar provide its native button chrome without a second bordered surface.
                 ToolbarItem(placement: .cancellationAction) {
                     if action != nil || preview != nil {
-                        Button(planAdjustText("back")) { goBack() }.buttonStyle(.bordered).disabled(busy)
+                        Button(planAdjustText("back")) { goBack() }.disabled(busy)
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) { Button(planAdjustText("cancel")) { dismiss() }.buttonStyle(.bordered).disabled(busy) }
+                ToolbarItem(placement: .topBarTrailing) { Button(planAdjustText("cancel")) { dismiss() }.disabled(busy) }
             }
             .safeAreaInset(edge: .bottom) {
                 if action != nil {
