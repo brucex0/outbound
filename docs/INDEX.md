@@ -34,6 +34,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Five-stage running implementation, decisions and verification | `docs/running-planning-implementation.md` |
 | External reference for Runna training-plan behavior | `docs/runna-training-plan-research.md` — public descriptions and limits of available evidence |
 | Live coaching operations and audio | `docs/live-coach-operations.md` |
+| iPhone Nutrition beta guidance, sources, local food logs and privacy | `docs/nutrition-beta.md` |
 | Stretch catalog, editor, generation | `docs/stretch-routines.md` |
 | Groups, membership approval, member invitations, weekly recurrence, and Social | `docs/run-groups.md`, `docs/social.md` |
 | Account-local Monday weeks, timezone initialization, partial plan weeks and cached calendar context | `docs/account-calendar.md` |

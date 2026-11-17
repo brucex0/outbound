@@ -14,6 +14,10 @@ Use analytics to answer a small set of product questions:
 
 Measure decisions and outcomes, not every tap. An event must support a product decision, funnel, reliability check, or privacy obligation.
 
+## Nutrition beta (iPhone)
+
+`nutrition_beta_exposed`, `nutrition_advice_viewed`, `nutrition_advice_explained`, `nutrition_log_saved` and `nutrition_log_deleted` measure discovery, source review and successful local log operations. Each has no feature properties; shared app context follows the standard contract. Food/drink content, portions, consumption timestamps, workout identifiers and health information are never included. See `docs/nutrition-beta.md` for the local-only storage boundary.
+
 ## Current State
 
 The app already has a provider-neutral foundation in `Core/Analytics`:

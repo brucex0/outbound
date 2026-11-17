@@ -1753,6 +1753,8 @@ private struct SimplifiedTodayView: View {
 
                     WorkoutExecutionNotes(intent: activeRunIntent)
 
+                    NutritionBetaEntry(context: .planned(intent: activeRunIntent, date: currentDay, planID: trainingPlanStore.activePlan?.id))
+
                     Button {
                         showsPlannedWorkoutDetails = false
                         Task { @MainActor in

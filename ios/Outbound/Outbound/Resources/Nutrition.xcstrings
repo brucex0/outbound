@@ -1,0 +1,1064 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "entry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutrition · Beta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutrición · Beta"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "营养 · 测试版"
+          }
+        }
+      }
+    },
+    "title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutrition"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutrición"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "营养"
+          }
+        }
+      }
+    },
+    "beta": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beta"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beta"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试版"
+          }
+        }
+      }
+    },
+    "phase.before": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Before workout"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antes del entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动前"
+          }
+        }
+      }
+    },
+    "phase.after": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After workout"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Después del entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动后"
+          }
+        }
+      }
+    },
+    "advice.before": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Before this workout, choose familiar foods with carbohydrate, such as toast, oats or a banana. Leave time to digest and adjust to your comfort. These are examples, not a required meal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antes de este entrenamiento, elige alimentos conocidos con carbohidratos, como tostadas, avena o un plátano. Deja tiempo para digerir y ajústalo a cómo te sientas. Son ejemplos, no una comida obligatoria."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动前可选择你吃惯的含碳水化合物的食物，例如吐司、燕麦或香蕉。留出消化时间，以身体舒适为准。这些只是举例，并非规定的餐食。"
+          }
+        }
+      }
+    },
+    "advice.short": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For endurance exercise under 45 minutes, carbohydrate during the session is usually unnecessary. Water is a practical drink for short sessions."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para el ejercicio de resistencia de menos de 45 minutos, normalmente no necesitas carbohidratos durante la sesión. El agua es una opción práctica para sesiones cortas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耐力运动不足45分钟时，通常不需要在运动中补充碳水化合物。短时运动可选择喝水。"
+          }
+        }
+      }
+    },
+    "advice.medium": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For a longer or harder session, plan access to a drink and consider how your usual meals fit around the workout. This beta does not estimate your carbohydrate or fluid needs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para una sesión más larga o intensa, procura tener bebida disponible y considera cómo encajan tus comidas habituales. Esta beta no calcula tus necesidades de carbohidratos ni de líquidos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动时间较长或强度较高时，请提前安排饮水，并结合平时的用餐习惯。这一测试版不会估算你的碳水化合物或饮水需求。"
+          }
+        }
+      }
+    },
+    "advice.long": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For endurance sessions of 90 minutes or more, plan food and drink for during the workout as well. Practice familiar options in training; avoid trying new sports foods on race day. Individual amounts need more context than this beta has."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para sesiones de resistencia de 90 minutos o más, planifica también qué comer y beber durante el ejercicio. Prueba opciones conocidas al entrenar; evita estrenar alimentos deportivos el día de la carrera. Las cantidades individuales requieren más información de la que tiene esta beta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耐力运动达到90分钟或更长时，也应提前安排运动中的食物和饮水。先在训练中尝试适合自己的选择，不要在比赛当天尝试新的运动食品。个人所需的具体量需要更多信息，超出了本测试版的能力范围。"
+          }
+        }
+      }
+    },
+    "advice.recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After this workout, a usual meal or snack with carbohydrate and protein can support recovery. Examples include yogurt with fruit, or rice with beans, tofu, eggs or fish. Choose foods that suit your dietary needs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Después de este entrenamiento, una comida o un tentempié habitual con carbohidratos y proteína puede ayudar a recuperarte. Por ejemplo, yogur con fruta o arroz con legumbres, tofu, huevos o pescado. Elige alimentos adecuados para tus necesidades."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动后，含碳水化合物和蛋白质的日常餐食或加餐有助于恢复，例如酸奶配水果，或米饭搭配豆类、豆腐、鸡蛋或鱼。请选择符合你饮食需求的食物。"
+          }
+        }
+      }
+    },
+    "advice.recovery.timing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no universal immediate eating countdown. Your overall daily intake matters. Rapid refueling protocols are intended for closely spaced demanding sessions; this beta does not know your recovery schedule."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay una cuenta atrás universal para comer de inmediato. La alimentación del día completo importa. Los protocolos de reposición rápida se orientan a sesiones exigentes muy próximas; esta beta no conoce tu calendario de recuperación."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "并不存在适用于所有人的“运动后必须马上进食”的倒计时。全天的饮食摄入同样重要。快速补给方案主要用于间隔很短的高负荷训练；本测试版不了解你的恢复安排。"
+          }
+        }
+      }
+    },
+    "advice.general.before": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General preparation: keep your usual balanced meals, choose familiar foods and allow time to digest. The workout type or duration is outside this beta’s supported endurance context, so no sport-specific fueling target is offered."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparación general: mantén tus comidas equilibradas habituales, elige alimentos conocidos y deja tiempo para digerir. El tipo o la duración del entrenamiento queda fuera del contexto de resistencia de esta beta, por lo que no se ofrece un objetivo específico de aporte energético."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般准备建议：保持日常均衡饮食，选择吃惯的食物，并留出消化时间。本次运动的类型或时长不在这一测试版支持的耐力运动范围内，因此不提供专项补给目标。"
+          }
+        }
+      }
+    },
+    "advice.general.after": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General recovery: return to your usual balanced meals and drink according to your needs. Workout-specific nutrition cannot be inferred from the available context. No food log means intake is unknown, not zero."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación general: vuelve a tus comidas equilibradas habituales y bebe según tus necesidades. La información disponible no permite deducir necesidades específicas. Si no hay registros, la ingesta es desconocida, no cero."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般恢复建议：回归日常均衡饮食，并按自身需要饮水。现有信息不足以推断这次运动的具体营养需求。没有饮食记录代表摄入未知，并不代表没有吃。"
+          }
+        }
+      }
+    },
+    "limitation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General guidance for healthy adults. Beta: not independently validated by a dietitian. Age, medical conditions, pregnancy, allergies and dietary needs are not assessed. For these situations or eating concerns, seek individual professional advice."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orientación general para adultos sanos. Beta: sin validación independiente por un dietista. No se evalúan edad, enfermedades, embarazo, alergias ni necesidades alimentarias. En estos casos o si tienes dificultades con la alimentación, busca asesoramiento profesional individual."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "面向健康成年人的一般建议。测试版尚未经过独立营养师验证，也未评估年龄、疾病、孕期、过敏或饮食需求。如涉及这些情况或有进食方面的困扰，请寻求专业人士的个别指导。"
+          }
+        }
+      }
+    },
+    "why": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Why this / Sources"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por qué / Fuentes"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建议依据与来源"
+          }
+        }
+      }
+    },
+    "rationale": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These are source-informed editorial rules, not a personalized diet plan or a medical prediction. Food examples have no calculated nutrient totals. Missing meal timing, intake, eligibility and recovery schedule are left unknown; no calorie burn is converted into an eating target."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son reglas editoriales basadas en fuentes, no un plan alimentario personalizado ni una predicción médica. Los ejemplos no incluyen cálculos de nutrientes. Se desconocen horarios de comida, ingesta, idoneidad y recuperación; las calorías gastadas no se convierten en un objetivo de ingesta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些建议由参考资料整理为固定规则，并非个性化食谱或医学预测。食物举例不附带估算的营养总量。未知的用餐时间、摄入量、适用条件和恢复安排不会被猜测；运动消耗也不会换算成进食目标。"
+          }
+        }
+      }
+    },
+    "context.known": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This selection uses the workout’s phase, endurance type and available duration. Planned duration is a target or estimate; after-workout advice uses the saved duration. Amounts remain qualitative because adult eligibility and individual needs are unconfirmed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La selección usa el momento, el tipo de resistencia y la duración disponible. Antes se usa la duración prevista o estimada; después, la duración guardada. No se indican cantidades porque no se han confirmado la edad adulta ni las necesidades individuales."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次选择依据运动前后阶段、耐力运动类型及已知时长。运动前使用目标或预计时长，运动后使用已保存的时长。由于尚未确认成年适用条件及个人需求，建议仅为定性内容。"
+          }
+        }
+      }
+    },
+    "context.general": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General fallback: endurance type or usable duration is missing or unsupported. This is not evidence that no fueling is needed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orientación general: falta el tipo de resistencia o una duración útil, o no son compatibles. Esto no significa que no necesites alimentarte."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般建议模式：耐力运动类型或有效时长缺失，或暂不支持。这并不意味着你不需要补给。"
+          }
+        }
+      }
+    },
+    "source.victoria": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Active Victoria — practical food examples"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Active Victoria — ejemplos de alimentos"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Active Victoria — 实用食物举例"
+          }
+        }
+      }
+    },
+    "source.victoria.scope": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Public exercise advice: familiar carbohydrate foods before activity and carbohydrate plus protein afterward. Examples must fit your own tolerances and dietary needs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consejos públicos de ejercicio: alimentos conocidos con carbohidratos antes y carbohidratos con proteína después. Adapta los ejemplos a tu tolerancia y necesidades."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "面向公众的运动建议：运动前选择熟悉的含碳水化合物食物，运动后搭配碳水化合物与蛋白质。举例需结合个人耐受及饮食需求。"
+          }
+        }
+      }
+    },
+    "source.ais": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Australian Institute of Sport — endurance fueling"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Australian Institute of Sport — nutrición de resistencia"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "澳大利亚体育学院 — 耐力运动补给"
+          }
+        }
+      }
+    },
+    "source.ais.scope": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duration-based carbohydrate guidance applies to endurance exercise. Its numeric athlete targets are not prescribed here; this beta uses only qualitative duration bands."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La orientación de carbohidratos por duración se aplica al ejercicio de resistencia. Aquí no se prescriben sus objetivos numéricos para deportistas; solo se usan tramos cualitativos de duración."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按时长划分的碳水化合物建议适用于耐力运动。此处不提供其中面向运动员的数值目标，仅按时长范围给出定性建议。"
+          }
+        }
+      }
+    },
+    "source.joint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ACSM / AND / DC (2016) — athletic nutrition"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ACSM / AND / DC (2016) — nutrición deportiva"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ACSM / AND / DC（2016）— 运动营养"
+          }
+        }
+      }
+    },
+    "source.joint.scope": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position paper for athletic performance. Rapid carbohydrate recovery guidance depends on less than 8 hours between demanding sessions; that condition is not assumed here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Documento de consenso para el rendimiento deportivo. La reposición rápida de carbohidratos depende de un intervalo menor de 8 horas entre sesiones exigentes; aquí no se da por hecho."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "面向运动表现的联合立场文件。快速碳水恢复方案取决于两次高负荷训练间隔不足8小时；此处不会假定你符合这一条件。"
+          }
+        }
+      }
+    },
+    "source.issn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ISSN (2017) — nutrient timing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ISSN (2017) — momento de ingesta"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ISSN（2017）— 营养摄入时机"
+          }
+        }
+      }
+    },
+    "source.issn.scope": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position statement for healthy exercising adults. Adequate daily intake matters; timing does not justify a universal immediate post-workout deadline. These foundational sources are not new clinical validation of this beta."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Documento de posición para adultos sanos que hacen ejercicio. La ingesta diaria adecuada importa; el momento no justifica un plazo inmediato universal tras entrenar. Estas fuentes de referencia no son una nueva validación clínica de esta beta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "面向健康运动成年人的立场声明。充足的每日摄入很重要；营养时机并不意味着所有人运动后都有一个即时进食期限。这些基础资料不代表本测试版已获得新的临床验证。"
+          }
+        }
+      }
+    },
+    "version": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule version: qualitative-v1"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versión de reglas: qualitative-v1"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "规则版本：qualitative-v1"
+          }
+        }
+      }
+    },
+    "logs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your food logs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus registros de comida"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的饮食记录"
+          }
+        }
+      }
+    },
+    "privacy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private, on this iPhone only. No cloud sync or nutrient estimates. Logs are excluded from device backup and removed when you delete your account; deleting the app also removes them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privados, solo en este iPhone. Sin sincronización en la nube ni estimaciones de nutrientes. No se incluyen en las copias de seguridad y se eliminan al borrar tu cuenta o la app."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录为私密内容，仅保存在这部iPhone上，不进行云同步，也不估算营养成分。记录不包含在设备备份中；删除账号或卸载应用也会删除记录。"
+          }
+        }
+      }
+    },
+    "add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log what you ate"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrar lo que comiste"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录实际饮食"
+          }
+        }
+      }
+    },
+    "all_logs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show all my food logs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar todos mis registros"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示我的全部饮食记录"
+          }
+        }
+      }
+    },
+    "empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No food logged here. Intake is unknown. Turn on all logs to find entries from other workouts."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay comida registrada aquí. La ingesta es desconocida. Activa todos los registros para ver los de otros entrenamientos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这里还没有饮食记录，摄入情况未知。开启全部记录可查看其他运动的记录。"
+          }
+        }
+      }
+    },
+    "storage_error": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t access or update your local food logs. Try again. Previously saved data has not been changed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo acceder a tus registros locales o actualizarlos. Inténtalo de nuevo. Los datos guardados no se han modificado."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取或更新本地饮食记录，请重试。之前保存的数据未被更改。"
+          }
+        }
+      }
+    },
+    "retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry loading"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a cargar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新加载"
+          }
+        }
+      }
+    },
+    "done": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
+          }
+        }
+      }
+    },
+    "delete_confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete this food log?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar este registro?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除这条饮食记录？"
+          }
+        }
+      }
+    },
+    "delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除"
+          }
+        }
+      }
+    },
+    "cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
+          }
+        }
+      }
+    },
+    "edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑"
+          }
+        }
+      }
+    },
+    "description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What did you eat or drink?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué comiste o bebiste?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你吃了或喝了什么？"
+          }
+        }
+      }
+    },
+    "note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portion or note (optional)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cantidad o nota (opcional)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "份量或备注（选填）"
+          }
+        }
+      }
+    },
+    "consumed_at": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you ate or drank"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuándo comiste o bebiste"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实际饮食时间"
+          }
+        }
+      }
+    },
+    "phase": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout phase"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momento del entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动阶段"
+          }
+        }
+      }
+    },
+    "actual_only": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Record actual consumption, not a suggestion. Choosing Before or After describes its relation to this workout."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registra lo que consumiste, no una sugerencia. Antes o Después indica su relación con este entrenamiento."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请记录实际摄入，而不是建议餐食。“运动前”或“运动后”表示这次饮食与该次运动的关系。"
+          }
+        }
+      }
+    },
+    "log_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Food log"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registro de comida"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "饮食记录"
+          }
+        }
+      }
+    },
+    "save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

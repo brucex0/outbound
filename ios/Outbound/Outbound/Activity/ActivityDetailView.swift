@@ -472,6 +472,10 @@ struct ActivityDetailView: View {
                         }
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
+                        if usesStoredActivity && showsPrivateDetails {
+                            NutritionBetaEntry(context: .completed(currentActivity))
+                                .padding(OutboundSpacing.screen)
+                        }
                         if showsPrivateDetails { guideHeroCard(currentActivity.reflection) }
                         if let bottomContent { bottomContent }
                     }

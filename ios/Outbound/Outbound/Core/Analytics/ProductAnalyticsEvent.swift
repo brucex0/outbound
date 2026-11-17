@@ -17,6 +17,11 @@ enum AnalyticsValue: Sendable, Equatable {
 }
 
 enum ProductEventName: String, Sendable, CaseIterable {
+    case nutritionBetaExposed = "nutrition_beta_exposed"
+    case nutritionAdviceViewed = "nutrition_advice_viewed"
+    case nutritionAdviceExplained = "nutrition_advice_explained"
+    case nutritionLogSaved = "nutrition_log_saved"
+    case nutritionLogDeleted = "nutrition_log_deleted"
     case inputSubmitted = "input_submitted"
     case appStartupResolved = "app_startup_resolved"
     case activityRecordingEntry = "activity_recording_entry"
@@ -387,6 +392,11 @@ enum ProductAnalyticsSchema {
         .appStartupResolved: [.destination, .latencyBucket, .sourceType],
         .activityRecordingEntry: [.entrySource, .result],
         .activitySetupViewed: [.entrySource],
+        .nutritionBetaExposed: [],
+        .nutritionAdviceViewed: [],
+        .nutritionAdviceExplained: [],
+        .nutritionLogSaved: [],
+        .nutritionLogDeleted: [],
         .activityConfigurationChanged: [.changeType, .selectionType, .activityType, .goalType, .targetBucket, .sourceType, .pacingStrategy],
         .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .aiCoachEnabled, .autoPauseEnabled, .autoStopAtGoal, .dogCompanionEnabled, .participantCountBucket],
         .activityPaused: [.sourceType],

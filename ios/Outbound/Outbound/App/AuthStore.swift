@@ -158,6 +158,7 @@ final class AuthStore: ObservableObject {
                 try ActivityAccountBoundary.validate(context)
                 try await APIClient.shared.deleteMyAccount(.init(identityToken: credential.identityToken, authorizationCode: credential.authorizationCode, rawNonce: credential.rawNonce))
                 try ActivityAccountBoundary.validate(context)
+                try NutritionLogStore.deleteAccountData(context)
                 try await ActivityPersistence.shared.deleteAll()
                 try ActivityAccountBoundary.validate(context)
                 guard await SessionCoordinator.shared.clear(expected: session) else { throw CancellationError() }

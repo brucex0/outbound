@@ -832,6 +832,8 @@ private struct ScheduledPlanWorkoutDetailView: View {
                     }
                 }
 
+                NutritionBetaEntry(context: .scheduled(workout, display: displayWorkout))
+
                 if let todaySuggestion {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(todaySuggestion.detail)
