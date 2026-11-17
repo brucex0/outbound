@@ -41,10 +41,27 @@ The singleton coordinator owns the screen models for the app’s retained flow. 
 - Share existing map surface/geometry helpers, not mutable camera state between screens. Replacing map renderers is outside this behavior-preserving extraction.
 - Reusable plan setup presents as a full-screen cover above the retained main shell when `OnboardingStore.isPresented` changes after startup. First-use onboarding retains its startup destination; finishing the reusable builder returns to the same Today draft. The existing builder analytics retain their presentation source.
 - Today retains the only `RecordView`/`ActivityFlowView`; its identity is stable across launch requests. Group Start closes its detail presentation and sends a request to that host, preserving its event/attendance context and immediate permission/GPS/countdown path.
+- Passive Today prescription refreshes retain the launch UUID and existing setup model. `ActivityFlowView` reconciles changed prescription data through `refreshPrescribedIntent`, rather than treating server/cache updates as a new recording entry. An open sheet, route-library draft, photo, and selected route survive. Planned selection adopts the updated workout underneath its route; an explicitly edited manual selection retains its sport/goal draft while the stored Planned choice updates. Removing a route restores that latest underlying workout. Explicit entry requests still get a new UUID and retain their existing setup-reset behavior; unfinished-session and recovery guards remain authoritative.
 - Re-entry during preflight, countdown, active/paused recording, review, save, or celebration reveals the existing session. It preserves that session’s intent, photos, sharing, and review. Explicit Group Start may attach its event context to an active/paused unlinked recorder without replacing its route, goals, metrics, or identity; an already-linked recording and review/save cannot be reassigned. Only setup can accept a replacement launch; setup drafts are refreshed without reconstructing the coordinator, recorder, or live screen.
 - Finish requires an active/paused recorder and no existing review; save accepts only the current pending review ID. These guards prevent stale finish/save callbacks from writing another activity or recovery checkpoint.
 - Today’s **Join this run** selection adds only event attribution at start, validated against eligible cached Social events; location consent remains a separate **Share live location** switch. Account-scoped completion markers remove finished-event Today controls through review, discard, save, and relaunch.
 - `activity_recording_entry` records `entry_source=app|group_activity` and `result=prepared|reused_existing`; it contains no activity/event/session IDs or personal data.
+
+### Manual startup-refresh probe
+
+For an isolated Debug Simulator, launch with `-OutboundUITestTodayPrescriptionRefresh`. Send the signal once to establish a local prescribed-workout fixture, then open Today overflow or the route picker and send it again:
+
+```sh
+xcrun simctl spawn <simulator-udid> notifyutil -p com.plainstride.outbound.debug.today-prescription-refresh
+```
+
+Each signal toggles the local Today customization between 20 and 30 minutes through the normal `defaultTodayIntent` observer. Only with the explicit probe flag, that local customization supplies the default intent independently of account/plan availability; no real plan is required. Verify the menu stays open, picker selection survives, Done retains the route, and Remove restores the updated workout. The probe has no observer without the opt-in argument, is compiled out of device/release builds, and never changes account/server data. This exercises refresh reconciliation; it does not reproduce real network startup timing or verify physical-device behavior.
+
+### Startup refresh verification — 2026-11-16
+
+- Simulator build, design-system guardrail and diff checks passed. Independent UX review passed the focused change at code revision `c162c9b2` after inspecting source and manual Simulator captures.
+- On an isolated iPhone 17 Pro / iOS 27.0 Simulator, explicit refreshes retained an open overflow menu, pending route selection, applied route, and a typed 47-minute goal with the keyboard open. Apply, Change/reopen/Close, and Remove remained usable; Remove kept the latest 20-minute prescription, and returning to manual Run restored its 47-minute draft.
+- Verification used synthetic guest data and a local imported route with the opt-in probe. No test suite ran. Original network-startup timing, physical-phone behavior, photo capture, nil-prescription runtime transitions, VoiceOver and the broader layout/theme matrix remain unverified.
 
 ## Implementation Sequence
 

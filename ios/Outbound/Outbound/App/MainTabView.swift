@@ -164,10 +164,23 @@ struct MainTabView: View {
             let activeIntent = activeLaunch?.intent
             guard activeIntent == nil || activeIntent == previousIntent else { return }
             guard activeIntent != intent else { return }
-            activeLaunch = RecordLaunch(intent: intent)
-            preActivityRoute = intent?.preparedRoute
+            // A refreshed prescription is data for the retained setup, not a
+            // new entry request. Keep its launch and presentation identity.
+            activeLaunch = RecordLaunch(id: activeLaunch?.id ?? UUID(), intent: intent)
             isActivityVisible = true
         }
+#if DEBUG && targetEnvironment(simulator)
+        .task { TodayPrescriptionRefreshProbe.installIfRequested() }
+        .onReceive(NotificationCenter.default.publisher(for: TodayPrescriptionRefreshProbe.notification)) { _ in
+            guard ProcessInfo.processInfo.arguments.contains(TodayPrescriptionRefreshProbe.launchArgument) else { return }
+            // Mutate the same input as a real Today customization/refresh. The
+            // normal defaultTodayIntent observer owns all reconciliation.
+            let seconds = customizedTodayIntent?.targetDurationSeconds == 1_200 ? 1_800 : 1_200
+            customizedTodayIntent = SessionIntent.freestyleRun.replacingGoal(
+                .timeSeconds(seconds), unitSystem: measurementPreferences.unitSystem
+            )
+        }
+#endif
         .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
             if wasPresented, !isPresented {
                 requestAppLocationAccessIfNeeded()
@@ -479,6 +492,14 @@ struct MainTabView: View {
     }
 
     private var defaultTodayIntent: SessionIntent? {
+#if DEBUG && targetEnvironment(simulator)
+        // Isolate the opt-in probe from real account/plan startup refreshes.
+        // Reconciliation still runs through the normal default intent observer.
+        if ProcessInfo.processInfo.arguments.contains(TodayPrescriptionRefreshProbe.launchArgument),
+           let customizedTodayIntent {
+            return customizedTodayIntent
+        }
+#endif
         guard let event = joinedActivityEventToday else { return personalTodayIntent }
         return (personalTodayIntent ?? .freestyleRun).paired(with: event)
     }
@@ -675,11 +696,12 @@ private struct NotificationPermissionPrimerHost: View {
 }
 
 private struct RecordLaunch: Identifiable {
-    let id = UUID()
+    let id: UUID
     let intent: SessionIntent?
     let startImmediately: Bool
 
-    init(intent: SessionIntent?, startImmediately: Bool = false) {
+    init(id: UUID = UUID(), intent: SessionIntent?, startImmediately: Bool = false) {
+        self.id = id
         self.intent = intent
         self.startImmediately = startImmediately
     }

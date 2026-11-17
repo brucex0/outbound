@@ -234,6 +234,38 @@ final class ActivityFlowCoordinator: ObservableObject {
         if startImmediately { ensureLocationReadyThenStart() }
     }
 
+    /// Passive Today refreshes update prescription data in the existing draft.
+    /// Only receiveLaunch may replace setup for an explicit new entry request.
+    func refreshPrescribedIntent(_ intent: SessionIntent?, for launchID: UUID) {
+        guard lastLaunchID == launchID, !hasUnfinishedSession,
+              setup.plannedWorkoutIntent != intent else { return }
+        let followsPrescription = setup.selectedWorkoutChoice == .planned
+            || (setup.plannedWorkoutIntent == nil && !setup.hasEditedLaunchConfiguration)
+        setup.plannedWorkoutIntent = intent
+        guard followsPrescription else { return }
+        guard let intent else {
+            selectWorkoutChoice(.sport(.run), trackChange: false)
+            return
+        }
+
+        let selectedRoute = setup.plannedIntent?.preparedRoute
+        let previousType = setup.plannedIntent?.resolvedActivityType
+        setup.selectedWorkoutChoice = .planned
+        setup.selectedGoalMode = .planned
+        if let selectedRoute {
+            setup.intentBeforeSelectedRoute = intent
+            setup.plannedIntent = setup.routeIntent(selectedRoute, appliedTo: intent)
+        } else {
+            setup.intentBeforeSelectedRoute = nil
+            setup.plannedIntent = intent
+            setup.selectedRouteDistanceMeters = intent.preparedRoute.map(Self.calculatePreparedRouteDistance)
+        }
+        reconcileCompanionContextAfterSportChange(
+            previousType: previousType, newType: setup.plannedIntent?.resolvedActivityType ?? intent.resolvedActivityType
+        )
+        ActivityDiagnosticLog.notice(.lifecycle, "Today prescription refreshed in retained activity setup")
+    }
+
     private func observeLaunchPreferences() {
         launchPreferenceObservation = launchPreferenceStore.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()

@@ -106,6 +106,9 @@ extension ActivityFlowView {
         .onChange(of: launchID, initial: true) { _, id in
             model.receiveLaunch(id: id, intent: initialIntent, startImmediately: host.startImmediately)
         }
+        .onChange(of: initialIntent) { _, intent in
+            model.refreshPrescribedIntent(intent, for: launchID)
+        }
         .onAppear {
             model.handleAppearance()
         }
