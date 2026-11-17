@@ -17,6 +17,11 @@ enum AnalyticsValue: Sendable, Equatable {
 }
 
 enum ProductEventName: String, Sendable, CaseIterable {
+    case nutritionJournalViewed = "nutrition_journal_viewed"
+    case nutritionJournalDateChanged = "nutrition_journal_date_changed"
+    case nutritionHistoryViewed = "nutrition_history_viewed"
+    case nutritionFoodRepeated = "nutrition_food_repeated"
+    case nutritionAssociationChanged = "nutrition_association_changed"
     case nutritionBetaExposed = "nutrition_beta_exposed"
     case nutritionAdviceViewed = "nutrition_advice_viewed"
     case nutritionAdviceExplained = "nutrition_advice_explained"
@@ -392,6 +397,11 @@ enum ProductAnalyticsSchema {
         .appStartupResolved: [.destination, .latencyBucket, .sourceType],
         .activityRecordingEntry: [.entrySource, .result],
         .activitySetupViewed: [.entrySource],
+        .nutritionJournalViewed: [],
+        .nutritionJournalDateChanged: [],
+        .nutritionHistoryViewed: [],
+        .nutritionFoodRepeated: [],
+        .nutritionAssociationChanged: [],
         .nutritionBetaExposed: [],
         .nutritionAdviceViewed: [],
         .nutritionAdviceExplained: [],

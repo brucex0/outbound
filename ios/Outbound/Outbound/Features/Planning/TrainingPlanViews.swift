@@ -793,6 +793,7 @@ private func workoutStatusLabel(_ status: String) -> String {
 
 private struct ScheduledPlanWorkoutDetailView: View {
     @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @State private var trackedOpen = false
 
@@ -832,7 +833,7 @@ private struct ScheduledPlanWorkoutDetailView: View {
                     }
                 }
 
-                NutritionBetaEntry(context: .scheduled(workout, display: displayWorkout))
+                NutritionBetaEntry(context: .scheduled(workout, display: displayWorkout, calendar: trainingPlanStore.nutritionCalendar))
 
                 if let todaySuggestion {
                     VStack(alignment: .leading, spacing: 8) {

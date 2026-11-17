@@ -1117,6 +1117,11 @@ final class TrainingPlanStore: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var recommendationRefreshTask: Task<Void, Never>?
 
+    /// Persisted account zone also applies to the food journal without an active plan.
+    var nutritionCalendar: Calendar {
+        authoritativeState?.calendar?.calendar ?? activePlan?.calendar?.calendar ?? currentWeek?.calendar?.calendar ?? calendar
+    }
+
     /// Actual recorded metrics, joined by exact completion receipt or private issuance.
     /// Keep prescribed plan progress independent of these activity totals.
     var completedPlanActivities: [TrainingPlanCompletedActivity] {

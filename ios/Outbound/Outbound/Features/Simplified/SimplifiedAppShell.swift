@@ -985,9 +985,13 @@ private struct SimplifiedTodayView: View {
                             .clipped()
                         }
 
+                        if activitySessionState == .idle {
+                            todayNutritionCard
+                                .padding(.horizontal, OutboundSpacing.screen)
+                                .reportsMapAttributionOcclusionHeight()
+                        }
                         if launchGoalMode == .planned
-                            || activitySessionState != .idle
-                            || activityEventToday != nil {
+                            || activitySessionState != .idle || activityEventToday != nil {
                             todayPeerCards
                                 .padding(.horizontal, OutboundSpacing.screen)
                                 .padding(.bottom, todayPeerCardsBottomPadding)
@@ -1389,6 +1393,17 @@ private struct SimplifiedTodayView: View {
         }
     }
 
+    private var todayNutritionCard: some View {
+        OutboundCard {
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                NutritionBetaEntry(context: trainingPlanStore.todaySuggestion.map {
+                    .planned(intent: $0.suggestedSession.intent, date: Date(), planID: trainingPlanStore.activePlan?.id, calendar: trainingPlanStore.nutritionCalendar)
+                }, opensJournal: true)
+                Text(NutritionText.value("entry_subtitle")).font(.subheadline).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
     private var todayPeerCardsBottomPadding: CGFloat {
         let goalPillHeight = activityLaunchMapControlsHeight
         let hasAdjacentFloatingContent = goalPillHeight > 0 || activityLaunchFloatingContentHeight > 0
@@ -1753,7 +1768,7 @@ private struct SimplifiedTodayView: View {
 
                     WorkoutExecutionNotes(intent: activeRunIntent)
 
-                    NutritionBetaEntry(context: .planned(intent: activeRunIntent, date: currentDay, planID: trainingPlanStore.activePlan?.id))
+                    NutritionBetaEntry(context: .planned(intent: activeRunIntent, date: Date(), planID: trainingPlanStore.activePlan?.id, calendar: trainingPlanStore.nutritionCalendar))
 
                     Button {
                         showsPlannedWorkoutDetails = false
@@ -2525,6 +2540,8 @@ private struct SimplifiedMeView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
+                    NutritionBetaEntry(opensJournal: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     OutboundCard {
                         HStack(spacing: 12) {
                             Button {

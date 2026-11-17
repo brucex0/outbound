@@ -149,6 +149,9 @@ enum OutboundPalette {
     static let surface = Color(uiColor: .secondarySystemBackground)
     static let primaryText = Color.primary
     static let secondaryText = Color.secondary
+    // Product maturity badge: fixed warm amber and dark ink retain contrast in every theme.
+    static let betaRibbon = Color(red: 1, green: 0.75, blue: 0.25)
+    static let betaRibbonText = Color(red: 0.20, green: 0.12, blue: 0.02)
     // Keep safety warnings amber across themes, with readable contrast on light cards.
     static let warning = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
@@ -177,9 +180,9 @@ struct OutboundCornerRibbon: View {
                 .fixedSize()
                 .padding(.horizontal, OutboundSpacing.compact / 2)
                 .padding(.vertical, OutboundSpacing.compact / 4)
-                .foregroundStyle(OutboundPalette.background)
+                .foregroundStyle(OutboundPalette.betaRibbonText)
                 .background {
-                    Rectangle().fill(OutboundPalette.primaryText).scaleEffect(x: 2, y: 1)
+                    Rectangle().fill(OutboundPalette.betaRibbon).scaleEffect(x: 2, y: 1)
                 }
                 .rotationEffect(.degrees(45))
         }
