@@ -958,7 +958,6 @@ private struct SimplifiedTodayView: View {
     @State private var activityLaunchFloatingContentHeight: CGFloat = 0
     @State private var activityLaunchMapControlsHeight: CGFloat = 0
     @State private var showsSocialInbox = false
-    @State private var presentedAdjustmentID: String?
     @State private var isApplyingWorkoutChange = false
     @State private var pendingWorkoutChangeBaseline: ActivitySuggestionResponse?
     @State private var pendingWorkoutChange: WorkoutEditApplyRequestDTO?
@@ -1047,12 +1046,6 @@ private struct SimplifiedTodayView: View {
                             .accessibilityIdentifier("today.overflow")
                     }
                 }
-            }
-            .onAppear {
-                presentPendingAdjustmentIfNeeded(personalizationStore.snapshot.pendingAdjustment?.id)
-            }
-            .onChange(of: personalizationStore.snapshot.pendingAdjustment?.id, initial: true) { _, adjustmentID in
-                presentPendingAdjustmentIfNeeded(adjustmentID)
             }
             .task(id: isSelected) {
                 guard isSelected else { return }
@@ -2027,15 +2020,6 @@ private struct SimplifiedTodayView: View {
             observedAt: activity.endedAt,
             freshUntil: tomorrow
         )
-    }
-
-    private func presentPendingAdjustmentIfNeeded(_ adjustmentID: String?) {
-        guard isSelected,
-              let adjustmentID,
-              adjustmentID != presentedAdjustmentID,
-              !isActivityFullscreenVisible else { return }
-        presentedAdjustmentID = adjustmentID
-        presentWorkoutChangeSheet()
     }
 
     private var companionInsightMessage: String {

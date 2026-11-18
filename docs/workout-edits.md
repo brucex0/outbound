@@ -18,6 +18,8 @@ Open when changing iOS Today editing, edit persistence, or recording attribution
 
 ## UI and execution
 
+- Today opens Change workout only from an explicit Change action (including the workout details action). Cached or newly refreshed pending recommendations never present the editor on launch, foreground, tab selection or snapshot updates. Pending recommendations remain in the user-opened sheet with their existing Apply update and Keep original plan actions.
+
 - The sheet freezes the displayed workout and server identity/revision at opening; background refreshes never retarget an unsaved draft. A stale save is rejected with its draft/key retained.
 - Missing capabilities do not block local goal, target, effort, reason or cached catalog drafting. Basic local bounds only validate input; known server restrictions remain in force. Apply/Use alone refresh a missing or expired baseline, and accept it only when the full frozen primary payload, day, plan context/version, activity watermark and decision still match. A mismatch updates canonical state for the next opening, keeps the current draft/selection, and requests retry or reopening; no revision is invented and no upload is queued.
 - Goal type is static text when phase preservation prevents conversion; the numeric time/distance field and effort retain their independent edit capabilities. Available selector chevrons follow their values. This uses the existing workout-edit analytics flow and `edit` operation; no event or private reason handling changes.
