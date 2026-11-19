@@ -1,6 +1,6 @@
 # Plainstride UX QA
 
-Every UX change receives an independent review. UX includes visual layout and components, strings/localization, interaction/navigation/forms/keyboard, accessibility, themes/shared components, and visible behavior, including backend-driven states. `AGENTS.md` defines the normal merge gate, immediate-merge exception, and exception to normal worker routing.
+Every UX change receives an independent review. UX includes visual layout and components, strings/localization, interaction/navigation/forms/keyboard, accessibility, themes/shared components, and visible behavior, including backend-driven states. Review runs in parallel with basic verification, device installation, and merge/completion; `AGENTS.md` defines this workflow and reviewer routing. QA is required but does not gate merge/completion.
 
 ## Reviewer setup
 
@@ -12,14 +12,14 @@ Every UX change receives an independent review. UX includes visual layout and co
 
 - The installer uses Python 3.11 or newer for the standard-library `tomllib` parser.
 - Installation targets `~/.codex/agents/plainstride-ux-qa.toml`, is repeatable, and refuses to replace different content unless explicitly passed `--force`. Use `--destination /tmp/agents` to inspect or verify an isolated installation.
-- Start a fresh Codex session so it discovers the personal agent definition. If the named agent is unavailable, the coordinator may spawn a configured GPT-6.1 Sol reviewer at Medium reasoning with this same contract. Record the actual model and reviewer path. If that model is unavailable, report a blocker; do not substitute or claim an independent review.
+- Start a fresh Codex session so it discovers the personal agent definition. If the named agent is unavailable, the coordinator may spawn a configured GPT-6.1 Sol reviewer at Medium reasoning with this same contract. Record the actual model and reviewer path. If that model is unavailable, report the review limitation and leave review outstanding; do not substitute or claim an independent review. Continue the authorized implementation/merge workflow.
 - Spawn with `fork_turns="none"`, `model="gpt-6.1-sol"`, and `reasoning_effort="medium"`. Supply a self-contained handoff and the tracked agent instructions if using the fallback. Verify the actual session model/effort: a full-history fork can inherit the coordinator's settings even when a custom role was selected.
 
 ## Handoff and report
 
-Give the reviewer the exact base and proposed revision, worktree, and dirty diff fingerprint; affected platforms and screens; relevant contracts; expected behavior; and available runtime, fixture, device, or screenshot evidence. Keep one editing owner. The reviewer does not edit application code or recursively delegate. The reviewer may run targeted UI checks and `python3 scripts/check-design-system.py --base <pre-change-commit>`, but never the full test suite or production data changes.
+Dispatch the reviewer as soon as implementation has a stable exact revision, in parallel with basic build/diff verification, device installation, and merge. Give the reviewer the exact base and review revision, worktree or durable commit reference, and diff fingerprint; affected platforms and screens; relevant contracts; expected behavior; and available runtime, fixture, device, or screenshot evidence. Keep one editing owner. The reviewer does not edit application code or recursively delegate. The reviewer may run targeted UI checks and `python3 scripts/check-design-system.py --base <pre-change-commit>`, but never the full test suite or production data changes.
 
-Include staged and unstaged changes and new untracked source files in the review scope and fingerprint. Any later UX edit invalidates the affected part of the report and requires re-review before merge.
+Prefer committed revisions so review remains reproducible after the implementation worktree is removed. If reviewing a dirty snapshot, include staged and unstaged changes and new untracked source files in its scope and fingerprint, and preserve the snapshot until review finishes. Any later UX edit invalidates the affected part of the report and requires a follow-up review of that exact revision; it does not delay merge. Record the reviewed commit and the resulting merge commit so findings can be traced to shipped code.
 
 The report must state one status: `Pass`, `Issues found`, or `Incomplete`, using this precedence: report `Issues found` when any actionable defect or source-level risk remains, even if evidence is also missing; otherwise report `Incomplete` when applicable evidence is missing; report `Pass` only when there are no unresolved findings and all applicable checks have adequate evidence. Runtime simulator/emulator checks are not part of the default workflow; run them only when Bruce explicitly requests them. Without runtime evidence, mark applicable runtime checks `Not run` and do not claim runtime behavior is verified. Include:
 
@@ -28,7 +28,9 @@ The report must state one status: `Pass`, `Issues found`, or `Incomplete`, using
 - Findings with severity, reproducible steps, expected behavior, and actual behavior. Separate observed defects from source-level risks.
 - Remaining unperformed checks and their limits.
 
-Review the implementation owner's exact diff and fix findings, then request review of the affected diff again. Normally, wait for the report before merge; unresolved issues or missing evidence that is applicable under the requested checks block QA pass and merge/completion unless Bruce explicitly accepts a documented waiver. If Bruce explicitly says to merge immediately, basic build/diff verification is sufficient to proceed without waiting for UX review; the review may finish separately, and any unresolved findings or unchecked behavior must be reported without claiming `Pass`. Source review and builds alone never prove runtime behavior.
+Review the implementation owner's exact diff. The coordinator does not wait for QA to merge or complete the implementation task: pending review, missing applicable evidence, `Incomplete`, actionable findings, or reviewer unavailability do not create a merge/completion gate or require a waiver. Basic build/diff verification, design-system checks, and applicable device-installation obligations remain in force. Source review and builds alone never prove runtime behavior.
+
+Report the status available at handoff, including `Pending` when no report has arrived (this is a coordinator progress label, not a reviewer verdict), and identify unchecked behavior. Keep an outstanding review running through completion and surface its report when it arrives. Address actionable findings promptly in the current task when practical or a clearly identified follow-up task, and independently re-review affected fixes. Preserve an honest `Issues found` or `Incomplete` status until its criteria are resolved; parallel delivery never turns missing evidence into a QA pass.
 
 ## Check matrix
 
@@ -42,7 +44,7 @@ Apply relevant checks to every affected screen and platform; explain each `N/A`.
 | Keyboard and input | Focus, input, scrolling, dismissal, save/cancel reachability, and preservation of edits where applicable. |
 | Interaction and states | Navigation and relevant loading, empty, error, offline, retry, save, and cancel behavior. Use source review for default review; simulator/emulator or representative-runtime checks are opt-in when Bruce explicitly requests them. |
 
-Do not report a runtime check as passed from code inspection or compilation. If Bruce requests runtime checks but evidence is unavailable, state what was not checked and why; use `Incomplete` unless actionable findings require `Issues found`. The coordinator applies the documented merge gate, including the explicit immediate-merge exception, in either case.
+Do not report a runtime check as passed from code inspection or compilation. If Bruce requests runtime checks but evidence is unavailable, state what was not checked and why; use `Incomplete` unless actionable findings require `Issues found`. The coordinator reports these limits while the parallel delivery workflow continues; no QA waiver is required.
 
 ## Setup dry run — 2026-11-09
 
