@@ -63,6 +63,12 @@ data class TodayUiState(
             is CachedResource.Failed -> planning.cachedValue
             CachedResource.Loading -> null
         }
+    val completedPlannedWorkoutToday: com.plainstride.outbound.core.model.PlannedWorkout?
+        get() = planningSnapshot?.let { snapshot ->
+            val today = java.time.LocalDate.now(snapshot.calendar?.zone() ?: java.time.ZoneOffset.UTC)
+            val required = snapshot.workouts.filter { !it.isOptional && it.isFor(today) }
+            if (required.any { it.status in setOf("planned", "pending") }) null else required.firstOrNull { it.status == "completed" }
+        }
     val pendingWorkoutToday: com.plainstride.outbound.core.model.PlannedWorkout?
         get() = planningSnapshot?.let { snapshot ->
             val today = java.time.LocalDate.now(snapshot.calendar?.zone() ?: java.time.ZoneId.of("UTC")).toString()
@@ -76,7 +82,7 @@ data class TodayUiState(
                 CachedResource.Loading -> null
             } ?: return null
             return snapshot.takeIf {
-                it.primary != null && it.isCurrentForAccount() && !isSavedPlannedWorkout(it.primary?.plannedWorkoutId)
+                completedPlannedWorkoutToday == null && it.primary != null && it.isCurrentForAccount() && !isSavedPlannedWorkout(it.primary?.plannedWorkoutId)
             }
         }
     val recoveryChangeRecommended: Boolean
@@ -100,7 +106,7 @@ data class TodayUiState(
             return snapshot.value.plan == null && !hasCurrentPlanSuggestion
         }
     val primarySuggestion: ActivitySuggestion?
-        get() = (suggestion as? CachedResource.Available)?.value?.takeIf { it.isCurrentForAccount() }?.primary?.takeUnless { isSavedPlannedWorkout(it.plannedWorkoutId) }
+        get() = (suggestion as? CachedResource.Available)?.value?.takeIf { completedPlannedWorkoutToday == null && it.isCurrentForAccount() }?.primary?.takeUnless { isSavedPlannedWorkout(it.plannedWorkoutId) }
     private fun isSavedPlannedWorkout(workoutId: String?): Boolean = workoutId != null &&
         planningSnapshot?.workouts?.any { it.id == workoutId && (it.status == "pending" || it.status == "completed") } == true
     val pendingAdjustment: AdjustmentProposal?
@@ -443,6 +449,10 @@ class TodayViewModel @Inject constructor(
             ),
         ),
     )
+
+    fun trackCompletedPlanActivityOpened() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+        AnalyticsProperty.Feature to "plan_completed_activity", AnalyticsProperty.Result to "opened",
+    )))
 
     fun trackRecoveryAdviceShown() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
         AnalyticsProperty.Feature to "planned_workout_recovery_advice",

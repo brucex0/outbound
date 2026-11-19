@@ -123,7 +123,18 @@ internal fun IssuedPlanSchedule(
             initializedWeekDisclosure = true
         }
     }
-    weeks.forEachIndexed { index, week ->
+    var showsPastWeeks by rememberSaveable(planning.plan?.id) { mutableStateOf(false) }
+    if (weeks.any { it.monday != null && it.monday < currentMonday }) {
+        val state = stringResource(if (showsPastWeeks) R.string.plan_workout_expanded else R.string.plan_workout_collapsed)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) {
+            showsPastWeeks = !showsPastWeeks
+            onWeekToggled(showsPastWeeks)
+        }.semantics { stateDescription = state }, verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.plan_past_weeks), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Icon(if (showsPastWeeks) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, contentDescription = null)
+        }
+    }
+    weeks.filter { showsPastWeeks || it.monday == null || it.monday >= currentMonday }.forEach { week ->
         val weekKey = week.monday?.toString()
         val expanded = week.monday == null || weekKey in expandedWeeks
         Column(Modifier.fillMaxWidth().padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -135,7 +146,7 @@ internal fun IssuedPlanSchedule(
                     else -> range
                 }
             if (week.monday == null) {
-                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             } else {
                 val expandedLabel = stringResource(R.string.plan_workout_expanded)
                 val collapsedLabel = stringResource(R.string.plan_workout_collapsed)
@@ -151,7 +162,15 @@ internal fun IssuedPlanSchedule(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        if (week.monday == currentMonday) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                Text(stringResource(R.string.plan_this_week), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                    }
                     Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -164,7 +183,7 @@ internal fun IssuedPlanSchedule(
                 val summary = if (complete) stringResource(R.string.plan_workout_completed_totals,
                     workoutDuration(activities.sumOf { it.durationSecs }), workoutDistance(activities.sumOf { it.distanceM }, units))
                     else stringResource(R.string.plan_workout_completed_totals_unavailable)
-                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             }
             if (expanded) week.workouts.groupBy { planningLogicalDate(it.scheduledDate)?.toString() ?: "undated-${it.id}" }.forEach { (_, day) ->
                 val primary = day.filterNot { it.isOptionalMobility }
@@ -245,6 +264,7 @@ internal fun CompactPlanPhaseSummary(planning: PlanningState, today: LocalDate, 
 @Composable
 internal fun ScheduledPlanWorkoutPage(
     workout: PlannedWorkout,
+    completedContent: (@Composable () -> Unit)? = null,
     suggestion: ActivitySuggestionEnvelope?,
     mobility: List<PlannedWorkout>,
     adjustment: String?,
@@ -266,6 +286,7 @@ internal fun ScheduledPlanWorkoutPage(
             if (workout.isOptional) Text(stringResource(R.string.today_race_goal_optional), style = MaterialTheme.typography.bodyLarge)
             if (workout.status !in setOf("planned", "completed")) Text(stringResource(statusLabel(workout.status)), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        completedContent?.invoke()
         if (suggestion != null && adapted != null) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             suggestion.guideLine.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             adapted.why.takeIf { it.isNotBlank() && it != suggestion.guideLine }?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -375,7 +396,7 @@ private fun PhasePace(target: JsonObject, units: MeasurementUnitSystem) {
 }
 
 @Composable
-private fun workoutTargetLine(workout: PlannedWorkout, adapted: ActivitySuggestion?, units: MeasurementUnitSystem): String {
+internal fun workoutTargetLine(workout: PlannedWorkout, adapted: ActivitySuggestion?, units: MeasurementUnitSystem): String {
     val calories = if (adapted != null) adapted.targetCalories else workout.targetCalories
     val distance = if (adapted != null) adapted.distanceMeters else workout.distanceMeters
     val duration = adapted?.effectiveWorkout?.targetDurationSeconds ?: adapted?.durationSeconds ?: adapted?.durationMinutes?.times(60) ?: workout.durationSeconds
@@ -393,7 +414,7 @@ internal fun workoutDistance(meters: Double, units: MeasurementUnitSystem): Stri
 }
 
 @Composable
-private fun workoutDuration(seconds: Int): String = when {
+internal fun workoutDuration(seconds: Int): String = when {
     seconds % 60 == 0 -> stringResource(R.string.today_minutes, seconds / 60)
     seconds < 60 -> stringResource(R.string.plan_workout_seconds, seconds)
     else -> stringResource(R.string.plan_workout_minutes_seconds, seconds / 60, seconds % 60)
@@ -412,4 +433,24 @@ private fun WorkoutStatusIcon(status: String) {
         modifier = Modifier.size(22.dp),
         tint = if (status == "completed") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+/** Exact private issuance linkage only; an unrelated same-day activity is never substituted. */
+@Composable
+internal fun CompletedPlanActivity(
+    workout: PlannedWorkout,
+    activities: List<com.plainstride.outbound.core.model.activity.SavedActivity>,
+    onOpen: (String) -> Unit,
+    showsHeading: Boolean = true,
+) {
+    val activity = activities.firstOrNull { it.deletedAt == null && it.performedWorkoutReference?.plannedWorkoutId == workout.id }
+    if (showsHeading) Text(stringResource(R.string.plan_workout_complete), style = MaterialTheme.typography.titleMedium)
+    if (activity != null) {
+        val viewLabel = stringResource(R.string.plan_view_completed_activity_accessibility)
+        androidx.compose.material3.OutlinedButton(onClick = { onOpen(activity.id) }, modifier = Modifier.semantics { contentDescription = viewLabel }) {
+            Text(stringResource(R.string.plan_view_completed_activity))
+        }
+    } else {
+        Text(stringResource(R.string.plan_completed_activity_unavailable), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

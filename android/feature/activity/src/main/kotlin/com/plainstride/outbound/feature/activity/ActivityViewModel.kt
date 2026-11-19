@@ -198,8 +198,15 @@ class ActivityViewModel @Inject constructor(
                     }
                 }
             }
+            val savedTitle = draft.title.trim().ifEmpty { current.title }
+            val displayReference = current.performedWorkoutReference?.let { reference ->
+                if (savedTitle == current.title) reference else reference.copy(
+                    displayContext = reference.displayContext?.copy(workoutTitle = savedTitle),
+                )
+            }
             val updated = current.copy(
-                title = draft.title.trim().ifEmpty { current.title },
+                title = savedTitle,
+                performedWorkoutReference = displayReference,
                 startedAt = draft.startedAt,
                 endedAt = Instant.parse(draft.startedAt).plusSeconds(draft.durationSecs.toLong()).toString(),
                 distanceM = draft.distanceM, durationSecs = draft.durationSecs,

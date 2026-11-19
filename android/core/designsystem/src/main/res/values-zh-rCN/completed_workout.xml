@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- D means the numbered workout in the programme week, never a weekday. -->
+    <string name="completed_workout_plan_day_week">%1$s：第%3$d周/第%2$d次</string>
+    <string name="completed_workout_plan_fallback">训练计划</string>
+    <string name="completed_plan_consistency">基础体能计划</string>
+    <string name="completed_plan_comeback">回归跑步计划</string>
+    <string name="completed_plan_5k">从零到 5K</string>
+    <string name="completed_plan_base_30">基础训练 · 每周 30 英里</string>
+    <string name="completed_plan_10k">10K 进阶计划</string>
+    <string name="completed_plan_10mile">10 英里训练计划</string>
+    <string name="completed_plan_half">半程马拉松计划</string>
+    <string name="completed_plan_marathon">马拉松训练计划</string>
+    <string name="completed_plan_half_hansons_beginner">Hansons 半马 · 初级</string>
+    <string name="completed_plan_half_hansons_advanced">Hansons 半马 · 进阶</string>
+    <string name="completed_plan_adaptive_consistency">自适应基础训练计划</string>
+    <string name="completed_plan_adaptive_comeback">自适应回归计划</string>
+    <string name="completed_plan_adaptive_5k">自适应 5K 计划</string>
+    <string name="completed_plan_adaptive_10k">自适应 10K 计划</string>
+    <string name="completed_plan_adaptive_10mile">自适应 10 英里计划</string>
+    <string name="completed_plan_adaptive_half">自适应半程马拉松计划</string>
+    <string name="completed_plan_adaptive_marathon">自适应马拉松计划</string>
+</resources>

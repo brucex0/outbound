@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- D means the numbered workout in the programme week, never a weekday. -->
+    <string name="completed_workout_plan_day_week">%1$s: D%2$d/wk%3$d</string>
+    <string name="completed_workout_plan_fallback">Training plan</string>
+    <string name="completed_plan_consistency">Base fitness builder</string>
+    <string name="completed_plan_comeback">Comeback runway</string>
+    <string name="completed_plan_5k">Couch to 5K</string>
+    <string name="completed_plan_base_30">Base building · 30 mi/week</string>
+    <string name="completed_plan_10k">10K builder</string>
+    <string name="completed_plan_10mile">10 mile plan</string>
+    <string name="completed_plan_half">Half marathon plan</string>
+    <string name="completed_plan_marathon">Marathon plan</string>
+    <string name="completed_plan_half_hansons_beginner">Hansons beginner half marathon</string>
+    <string name="completed_plan_half_hansons_advanced">Hansons advanced half marathon</string>
+    <string name="completed_plan_adaptive_consistency">Adaptive base builder</string>
+    <string name="completed_plan_adaptive_comeback">Adaptive comeback plan</string>
+    <string name="completed_plan_adaptive_5k">Adaptive 5K plan</string>
+    <string name="completed_plan_adaptive_10k">Adaptive 10K plan</string>
+    <string name="completed_plan_adaptive_10mile">Adaptive 10 mile plan</string>
+    <string name="completed_plan_adaptive_half">Adaptive half marathon plan</string>
+    <string name="completed_plan_adaptive_marathon">Adaptive marathon plan</string>
+</resources>

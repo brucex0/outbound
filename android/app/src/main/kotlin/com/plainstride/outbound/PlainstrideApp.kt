@@ -858,6 +858,7 @@ private fun SignedInApp(
                         ActivityStartWarmup(recordingViewModel)
                         val startLocation by recordingViewModel.startLocationUpdates.collectAsStateWithLifecycle()
                         TodayRoute(
+                            onOpenCompletedActivity = { navController.navigate(AppDetailRoutes.activity(it, "today_plan")) },
                             plannedWorkoutWarmupDuration = rememberTodayWarmupDuration(),
                             onOpenStretch = { navController.navigate(AppDetailRoutes.stretch("today")) { launchSingleTop = true } },
                             mapLocation = startLocation,

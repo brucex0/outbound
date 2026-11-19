@@ -218,4 +218,10 @@
     <string name="today_recovery_advice_title">Recovery recommended</string>
     <string name="plan_workout_completed_totals">Completed · %1$s · %2$s</string>
     <string name="plan_workout_completed_totals_unavailable">Completed totals unavailable</string>
+    <string name="plan_past_weeks">Past weeks</string>
+    <string name="plan_workout_complete">Planned workout complete</string>
+    <string name="plan_view_completed_activity">View</string>
+    <string name="plan_view_completed_activity_accessibility">View completed activity</string>
+    <string name="plan_completed_activity_unavailable">The linked activity is not available on this device yet.</string>
+    <string name="plan_this_week">This week</string>
 </resources>

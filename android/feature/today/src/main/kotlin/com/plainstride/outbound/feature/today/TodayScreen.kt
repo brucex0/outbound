@@ -202,6 +202,7 @@ fun TodayRoute(
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
     onBuildPlan: () -> Unit = onSetUpPlan,
+    onOpenCompletedActivity: (String) -> Unit = {},
     onStartManual: (TodayManualLaunch) -> Unit,
     shoes: List<TodayShoeOption> = emptyList(),
     selectedShoeId: String? = null,
@@ -261,6 +262,7 @@ fun TodayRoute(
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     val raceHistory by viewModel.raceHistory.collectAsStateWithLifecycle()
     TodayScreen(
+        onOpenCompletedActivity = { viewModel.trackCompletedPlanActivityOpened(); onOpenCompletedActivity(it) },
         raceHistory = raceHistory,
         unitSystem = unitSystem,
         state = state,
@@ -386,6 +388,7 @@ fun TodayScreen(
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
     onBuildPlan: () -> Unit,
+    onOpenCompletedActivity: (String) -> Unit = {},
     planPicker: PlanPickerUiState = PlanPickerUiState(),
     onChangePlan: () -> Unit = {},
     onEndPlan: () -> Unit = {},
@@ -672,6 +675,21 @@ fun TodayScreen(
                         if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED) stringResource(R.string.today_plan) else null,
                         if (hasPlanDetails && activityChoice == TodayActivityChoice.PLANNED) ({ openPlanDetails("today_planned_card_plan") }) else null,
                     )
+                    state.completedPlannedWorkoutToday != null && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
+                        suggestion = null, stale = state.isStale, updatedAtEpochMs = state.suggestionUpdatedAtEpochMs,
+                        completedToday = false, recoveryChangeRecommended = false, onRecoveryAdviceShown = {},
+                        weather = null, minimized = cardMinimized,
+                        onToggleMinimized = {
+                            cardMinimized = !cardMinimized
+                            displayPreferences.edit().putBoolean("planned_workout_minimized", cardMinimized).apply()
+                            onCardDisplayChanged(cardMinimized)
+                        },
+                        onOpen = { openPlanDetails("today_planned_card") }, onChange = {},
+                        onOpenPlan = { openPlanDetails("today_planned_card_plan") },
+                        completedWorkout = state.completedPlannedWorkoutToday,
+                        completedUnits = unitSystem,
+                        completedAction = { CompletedPlanActivity(state.completedPlannedWorkoutToday!!, raceHistory, onOpenCompletedActivity, showsHeading = false) },
+                    )
                     state.pendingWorkoutToday != null && activityChoice == TodayActivityChoice.PLANNED -> Card {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(state.pendingWorkoutToday!!.title, style = MaterialTheme.typography.titleLarge)
@@ -749,7 +767,7 @@ fun TodayScreen(
             ActivityLaunchDock(
                 suggestion = suggestion,
                 activeSession = state.activeSession,
-                completedToday = state.completedToday && suggestion?.plannedWorkoutId == null,
+                completedToday = state.completedToday && state.completedPlannedWorkoutToday == null && suggestion?.plannedWorkoutId == null,
                 activityChoice = activityChoice,
                 goalChoice = goalChoice,
                 indoor = indoor,
@@ -798,6 +816,7 @@ fun TodayScreen(
 
     if (showsPlanDetails && planning != null && activePlan != null) {
         ActivePlanDetailsSheet(
+            onOpenCompletedActivity = { showsPlanDetails = false; onOpenCompletedActivity(it) },
             completedActivities = raceHistory,
             units = unitSystem,
             onRaceGoalOpened = onRaceGoalOpened,
@@ -1329,6 +1348,9 @@ private fun WorkoutRecommendationCard(
     warmupDuration: String? = null,
     onOpenWarmup: () -> Unit = {},
     scheduledRest: Boolean = false,
+    completedWorkout: com.plainstride.outbound.core.model.PlannedWorkout? = null,
+    completedUnits: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem = com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,
+    completedAction: (@Composable () -> Unit)? = null,
 ) {
     var showsRecoveryAdvice by rememberSaveable(suggestion?.id, recoveryChangeRecommended) { mutableStateOf(false) }
     val toggleDescription = stringResource(if (minimized) R.string.today_expand_card else R.string.today_collapse_card)
@@ -1337,11 +1359,14 @@ private fun WorkoutRecommendationCard(
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        stringResource(if (completedToday) R.string.today_up_next else R.string.today_workout),
+                        stringResource(if (completedWorkout != null) R.string.plan_workout_complete else if (completedToday) R.string.today_up_next else R.string.today_workout),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                    if (completedWorkout != null) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
                     if (recoveryChangeRecommended && !scheduledRest) {
                         IconButton(
                             onClick = {
@@ -1362,14 +1387,15 @@ private fun WorkoutRecommendationCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f).then(if (scheduledRest) Modifier else Modifier.clickable(role = Role.Button, onClick = onOpen))) {
                         Text(
-                            if (scheduledRest) stringResource(R.string.today_scheduled_rest_body) else suggestion?.title.orEmpty(),
+                            if (scheduledRest) stringResource(R.string.today_scheduled_rest_body) else completedWorkout?.title ?: suggestion?.title.orEmpty(),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             maxLines = if (scheduledRest) Int.MAX_VALUE else 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    suggestion?.let { Text(stringResource(R.string.today_minutes, it.durationMinutes), style = MaterialTheme.typography.titleSmall) }
+                    if (completedWorkout != null) Text(workoutDuration(completedWorkout.durationSeconds), style = MaterialTheme.typography.titleSmall)
+                    else suggestion?.let { Text(stringResource(R.string.today_minutes, it.durationMinutes), style = MaterialTheme.typography.titleSmall) }
                     if (!scheduledRest) {
                         TextButton(
                             onClick = onToggleMinimized,
@@ -1388,6 +1414,10 @@ private fun WorkoutRecommendationCard(
                         Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = if (it.unsafe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     suggestion?.let { PhasePreview(it.steps) }
+                    completedWorkout?.let {
+                        Text(workoutTargetLine(it, null, completedUnits), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        PhasePreview(it.blocks.flatMap { block -> block.steps }.map { step -> listOfNotNull(step.durationSeconds?.let { seconds -> workoutDuration(seconds) }, step.label).joinToString(" · ") })
+                    }
                     if (stale) Text(
                         stringResource(R.string.today_cached_at, updatedAtEpochMs?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }.orEmpty()),
                         style = MaterialTheme.typography.labelMedium,
@@ -1413,12 +1443,12 @@ private fun WorkoutRecommendationCard(
                         }
                     }
                 }
-                if (!scheduledRest) HorizontalDivider()
+                if (!scheduledRest && completedWorkout == null) HorizontalDivider()
                 Row(Modifier.fillMaxWidth()) {
                     TextButton(
                         onClick = onOpenPlan ?: onOpen,
                         modifier = Modifier.then(
-                            if (scheduledRest) Modifier.heightIn(min = 48.dp)
+                            if (scheduledRest || completedWorkout != null) Modifier.heightIn(min = 48.dp)
                             else Modifier.weight(1f).heightIn(min = 48.dp),
                         ),
                     ) {
@@ -1426,7 +1456,7 @@ private fun WorkoutRecommendationCard(
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(if (onOpenPlan != null) R.string.today_plan else R.string.today_details))
                     }
-                    if (!scheduledRest) {
+                    if (!scheduledRest && completedWorkout == null) {
                         TextButton(onClick = onChange, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                             Icon(Icons.Default.Edit, null)
                             Spacer(Modifier.width(6.dp))
@@ -1434,6 +1464,7 @@ private fun WorkoutRecommendationCard(
                         }
                     }
                 }
+                completedAction?.invoke()
             }
         }
     }

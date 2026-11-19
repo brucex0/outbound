@@ -75,6 +75,7 @@ internal fun ActivePlanDetailsSheet(
     onEndPlan: () -> Unit,
     onEndConfirmation: () -> Unit,
     onRefresh: () -> Unit,
+    onOpenCompletedActivity: (String) -> Unit = {},
     completedActivities: List<com.plainstride.outbound.core.model.activity.SavedActivity> = emptyList(),
     onWorkoutDetailsOpened: () -> Unit = {},
     onPhaseSummaryShown: () -> Unit = {},
@@ -89,6 +90,8 @@ internal fun ActivePlanDetailsSheet(
         !suggestionStale && it.planContext?.planId == plan.id &&
             it.isCurrent(zone = planning.calendar?.zone() ?: java.time.ZoneOffset.UTC)
     }
+    val todayRequired = planning.issuedPlanWorkouts().filter { it.isFor(today) && !it.isOptional }
+    val completedToday = if (todayRequired.any { it.status in setOf("planned", "pending") }) null else todayRequired.firstOrNull { it.status == "completed" }
     var selectedWorkoutId by rememberSaveable(plan.id) { mutableStateOf<String?>(null) }
     var showsRaceGoal by rememberSaveable(plan.id) { mutableStateOf(false) }
     var confirmsEnd by rememberSaveable(plan.id) { mutableStateOf(false) }
@@ -129,7 +132,9 @@ internal fun ActivePlanDetailsSheet(
         PlanSectionCard(title = stringResource(R.string.plan_workout_your_schedule)) {
             // Only an unmatched same-day recommendation needs its own summary. A matched
             // adaptation belongs to its issued row and detail, with the original status.
-            if (todaySuggestion?.primary != null && planning.issuedPlanWorkouts().none { it.id == todaySuggestion.primary?.plannedWorkoutId }) {
+            if (completedToday != null) {
+                CompletedPlanActivity(completedToday, completedActivities, onOpenCompletedActivity)
+            } else if (todaySuggestion?.primary != null && planning.issuedPlanWorkouts().none { it.id == todaySuggestion.primary?.plannedWorkoutId }) {
                 RecommendationDetails(todaySuggestion.primary!!, todaySuggestion.guideLine)
                 onChangeWorkout?.let { change -> PlanDetailsAction(stringResource(R.string.today_change_workout), !busy, onClick = change) }
             }
@@ -162,6 +167,7 @@ internal fun ActivePlanDetailsSheet(
     planning.issuedPlanWorkouts().firstOrNull { it.id == selectedWorkoutId }?.let { workout ->
         ScheduledPlanWorkoutPage(
             workout = workout,
+            completedContent = if (workout.status == "completed") ({ CompletedPlanActivity(workout, completedActivities, onOpenCompletedActivity) }) else null,
             suggestion = todaySuggestion?.takeIf { workout.isFor(today) && it.primary?.plannedWorkoutId == workout.id },
             mobility = planning.optionalMobilityFor(workout),
             adjustment = planning.latestAdjustment?.message,

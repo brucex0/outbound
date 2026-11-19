@@ -218,4 +218,10 @@
     <string name="today_recovery_advice_title">建议先恢复</string>
     <string name="plan_workout_completed_totals">已完成 · %1$s · %2$s</string>
     <string name="plan_workout_completed_totals_unavailable">暂无已完成活动的汇总数据</string>
+    <string name="plan_past_weeks">过去几周</string>
+    <string name="plan_workout_complete">计划训练已完成</string>
+    <string name="plan_view_completed_activity">查看</string>
+    <string name="plan_view_completed_activity_accessibility">查看已完成的活动</string>
+    <string name="plan_completed_activity_unavailable">关联的活动暂时无法在此设备上查看。</string>
+    <string name="plan_this_week">本周</string>
 </resources>

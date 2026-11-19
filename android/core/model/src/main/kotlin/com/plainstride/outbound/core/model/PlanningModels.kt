@@ -36,6 +36,14 @@ data class WorkoutBlock(
 
 /** Private server issuance retained with the recording and activity outbox. */
 @Serializable
+data class CompletedWorkoutDisplayContext(
+    val workoutTitle: String,
+    val planTitleKey: String,
+    val dayNumber: Int,
+    val weekNumber: Int,
+)
+
+@Serializable
 data class PerformedWorkoutReference(
     val policyVersion: String,
     val issuanceId: String,
@@ -45,6 +53,7 @@ data class PerformedWorkoutReference(
     val performedAsIssued: Boolean,
     val workoutEditId: String? = null,
     val workoutRevision: String? = null,
+    val displayContext: CompletedWorkoutDisplayContext? = null,
 )
 
 @Serializable

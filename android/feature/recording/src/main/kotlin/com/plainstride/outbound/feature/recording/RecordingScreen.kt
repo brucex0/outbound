@@ -2029,7 +2029,17 @@ private fun ReflectionScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
                 ) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(if (shortSession) R.string.recording_reflection_promise_title else R.string.recording_nice_work), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        val completedWorkoutContext = launch.performedWorkoutReference?.displayContext
+                            ?.takeIf { launch.activityEventId == null && launch.followedRoute == null }
+                        if (completedWorkoutContext != null) {
+                            com.plainstride.outbound.core.designsystem.CompletedWorkoutTitle(
+                                completedWorkoutContext.workoutTitle, completedWorkoutContext,
+                                titleStyle = MaterialTheme.typography.headlineSmall,
+                                titleWeight = FontWeight.Bold,
+                            )
+                        } else {
+                            Text(stringResource(if (shortSession) R.string.recording_reflection_promise_title else R.string.recording_nice_work), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        }
                         Text(stringResource(if (shortSession) R.string.recording_reflection_promise_body else R.string.recording_reflection_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         launch.workoutGuideline?.takeIf(String::isNotBlank)?.let { Text(it, fontWeight = FontWeight.SemiBold) }
                         Text(stringResource(R.string.recording_reflection_highlight, formatDuration(snapshot.elapsedSeconds)), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)

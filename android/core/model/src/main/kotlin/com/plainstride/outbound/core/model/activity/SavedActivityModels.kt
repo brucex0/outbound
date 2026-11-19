@@ -88,6 +88,10 @@ data class SavedActivity(
     val performedWorkoutReference: com.plainstride.outbound.core.model.PerformedWorkoutReference? = null,
     val plannedWorkoutCompletionQuality: String? = null,
 ) {
+    val completedWorkoutDisplayContext: com.plainstride.outbound.core.model.CompletedWorkoutDisplayContext?
+        get() = if (activityEventId == null && followedRouteId == null) performedWorkoutReference?.displayContext else null
+    val completedWorkoutDisplayTitle: String get() = completedWorkoutDisplayContext?.workoutTitle ?: title
+
     val elapsedDurationSecs: Int get() = maxOf(durationSecs,
         java.time.Duration.between(java.time.Instant.parse(startedAt), java.time.Instant.parse(endedAt))
             .seconds.coerceIn(0, Int.MAX_VALUE.toLong()).toInt())

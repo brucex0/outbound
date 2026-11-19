@@ -262,12 +262,10 @@ private fun CompactRecentActivityRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                activity.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            com.plainstride.outbound.core.designsystem.CompletedWorkoutTitle(
+                activity.completedWorkoutDisplayTitle, activity.completedWorkoutDisplayContext,
+                titleStyle = MaterialTheme.typography.bodyMedium,
+                titleWeight = FontWeight.SemiBold,
             )
             Text(activityShortDate(activity.startedAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
@@ -399,7 +397,8 @@ private fun ActivityHistoryScreen(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f)) {
-                    Text(activity.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    com.plainstride.outbound.core.designsystem.CompletedWorkoutTitle(activity.completedWorkoutDisplayTitle, activity.completedWorkoutDisplayContext,
+                        titleWeight = FontWeight.SemiBold)
                     Text(activityDate(activity.startedAt), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -536,7 +535,8 @@ private fun ActivityDetailScreen(
         }
 
         TopAppBar(
-            title = { Text(activity.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            title = { com.plainstride.outbound.core.designsystem.CompletedWorkoutTitle(activity.completedWorkoutDisplayTitle, activity.completedWorkoutDisplayContext,
+                titleStyle = MaterialTheme.typography.titleLarge) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.activity_back)) } },
             actions = {
                 IconButton(onClick = { preparingShare = true }, enabled = !preparingShare) { Icon(Icons.Outlined.Share, stringResource(R.string.activity_share_card)) }
@@ -711,7 +711,8 @@ private fun CollapsedActivitySummary(activity: SavedActivity, unitSystem: Measur
     ) {
         Column(Modifier.weight(1f)) {
             Text(formatDistance(activity.distanceM, unitSystem), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(activity.title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            com.plainstride.outbound.core.designsystem.CompletedWorkoutTitle(activity.completedWorkoutDisplayTitle, activity.completedWorkoutDisplayContext,
+                titleStyle = MaterialTheme.typography.labelMedium, titleColor = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         SummaryMetric(if (activity.type == ActivityType.cycling) formatMovingSpeed(activity, unitSystem) else formatPace(activity.averagePaceSecsPerKm, unitSystem), stringResource(if (activity.type == ActivityType.cycling) R.string.activity_metric_avg_speed else R.string.activity_avg_pace), Alignment.End)
         SummaryMetric(formatDuration(activity.durationSecs), stringResource(R.string.activity_metric_moving_time), Alignment.End)
@@ -740,7 +741,8 @@ private fun ActivityStatsHero(
     }
     Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(activity.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2)
+            com.plainstride.outbound.core.designsystem.CompletedWorkoutTitle(activity.completedWorkoutDisplayTitle, activity.completedWorkoutDisplayContext,
+                titleStyle = MaterialTheme.typography.titleLarge, titleWeight = FontWeight.Bold, fallbackMaxLines = 2)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (activity.companionType != null) {
                     Text(
