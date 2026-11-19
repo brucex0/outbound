@@ -54,6 +54,7 @@ extension ActivityFlowView {
             recognitionPreviews: activity.recognitionPreviews,
             guidanceReport: activity.guidanceReport,
             workoutID: (model.activeIntent ?? model.setup.plannedIntent)?.id ?? "freestyle-run",
+            completedWorkoutContext: completedWorkoutContext,
             onGuidanceFeedback: model.handleGuidanceFeedback,
             onDiscardPrompted: {
                 var properties = model.outcomeProperties(for: activity.summary)
@@ -65,6 +66,12 @@ extension ActivityFlowView {
             },
             onDiscard: model.discardPendingActivity
         )
+    }
+
+    private var completedWorkoutContext: CompletedWorkoutDisplayContext? {
+        guard let intent = model.activeIntent ?? model.setup.plannedIntent,
+              intent.activityEvent == nil, intent.preparedRoute == nil else { return nil }
+        return intent.workoutReference?.performedWorkoutReference?.displayContext
     }
 
     var liveRunCompletionTransition: AnyTransition {

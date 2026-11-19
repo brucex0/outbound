@@ -516,10 +516,10 @@ struct ActivityDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(primaryStat)
                     .font(.title3.bold().monospacedDigit())
-                Text(currentActivity.title)
-                    .font(.caption)
+                CompletedWorkoutTitleView(title: showsPrivateDetails ? currentActivity.completedWorkoutDisplayTitle : currentActivity.title,
+                                          context: showsPrivateDetails ? currentActivity.completedWorkoutDisplayContext : nil,
+                                          titleFont: .caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
 
             Spacer(minLength: 8)
@@ -695,11 +695,11 @@ struct ActivityDetailView: View {
     private var statsHeroSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(currentActivity.title)
-                    .font(.title3.weight(.bold))
+                CompletedWorkoutTitleView(title: showsPrivateDetails ? currentActivity.completedWorkoutDisplayTitle : currentActivity.title,
+                                          context: showsPrivateDetails ? currentActivity.completedWorkoutDisplayContext : nil,
+                                          titleFont: .title3.weight(.bold), fallbackLineLimit: 2)
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 20)
-                    .lineLimit(2)
 
                 if let companionType = currentActivity.companionType {
                     companionType.savedPill

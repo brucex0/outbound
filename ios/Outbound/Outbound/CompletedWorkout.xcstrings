@@ -1,0 +1,52 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "completed_workout.plan_day_week": {
+      "comment": "Private completed workout heading. D is the numbered workout within the programme week, not the weekday.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: D%2$d/wk%3$d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: D%2$d/sem%3$d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@：第%3$d周/第%2$d次"
+          }
+        }
+      }
+    },
+    "completed_workout.plan_fallback": {
+      "comment": "Private completed workout heading. D is the numbered workout within the programme week, not the weekday.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Training plan"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan de entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "训练计划"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

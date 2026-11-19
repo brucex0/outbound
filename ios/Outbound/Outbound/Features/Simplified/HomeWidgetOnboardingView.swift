@@ -171,7 +171,8 @@ struct HomeWidgetOnboardingView: View {
                 } label: {
                     Text(String(localized: "widget.button.skip", table: "HomeWidget"))
                         .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 42)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .outboundTapTarget()
                 }
                 .buttonStyle(.plain)
 

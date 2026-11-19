@@ -218,6 +218,7 @@ struct StravaImportView: View {
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }
+                            .outboundTapTarget()
                         }
                         .buttonStyle(.plain)
                         .accessibilityValue(sportSelectionState(for: sport).accessibilityValue)

@@ -154,7 +154,7 @@ extension ActivityFlowCoordinator {
         switch choice {
         case .planned:
             guard !self.dependencies.trainingPlanStore.shouldBlockPlannedLaunch else {
-                if self.dependencies.trainingPlanStore.isScheduledRestDay {
+                if self.dependencies.trainingPlanStore.isScheduledRestDay || self.dependencies.trainingPlanStore.completedPlannedWorkoutToday != nil {
                     self.setup.selectedWorkoutChoice = .planned
                     self.setup.selectedGoalMode = .planned
                     if trackChange {
@@ -661,9 +661,22 @@ extension ActivityFlowCoordinator {
     }
 
     func openRouteLibrary() {
+        if let draft = setup.routeSelectionDraft {
+            if draft.belongsToCurrentPresentation { return }
+            draft.cancel()
+        }
         self.trackFeatureExposure("routes")
-        self.setup.showsRouteLibrary = true
+        self.setup.routeSelectionDraft = CommunityRouteSelectionDraft(
+            initialSelection: setup.plannedIntent?.preparedRoute
+        )
         self.track(.init(.routeLibraryOpened))
+    }
+
+    func dismissRouteLibrary(_ expectedDraft: CommunityRouteSelectionDraft? = nil) {
+        guard let draft = setup.routeSelectionDraft,
+              expectedDraft == nil || expectedDraft === draft else { return }
+        draft.cancel()
+        setup.routeSelectionDraft = nil
     }
 
     func removeSelectedRoute(_ route: PreparedRoute) {

@@ -400,7 +400,8 @@ extension ActivityFlowView {
                     }
                     .foregroundStyle(model.dependencies.musicStore.isPrimaryActionEnabled ? Color.orange : Color.secondary)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 42)
+                    .frame(minHeight: 44)
+                    .outboundTapTarget()
                 }
                 .buttonStyle(.plain)
                 .disabled(!model.dependencies.musicStore.isPrimaryActionEnabled)
@@ -425,6 +426,6 @@ extension ActivityFlowView {
             }
             Spacer(minLength: 8)
         }
-        .contentShape(Rectangle())
+        .outboundTapTarget()
     }
 }

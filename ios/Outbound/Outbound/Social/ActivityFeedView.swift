@@ -487,6 +487,7 @@ private struct SocialFeedPostCard: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 34, height: 34)
                         .background(Color(.tertiarySystemGroupedBackground), in: Circle())
+                        .outboundTapTarget()
                 }
                 .accessibilityLabel(String(localized: "social.post.options", defaultValue: "Post options"))
             }

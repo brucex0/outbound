@@ -17,6 +17,7 @@ struct PostRunSummaryView: View {
     let recognitionPreviews: [RecognitionPreview]
     let guidanceReport: LiveGuidanceSessionReport
     let workoutID: String
+    let completedWorkoutContext: CompletedWorkoutDisplayContext?
     let onGuidanceFeedback: (LiveGuidanceFeedback) -> Void
     let onDiscardPrompted: () -> Void
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection, Int?, String?) async -> Bool
@@ -45,6 +46,7 @@ struct PostRunSummaryView: View {
         recognitionPreviews: [RecognitionPreview],
         guidanceReport: LiveGuidanceSessionReport = .empty,
         workoutID: String = "freestyle-run",
+        completedWorkoutContext: CompletedWorkoutDisplayContext? = nil,
         onGuidanceFeedback: @escaping (LiveGuidanceFeedback) -> Void = { _ in },
         onDiscardPrompted: @escaping () -> Void = {},
         onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection, Int?, String?) async -> Bool,
@@ -58,6 +60,7 @@ struct PostRunSummaryView: View {
         self.recognitionPreviews = recognitionPreviews
         self.guidanceReport = guidanceReport
         self.workoutID = workoutID
+        self.completedWorkoutContext = completedWorkoutContext
         self.onGuidanceFeedback = onGuidanceFeedback
         self.onDiscardPrompted = onDiscardPrompted
         self.onSave = onSave
@@ -358,8 +361,13 @@ struct PostRunSummaryView: View {
 
     private var reflectionSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(reflection.title)
-                .font(.title2.bold())
+            if let completedWorkoutContext {
+                CompletedWorkoutTitleView(title: BuiltinWorkoutText.localized(completedWorkoutContext.workoutTitle),
+                                          context: completedWorkoutContext, titleFont: .title2.bold())
+            } else {
+                Text(reflection.title)
+                    .font(.title2.bold())
+            }
             Text(reflection.body)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

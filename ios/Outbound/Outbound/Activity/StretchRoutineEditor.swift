@@ -56,7 +56,7 @@ struct StretchRoutineEditor: View {
                                     Button(stretchCatalogText("ui.up")) { entries.swapAt(index, index - 1); onAction("reorder") }.disabled(index == 0)
                                     Button(stretchCatalogText("ui.down")) { entries.swapAt(index, index + 1); onAction("reorder") }.disabled(index == entries.count - 1)
                                     Button(stretchCatalogText("ui.remove"), role: .destructive) { removed = (index, entries.remove(at: index)); onAction("remove") }
-                                } label: { Image(systemName: "ellipsis.circle").frame(minWidth: 32, minHeight: 44) }
+                                } label: { Image(systemName: "ellipsis.circle").outboundTapTarget() }
                                 .accessibilityLabel(definition.title)
                             }
                         }

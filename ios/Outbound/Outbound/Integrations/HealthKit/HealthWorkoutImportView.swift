@@ -32,6 +32,7 @@ struct HealthWorkoutImportView: View {
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }
+                            .outboundTapTarget()
                         }
                         .buttonStyle(.plain)
                         .accessibilityValue(typeSelectionState(for: sport.activityType).accessibilityValue)
@@ -62,6 +63,7 @@ struct HealthWorkoutImportView: View {
                                 Text(workout.summaryLine(unitSystem: measurementPreferences.unitSystem))
                                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             }
+                            .outboundTapTarget()
                         }
                         .buttonStyle(.plain)
                     }

@@ -587,7 +587,7 @@ struct GroupCreateView: View {
             ForEach(connections) { connection in
                 Button { toggle(connection.person.id) } label: {
                     HStack { SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl); Text(connection.person.displayName).foregroundStyle(.primary); Spacer(); Image(systemName: selectedIDs.contains(connection.person.id) ? "checkmark.circle.fill" : "circle") }
-                        .frame(minHeight: 44)
+                        .outboundTapTarget()
                 }.buttonStyle(.plain)
             }
         }
@@ -784,7 +784,7 @@ struct GroupDetailView: View {
             if current.role == "member" || current.role == "admin" {
                 Menu {
                     Button(String(localized: "Leave group", table: "GroupArrival"), role: .destructive) { showsLeaveConfirmation = true }
-                } label: { Image(systemName: "ellipsis") }
+                } label: { Image(systemName: "ellipsis").outboundTapTarget() }
                 .accessibilityLabel(String(localized: "Group options", table: "GroupArrival"))
                 .disabled(isLeaving)
             }
@@ -1073,7 +1073,7 @@ struct GroupDetailView: View {
                                     memberPendingRemoval = member
                                 }
                             } label: {
-                                Image(systemName: "ellipsis").frame(width: 36, height: 44)
+                                Image(systemName: "ellipsis").outboundTapTarget()
                             }
                             .accessibilityLabel(String(localized: "group.member.actions", defaultValue: "Member actions"))
                         }

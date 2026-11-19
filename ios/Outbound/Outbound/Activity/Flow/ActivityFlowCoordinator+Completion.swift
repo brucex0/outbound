@@ -219,6 +219,7 @@ extension ActivityFlowCoordinator {
     }
 
     func clearPending(recoveryReason: ActiveSessionClearReason) {
+        let retainsPlannedCard = host.isEmbeddedInToday && recoveryReason == .saved && setup.selectedWorkoutChoice == .planned
         self.cancelStartCountdown(returnToSetup: true)
         self.review.elevationCorrectionTask?.cancel()
         self.review.elevationCorrectionTask = nil
@@ -232,11 +233,11 @@ extension ActivityFlowCoordinator {
         self.sessionController.reset()
         self.setup.plannedIntent = nil
         self.setup.curatedWorkoutIntent = nil
-        self.setup.selectedWorkoutChoice = .sport(.run)
+        self.setup.selectedWorkoutChoice = retainsPlannedCard ? .planned : .sport(.run)
         self.setup.manualActivityGoal = .freestyle
         self.didAutoStopAtGoal = false
         self.setup.manualSetupDrafts = [:]
-        self.setup.selectedGoalMode = .freestyle
+        self.setup.selectedGoalMode = retainsPlannedCard ? .planned : .freestyle
         self.setup.selectedSessionShoeID = nil
         self.setup.didApplyDefaultSessionShoe = false
         self.setup.isIndoorSession = false

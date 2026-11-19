@@ -17,6 +17,7 @@ Open when changing activity setup, countdown, live recording, finish/review, or 
 - `ActivityFlowView`: retained flow presentation and lifecycle subscription host. Keep modifier ordering and subscriptions together; split setup, live, and completion presentation into focused files.
 - `ActivityFlowCoordinator`: activity operations and cross-screen transitions through the existing session controller; receives explicit dependency and host-context values. Operations are grouped into launch/recovery, recording, completion/save, setup, lifecycle-event, and analytics files.
 - `ActivitySetupViewModel`: launch selection, per-sport drafts, goal editor state, formatting/validation, route-intent construction, recommendations, and provider setup actions.
+- `CommunityRouteSelectionDraft`: one route-picker presentation's pending choice and preparation task. Activity setup retains its instance outside the native sheet content; the route store continues to own only route data and caches.
 - `LiveActivityViewModel`: live page/panel and capture state, without copying recorder metrics.
 - `ActivityCountdownViewModel`: countdown step/task ownership.
 - `ActivityReviewViewModel`: finished snapshot, correction task, and post-save presentation state.
@@ -62,6 +63,26 @@ Each signal toggles the local Today customization between 20 and 30 minutes thro
 - Simulator build, design-system guardrail and diff checks passed. Independent UX review passed the focused change at code revision `c162c9b2` after inspecting source and manual Simulator captures.
 - On an isolated iPhone 17 Pro / iOS 27.0 Simulator, explicit refreshes retained an open overflow menu, pending route selection, applied route, and a typed 47-minute goal with the keyboard open. Apply, Change/reopen/Close, and Remove remained usable; Remove kept the latest 20-minute prescription, and returning to manual Run restored its 47-minute draft.
 - Verification used synthetic guest data and a local imported route with the opt-in probe. No test suite ran. Original network-startup timing, physical-phone behavior, photo capture, nil-prescription runtime transitions, VoiceOver and the broader layout/theme matrix remain unverified.
+- Bruce's subsequent physical-phone retest of `b68cacb9` reported the same overflow flashing and route-picker reset. The focused probe verified only prescription reconciliation; it did not resolve or reproduce the original startup problem.
+
+### Debug startup lifecycle diagnostics
+
+- Debug builds emit `ui_stability` lines to the `ActivityLifecycle` log and stdout for filtered `devicectl --console` capture. Release builds omit them.
+- Process-local presentation counters distinguish Today, overflow, activity-flow, and route-picker lifetimes. Picker events distinguish row actions, pending preparation, successful selection, store publication, and new-launch setup replacement; preparation outcomes use only safe error categories and source labels.
+- A one-time theme check compares two freshly requested accent colors, their bridged UIColors, and resolved light/dark colors. This diagnoses value identity without printing color values.
+- These diagnostics contain fixed labels, process-local counters, and booleans, never account/activity/route identifiers, route geometry, names, or user-entered content. They are local diagnostics, not product analytics.
+
+### Native picker retention follow-up — 2026-11-16
+
+- Authenticated iOS 26.6.2 phone diagnostics observed the first route-picker subtree disappear and receive a new presentation counter after discovery-store publications, while Today and activity-flow counters stayed unchanged and no new launch/setup replacement occurred. The recording also showed a selected checkmark and enabled confirmation become an empty, disabled selection. The old picker-local state did not survive native subtree replacement.
+- Phone and iOS 26.5 Simulator diagnostics found two reads of the same theme produced unequal `Color`/`UIColor` values with identical resolved light/dark colors. The theme now retains its accent provider per case to avoid those unnecessary native tint updates. This establishes a source of tint churn, not that every native subtree replacement has only that cause.
+- Setup owns an optional route draft and presents it by stable item identity. Recreated sheet content observes the same draft. Genuine open creates a fresh draft; Close, Apply, interactive dismissal, and a new activity launch invalidate its pending request. Child `onDisappear` does not clear it. Dismissal callbacks check the expected draft so an old sheet cannot clear a newer presentation.
+- Draft-owned tasks use request, active-presentation, and account-epoch guards. A later choice, canceled request, closed sheet, or different account cannot accept an old completion. A failed preparation retains the previous choice. Close does not apply pending changes; applying and explicit row-toggle removal keep their existing semantics. Query/filter/search focus remain local UI state.
+- Embedded or cached geometry uses the same synchronous validation, persistence, and LRU path as async preparation, without publishing a fake Preparing/disabled-confirmation frame. Network preparation retains its actual busy state and disables confirmation until completion. The async detail-view consumer keeps the same API.
+- Final application revision `572ad4b1` passed arm64 Simulator compilation, a signed phone build, the design-system guardrail, and diff checks. It was installed and launched on Bruce main; Bruce's subsequent response was “I think it's fixed.” This is tentative physical-device acceptance of the reported problem, not exhaustive regression coverage.
+- Manual iOS 26.5 checks used synthetic guest routes served by a local HTTP fixture. One picker presentation retained selection through store publications, repeated cached choices, a real delayed network response, and Dark → Light appearance switching. Apply produced the expected route card and map. Repeated accent reads compared equal for both `Color` and `UIColor`, with unchanged resolved light/dark values.
+- An intentional HTTP 503 retained the previous selection and showed temporary error feedback. Selecting a cached route superseded a delayed request; closing during preparation canceled acceptance, left the applied route unchanged, and reopening started from that applied route. These checks used UI actions and local logs, not the test suite.
+- Independent Sol/Medium review found no actionable source defects. Its QA status remains `Incomplete`: interactive swipe dismissal, switching distinct theme cases, and the broader accessibility/layout/input matrix lack final runtime evidence. The worktree and branch remain available for review, without merging into main. No test suite was authorized or run.
 
 ## Implementation Sequence
 

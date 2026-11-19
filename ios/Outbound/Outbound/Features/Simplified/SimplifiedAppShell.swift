@@ -958,6 +958,7 @@ private struct SimplifiedTodayView: View {
     @State private var activityLaunchFloatingContentHeight: CGFloat = 0
     @State private var activityLaunchMapControlsHeight: CGFloat = 0
     @State private var showsSocialInbox = false
+    @State private var isPreparingWorkoutChange = false
     @State private var isApplyingWorkoutChange = false
     @State private var pendingWorkoutChangeBaseline: ActivitySuggestionResponse?
     @State private var pendingWorkoutChange: WorkoutEditApplyRequestDTO?
@@ -1047,6 +1048,12 @@ private struct SimplifiedTodayView: View {
                     }
                 }
             }
+            .onAppear {
+#if DEBUG
+                StartupUIStabilityDiagnostics.recordThemeEquality(theme)
+#endif
+            }
+            .startupUIStabilityDiagnostics("today")
             .task(id: isSelected) {
                 guard isSelected else { return }
                 // Today owns the event card, so refresh the shared social snapshot
@@ -1066,7 +1073,11 @@ private struct SimplifiedTodayView: View {
             .onChange(of: todayWorkoutID) { _, _ in
                 Task { await loadCompanionTodayMessage(force: true) }
             }
+            .onChange(of: trainingPlanStore.completedPlannedWorkoutToday?.id) { _, completedID in
+                if completedID != nil { workoutChangePresentation = nil }
+            }
             .onChange(of: trainingPlanStore.activitySuggestion?.decision) { _, _ in
+                if hasCompletedPlannedWorkoutForEditing { workoutChangePresentation = nil }
                 companionTodayMessage = nil
                 Task { await loadCompanionTodayMessage(force: true) }
             }
@@ -1127,7 +1138,7 @@ private struct SimplifiedTodayView: View {
     }
 
     @MainActor private func applyWorkoutChange(_ selection: TodayWorkoutChangeSelection) async -> Bool {
-        guard !isApplyingWorkoutChange else { return false }
+        guard !isApplyingWorkoutChange, !hasCompletedPlannedWorkoutForEditing else { return false }
         guard var envelope = selection.baseline, envelope.primary != nil else { return false }
         isApplyingWorkoutChange = true
         defer { isApplyingWorkoutChange = false }
@@ -1266,9 +1277,11 @@ private struct SimplifiedTodayView: View {
             }
         } label: {
             activityOverflowLabel
+                .outboundTapTarget()
         }
         .accessibilityLabel(String(localized: "record.more_actions", defaultValue: "More activity options"))
         .accessibilityValue(activityOverflowAccessibilityValue)
+        .startupUIStabilityDiagnostics("today_overflow")
         .coordinatedTooltip(
             .activityOverflow,
             isEligible: isSelected && showsActivityOverflowMenu && activitySessionState == .idle,
@@ -1360,6 +1373,8 @@ private struct SimplifiedTodayView: View {
         VStack(spacing: OutboundSpacing.compact) {
             if let activityEventToday {
                 activityEventCard(activityEventToday)
+            } else if launchGoalMode == .planned, trainingPlanStore.completedPlannedWorkoutToday != nil {
+                plannedWorkoutCard
             } else if launchGoalMode == .planned
                 && trainingPlanStore.shouldBlockPlannedLaunch
                 && !trainingPlanStore.isScheduledRestDay {
@@ -1514,7 +1529,11 @@ private struct SimplifiedTodayView: View {
         VStack(spacing: trainingPlanStore.isScheduledRestDay || !isPlannedWorkoutCardMinimized ? OutboundSpacing.standard : 0) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: OutboundSpacing.compact) {
-                    Text(plannedWorkoutHeaderOverline)
+                    Label {
+                        Text(plannedWorkoutHeaderOverline)
+                    } icon: {
+                        if trainingPlanStore.completedPlannedWorkoutToday != nil { Image(systemName: "checkmark.circle.fill") }
+                    }
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(theme.accentColor)
                         .textCase(.uppercase)
@@ -1527,11 +1546,11 @@ private struct SimplifiedTodayView: View {
                     if trainingPlanStore.isScheduledRestDay {
                         plannedWorkoutHeaderContent
                     } else {
-                        Button(action: openPlannedWorkoutDetails) {
+                        Button(action: trainingPlanStore.completedPlannedWorkoutToday == nil ? openPlannedWorkoutDetails : onOpenPlan) {
                             plannedWorkoutHeaderContent
                         }
                         .buttonStyle(.plain)
-                        .accessibilityHint(String(localized: "Opens workout details"))
+                        .accessibilityHint(trainingPlanStore.completedPlannedWorkoutToday == nil ? String(localized: "Opens workout details") : String(localized: "Open plan details"))
 
                         Button(action: togglePlannedWorkoutCard) {
                             Image(systemName: isPlannedWorkoutCardMinimized ? "chevron.down" : "chevron.up")
@@ -1552,11 +1571,11 @@ private struct SimplifiedTodayView: View {
 
             if !trainingPlanStore.isScheduledRestDay && !isPlannedWorkoutCardMinimized {
                 VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                    WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
+                    if trainingPlanStore.completedPlannedWorkoutToday == nil { WorkoutWeatherGuidance(snapshot: weatherStore.snapshot) }
                     CompactIntervalPreview(phases: todayPhases)
                 }
 
-                if activitySessionState == .idle, !isActivityFullscreenVisible, activeRunIntent.resolvedActivityType == .running {
+                if trainingPlanStore.completedPlannedWorkoutToday == nil, activitySessionState == .idle, !isActivityFullscreenVisible, activeRunIntent.resolvedActivityType == .running {
                     Button {
                         Task {
                             await analyticsManager?.track(.init(.featureExposed, properties: [
@@ -1618,21 +1637,32 @@ private struct SimplifiedTodayView: View {
         .accessibilityHint(String(localized: "Open plan details"))
         .accessibilityIdentifier("todayScheduledRestPlan")
 
-        Button(action: openWorkoutChange) {
-            Label(String(localized: "today.change", defaultValue: "Change"), systemImage: "pencil")
+        if let completed = trainingPlanStore.completedPlannedWorkoutToday {
+            PlanCompletedActivityLink(workout: completed, showsHeading: false)
+        } else if !hasCompletedPlannedWorkoutForEditing {
+            Button(action: openWorkoutChange) {
+                Label(String(localized: "today.change", defaultValue: "Change"), systemImage: "pencil")
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("todayDirectEdit")
         }
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-        .frame(minHeight: 44)
-        .accessibilityIdentifier("todayDirectEdit")
 
-        NutritionBetaEntry(context: .planned(intent: activeRunIntent, date: Date(), planID: trainingPlanStore.activePlan?.id,
-                                            calendar: trainingPlanStore.nutritionCalendar), opensGuidance: true)
+        NutritionBetaEntry(context: plannedNutritionContext, opensGuidance: true)
             .accessibilityIdentifier("todayNutrition")
     }
 
+    private var plannedNutritionContext: NutritionWorkoutContext {
+        if let completed = trainingPlanStore.completedPlannedWorkoutToday {
+            return .scheduled(completed, display: completed, calendar: trainingPlanStore.nutritionCalendar)
+        }
+        return .planned(intent: activeRunIntent, date: Date(), planID: trainingPlanStore.activePlan?.id,
+                        calendar: trainingPlanStore.nutritionCalendar)
+    }
+
     private var showsPlannedRecoveryAdvice: Bool {
-        !trainingPlanStore.isScheduledRestDay
+        trainingPlanStore.completedPlannedWorkoutToday == nil && !trainingPlanStore.isScheduledRestDay
             && trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true
     }
 
@@ -1694,6 +1724,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var plannedWorkoutHeaderOverline: String {
+        if trainingPlanStore.completedPlannedWorkoutToday != nil { return String(localized: "plan.workout.complete", defaultValue: "Planned workout complete") }
         guard !trainingPlanStore.isScheduledRestDay else { return String(localized: "Today’s workout") }
         return trainingPlanStore.activitySuggestion?.relationship == "optionalRecovery"
             ? String(localized: "Up next")
@@ -1760,8 +1791,9 @@ private struct SimplifiedTodayView: View {
 
                     WorkoutExecutionNotes(intent: activeRunIntent)
 
-                    NutritionBetaEntry(context: .planned(intent: activeRunIntent, date: Date(), planID: trainingPlanStore.activePlan?.id, calendar: trainingPlanStore.nutritionCalendar))
+                    NutritionBetaEntry(context: plannedNutritionContext)
 
+                    if !hasCompletedPlannedWorkoutForEditing {
                     Button {
                         showsPlannedWorkoutDetails = false
                         Task { @MainActor in
@@ -1770,9 +1802,11 @@ private struct SimplifiedTodayView: View {
                         }
                     } label: {
                         Label("Change workout", systemImage: "slider.horizontal.3")
-                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.bordered)
+                    .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                    .frame(minHeight: 44)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(OutboundSpacing.screen)
@@ -1798,21 +1832,42 @@ private struct SimplifiedTodayView: View {
         presentWorkoutChangeSheet()
     }
 
+    private var hasCompletedPlannedWorkoutForEditing: Bool {
+        trainingPlanStore.completedPlannedWorkoutToday != nil
+            || (trainingPlanStore.activitySuggestion?.isValid() == true
+                && trainingPlanStore.activitySuggestion?.decision.reasons.contains("planned_workout_completed_today") == true)
+    }
+
     private func presentWorkoutChangeSheet() {
-        guard workoutChangePresentation == nil else { return }
-        // Item-driven presentation freezes identity and content before the first sheet frame.
-        // A background refresh must never attach an existing draft to a new slot/revision.
-        var baseline = trainingPlanStore.activitySuggestion
-#if DEBUG && targetEnvironment(simulator)
-        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData"),
-           ProcessInfo.processInfo.arguments.contains("-OutboundWorkoutEditMissingContextUITest") {
-            baseline?.editContext = nil
+        guard workoutChangePresentation == nil, !isPreparingWorkoutChange, !hasCompletedPlannedWorkoutForEditing else { return }
+        isPreparingWorkoutChange = true
+        Task { @MainActor in
+            defer { isPreparingWorkoutChange = false }
+            var baseline = trainingPlanStore.activitySuggestion
+            if baseline?.isValid() != true || baseline?.primary == nil
+                || (trainingPlanStore.activePlan != nil && baseline?.primary?.plannedWorkoutId == nil) {
+                do {
+                    baseline = try await trainingPlanStore.refreshWorkoutEditSuggestion()
+                } catch is CancellationError { return }
+                catch {
+                    ActivityDiagnosticLog.error(.sync, "operation=prepare_workout_editor error=\(ActivityDiagnosticLog.errorCategory(error))")
+                    workoutChangeToast = ProfileToast(text: String(localized: "today.refresh.failed"), style: .error)
+                    return
+                }
+            }
+            guard !hasCompletedPlannedWorkoutForEditing,
+                  baseline?.decision.reasons.contains("planned_workout_completed_today") != true else { return }
+            guard let baseline, baseline.isValid(), baseline.primary != nil,
+                  trainingPlanStore.activePlan == nil || baseline.primary?.plannedWorkoutId != nil else {
+                ActivityDiagnosticLog.notice(.sync, "operation=prepare_workout_editor result=no_editable_workout")
+                return
+            }
+            // Freeze a fresh editable identity before the sheet's first frame.
+            workoutChangePresentation = TodayWorkoutEditPresentation(
+                baseline: baseline,
+                displayedOverride: customizedRunIntent ?? currentCalibrationWorkout?.sessionIntent
+            )
         }
-#endif
-        workoutChangePresentation = TodayWorkoutEditPresentation(
-            baseline: baseline,
-            displayedOverride: customizedRunIntent ?? currentCalibrationWorkout?.sessionIntent
-        )
     }
 
     private func openPlannedWorkoutDetails() {
@@ -2052,6 +2107,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayWorkoutName: String {
+        if let completed = trainingPlanStore.completedPlannedWorkoutToday { return BuiltinWorkoutText.localized(completed.title) }
         if let customizedRunIntent {
             return workoutCopyWithoutLeadingDuration(customizedRunIntent.title)
         }
@@ -2060,6 +2116,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayTotalDuration: String {
+        if let completed = trainingPlanStore.completedPlannedWorkoutToday { return completed.durationLabel }
         if let targetCalories = activeRunIntent.targetCalories {
             let target = String(
                 format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"),
@@ -2108,6 +2165,9 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayPhases: [WorkoutPhaseItem] {
+        if let completed = trainingPlanStore.completedPlannedWorkoutToday {
+            return completed.steps.map { workoutPhaseItem(id: $0.id, label: $0.label, durationSeconds: $0.durationSeconds) }
+        }
         if let targetCalories = activeRunIntent.targetCalories {
             return [WorkoutPhaseItem(
                 id: activeRunIntent.id,

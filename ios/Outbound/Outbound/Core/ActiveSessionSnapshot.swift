@@ -192,6 +192,13 @@ nonisolated struct SessionIntentStep: Identifiable, Hashable, Codable, Sendable 
 }
 
 /// Private retained server issuance; persists with the recording and upload outbox.
+nonisolated struct CompletedWorkoutDisplayContext: Codable, Hashable {
+    var workoutTitle: String
+    let planTitleKey: String
+    let dayNumber: Int
+    let weekNumber: Int
+}
+
 nonisolated struct PerformedWorkoutReference: Codable, Hashable {
     let policyVersion: String
     let issuanceId: String
@@ -201,6 +208,7 @@ nonisolated struct PerformedWorkoutReference: Codable, Hashable {
     var performedAsIssued: Bool
     let workoutEditId: String?
     let workoutRevision: String?
+    var displayContext: CompletedWorkoutDisplayContext? = nil
 
     func locallyModified() -> Self {
         var result = self

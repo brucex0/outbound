@@ -281,9 +281,8 @@ private struct ActivityRowCard: View {
             HStack(spacing: 12) {
                 thumbnail
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(activity.title)
-                        .font(.headline)
-                        .lineLimit(1)
+                    CompletedWorkoutTitleView(title: activity.completedWorkoutDisplayTitle,
+                                              context: activity.completedWorkoutDisplayContext)
                     Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption)
                         .foregroundStyle(.secondary)

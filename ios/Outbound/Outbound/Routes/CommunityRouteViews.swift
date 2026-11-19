@@ -7,6 +7,9 @@ import UniformTypeIdentifiers
 enum CommunityRouteLibraryMode { case discover, mine }
 
 struct CommunityRouteLibraryView: View {
+#if DEBUG
+    @StateObject private var stabilityDiagnostics = StartupUIStabilityDiagnostics("route_picker")
+#endif
     @FocusState private var isSearchFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
@@ -21,12 +24,13 @@ struct CommunityRouteLibraryView: View {
     @State private var discoveryTask: Task<Void, Never>?
     @State private var importsFile = false
     @State private var importedRoute: PreparedRoute?
-    @State private var selectedRoute: PreparedRoute?
-    @State private var preparingRouteID: String?
-    @State private var preparationRequestID: UUID?
-    private let initialSelection: PreparedRoute?
+    @StateObject private var selectionDraft: CommunityRouteSelectionDraft
+    private var selectedRoute: PreparedRoute? { selectionDraft.selectedRoute }
+    private var preparingRouteID: String? { selectionDraft.preparingRouteID }
+    private var initialSelection: PreparedRoute? { selectionDraft.initialSelection }
     let mode: CommunityRouteLibraryMode
     private let onSelect: ((PreparedRoute?) -> Void)?
+    private let onClose: (() -> Void)?
     private let embedded: Bool
     private let importRequestID: Int
 
@@ -39,17 +43,27 @@ struct CommunityRouteLibraryView: View {
         self.embedded = embedded
         self.importRequestID = importRequestID
         _myRoutesOnly = State(initialValue: mode == .mine)
-        initialSelection = nil
+        _selectionDraft = StateObject(wrappedValue: CommunityRouteSelectionDraft(initialSelection: nil))
         onSelect = nil
+        onClose = nil
     }
 
     init(selection: PreparedRoute?, onSelect: @escaping (PreparedRoute?) -> Void) {
         mode = .discover
-        initialSelection = selection
+        _selectionDraft = StateObject(wrappedValue: CommunityRouteSelectionDraft(initialSelection: selection))
         self.onSelect = onSelect
+        onClose = nil
         embedded = false
         importRequestID = 0
-        _selectedRoute = State(initialValue: selection)
+    }
+
+    init(draft: CommunityRouteSelectionDraft, onClose: @escaping () -> Void, onSelect: @escaping (PreparedRoute?) -> Void) {
+        mode = .discover
+        _selectionDraft = StateObject(wrappedValue: draft)
+        self.onSelect = onSelect
+        self.onClose = onClose
+        embedded = false
+        importRequestID = 0
     }
 
     private var routes: [CommunityRoute] {
@@ -246,7 +260,7 @@ struct CommunityRouteLibraryView: View {
         .toolbar {
             if onSelect != nil {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "route.library.action.close", defaultValue: "Close")) { dismiss() }
+                    Button(String(localized: "route.library.action.close", defaultValue: "Close")) { closeSelection() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(
@@ -256,13 +270,9 @@ struct CommunityRouteLibraryView: View {
                                 ? String(localized: "route.library.action.remove_selection", defaultValue: "Remove Route")
                                 : String(localized: "route.library.action.use_selection", defaultValue: "Use This Route"))
                     ) {
-                        onSelect?(selectedRoute)
-                        dismiss()
+                        applySelection()
                     }
-                    .disabled(
-                        preparingRouteID != nil
-                            || (selectedRoute == nil && initialSelection == nil)
-                    )
+                    .disabled(!selectionDraft.canConfirm)
                 }
             }
         }
@@ -270,6 +280,9 @@ struct CommunityRouteLibraryView: View {
             importsFile = true
         }
         .onAppear {
+#if DEBUG
+            stabilityDiagnostics.record("appeared selected=\(selectedRoute != nil) preparing=\(preparingRouteID != nil)")
+#endif
             if myRoutesOnly {
                 guard store.beginAutomaticMineLoadIfNeeded() else { return }
                 Task { await store.refreshMine() }
@@ -278,6 +291,21 @@ struct CommunityRouteLibraryView: View {
                 Task { await store.refreshDiscovery() }
             }
         }
+#if DEBUG
+        .onDisappear { stabilityDiagnostics.record("disappeared") }
+        .onChange(of: selectedRoute) { _, selection in
+            stabilityDiagnostics.record("selection_changed selected=\(selection != nil)")
+        }
+        .onChange(of: preparingRouteID) { _, preparing in
+            stabilityDiagnostics.record("preparation_changed preparing=\(preparing != nil)")
+        }
+        .onChange(of: initialSelection) { _, selection in
+            stabilityDiagnostics.record("initial_selection_changed selected=\(selection != nil)")
+        }
+        .onReceive(store.objectWillChange) { _ in
+            stabilityDiagnostics.record("store_published selected=\(selectedRoute != nil) preparing=\(preparingRouteID != nil)")
+        }
+#endif
         .refreshable { await refreshVisibleRoutes() }
         .onChange(of: locator.location) { _, location in
             guard let location, nearbyActive else { return }
@@ -303,10 +331,9 @@ struct CommunityRouteLibraryView: View {
                 PreparedRoutePreview(route: route, onUse: nil)
             } else {
                 PreparedRoutePreview(route: route) {
-                    selectedRoute = route
+                    selectionDraft.chooseImportedRoute(route)
                     importedRoute = nil
-                    onSelect?(route)
-                    dismiss()
+                    applySelection()
                 }
             }
         }
@@ -321,6 +348,18 @@ struct CommunityRouteLibraryView: View {
                     }
             }
         }
+    }
+
+    private func closeSelection() {
+        selectionDraft.cancel()
+        onClose?()
+        dismiss()
+    }
+
+    private func applySelection() {
+        guard selectionDraft.canConfirm else { return }
+        onSelect?(selectedRoute)
+        closeSelection()
     }
 
     private func refreshVisibleRoutes() async {
@@ -415,9 +454,10 @@ struct CommunityRouteLibraryView: View {
     private func importedRouteDestination<Row: View>(route: PreparedRoute, @ViewBuilder row: () -> Row) -> some View {
         if onSelect != nil {
             Button {
-                preparationRequestID = nil
-                preparingRouteID = nil
-                selectedRoute = selectedRoute?.id == route.id ? nil : route
+#if DEBUG
+                stabilityDiagnostics.record("imported_row_action toggling_off=\(selectedRoute?.id == route.id)")
+#endif
+                selectionDraft.toggleImportedRoute(route)
             } label: {
                 HStack {
                     row()
@@ -440,26 +480,10 @@ struct CommunityRouteLibraryView: View {
     private func communityRouteDestination<Row: View>(route: CommunityRoute, @ViewBuilder row: () -> Row) -> some View {
         if onSelect != nil {
             Button {
-                // Invalidate older completions, including repeated requests for the same route.
-                let wasPreparing = preparingRouteID == route.id
-                preparationRequestID = nil
-                preparingRouteID = nil
-                if wasPreparing { return }
-                if selectedRoute?.id == route.id {
-                    selectedRoute = nil
-                    return
-                }
-                let requestID = UUID()
-                preparationRequestID = requestID
-                preparingRouteID = route.id
-                Task {
-                    let prepared = await store.prepare(route)
-                    guard preparationRequestID == requestID else { return }
-                    // A failed request must not discard the runner's previous choice.
-                    if let prepared { selectedRoute = prepared }
-                    preparationRequestID = nil
-                    preparingRouteID = nil
-                }
+#if DEBUG
+                stabilityDiagnostics.record("community_row_action toggling_off=\(selectedRoute?.id == route.id) already_preparing=\(preparingRouteID == route.id)")
+#endif
+                selectionDraft.toggleCommunityRoute(route, store: store)
             } label: {
                 HStack {
                     row()

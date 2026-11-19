@@ -190,6 +190,9 @@ final class ActivityFlowCoordinator: ObservableObject {
     func receiveLaunch(id: UUID, intent: SessionIntent?, startImmediately: Bool) {
         guard lastLaunchID != id else { return }
         let isFirstLaunch = lastLaunchID == nil
+#if DEBUG
+        StartupUIStabilityDiagnostics.emit("ui_stability component=activity_flow event=launch_received first=\(isFirstLaunch) unfinished=\(hasUnfinishedSession)")
+#endif
         lastLaunchID = id
         // Only this app-owned recorder may restore the journal, once per process.
         restoreInterruptedPhotosIfNeeded()
@@ -203,6 +206,10 @@ final class ActivityFlowCoordinator: ObservableObject {
             return
         }
         if !isFirstLaunch {
+#if DEBUG
+            StartupUIStabilityDiagnostics.emit("ui_stability component=activity_flow event=setup_replaced")
+#endif
+            dismissRouteLibrary()
             cancelStartCountdown(returnToSetup: true)
             cancelLocationWait()
             launchPreferenceStore = ActivityLaunchPreferenceStore(userID: AuthStore.currentUserId)
@@ -211,8 +218,9 @@ final class ActivityFlowCoordinator: ObservableObject {
             observeLaunchPreferences()
             setup.plannedIntent = intent ?? .freestyleRun
             setup.plannedWorkoutIntent = intent
-            setup.selectedGoalMode = intent == nil ? .freestyle : .planned
-            setup.selectedWorkoutChoice = intent == nil ? .sport(.run) : .planned
+            let retainsCompletedPlan = host.isEmbeddedInToday && dependencies.trainingPlanStore.completedPlannedWorkoutToday != nil
+            setup.selectedGoalMode = intent == nil && !retainsCompletedPlan ? .freestyle : .planned
+            setup.selectedWorkoutChoice = intent == nil && !retainsCompletedPlan ? .sport(.run) : .planned
             setup.selectedRouteDistanceMeters = intent?.preparedRoute.map(Self.calculatePreparedRouteDistance)
             activeIntent = nil
             showCamera = false
@@ -238,13 +246,14 @@ final class ActivityFlowCoordinator: ObservableObject {
     /// Only receiveLaunch may replace setup for an explicit new entry request.
     func refreshPrescribedIntent(_ intent: SessionIntent?, for launchID: UUID) {
         guard lastLaunchID == launchID, !hasUnfinishedSession,
-              setup.plannedWorkoutIntent != intent else { return }
+              setup.plannedWorkoutIntent != intent || (host.isEmbeddedInToday && dependencies.trainingPlanStore.completedPlannedWorkoutToday != nil && !setup.hasEditedLaunchConfiguration && setup.selectedWorkoutChoice != .planned) else { return }
         let followsPrescription = setup.selectedWorkoutChoice == .planned
             || (setup.plannedWorkoutIntent == nil && !setup.hasEditedLaunchConfiguration)
         setup.plannedWorkoutIntent = intent
         guard followsPrescription else { return }
         guard let intent else {
-            selectWorkoutChoice(.sport(.run), trackChange: false)
+            let retainsCompletedPlan = host.isEmbeddedInToday && dependencies.trainingPlanStore.completedPlannedWorkoutToday != nil
+            selectWorkoutChoice(retainsCompletedPlan ? .planned : .sport(.run), trackChange: false)
             return
         }
 
@@ -289,8 +298,9 @@ final class ActivityFlowCoordinator: ObservableObject {
         setup = ActivitySetupViewModel(dependencies: dependencies, preferences: preferences, launchPreferenceStore: launchPreferenceStore)
         setup.plannedIntent = initialIntent ?? .freestyleRun
         setup.plannedWorkoutIntent = initialIntent
-        setup.selectedGoalMode = initialIntent == nil ? .freestyle : .planned
-        setup.selectedWorkoutChoice = initialIntent == nil ? .sport(.run) : .planned
+        let retainsCompletedPlan = host.isEmbeddedInToday && dependencies.trainingPlanStore.completedPlannedWorkoutToday != nil
+        setup.selectedGoalMode = initialIntent == nil && !retainsCompletedPlan ? .freestyle : .planned
+        setup.selectedWorkoutChoice = initialIntent == nil && !retainsCompletedPlan ? .sport(.run) : .planned
         setup.selectedRouteDistanceMeters = initialIntent?.preparedRoute.map(Self.calculatePreparedRouteDistance)
         NotificationCenter.default.publisher(for: AccountConfigurationStore.changed)
             .sink { [weak self] _ in

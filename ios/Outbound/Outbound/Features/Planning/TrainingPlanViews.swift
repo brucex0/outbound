@@ -292,7 +292,9 @@ struct TrainingPlanRecommendationDetailView: View {
 struct ActiveTrainingPlanDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analytics
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
 
     let activePlan: ActiveTrainingPlan
@@ -303,6 +305,7 @@ struct ActiveTrainingPlanDetailView: View {
     var onEndPlan: (() -> Void)? = nil
     var completedActivities: [TrainingPlanCompletedActivity] = []
     var benchmarkSaveOverride: ((RunningBenchmarkReport?) async throws -> Void)? = nil
+    @State private var showsPastWeeks = false
     @State private var expandedScheduleWeeks: Set<Date> = []
     @State private var initializedScheduleDisclosurePlanID: String?
     @State private var showsPlanAdjustment = false
@@ -317,7 +320,9 @@ struct ActiveTrainingPlanDetailView: View {
                     Text(String(localized: "plan.details.your_scheduled_workouts", defaultValue: "Your schedule"))
                         .font(.headline)
 
-                    if let todaySuggestion, !scheduleWorkouts.contains(where: { $0.id == todaySuggestion.suggestedSession.plannedWorkoutID }) {
+                    if let completed = trainingPlanStore.completedPlannedWorkoutToday {
+                        PlanCompletedActivityLink(workout: completed)
+                    } else if let todaySuggestion, !scheduleWorkouts.contains(where: { $0.id == todaySuggestion.suggestedSession.plannedWorkoutID }) {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(String(localized: "plan.details.today_recommendation", defaultValue: "Today's recommendation"))
                                 .font(.subheadline.weight(.semibold))
@@ -339,7 +344,22 @@ struct ActiveTrainingPlanDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(scheduleGroups) { group in
+                    if !pastScheduleGroups.isEmpty {
+                        DisclosureGroup(isExpanded: $showsPastWeeks) {
+                            ForEach(pastScheduleGroups) { group in scheduleWeekView(group) }
+                        } label: {
+                            Text(String(localized: "plan.details.past_weeks", defaultValue: "Past weeks"))
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                                .frame(minHeight: 44, alignment: .leading)
+                        }
+                        .onChange(of: showsPastWeeks) { _, expanded in
+                            Task { await analytics?.track(.init(.featureExposed, properties: [
+                                .feature: .string("plan_past_weeks"), .result: .string(expanded ? "expanded" : "collapsed")
+                            ])) }
+                        }
+                    }
+                    ForEach(scheduleGroups.filter { !isPastScheduleGroup($0) }) { group in
                         scheduleWeekView(group)
                     }
                     ForEach(week.notes, id: \.self) { note in
@@ -571,6 +591,12 @@ struct ActiveTrainingPlanDetailView: View {
         return groups
     }
 
+    private var pastScheduleGroups: [TrainingPlanWorkoutWeekGroup] { scheduleGroups.filter(isPastScheduleGroup) }
+
+    private func isPastScheduleGroup(_ group: TrainingPlanWorkoutWeekGroup) -> Bool {
+        group.index != Int.min && scheduleWeekMonday(for: group.index) < currentAccountWeekMonday
+    }
+
     private var currentAccountWeekMonday: Date {
         let calendar = activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
         let today = calendar.startOfDay(for: Date())
@@ -599,13 +625,15 @@ struct ActiveTrainingPlanDetailView: View {
     private func scheduleWeekView(_ group: TrainingPlanWorkoutWeekGroup) -> some View {
         if group.index == Int.min {
             VStack(alignment: .leading, spacing: 8) {
-                Text(group.title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                Text(group.title).font(.headline).foregroundStyle(.primary)
                 scheduleWorkoutRows(group.workouts)
             }
             .padding(.top, 6)
         } else {
             let weekMonday = scheduleWeekMonday(for: group.index)
             let expanded = expandedScheduleWeeks.contains(where: { calendarDatesEqual($0, weekMonday) })
+            let isCurrentWeek = calendarDatesEqual(weekMonday, currentAccountWeekMonday)
+            let thisWeekLabel = String(localized: "plan.details.this_week", defaultValue: "This week")
             VStack(alignment: .leading, spacing: 8) {
                 Button {
                     if expanded { expandedScheduleWeeks = expandedScheduleWeeks.filter { !calendarDatesEqual($0, weekMonday) } }
@@ -616,7 +644,15 @@ struct ActiveTrainingPlanDetailView: View {
                     ])) }
                 } label: {
                     HStack {
-                        Text(group.title).font(.subheadline.weight(.semibold))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(group.title).font(.headline).foregroundStyle(.primary)
+                            if isCurrentWeek {
+                                HStack(spacing: 6) {
+                                    Circle().fill(theme.accentColor).frame(width: 6, height: 6)
+                                    Text(thisWeekLabel).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                                }
+                            }
+                        }
                         Spacer(minLength: 8)
                         Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.caption.weight(.semibold))
                     }
@@ -625,12 +661,12 @@ struct ActiveTrainingPlanDetailView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(group.title)
+                .accessibilityLabel(isCurrentWeek ? "\(group.title), \(thisWeekLabel)" : group.title)
                 .accessibilityValue(expanded ? String(localized: "plan.details.week_expanded", defaultValue: "Expanded") : String(localized: "plan.details.week_collapsed", defaultValue: "Collapsed"))
                 .accessibilityHint(String(localized: "plan.details.week_toggle_hint", defaultValue: "Shows or hides this week's workouts"))
                 Text(completedSummary(for: group.workouts))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
                 if expanded { scheduleWorkoutRows(group.workouts) }
             }
@@ -791,7 +827,44 @@ private func workoutStatusLabel(_ status: String) -> String {
     }
 }
 
+struct PlanCompletedActivityLink: View {
+    @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @Environment(\.analyticsManager) private var analytics
+    let workout: TrainingPlanWorkout
+    var showsHeading = true
+
+    private var activity: SavedActivity? {
+        guard let id = trainingPlanStore.completedPlanActivities.first(where: { $0.workoutID == workout.id })?.activityID else { return nil }
+        return activityStore.activities.first { $0.id == id }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            if showsHeading { Text(String(localized: "plan.workout.complete", defaultValue: "Planned workout complete")).font(.headline) }
+            if let activity {
+                NavigationLink {
+                    ActivityDetailView(activity: activity)
+                } label: {
+                    Label(String(localized: "plan.workout.view_activity", defaultValue: "View"), systemImage: "checkmark.circle.fill")
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                .frame(minHeight: 44)
+                .accessibilityLabel(String(localized: "plan.workout.view_activity.accessibility", defaultValue: "View completed activity"))
+                .simultaneousGesture(TapGesture().onEnded {
+                    Task { await analytics?.track(.init(.featureExposed, properties: [.feature: .string("plan_completed_activity"), .result: .string("opened")])) }
+                })
+            } else {
+                Text(String(localized: "plan.workout.activity_unavailable", defaultValue: "The linked activity is not available on this device yet."))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 private struct ScheduledPlanWorkoutDetailView: View {
+    @EnvironmentObject private var activityStore: ActivityStore
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -833,6 +906,9 @@ private struct ScheduledPlanWorkoutDetailView: View {
                     }
                 }
 
+                if workout.status == "completed" {
+                    PlanCompletedActivityLink(workout: workout)
+                }
                 NutritionBetaEntry(context: .scheduled(workout, display: displayWorkout, calendar: trainingPlanStore.nutritionCalendar))
 
                 if let todaySuggestion {

@@ -35,6 +35,7 @@ struct SocialConnectionsPreviewCard: View {
                             systemImage: "person.badge.plus"
                         )
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .outboundTapTarget()
                     }
                     .buttonStyle(.plain)
                 } else {

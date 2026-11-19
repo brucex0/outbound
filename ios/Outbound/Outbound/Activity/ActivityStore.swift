@@ -819,6 +819,11 @@ final class ActivityStore: ObservableObject {
             if abs(distanceM - activity.distanceM) > 0.5 { editedFields.append("distance") }
             if durationSecs != activity.durationSecs { editedFields.append("duration") }
             if gear != activity.gear { editedFields.append("shoe") }
+            var performedWorkoutReference = activity.performedWorkoutReference
+            if !cleanedTitle.isEmpty, cleanedTitle != activity.title {
+                // Presentation metadata is private and never authorizes completion.
+                performedWorkoutReference?.displayContext?.workoutTitle = cleanedTitle
+            }
 
             let avgPace = activity.activityType.plausibleAveragePace(
                 durationSeconds: Double(durationSecs),
@@ -831,7 +836,7 @@ final class ActivityStore: ObservableObject {
                 title: cleanedTitle.isEmpty ? activity.title : cleanedTitle,
                 guideNudge: activity.guideNudge,
                 reflection: activity.reflection,
-                sessionEffortRating: activity.sessionEffortRating, performedWorkoutReference: activity.performedWorkoutReference, plannedWorkoutCompletionQuality: activity.plannedWorkoutCompletionQuality,
+                sessionEffortRating: activity.sessionEffortRating, performedWorkoutReference: performedWorkoutReference, plannedWorkoutCompletionQuality: activity.plannedWorkoutCompletionQuality,
                 createdAt: activity.createdAt,
                 startedAt: startedAt,
                 endedAt: startedAt.addingTimeInterval(TimeInterval(durationSecs)),

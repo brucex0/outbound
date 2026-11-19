@@ -415,6 +415,10 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 - iOS and Android `activity_share_previewed` include `count_bucket` for the coarse number of geotagged photos eligible for route annotations; it excludes photo content, identifiers, and coordinates. Off-map or unavailable thumbnails may be omitted from the rendered card.
 - iOS and Android post-save sharing reuse `activity_share_previewed` and `activity_share_action` with `source_type=post_save`; preparation failure uses `result=prepare_failed`; Android share-sheet launch failure uses `result=share_failed`. No activity identifiers, exact metrics, or content are included.
 
+## Control hit targets
+
+- Enlarging a control's label hit area retains its existing action analytics. Taps on row padding or transparent spacers execute the same action and event path as taps on text; no separate hit-area event or coordinate is collected.
+
 ## Account Statistics
 
 - iOS and Android Me weekly summaries emit `feature_exposed` with only `feature=me_weekly_run_goal`. Goal frequency, activity counts, schedule differences, dates, source IDs, and health measurements are excluded. Existing server-statistics refresh and Progress-entry events remain unchanged.
@@ -518,3 +522,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - `feature_exposed` records only fixed `feature=plan_adjustment_move|availability|pause|edit_pause|resume|rebuild|end|undo` with `result=opened|previewed|applied|failed`. Applied follows accepted canonical state. The reused event editor retains its existing race-goal events.
 - Backend `plan_change_preview` and `plan_change_apply` diagnostics carry only bounded operation/result; failures carry operation/status/category/error type. Preview suppresses speculative generated/catalog refresh diagnostics.
 - Account/plan/workout/command IDs, revisions, hashes, dates, weekday selections, schedule contents, readiness responses and optional reasons are excluded. Reasons remain only in private `PlanChangeCommand` audit rows and never act as readiness evidence.
+
+- iOS expanding the Plan Details past-week group uses `feature_exposed` with fixed `feature=plan_past_weeks`, `result=expanded|collapsed`; Android reuses the existing `plan_schedule_week_toggled` event for that disclosure. Opening an exactly associated completed activity uses `feature_exposed` with fixed `feature=plan_completed_activity`, `result=opened`. No week numbers, dates, account/activity/workout identifiers, receipt data or metrics are included. Backend `planned_workout_complete` reports only bounded `result=complete`, `source=active_plan`.

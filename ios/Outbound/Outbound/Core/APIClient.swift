@@ -1554,9 +1554,8 @@ private extension PlanningAPIStateResponse {
             planWorkouts: planWorkouts
         )
         let scheduledWorkouts = weekWorkouts.map { $0.trainingPlanWorkout() }
-        let weekAnchor = calendar.date(byAdding: .day, value: (currentWeekIndex - 1) * 7, to: calendar.dateInterval(of: .weekOfYear, for: planStart)?.start ?? calendar.startOfDay(for: planStart)) ?? calendar.startOfDay(for: planStart)
         let planSchedule = planWorkouts.filter { workout in
-            guard let date = APIDateParser.planningDate(from: workout.scheduledDate, calendar: calendar), date >= weekAnchor else { return false }
+            guard APIDateParser.planningDate(from: workout.scheduledDate, calendar: calendar) != nil else { return false }
             return !["cancelled", "canceled", "superseded", "rest"].contains(workout.status.lowercased())
         }.map { $0.trainingPlanWorkout() }
         let notificationWorkouts = upcoming.compactMap { workout -> ScheduledWorkoutReminder? in

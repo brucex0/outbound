@@ -1137,6 +1137,20 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
+    var completedPlannedWorkoutToday: TrainingPlanWorkout? {
+        guard let plan = activePlan else { return nil }
+        let calendar = plan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar()
+        let workouts = plan.plannedSchedule ?? currentWeek?.scheduledWorkouts ?? []
+        func isToday(_ workout: TrainingPlanWorkout) -> Bool {
+            let date = workout.scheduledDateKey.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) }
+                ?? workout.logicalScheduledDate
+            return date.map { calendar.isDateInToday($0) } == true
+        }
+        // A saved unrelated activity never completes a planned slot.
+        guard !workouts.contains(where: { !$0.isOptional && ["planned", "pending", "pending_sync", "sync_conflict"].contains($0.status ?? "planned") && isToday($0) }) else { return nil }
+        return workouts.first { !$0.isOptional && $0.status == "completed" && isToday($0) }
+    }
+
     var planAvailabilityAdvice: String? {
         guard let activePlan, let availability = activePlan.availability else { return nil }
         return availability.advice(at: Date(), calendar: activePlan.calendar?.calendar ?? PlanningCalendarContext.accountCalendar())
@@ -1177,7 +1191,7 @@ final class TrainingPlanStore: ObservableObject {
     }
 
     var shouldBlockPlannedLaunch: Bool {
-        currentRestRecommendation != nil || isScheduledRestDay
+        completedPlannedWorkoutToday != nil || currentRestRecommendation != nil || isScheduledRestDay
     }
 
     private var currentRestRecommendation: ActivitySuggestionResponse? {
@@ -1186,6 +1200,7 @@ final class TrainingPlanStore: ObservableObject {
 
     var plannedLaunchBlockedMessage: String {
         if let planAvailabilityAdvice { return planAvailabilityAdvice }
+        if completedPlannedWorkoutToday != nil { return String(localized: "plan.workout.complete", defaultValue: "Planned workout complete") }
         if currentRestRecommendation?.workoutEditOperation == "skip" {
             return String(localized: "today.edit.skipped", defaultValue: "Today’s workout has been skipped.")
         }

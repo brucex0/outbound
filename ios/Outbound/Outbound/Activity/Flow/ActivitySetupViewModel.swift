@@ -39,7 +39,7 @@ final class ActivitySetupViewModel: ObservableObject {
     @Published var isAddShoePresented = false
     @Published var showsTrustedContacts = false
     @Published var showsRacePlanner = false
-    @Published var showsRouteLibrary = false
+    @Published var routeSelectionDraft: CommunityRouteSelectionDraft?
     @Published var intentBeforeSelectedRoute: SessionIntent? = nil
     @Published var selectedRouteDistanceMeters: Double? = nil
     @Published var selectedGuidanceChallenge: LiveGuidanceChallenge = .off

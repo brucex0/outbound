@@ -44,6 +44,7 @@ struct ActivityFlowView: View {
         model.host = host
         model.reduceMotion = reduceMotion
         return flowBody
+            .startupUIStabilityDiagnostics("activity_flow")
             .background {
                 StableSheetPresentationHost(presenter: model.curatedWorkoutPresenter.sheet)
                     .frame(width: 0, height: 0)

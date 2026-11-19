@@ -208,6 +208,7 @@ struct TodayChangeSheet: View {
                                         Text(reasonTitle(value)).font(.body).fixedSize(horizontal: false, vertical: true)
                                         if reason == value { Image(systemName: "checkmark").accessibilityHidden(true) }
                                     }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                        .outboundTapTarget()
                                 }.buttonStyle(.plain).accessibilityIdentifier("todayEditReasonOption-" + value)
                                     .accessibilityAddTraits(reason == value ? .isSelected : [])
                             }

@@ -40,6 +40,7 @@ The retired `sunset` and `solarFlare` persisted values decode as Victory Gold.
 `OutboundTheme` owns the complete visual system for each theme:
 
 - `accentColor`: navigation tint, compact accents, selection marks, and primary swatches.
+- Accent colors retain one dynamic provider per theme. Repeated reads must compare equal so unrelated store refreshes do not supply a new native navigation tint. Providers still resolve light/dark traits dynamically, and selecting another theme immediately selects its own cached color.
 - `secondaryColor`: complementary color used to make each theme more than a monochrome tint.
 - `actionColor`: readable filled-button color; it may be deeper than the accent.
 - `heroGradient`: three-stop gradient for prominent themed surfaces.

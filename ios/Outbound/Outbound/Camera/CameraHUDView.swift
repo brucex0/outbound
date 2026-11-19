@@ -856,6 +856,7 @@ struct SessionStatusCard: View {
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 .foregroundStyle(.primary)
+                .outboundTapTarget()
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("LiveLocationPermissionWarning")
@@ -996,8 +997,6 @@ struct SessionStatusCard: View {
 
                     extraCountdownStrip
 
-                    liveWorkoutStructure
-
                     if let guideMessage, state != .idle {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "sparkles")
@@ -1020,6 +1019,7 @@ struct SessionStatusCard: View {
                         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     liveWorkoutOptionsContent
+                    liveWorkoutStructure
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)

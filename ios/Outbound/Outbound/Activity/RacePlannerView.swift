@@ -168,6 +168,7 @@ struct RacePlannerView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
+            .outboundTapTarget()
         }
         .buttonStyle(.plain)
     }

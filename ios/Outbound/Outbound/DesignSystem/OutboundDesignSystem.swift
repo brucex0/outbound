@@ -26,6 +26,16 @@ enum OutboundTheme: String, CaseIterable, Codable, Identifiable {
     }
 
     var accentColor: Color {
+        Self.accentColors[self]!
+    }
+
+    // Keep the same dynamic provider for repeated reads of one theme. Creating
+    // a new provider makes identical tints compare unequal during store refreshes.
+    private static let accentColors: [OutboundTheme: Color] = Dictionary(
+        uniqueKeysWithValues: allCases.map { ($0, $0.makeAccentColor()) }
+    )
+
+    private func makeAccentColor() -> Color {
         switch self {
         case .indigo: adaptive(0.28, 0.25, 0.78, dark: 0.52, 0.48, 1.00)
         case .ocean: adaptive(0.03, 0.49, 0.75, dark: 0.22, 0.68, 0.95)
@@ -204,6 +214,15 @@ private struct OutboundCornerRibbonLayout: Layout {
         guard let ribbon = subviews.first else { return }
         let offset = ribbon.sizeThatFits(.unspecified).height / (2 * sqrt(2))
         ribbon.place(at: CGPoint(x: bounds.midX + offset, y: bounds.midY - offset), anchor: .center, proposal: .unspecified)
+    }
+}
+
+extension View {
+    /// Apply inside a Button, NavigationLink, or Menu label, after its padding/frame.
+    /// Keeps the allocated label bounds tappable without expanding to its parent row.
+    func outboundTapTarget() -> some View {
+        frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
     }
 }
 

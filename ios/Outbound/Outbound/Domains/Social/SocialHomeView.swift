@@ -3087,6 +3087,7 @@ struct SocialCommentsView: View {
                                 }
                             } label: {
                                 Image(systemName: "ellipsis")
+                                    .outboundTapTarget()
                             }
                             .accessibilityLabel("Comment actions")
                         }
@@ -3324,6 +3325,7 @@ struct SocialConnectionsView: View {
                 } label: {
                     Label(String(localized: "Search failed. Try again."), systemImage: "arrow.clockwise")
                         .frame(maxWidth: .infinity, minHeight: 48)
+                        .outboundTapTarget()
                 }
                 .buttonStyle(.plain)
             } else if autocompleteResults.isEmpty {
@@ -3351,6 +3353,7 @@ struct SocialConnectionsView: View {
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, OutboundSpacing.standard)
                     .frame(minHeight: 46)
+                    .outboundTapTarget()
                 }
                 .buttonStyle(.plain)
             }

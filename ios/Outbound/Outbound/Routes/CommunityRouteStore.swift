@@ -449,23 +449,49 @@ final class CommunityRouteStore: ObservableObject {
         return true
     }
 
-    func prepare(_ route: CommunityRoute) async -> PreparedRoute? {
+    /// Preserves the same validation and cache/LRU updates as async preparation,
+    /// without publishing a loading state when usable geometry is already local.
+    func prepareLocallyAvailableRoute(_ route: CommunityRoute) -> PreparedRoute? {
         if let prepared = route.prepared {
+#if DEBUG
+            StartupUIStabilityDiagnostics.emit("ui_stability component=route_store event=prepare_succeeded source=embedded")
+#endif
             cacheCommunityRoute(prepared)
             return prepared
         }
         if let cached = cachedCommunityRoutes[route.id], cached.isUsableForGuidance {
+#if DEBUG
+            StartupUIStabilityDiagnostics.emit("ui_stability component=route_store event=prepare_succeeded source=cache")
+#endif
             cacheCommunityRoute(cached)
             return cached
         }
+        return nil
+    }
+
+    func prepare(_ route: CommunityRoute) async -> PreparedRoute? {
+        guard !Task.isCancelled else { return nil }
+        if let prepared = prepareLocallyAvailableRoute(route) { return prepared }
         do {
+#if DEBUG
+            StartupUIStabilityDiagnostics.emit("ui_stability component=route_store event=prepare_requested source=network")
+#endif
             let detail = try await APIClient.shared.fetchCommunityRoute(id: route.id)
+            guard !Task.isCancelled else { return nil }
             guard let prepared = detail.prepared, prepared.isUsableForGuidance else {
                 throw RouteImportError.invalid
             }
             cacheCommunityRoute(prepared)
+#if DEBUG
+            StartupUIStabilityDiagnostics.emit("ui_stability component=route_store event=prepare_succeeded source=network")
+#endif
             return prepared
         } catch {
+            // Cancellation is expected when the picker closes or another choice wins.
+            guard !(error is CancellationError), !Task.isCancelled else { return nil }
+#if DEBUG
+            StartupUIStabilityDiagnostics.emit("ui_stability component=route_store event=prepare_failed error=\(ActivityDiagnosticLog.errorCategory(error))", isError: true)
+#endif
             errorMessage = String(localized: "Route details could not be loaded. Try again while online.")
             return nil
         }

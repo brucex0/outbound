@@ -109,6 +109,10 @@ extension ActivityFlowView {
         .onChange(of: initialIntent) { _, intent in
             model.refreshPrescribedIntent(intent, for: launchID)
         }
+        .onChange(of: model.dependencies.trainingPlanStore.completedPlannedWorkoutToday?.id, initial: true) { _, _ in
+            // Completion can hydrate while the launchable intent stays nil.
+            model.refreshPrescribedIntent(initialIntent, for: launchID)
+        }
         .onAppear {
             model.handleAppearance()
         }
@@ -197,11 +201,14 @@ extension ActivityFlowView {
                 embeddedActivityAssistantButton
             }
         }
-        .sheet(isPresented: binding(\.setup.showsRouteLibrary)) {
+        .sheet(item: routeLibraryPresentation) { draft in
             NavigationStack {
-                CommunityRouteLibraryView(selection: model.setup.plannedIntent?.preparedRoute) { route in
+                CommunityRouteLibraryView(draft: draft, onClose: {
+                    model.dismissRouteLibrary(draft)
+                }) { route in
+                    guard model.setup.routeSelectionDraft === draft, draft.canConfirm else { return }
                     model.applyRoute(route)
-                    model.setup.showsRouteLibrary = false
+                    model.dismissRouteLibrary(draft)
                 }
             }
         }
@@ -347,5 +354,17 @@ extension ActivityFlowView {
             Color(.systemBackground)
                 .ignoresSafeArea()
         }
+    }
+
+    private var routeLibraryPresentation: Binding<CommunityRouteSelectionDraft?> {
+        // A delayed dismissal from an older sheet must not clear a newer open.
+        let expectedDraft = model.setup.routeSelectionDraft
+        return Binding(
+            get: { model.setup.routeSelectionDraft },
+            set: { value in
+                guard value == nil, let expectedDraft else { return }
+                model.dismissRouteLibrary(expectedDraft)
+            }
+        )
     }
 }
