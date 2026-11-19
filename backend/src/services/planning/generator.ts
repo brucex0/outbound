@@ -1,4 +1,5 @@
 import { mondayDateLabel } from "../accountCalendar.js";
+import { retainGeneratedWorkoutDisplay } from "./completedWorkoutDisplay.js";
 import { intakeBaselineSchema, retainedIntakeBaseline } from "./intakeBaseline.js";
 import { preferredLongRunDays, longRunWeekModalities, longRunAllocation, LongRunDaysError } from "./longRunDays.js";
 import { raceTaperDays } from "./raceRoadmap.js";
@@ -147,7 +148,8 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
         prescription: { optional: true },
       }]) : balancedWorkouts;
 
-  const issuedWorkouts = withOptionalMobility.filter((workout) => workout.scheduledDate >= scheduleStart);
+  const issuedWorkouts = retainGeneratedWorkoutDisplay(withOptionalMobility, input.planStart, input.goal)
+    .filter((workout) => workout.scheduledDate >= scheduleStart);
   return {
     summary: `${summaryPrefix}: ${issuedWorkouts.filter((workout) => workout.prescription.optional !== true).length} sessions over the next two weeks.`,
     phase,

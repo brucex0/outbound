@@ -30,3 +30,14 @@ npm run build
 Android keeps the `monday-v1` account policy in its current Room v9 shared projection. Calendar alignment itself needs no separate schema change; repository reconciliation opens clean v9 local data without migrating old caches. See `activity-repository.md`.
 
 Operational initialization analytics contain only bounded policy/source values; no account IDs, dates, timezone values, activity metrics or user content.
+
+## Issued past weeks
+
+- Planning state includes retained past rows from every version of the active plan, including original blocks, date labels and statuses. Completed identities survive; uncompleted duplicate date/required-or-optional slots use the latest retained prescription. Superseded future prescriptions are excluded. History is never regenerated from current templates, and rows that were never retained cannot be recovered by the clients.
+- iOS and Android Plan Details place prior Monday weeks under a compact **Past weeks** disclosure above the current week. The current week starts expanded; past weeks and their individual rows remain observational, with no Start or catch-up action. Expanding history leaves current-week progress calculations unchanged.
+- Historical planned rows do not issue new launch receipts or schedule notifications. Completed details open the exact locally available activity via private completion/issuance association. If that activity has not synced to the device, the UI says it is unavailable rather than guessing from the date.
+- Today and Plan Details prioritize **Planned workout complete** after today's required slot completes, without an extra generic recovery walk. An unfinished required slot still takes precedence; explicitly scheduled optional mobility remains in its plan details. Completion from an older version of the same active plan is recognized. No schema migration or data reset is required; deploy the backend before expecting the expanded history response.
+
+- A completed Today workout keeps the existing planned-workout card, original title, prescribed duration/phases and Plan navigation. Completion replaces the Change action with the linked activity action; it does not replace the card with a toast. Selecting Planned remains available after completion, while the recording launch guard prevents restarting that completed slot. The embedded iOS setup retains Planned after saving a planned workout and when its completed prescription no longer has a launchable intent.
+
+- Week headings use primary text and readable semantic type on both clients; actual completion totals use regular readable body/subheadline type. Only the current account-calendar week carries the localized “This week” label and a small theme accent marker. Past/future week headings remain neutral, with the outer Past weeks disclosure identifying history. Opening a past week still requires its existing week-header disclosure; workout rows then open their preserved prescription details.

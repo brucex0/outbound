@@ -120,7 +120,11 @@ export async function buildBaseActivitySuggestion(
   const typedActivities = await withSessionEffort(prisma, userId, activities as ActivityForPlanning[]);
   const latestVersion = plan?.versions[0] ?? null;
   const protectedEdits = plan && latestVersion ? await protectedEditedWorkouts(prisma, userId, plan.id, latestVersion.id, todayStart) : [];
-  const workouts = [...protectedEdits, ...(latestVersion?.workouts ?? [])]
+  const completedPlanToday = plan ? await prisma.plannedWorkout.findMany({
+    where: { userId, planVersion: { planId: plan.id }, status: "completed", scheduledDate: todayStart, planVersionId: { not: latestVersion?.id } },
+    include: { blocks: { orderBy: { sortOrder: "asc" }, include: { steps: { orderBy: { sortOrder: "asc" } } } } },
+  }) : [];
+  const workouts = [...protectedEdits, ...completedPlanToday, ...(latestVersion?.workouts ?? [])]
     .filter((workout) => workout.status !== "superseded").sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime());
   const plannedWorkouts = workouts.map(plannedWorkoutForState);
   const latestReadiness = readiness ? readinessForPlanning(readiness) : undefined;
@@ -222,12 +226,11 @@ export async function buildBaseActivitySuggestion(
   const completedTodayWorkout = workouts.find((workout) => sameDay(workout.scheduledDate, todayStart) && workout.status === "completed"
     && (workout.prescription as Record<string, unknown>)?.optional !== true);
   if (plan && completedTodayWorkout) {
-    return responseWithPrimary({
-      base, source: "recovery", relationship: "optionalRecovery",
-      primary: archetypeSuggestion("recovery-walk-20", "Today's planned session is complete. Rest is enough; gentle movement is optional."),
-      alternates: [], guideLine: "Today's planned session is complete. Only add gentle movement if it helps you loosen up.",
-      reasons: ["active_plan_present", "planned_workout_completed_today"],
-    });
+    console.info("[planning] planned_workout_complete", { result: "complete", source: "active_plan" });
+    return { ...base, status: "restRecommended", source: "plan", relationship: "rest", primary: null, alternates: [],
+      guideLine: "Planned workout complete. Rest is enough today.",
+      decision: { algorithmVersion: ALGORITHM_VERSION, reasons: ["active_plan_present", "planned_workout_completed_today"], safetyFlags: [] },
+    };
   }
 
   if (todayActivities.length > 0) {

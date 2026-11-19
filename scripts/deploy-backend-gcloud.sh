@@ -24,6 +24,8 @@ Environment overrides:
   REWARDS_ADMIN_EMAILS    verified account allowlist; defaults to GCLOUD_ACCOUNT in production
   REWARDS_ADMIN_GOOGLE_CLIENT_ID OAuth web client used by the same-origin admin portal; production default is Plainstride's web/server client
   IOS_APP_STORE_URL       default: Plainstride's direct App Store listing
+  ANDROID_PACKAGE_NAME    default: com.plainstride.outbound
+  ANDROID_SHA256_CERT_FINGERPRINTS comma-separated App Link signing fingerprints
   CLOUD_SQL_INSTANCE      default: PROJECT_ID:REGION:outbound-db
   CLOUD_RUN_CONCURRENCY   default: 100
   CLOUD_RUN_MIN_INSTANCES default: 1 for production; 0 otherwise
@@ -149,6 +151,8 @@ GOOGLE_AUTH_CLIENT_IDS="${GOOGLE_AUTH_CLIENT_IDS:-186140050970-8ft54ba43tqp5pvha
 REWARDS_ADMIN_EMAILS="${REWARDS_ADMIN_EMAILS-$default_rewards_admin_emails}"
 REWARDS_ADMIN_GOOGLE_CLIENT_ID="${REWARDS_ADMIN_GOOGLE_CLIENT_ID-$default_rewards_admin_google_client_id}"
 IOS_APP_STORE_URL="${IOS_APP_STORE_URL:-https://apps.apple.com/us/app/plainstride/id6800191455}"
+ANDROID_PACKAGE_NAME="${ANDROID_PACKAGE_NAME:-com.plainstride.outbound}"
+ANDROID_SHA256_CERT_FINGERPRINTS="${ANDROID_SHA256_CERT_FINGERPRINTS:-}"
 CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-$PROJECT_ID:$REGION:outbound-db}"
 CLOUD_RUN_CONCURRENCY="${CLOUD_RUN_CONCURRENCY:-100}"
 CLOUD_RUN_MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-$default_min_instances}"
@@ -326,6 +330,12 @@ environment_bindings=(
   "ALIBABA_AI_ENDPOINT_KEY=$ALIBABA_AI_ENDPOINT_KEY"
   "ALIBABA_AI_DEPLOYMENT_REGION=$ALIBABA_AI_DEPLOYMENT_REGION"
 )
+if [[ -n "$ANDROID_SHA256_CERT_FINGERPRINTS" ]]; then
+  environment_bindings+=(
+    "ANDROID_PACKAGE_NAME=$ANDROID_PACKAGE_NAME"
+    "ANDROID_SHA256_CERT_FINGERPRINTS=$ANDROID_SHA256_CERT_FINGERPRINTS"
+  )
+fi
 if [[ -n "$LIVE_COACH_AUDIO_MANIFEST_URL" ]]; then
   environment_bindings+=("LIVE_COACH_AUDIO_MANIFEST_URL=$LIVE_COACH_AUDIO_MANIFEST_URL")
 fi

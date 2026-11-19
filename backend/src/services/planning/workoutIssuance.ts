@@ -5,6 +5,7 @@ import type { StandaloneWorkoutCatalogItem } from "../../data/standaloneWorkouts
 import { storedEffectiveWorkout } from "./workoutEdits.js";
 import { runningDoseSignature } from "./runWalkProgramme.js";
 import type { ActivitySuggestion } from "./types.js";
+import { completedWorkoutDisplay, completedWorkoutDisplaySchema } from "./completedWorkoutDisplay.js";
 
 export const PERFORMED_WORKOUT_POLICY = "performed-workout-v1";
 export const performedWorkoutReferenceSchema = z.object({
@@ -12,6 +13,7 @@ export const performedWorkoutReferenceSchema = z.object({
   performedAsIssued: z.boolean(),
   revision: z.string().regex(/^[a-f0-9]{64}$/), plannedWorkoutId: z.string().min(1).max(160), planVersionId: z.string().min(1).max(160),
   workoutEditId: z.string().min(1).max(160).nullish(), workoutRevision: z.string().regex(/^[a-f0-9]{64}$/).nullish(),
+  displayContext: completedWorkoutDisplaySchema.nullish(),
 }).strict();
 export type PerformedWorkoutReference = z.infer<typeof performedWorkoutReferenceSchema>;
 export class PerformedWorkoutConflictError extends Error {
@@ -64,6 +66,7 @@ export async function issueWorkout(tx: Prisma.TransactionClient, userId: string,
   const programmeExposureEligible = unchangedProgramme && sameExecution && !actual?.replacement;
   const sourceExposureEligible = programmeExposureEligible && prescription.sourceExposureEligible !== false;
   const snapshot = { policyVersion: PERFORMED_WORKOUT_POLICY, modality: primary.modality, stimulus: primary.stimulus,
+    displayContext: await completedWorkoutDisplay(tx, { title: primary.title, prescription }),
     durationSeconds: primary.durationSeconds ?? primary.durationMinutes * 60,
     targetCalories: primary.targetCalories ?? null, effectiveWorkout: effective,
     provenance: { source: prescription.source ?? null, templateID: prescription.templateID ?? null, weekIndex: prescription.weekIndex ?? null,
@@ -89,8 +92,10 @@ export async function validatePerformedReference(tx: Prisma.TransactionClient, u
   return issued;
 }
 function reference(issued: WorkoutPrescriptionRevision, planVersionId: string): PerformedWorkoutReference {
+  const display = completedWorkoutDisplaySchema.safeParse((issued.snapshot as Record<string, unknown>).displayContext);
   return { policyVersion: PERFORMED_WORKOUT_POLICY, performedAsIssued: true, issuanceId: issued.id, revision: issued.revision,
-    plannedWorkoutId: issued.plannedWorkoutId, planVersionId, workoutEditId: issued.workoutEditId, workoutRevision: issued.workoutRevision };
+    plannedWorkoutId: issued.plannedWorkoutId, planVersionId, workoutEditId: issued.workoutEditId, workoutRevision: issued.workoutRevision,
+    ...(display.success ? { displayContext: display.data } : {}) };
 }
 function execution(primary: ActivitySuggestion, effective: StandaloneWorkoutCatalogItem) {
   return { modality: primary.modality, stimulus: primary.stimulus, durationSeconds: primary.durationSeconds ?? primary.durationMinutes * 60,

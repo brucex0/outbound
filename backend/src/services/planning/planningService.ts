@@ -620,18 +620,17 @@ export async function assemblePlanningState(
     const timeZone = await accountTimeZone(userId, undefined, prisma);
     const calendar = planningCalendarContext(timeZone, new Date(), plan?.startedAt);
     const now = accountDateLabel(new Date(), timeZone);
-    // A rolling replan replaces future prescriptions, not completed progress.
-    // Monday labels select the whole current account week, including prior versions.
-    const earlierCompletions = plan && version ? await prisma.plannedWorkout.findMany({
+    // Historical rows retain their stored prescription and identity across versions.
+    // Return the whole active plan's past weeks; never rebuild history from templates.
+    const pastWorkouts = plan && version ? await prisma.plannedWorkout.findMany({
       where: {
         userId,
         planVersion: { planId: plan.id },
         planVersionId: { not: version.id },
-        status: "completed",
-        scheduledDate: { gte: accountDateLabel(new Date(calendar.weekStart), timeZone), lt: addDays(now, 29) },
+        status: { in: ["planned", "missed", "skipped", "completed"] },
+        scheduledDate: { lt: accountDateLabel(new Date(calendar.weekStart), timeZone) },
       },
       orderBy: { scheduledDate: "asc" },
-      take: 50,
       include: {
         blocks: {
           orderBy: { sortOrder: "asc" },
@@ -640,7 +639,14 @@ export async function assemblePlanningState(
       },
     }) : [];
     const protectedEdits = plan && version ? await protectedEditedWorkouts(prisma, userId, plan.id, version.id, now) : [];
-    const existingWorkouts = [...protectedEdits, ...earlierCompletions, ...(version?.workouts ?? []).filter((workout) => workout.status !== "superseded")];
+    const currentCompletions = plan && version ? await prisma.plannedWorkout.findMany({
+      where: { userId, planVersion: { planId: plan.id }, planVersionId: { not: version.id }, status: "completed",
+        scheduledDate: { gte: accountDateLabel(new Date(calendar.weekStart), timeZone) } },
+      include: { blocks: { orderBy: { sortOrder: "asc" }, include: { steps: { orderBy: { sortOrder: "asc" } } } } },
+    }) : [];
+    const currentWeekStart = accountDateLabel(new Date(calendar.weekStart), timeZone);
+    const currentVersionWorkouts = (version?.workouts ?? []).filter((workout) => workout.status !== "superseded");
+    const existingWorkouts = [...protectedEdits, ...currentCompletions, ...currentVersionWorkouts.filter((workout) => workout.scheduledDate >= currentWeekStart)];
     // Refill replaces future prescriptions, not this calendar week's existing target.
     // Historical planned rows count even before missed-workout maintenance runs;
     // skipped slots stay protected for the whole current week, including future days.
@@ -660,9 +666,16 @@ export async function assemblePlanningState(
       representedSlots.add(slot);
       return true;
     });
-    const storedWorkouts = [...existingWorkouts, ...retainedCalendarWorkouts]
+    const historicalSlots = new Set(existingWorkouts.map(workoutSlotKey));
+    const retainedPastWorkouts = [...pastWorkouts, ...currentVersionWorkouts.filter((workout) => workout.scheduledDate < currentWeekStart)].sort((a, b) => Number(b.status === "completed") - Number(a.status === "completed") || b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id)).filter((workout) => {
+      const slot = workoutSlotKey(workout);
+      if (workout.status !== "completed" && historicalSlots.has(slot)) return false;
+      historicalSlots.add(slot);
+      return true;
+    });
+    const storedWorkouts = [...existingWorkouts, ...retainedCalendarWorkouts, ...retainedPastWorkouts]
       .sort((left, right) => left.scheduledDate.getTime() - right.scheduledDate.getTime());
-    const workouts = await Promise.all(storedWorkouts.map(async (workout) => workout.status === "planned"
+    const workouts = await Promise.all(storedWorkouts.map(async (workout) => workout.status === "planned" && workout.scheduledDate >= now
       ? { ...workout, performedWorkoutReference: await issueWorkout(prisma, userId, workout.id) } : workout));
     const today = workouts.find((workout) => sameDay(workout.scheduledDate, now) && workout.status === "planned" && !isOptionalWorkout(workout)) ?? null;
     const recommendations = plan ? [] : await trainingPlanRecommendationsForUser(userId);

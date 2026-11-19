@@ -535,3 +535,10 @@ Coaching preplanning adds `LiveCoachPreparation` and `LiveCoachSession.preparati
 - Environment values/Secret Manager references, runtime identity, CPU/memory, concurrency, timeout, Cloud SQL, networking and scaling were preserved. `outbound-planning-maintenance` is pinned to the same image without execution; both jobs retain their prior commands and configuration.
 - Candidate and production `/health` returned 200/`ok`; unauthenticated `GET /v1/planning/plan-changes/context` returned 401. These establish deployment and the authentication boundary, not authenticated scheduling behavior. Local backend/iOS compilation and the design checker passed. Bruce explicitly waived UX verification; no test suite or runtime UX checks ran.
 - Private deployment/configuration evidence is under `/tmp/plainstride-plan-adjustments-deploy/`.
+
+## Retained plan history and completed Today — 2026-11-17
+
+- Backend source `24b29072` deployed as `outbound-api-hist-24b29072`, serving 100% of traffic. Cloud Build `8931dee5-63da-4121-a0bf-4e6918c33617` produced immutable image digest `sha256:2d1fa185ea7ccc29e0355e2bf365b2e7f30dcd546be8d42f9ffb52523ba70fd1`.
+- The backend delta from prior production source `10049c21` contains only retained active-plan workout history and completed-day suggestion changes. Source deployment preserved service configuration; no schema, seed, reset or maintenance execution ran.
+- Candidate and production `/health` returned 200; unauthenticated planning-state access returned 401. Authenticated history contents and phone presentation remain for Bruce's device verification; deployment health alone does not establish them.
+- Local deployment/promotion evidence: `/tmp/plan-history-backend-deploy.log` and `/tmp/plan-history-backend-promote.log`.
