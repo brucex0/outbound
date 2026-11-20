@@ -238,7 +238,7 @@ class LiveCoachMomentPolicy {
             && s.raceTargetPaceSecondsPerKilometer?.let { it.isFinite() && it in 120.0..1_200.0 } == true
 
     private fun drift(s: CoachSnapshot, contract: CoachingContract, grade: Double?): DetectedMoment? {
-        if (s.elapsedSeconds < 300 || s.segmentPhase in setOf("work", "recovery") || meaningfulGrade(grade)) return null
+        if (s.elapsedSeconds < 300 || s.segmentPhase in setOf("work", "warmup", "recovery", "walk", "cooldown") || meaningfulGrade(grade)) return null
         if (lastDriftAt?.let { s.elapsedSeconds - it < 600 } == true) return null
         val target = s.targetPaceSecondsPerKilometer ?: run { suppress("no_actionable_target"); return null }
         val earlier = stablePaceWindow(s.elapsedSeconds - 100, s.elapsedSeconds - 45) ?: return null
@@ -251,7 +251,7 @@ class LiveCoachMomentPolicy {
 
     private fun instability(s: CoachSnapshot, grade: Double?): DetectedMoment? {
         if (hasRacePaceTarget(s)
-            || s.segmentPhase in setOf("work", "recovery")
+            || s.segmentPhase in setOf("work", "warmup", "recovery", "walk", "cooldown")
             || s.elapsedSeconds < 180
             || (s.segmentElapsedSeconds ?: s.elapsedSeconds) < 180
             || meaningfulGrade(grade)
@@ -331,6 +331,11 @@ class LiveCoachMomentPolicy {
             remaining > 120 && remaining <= minOf(300, (target * .12).toInt())
         } == true
         if (!distanceWindow && !timeWindow) return null
+        if (s.segmentPhase in setOf("warmup", "recovery", "walk", "cooldown") ||
+            (s.segmentIndex != null && s.segmentPhase == null)) {
+            suppress("workout_phase")
+            return null
+        }
         oneShots += LiveCoachMoment.FinishOpportunity
         return DetectedMoment(LiveCoachMoment.FinishOpportunity, s.elapsedSeconds)
     }
@@ -375,6 +380,8 @@ class LiveCoachMomentPolicy {
         instabilityCandidateSince = null
         records.filter { it.outcome == CueOutcome.Pending }.forEach { it.outcome = CueOutcome.NotMeasured }
     }
+
+    fun recordPhaseSuppression() = suppress("workout_phase")
 
     private fun suppress(reason: String) {
         if (!suppressionReasons.add(reason)) return

@@ -425,6 +425,17 @@ class LiveCoachViewModel @Inject constructor(
         val adaptive = cue.scheduled == null || cue.moment.instructionId?.startsWith("execution_coaching.") == true
         if (adaptive && !(current.liveAICoachEnabled ?: launch.aiCoachEnabled)) return false
         if (cue.phaseIndex != null && launch.workoutPhases().currentPhaseIndex(current.elapsedSeconds, current.distanceMeters) != cue.phaseIndex) return false
+        val increasesEffort = cue.moment.moment in setOf(
+            LiveCoachMoment.FinishOpportunity, LiveCoachMoment.PaceBelowTarget, LiveCoachMoment.PaceDrift,
+        ) || (cue.moment.moment == LiveCoachMoment.PaceInstability && cue.moment.speedChangeDirection != 1)
+        if (increasesEffort) {
+            val phase = launch.activeSegment(current.elapsedSeconds.toInt(), current.distanceMeters)?.phase
+            if (phase in setOf("warmup", "recovery", "walk", "cooldown") ||
+                (launch.workoutSteps.isNotEmpty() && phase == null)) {
+                policy.recordPhaseSuppression()
+                return false
+            }
+        }
         cue.scheduled?.trigger?.let { trigger ->
             when (trigger.type) {
                 "distance" -> {
