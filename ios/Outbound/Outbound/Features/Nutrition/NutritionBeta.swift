@@ -525,7 +525,6 @@ private struct NutritionContextSummary: View {
 }
 
 private struct NutritionGuidanceView: View {
-    @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var showsSources = false
     let context: NutritionWorkoutContext
@@ -536,12 +535,13 @@ private struct NutritionGuidanceView: View {
             NutritionContextSummary(context: context)
             Text(NutritionText.value("advice_not_logs")).font(.footnote).foregroundStyle(.secondary)
             ForEach(NutritionPhase.allCases) { phase in
+                let presentation = NutritionAdvicePresentation.selected(for: phase, context: context)
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
                         Text(phase.title).font(.title3.bold())
                         ViewThatFits(in: .horizontal) {
-                            HStack(alignment: .center, spacing: OutboundSpacing.standard) { foodIllustration(phase); actionText(phase) }
-                            VStack(alignment: .leading, spacing: OutboundSpacing.standard) { foodIllustration(phase); actionText(phase) }
+                            HStack(alignment: .center, spacing: OutboundSpacing.standard) { NutritionFoodIllustration(scene: presentation.scene); actionText(presentation) }
+                            VStack(alignment: .leading, spacing: OutboundSpacing.standard) { NutritionFoodIllustration(scene: presentation.scene); actionText(presentation) }
                         }
                         Button(NutritionText.value("add")) { onLog(context, phase) }.nutritionSecondary().disabled(!canLog)
                         DisclosureGroup(NutritionText.value("why")) {
@@ -567,27 +567,10 @@ private struct NutritionGuidanceView: View {
                 .onChange(of: showsSources) { _, expanded in if expanded { track(.nutritionAdviceExplained) } }
         }.task { track(.nutritionAdviceViewed) }
     }
-    private func foodIllustration(_ phase: NutritionPhase) -> some View {
-        Image(systemName: symbol(phase)).font(.largeTitle).foregroundStyle(theme.actionColor)
-            .padding(OutboundSpacing.section)
-            .background(theme.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: OutboundRadius.card))
-            .accessibilityHidden(true)
-    }
-    private func actionText(_ phase: NutritionPhase) -> some View {
-        Text(NutritionText.value(actionKey(phase))).font(.headline).fixedSize(horizontal: false, vertical: true)
+    private func actionText(_ presentation: NutritionAdvicePresentation) -> some View {
+        Text(NutritionText.value(presentation.actionKey)).font(.headline).fixedSize(horizontal: false, vertical: true)
     }
     private var supported: Bool { context.isEndurance && (context.durationSeconds ?? 0) > 0 }
-    private func symbol(_ phase: NutritionPhase) -> String {
-        switch phase { case .before: "carrot.fill"; case .during: "waterbottle.fill"; case .after: "takeoutbag.and.cup.and.straw.fill" }
-    }
-    private func actionKey(_ phase: NutritionPhase) -> String {
-        guard supported else { return "card.general.\(phase.rawValue)" }
-        switch phase {
-        case .before: return "card.before"
-        case .after: return "card.after"
-        case .during: return (context.durationSeconds ?? 0) < 45 * 60 ? "card.during.short" : (context.durationSeconds ?? 0) >= 90 * 60 ? "card.during.long" : "card.during.medium"
-        }
-    }
     private func detailKeys(_ phase: NutritionPhase) -> [String] {
         if phase == .during { return [supported ? "advice.during" : "advice.general.during"] }
         let copy = NutritionWorkoutContext(sport: context.sport, linkage: context.linkage, title: context.title, date: context.date, durationSeconds: context.durationSeconds, isEndurance: context.isEndurance, phase: phase)
