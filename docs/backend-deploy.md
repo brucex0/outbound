@@ -542,3 +542,11 @@ Coaching preplanning adds `LiveCoachPreparation` and `LiveCoachSession.preparati
 - The backend delta from prior production source `10049c21` contains only retained active-plan workout history and completed-day suggestion changes. Source deployment preserved service configuration; no schema, seed, reset or maintenance execution ran.
 - Candidate and production `/health` returned 200; unauthenticated planning-state access returned 401. Authenticated history contents and phone presentation remain for Bruce's device verification; deployment health alone does not establish them.
 - Local deployment/promotion evidence: `/tmp/plan-history-backend-deploy.log` and `/tmp/plan-history-backend-promote.log`.
+
+
+## Private completed-workout headings — 2026-11-19
+
+- All 21 reviewed task files are preserved exactly on main through the scoped recovery commits `581dce3e` (backend), `c0582ee2` (Android), and `9c04ef3c` (iOS). No duplicate merge was applied.
+- Deployed committed source `d26c4d6d` as `outbound-api-title-d26c4d6d`, now serving 100% of production traffic. Cloud Build `45ce0269-77e1-47ac-abd4-e0b584752c5a` produced immutable image digest `sha256:0653fbcfc985475763f15dd11b35127c704e0061893f980f4329d8781699d0be`. Its backend delta from prior production `24b29072` contains only the three completed-heading implementation files; retained plan history remains included.
+- Candidate and production `/health` returned 200/`ok`. Environment values and Secret Manager references, runtime identity, CPU/memory, concurrency, timeout, Cloud SQL attachment, networking and scaling were preserved. Planning maintenance was pinned to the same image with its prior configuration and was not executed. No schema synchronization, seed, reset or data migration ran.
+- Backend TypeScript build and scoped diff checks passed; no test suite ran. Independent UX QA remains `Incomplete` because runtime visual/accessibility evidence is missing; that review is nonblocking under the current policy. The exact task iOS build was installed and launched on Bruce main on November 17; no new phone or runtime UX verification occurred during this deployment. Private deployment/configuration evidence is under `/tmp/completed-title-deploy/`.
