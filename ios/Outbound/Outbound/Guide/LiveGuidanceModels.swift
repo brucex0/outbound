@@ -652,7 +652,7 @@ final class LiveGuidanceDirector {
         guard !suppressedMomentTypes.contains(.paceDrift),
               snapshot.elapsedSeconds >= 300,
               activeSegment?.target.phase != .work,
-              activeSegment?.target.phase != .recovery,
+              ![SessionCoachingPhase.warmup, .recovery, .walk, .cooldown].contains(activeSegment?.target.phase ?? .open),
               !isMeaningfulGrade(gradePercent),
               lastDriftElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 600 }) ?? true,
               let earlier = stablePaceWindow(from: snapshot.elapsedSeconds - 100, through: snapshot.elapsedSeconds - 45),
@@ -678,7 +678,7 @@ final class LiveGuidanceDirector {
     ) -> DetectedLiveGuidanceMoment? {
         guard !suppressedMomentTypes.contains(.paceInstability),
               activeSegment?.target.phase != .work,
-              activeSegment?.target.phase != .recovery,
+              ![SessionCoachingPhase.warmup, .recovery, .walk, .cooldown].contains(activeSegment?.target.phase ?? .open),
               snapshot.elapsedSeconds >= 180,
               (activeSegment?.elapsedSeconds ?? snapshot.elapsedSeconds) >= 180,
               !isMeaningfulGrade(gradePercent),
@@ -802,6 +802,21 @@ final class LiveGuidanceDirector {
         return nil
     }
 
+    /// Optional effort increases must yield to the prescribed recovery phase.
+    /// Unknown structured steps are ineligible; unstructured runs retain finish cues.
+    static func allowsEffortIncrease(intent: SessionIntent?, at elapsedSeconds: Int) -> Bool {
+        switch intent?.activeCoachingSegment(at: elapsedSeconds)?.target.phase {
+        case .easy, .work, .open: return true
+        case .warmup, .recovery, .walk, .cooldown: return false
+        case nil: return intent?.workoutSteps.isEmpty ?? true
+        }
+    }
+
+    func recordPhaseSuppression(discarding moment: DetectedLiveGuidanceMoment? = nil) {
+        if moment?.type == .challengeStart { challengeStartQueued = false }
+        suppress("workout_phase")
+    }
+
     private func finishOpportunityMoment(
         snapshot: ActiveSessionSnapshot,
         intent: SessionIntent?
@@ -813,6 +828,10 @@ final class LiveGuidanceDirector {
               isInFinishWindow(snapshot: snapshot, intent: intent)
         else { return nil }
 
+        guard Self.allowsEffortIncrease(intent: intent, at: snapshot.elapsedSeconds) else {
+            recordPhaseSuppression()
+            return nil
+        }
         emittedOneShotMoments.insert(.finishOpportunity)
         return DetectedLiveGuidanceMoment(
             type: .finishOpportunity,
@@ -837,6 +856,7 @@ final class LiveGuidanceDirector {
         }
 
         guard !challengeStartQueued,
+              Self.allowsEffortIncrease(intent: intent, at: snapshot.elapsedSeconds),
               snapshot.elapsedSeconds >= 360,
               hasRoomForChallenge(snapshot: snapshot, intent: intent, duration: duration),
               let baseline = averagePace(from: snapshot.elapsedSeconds - 45, through: snapshot.elapsedSeconds)

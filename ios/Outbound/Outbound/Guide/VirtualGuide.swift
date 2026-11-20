@@ -474,8 +474,32 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     // MARK: - Private
 
+    private func momentIsCurrent(_ moment: DetectedLiveGuidanceMoment, at snapshot: ActiveSessionSnapshot) -> Bool {
+        let increasesEffort = [.finishOpportunity, .challengeStart, .paceBelowTarget, .paceDrift].contains(moment.type)
+            || (moment.type == .paceInstability && moment.speedChangeDirection != 1)
+        if increasesEffort,
+           !LiveGuidanceDirector.allowsEffortIncrease(intent: sessionIntent, at: snapshot.elapsedSeconds) {
+            momentDirector.recordPhaseSuppression(discarding: moment)
+            return false
+        }
+        // A delayed main-set correction must not override a newly started cooldown.
+        // Progress, route warnings, and current-phase recovery cues remain available.
+        let phaseBoundTypes: Set<LiveGuidanceMomentType> = [
+            .earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability,
+            .paceDrift, .targetLocked, .rhythmRecovery, .recoveryTooHard
+        ]
+        if phaseBoundTypes.contains(moment.type),
+           sessionIntent?.activeCoachingSegment(at: moment.detectedAtElapsedSeconds)?.id
+            != sessionIntent?.activeCoachingSegment(at: snapshot.elapsedSeconds)?.id {
+            momentDirector.recordPhaseSuppression(discarding: moment)
+            return false
+        }
+        return true
+    }
+
     private func processPendingMoment(using snapshot: ActiveSessionSnapshot) {
-        if let pendingMoment, catalogInstructionHasEnded(pendingMoment, at: snapshot) {
+        if let pendingMoment,
+           !momentIsCurrent(pendingMoment, at: snapshot) || catalogInstructionHasEnded(pendingMoment, at: snapshot) {
             self.pendingMoment = nil
             advancePendingMoment()
             return
@@ -576,7 +600,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     ) {
         latestAnalysis = analysis
         let currentSnapshot = snapshotHistory.last ?? snapshot
-        if catalogInstructionHasEnded(moment, at: currentSnapshot) {
+        if !momentIsCurrent(moment, at: currentSnapshot) || catalogInstructionHasEnded(moment, at: currentSnapshot) {
             if pendingMoment == nil { advancePendingMoment() }
             return
         }
