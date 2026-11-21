@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.17 Submission Sheet
+# TestFlight and App Store 1.7.18 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.17`
-- Build: `71`
+- Version: `1.7.18`
+- Build: `72`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -20,9 +20,18 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 ## Submission Status
 
-- Preparing version 1.7.17 (71) from current merged iOS product changes. Public submission and Apple processing are pending.
-- Current live version 1.7.16 (70) was confirmed **Ready for Distribution** by the read-only App Store Connect API on November 15, 2026 (Pacific). Its English (U.S.) promotional text exactly matches the approved copy below.
-- Production backend currently routes 100% to `outbound-api-pa-10049c21`, with its additive plan-adjustment schema already applied. Fresh production health and plan-change authentication-boundary probes returned HTTP 200 and 401 respectively; authenticated scheduling behavior was not exercised.
+- Version 1.7.18 (72), release source `932229b3` (product source `9550610d`), completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, and binary delivery on November 21, 2026 (Pacific). Apple processing completed at 07:29 Pacific; English beta notes and assignment to `Plainstride Team` were confirmed. Submitted through the signed-in App Store Connect UI on November 21, 2026 at 07:31 Pacific. Confirmed **Waiting for Review** with automatic release after approval (`AFTER_APPROVAL`); approval and public availability remain pending.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.18-72/`; the 79,413,156-byte IPA SHA-256 is `11a5a99290875d867499999acd32554c6a537a18f5eb812d783973c2b4a89b0e`; upload ID `8cb42ff8-60a0-4ae6-a42f-be2f26326983`. Binary delivery accepted all 16 chunks at 07:26 Pacific without a reported transfer error.
+- Public App Store version ID `5eca3249-3b41-4535-9c5b-76870df5e969`; review submission ID `81128fab-1a90-4c37-bd78-18c8d6b5e4dc`. Independent read-only API verification confirmed `WAITING_FOR_REVIEW`, attached build `72` (`VALID`), and `AFTER_APPROVAL`.
+- English (U.S.) Description (2,596 characters) and Promotional Text (157 characters) were preserved exactly from live 1.7.17. UI checks passed before save, after save/reload, immediately before submission, and after submission. API comparisons independently confirmed both fields identical to live before and after submission; approved What's New also matched.
+- No tests or physical-device acceptance were run for this release. Compilation and packaged validation do not establish runtime behavior.
+- Current live version 1.7.17 (71) was confirmed **Ready for Distribution** by the read-only App Store Connect API on November 21, 2026 (Pacific). Its current English (U.S.) promotional text is preserved exactly in **App Store Promotional Text** below; this supersedes the older sheet copy. No screenshot or listing-copy change is intended.
+- Fresh read-only production `/health` probe returned HTTP 200 with `{"status":"ok","version":"0.1.0"}` on November 21, 2026 at 07:28 Pacific. No authenticated scheduling behavior was exercised.
+- Historical backend check from November 15, 2026: production routed 100% to `outbound-api-pa-10049c21`, with its additive plan-adjustment schema applied. Health and plan-change authentication-boundary probes returned HTTP 200 and 401 respectively; authenticated scheduling behavior was not exercised. The plan-change authentication-boundary probe and traffic allocation were not rechecked for this release.
+
+### Previous Release: 1.7.17 (71)
+
+- Confirmed **Ready for Distribution** by the read-only API on November 21, 2026. Build 71 is **VALID**, upload `32873ba9-d40d-48ff-a1af-e662f3e67be3` is **COMPLETE**. Preserved artifacts remain in `~/Library/Application Support/Plainstride/Releases/1.7.17-71/`.
 
 ### Previous Release: 1.7.16 (70)
 
@@ -99,20 +108,20 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Match plan buttons to shared radius and compact padding
-- [iOS] Match plan action button styles and distribute their spacing
-- [iOS] Keep Adjust, Change and End in a compact icon-free row
-- [iOS] Add native plan adjustment flow with canonical previews
-- [iOS] Show actual completed totals in plan week headers
-- Plus 9 more fixes and improvements
+- [iOS] Compact nutrition cards with natural food photos
+- [iOS] Match nutrition illustrations to food guidance
+- [iOS] Keep finish encouragement out of cooldown phases
+- [iOS] Restore completed Planned access and unmerged interaction fixes
+- [iOS] Open workout changes only on user request
+- Plus 10 more fixes and improvements
 
 ### App Store What's New
 
-Adjust your training plan with clearer previews and more flexible scheduling. Plan week summaries now show actual completed totals. We also improved workout guidance, time-goal progress, and activity photo selection and ordering.
+Explore Nutrition beta with workout guidance and a private food diary. Review completed workouts and plan history more easily. This update also improves workout adjustments, cooldown voice guidance, and startup stability.
 
 ### App Store Promotional Text
 
-Know what to run today with personalized workouts, live guidance, and flexible race plans. Track your progress and share the journey with friends.
+Personalized training and race plans, live guidance, warm up and stretch routines, deep insights, run with with friends, share live location with loved ones.
 
 ### How to Report Feedback
 
@@ -154,9 +163,9 @@ Account deletion is available from Me > Settings > Delete Account. It requires p
 
 Plainstride provides general fitness guidance and is not a medical service. All permission-dependent features remain optional unless the reviewer actively enters that feature.
 
-## App Store Product Copy (Prepared Early)
+## App Store Product Copy
 
-These fields are not required to begin TestFlight, but preparing them now avoids a second metadata pass.
+The current live description below is the source for preserving listing copy. The early subtitle and keyword drafts are historical, not instructions to overwrite live fields.
 
 - Subtitle: `Your adaptive running guide`
 - Promotional text: preserve the exact approved **App Store Promotional Text** above; this early draft is not a source for overwriting current listing copy.
@@ -164,27 +173,38 @@ These fields are not required to begin TestFlight, but preparing them now avoids
 
 ### Description
 
-Plainstride helps you know what to do today—and makes it easier to get out the door.
+Current live English (U.S.) copy, preserved exactly from App Store Connect on November 21, 2026:
 
-Build a running rhythm around your goals, current fitness, realistic schedule, and readiness. Plainstride turns that understanding into a clear workout, adapts when your day changes, and keeps the reason behind each adjustment visible.
+Tired of juggling between multiple apps for tracking, training, stretching, and countless paywalls?
+Plainstride bring it all, completely free!
 
-During a run, track distance, time, pace, and route while receiving optional guidance. Save meaningful moments with photos, keep an eye on the session through Live Activities, and share a private live link with someone you trust when you choose.
+Get a personalized workout, hear guidance during your run,  adjust your training when life changes.
+Run with your group, share live location with your loved ones!
 
-Afterward, review recent activities, weekly progress, trends, personal records, race predictions, and shoe mileage. Optional Apple Health, Apple Music, and local weather integrations keep the experience connected without making them prerequisites.
-
-Key features:
-
-- Personalized runner onboarding and adaptive workout guidance
-- Readiness-aware Today experience
-- Outdoor GPS and indoor activity recording
-- Pause, resume, goals, spoken guidance, and Live Activities
-- Activity history, weekly trends, records, and progress insights
-- Optional Apple Health import and workout saving
-- Optional Apple Music playback and local weather context
-- User-initiated private live-run sharing
-- In-app account deletion and privacy-conscious defaults
-
-Plainstride provides fitness guidance, not medical advice. Availability of Apple services and device features varies by region, subscription, hardware, and operating system.
+MEET YOUR AI ACTIVITY BUDDY
+Your AI buddy helps you decide what to do today based on your goals, fitness, schedule, readiness, and recent training. Set smart, flexible goals based on distance, time, or calories, and explore a robust library of prebuilt plans and curated workouts. When life changes the plan, Plainstride adapts your workout and explains why, so you can spend less time guessing and more time moving.
+GO SOLO OR BRING THE CREW
+During a group run, walk, or ride, track your distance, time, pace, and route, capture shared moments with photos, and enjoy optional spoken guidance and Apple Music playback. When someone can’t join, share a private live link so they can follow along and cheer you on from wherever they are.
+CELEBRATE & TRACK PROGRESS
+Afterward, celebrate the miles together and see how far you’ve come. Review recent activities, weekly progress, trends, personal records, race predictions, and shoe mileage. Optional Apple Health and local weather integrations keep the experience connected while leaving you in control.
+KEY FEATURES:
+• Multi-Sport Tracking: Full support for running, walking, and biking
+• AI Activity Buddy: Personalized, adaptive guidance for your workouts
+• Smart Goal Setting: Flexible targets based on distance, time, or calories
+• Curated Workouts: A wide variety of prebuilt training plans and guided sessions
+• Group Sessions: Fun, social tracking for group runs, walks, or rides
+• Smart Adjustments: Readiness-aware daily plans that fit real life
+• Live Tracking: Private live-activity sharing with friends and family
+• Memories: Capture photos of memorable miles together
+• Audio Integration: Optional Apple Music playback and spoken guidance
+• Versatile Tracking: Outdoor GPS and indoor activity recording
+• In-Motion Controls: Pause, resume, goal-tracking, and Live Activities support
+• Deep Analytics: Activity history, weekly trends, records, and progress insights
+• Apple Health: Optional Health import and manual workout logging
+• Smart Context: Local weather insights for planning your route
+Move for the goal. Stay for the good company.
+—
+Disclaimer: Plainstride provides fitness guidance, not medical advice. Availability of Apple services and device features varies by region, subscription, hardware, and operating system.
 
 ## URLs and Ownership Blockers
 
@@ -227,6 +247,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Build `1.7.15 (69)` was archived, validated, and uploaded with the repository helper. Apple processing completed; the helper populated **What to Test** and confirmed the build in the `Plainstride Team` internal group.
-- Version `1.7.15 (69)` was submitted to App Review with automatic release after approval.
+- Build `1.7.18 (72)` was archived, validated, and uploaded with the repository helper. Apple processing completed; the helper populated **What to Test** and confirmed the build in the `Plainstride Team` internal group.
+- Version `1.7.18 (72)` is **Waiting for Review**, submitted with automatic release after approval; approval and public availability remain pending.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
