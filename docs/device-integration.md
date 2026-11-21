@@ -12,7 +12,7 @@ Outbound can support external fitness data through three integration paths:
 - direct watch or sensor integration
 - vendor or app cloud APIs with account linking
 
-For the current product, the best path is `HealthKit` first, Apple Watch second, and selected third-party OAuth imports after that.
+The existing foundation follows `HealthKit` first, Apple Watch second, and selected third-party OAuth imports after that. Bruce has now chosen **Garmin integration as the next focus**, with Connect IQ companion work deferred; see [Garmin integration direction](garmin-integration.md) for access prerequisites and the proposed activity-import then training-export sequence.
 
 ## What "Direct" Usually Means
 
@@ -27,7 +27,7 @@ These are not equally available. On iPhone, `HealthKit` is the broadest and most
 
 ## Recommended Default Strategy
 
-Use this priority order unless a specific partner opportunity changes it:
+The general foundation order below remains background guidance; the explicit Garmin next-work priority above takes precedence:
 
 1. read from Apple Health
 2. write Outbound workouts back to Apple Health
@@ -285,7 +285,7 @@ Device validation still requires signing with the paid team and granting workout
 
 ## Decision Summary
 
-If choosing only one path now, choose Apple Health.
+Apple Health remains the general iPhone integration foundation. For the next Garmin-specific work, follow [Garmin integration direction](garmin-integration.md).
 
 Why:
 

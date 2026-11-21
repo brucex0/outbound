@@ -15,6 +15,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Android architecture, parity, release gates | `docs/android-port.md` |
 | Android build, toolchain, variants | `docs/android-build.md` |
 | Android navigation and Back behavior | `docs/android-navigation.md` |
+| Garmin priority, cloud API access prerequisites, import/export phases and deferred Connect IQ options | `docs/garmin-integration.md` |
 | Backend architecture and boundaries | `docs/backend-architecture.md` |
 | Backend deployment and Cloud Run | `docs/backend-deploy.md` |
 | Production logs and database diagnostics | `docs/production-diagnostics.md` |
