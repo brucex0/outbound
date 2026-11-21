@@ -526,7 +526,9 @@ private struct NutritionContextSummary: View {
 
 private struct NutritionGuidanceView: View {
     @Environment(\.analyticsManager) private var analyticsManager
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var showsSources = false
+    @State private var expandedPhases: Set<String> = []
     let context: NutritionWorkoutContext
     var canLog = true
     let onLog: (NutritionWorkoutContext, NutritionPhase) -> Void
@@ -539,13 +541,22 @@ private struct NutritionGuidanceView: View {
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
                         Text(phase.title).font(.title3.bold())
+                        adviceContent(presentation)
                         ViewThatFits(in: .horizontal) {
-                            HStack(alignment: .center, spacing: OutboundSpacing.standard) { NutritionFoodIllustration(scene: presentation.scene); actionText(presentation) }
-                            VStack(alignment: .leading, spacing: OutboundSpacing.standard) { NutritionFoodIllustration(scene: presentation.scene); actionText(presentation) }
+                            HStack(spacing: OutboundSpacing.standard) {
+                                explanationButton(phase).fixedSize(horizontal: true, vertical: false)
+                                Spacer(minLength: OutboundSpacing.compact)
+                                logButton(phase).fixedSize(horizontal: true, vertical: false)
+                            }
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                explanationButton(phase)
+                                logButton(phase)
+                            }
                         }
-                        Button(NutritionText.value("add")) { onLog(context, phase) }.nutritionSecondary().disabled(!canLog)
-                        DisclosureGroup(NutritionText.value("why")) {
-                            ForEach(detailKeys(phase), id: \.self) { key in Text(NutritionText.value(key)).padding(.top, OutboundSpacing.compact) }
+                        if expandedPhases.contains(phase.rawValue) {
+                            ForEach(detailKeys(phase), id: \.self) { key in
+                                Text(NutritionText.value(key)).fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
                 }
@@ -567,8 +578,47 @@ private struct NutritionGuidanceView: View {
                 .onChange(of: showsSources) { _, expanded in if expanded { track(.nutritionAdviceExplained) } }
         }.task { track(.nutritionAdviceViewed) }
     }
+    @ViewBuilder private func adviceContent(_ presentation: NutritionAdvicePresentation) -> some View {
+        if let asset = presentation.photoAsset {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: OutboundSpacing.compact))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: OutboundSpacing.standard))
+            layout {
+                actionText(presentation).frame(maxWidth: .infinity, alignment: .leading)
+                Image(asset)
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 52, height: 52)
+                    .accessibilityHidden(true)
+            }
+        } else { actionText(presentation).frame(maxWidth: .infinity, alignment: .leading) }
+    }
     private func actionText(_ presentation: NutritionAdvicePresentation) -> some View {
-        Text(NutritionText.value(presentation.actionKey)).font(.headline).fixedSize(horizontal: false, vertical: true)
+        Text(NutritionText.value(presentation.actionKey)).font(.body).fixedSize(horizontal: false, vertical: true)
+    }
+    private func explanationButton(_ phase: NutritionPhase) -> some View {
+        Button {
+            if expandedPhases.remove(phase.rawValue) == nil {
+                expandedPhases.insert(phase.rawValue)
+                track(.nutritionAdviceExplained)
+            }
+        } label: {
+            HStack(spacing: OutboundSpacing.compact / 2) {
+                Text(NutritionText.value("why")).fixedSize(horizontal: false, vertical: true)
+                Image(systemName: expandedPhases.contains(phase.rawValue) ? "chevron.down" : "chevron.right")
+                    .font(.caption.weight(.semibold)).accessibilityHidden(true)
+            }
+            .font(.subheadline)
+            .outboundTapTarget()
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(NutritionText.value(expandedPhases.contains(phase.rawValue) ? "expanded" : "collapsed"))
+    }
+    private func logButton(_ phase: NutritionPhase) -> some View {
+        OutboundPrimaryButton(title: NutritionText.value("log"), expands: false, compact: true) { onLog(context, phase) }
+            .accessibilityLabel(NutritionText.value("add"))
+            .disabled(!canLog)
     }
     private var supported: Bool { context.isEndurance && (context.durationSeconds ?? 0) > 0 }
     private func detailKeys(_ phase: NutritionPhase) -> [String] {

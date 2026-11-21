@@ -43,6 +43,7 @@ The retired `sunset` and `solarFlare` persisted values decode as Victory Gold.
 - Accent colors retain one dynamic provider per theme. Repeated reads must compare equal so unrelated store refreshes do not supply a new native navigation tint. Providers still resolve light/dark traits dynamically, and selecting another theme immediately selects its own cached color.
 - `secondaryColor`: complementary color used to make each theme more than a monochrome tint.
 - `actionColor`: readable filled-button color; it may be deeper than the accent.
+- `actionForegroundColor`: black or white chosen from the resolved action fill’s relative luminance for compact primary text. It adapts to each appearance independently; existing default primary buttons retain their current styling.
 - `heroGradient`: three-stop gradient for prominent themed surfaces.
 - `glowColor`: restrained theme-colored shadow for hero surfaces and preview swatches.
 - `heroForegroundColor`: readable content color over the actual hero gradient. Bright themes use dark foregrounds; darker themes use white.

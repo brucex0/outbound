@@ -74,6 +74,22 @@ enum OutboundTheme: String, CaseIterable, Codable, Identifiable {
         }
     }
 
+    /// Compact text needs contrast against the actual action fill in either appearance.
+    var actionForegroundColor: Color {
+        Color(uiColor: UIColor { traits in
+            let fill = UIColor(self.actionColor).resolvedColor(with: traits)
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            fill.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            func linear(_ channel: CGFloat) -> CGFloat {
+                channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
+            }
+            let luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+            let blackContrast = (luminance + 0.05) / 0.05
+            let whiteContrast = 1.05 / (luminance + 0.05)
+            return blackContrast >= whiteContrast ? .black : .white
+        })
+    }
+
     var heroGradient: LinearGradient {
         LinearGradient(
             colors: heroColors,
@@ -306,23 +322,36 @@ struct OutboundPrimaryButton: View {
     let title: String
     var systemImage: String?
     var expands = true
+    // Compact controls keep their visual fill content-sized and expand only the hit target.
+    var compact = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: OutboundSpacing.compact) {
-                if let systemImage {
-                    Image(systemName: systemImage)
-                }
-                Text(title)
+            if compact {
+                label
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, OutboundSpacing.standard)
+                    .padding(.vertical, OutboundSpacing.compact)
+                    .foregroundStyle(theme.actionForegroundColor)
+                    .background(theme.actionColor, in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
+                    .outboundTapTarget()
+            } else {
+                label
+                    .font(.headline)
+                    .padding(.horizontal, expands ? 0 : OutboundSpacing.standard)
+                    .frame(maxWidth: expands ? .infinity : nil, minHeight: 48)
+                    .foregroundStyle(.white)
+                    .background(theme.actionColor, in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
             }
-            .font(.headline)
-            .padding(.horizontal, expands ? 0 : OutboundSpacing.standard)
-            .frame(maxWidth: expands ? .infinity : nil, minHeight: 48)
-            .foregroundStyle(.white)
-            .background(theme.actionColor, in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+    private var label: some View {
+        HStack(spacing: OutboundSpacing.compact) {
+            if let systemImage { Image(systemName: systemImage) }
+            Text(title)
+        }
     }
 }
 
