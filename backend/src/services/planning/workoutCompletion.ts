@@ -1,3 +1,4 @@
+import { accountDateLabel, accountTimeZone } from "../accountCalendar.js";
 import { Prisma } from "@prisma/client";
 import { isOptionalWorkout } from "./persistence.js";
 import { isRunningActivityType, reportedEffort } from "./sessionEffort.js";
@@ -69,7 +70,10 @@ export async function reconcileUploadedWorkout(tx: Prisma.TransactionClient, use
   const existing = await tx.workoutCompletion.findUnique({ where: { activityId: activity.id }, include: { prescriptionRevision: true } });
   if (referenceValue == null) {
     // Missing optional metadata never clears an already-owned canonical association.
-    if (!existing?.prescriptionRevision) return;
+    if (!existing?.prescriptionRevision) {
+      if (existing) await tx.workoutCompletion.update({ where: { id: existing.id }, data: completionFromActivity(activity) });
+      return;
+    }
     const row = await tx.plannedWorkout.findUniqueOrThrow({ where: { id: existing.plannedWorkoutId } });
     referenceValue = { policyVersion: "performed-workout-v1", performedAsIssued: existing.performedAsIssued === true, issuanceId: existing.prescriptionRevision.id,
       revision: existing.prescriptionRevision.revision, plannedWorkoutId: row.id, planVersionId: row.planVersionId,
@@ -101,4 +105,45 @@ function activityMatches(type: string, modality: unknown): boolean {
   if (modality === "bike") return /cycl|bike/i.test(type);
   if (modality === "walk") return /walk|hik/i.test(type);
   return type.toLowerCase() === modality;
+}
+
+/** Explicit online correction. Never creates a prescription receipt or dose credit. */
+export async function manuallyCompleteWorkout(tx: Prisma.TransactionClient, userId: string, workoutId: string, input: CompleteWorkoutInput) {
+  const workout = await tx.plannedWorkout.findFirst({ where: { id: workoutId, userId }, include: { completions: true, planVersion: true } });
+  if (!workout || workout.scheduledDate > accountDateLabel(new Date(), await accountTimeZone(userId, null, tx))
+      || !["planned", "missed", "completed"].includes(workout.status)) throw new PerformedWorkoutConflictError("unavailable_reference");
+  if (workout.completions.some(row => row.prescriptionRevisionId != null || row.workoutEditId != null)) throw new PerformedWorkoutConflictError("reassigned_activity");
+  const activity = input.manualAction === "link" && input.activityId
+    ? await tx.activity.findFirst({ where: { id: input.activityId, userId, deletedAt: null } }) : null;
+  if (input.manualAction === "link" && (!activity || !activityMatches(activity.type, workout.modality)
+      || activity.startedAt > new Date() || activity.startedAt < new Date(Date.now() - 30 * 86400000)
+      || object(activity.clientData).performedWorkoutReference != null)) throw new PerformedWorkoutConflictError("unavailable_reference");
+  if (activity) {
+    const other = await tx.workoutCompletion.findUnique({ where: { activityId: activity.id } });
+    if (other && other.plannedWorkoutId !== workoutId) throw new PerformedWorkoutConflictError("reassigned_activity");
+  }
+  const previous = workout.completions[0];
+  if (workout.completions.length === 1 && previous.performedAsIssued === false
+      && input.manualAction !== "undo" && previous.activityId === (activity?.id ?? null)) return false;
+  if (input.manualAction === "undo" && workout.completions.length === 0 && workout.status === "planned") return false;
+  // Touch both sides so cached-change reads see link and unlink even without activity edits.
+  const activityIds = [...workout.completions.flatMap(row => row.activityId ? [row.activityId] : []), ...(activity ? [activity.id] : [])];
+  await tx.activity.updateMany({ where: { userId, id: { in: activityIds } }, data: { updatedAt: new Date() } });
+  await tx.workoutCompletion.deleteMany({ where: { userId, plannedWorkoutId: workoutId } });
+  if (input.manualAction !== "undo") {
+    await tx.workoutCompletion.create({ data: { userId, plannedWorkoutId: workoutId, activityId: activity?.id ?? null,
+      performedAsIssued: false, completionQuality: "completed", completedAt: new Date(),
+      ...(activity ? completionFromActivity(activity) : {}) } });
+  }
+  if (input.manualAction !== "undo") {
+    // Match receipt completion's replacement scope; a historical plan never
+    // retires the active replacement plan, and optional work stays independent.
+    const replacements = await tx.plannedWorkout.findMany({ where: { userId, id: { not: workout.id },
+      planVersion: { planId: workout.planVersion.planId }, scheduledDate: workout.scheduledDate, status: "planned" },
+      select: { id: true, prescription: true } });
+    await tx.plannedWorkout.updateMany({ where: { id: { in: replacements.filter(row => isOptionalWorkout(row) === isOptionalWorkout(workout)).map(row => row.id) } }, data: { status: "superseded" } });
+  }
+  await tx.plannedWorkout.update({ where: { id: workoutId }, data: { status: input.manualAction === "undo" ? "planned" : "completed" } });
+  console.info("[planning] manual_workout_completion", { operation: input.manualAction, result: "success" });
+  return true;
 }

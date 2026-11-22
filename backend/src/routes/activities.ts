@@ -71,7 +71,7 @@ router.get("/", async (c) => {
         { startedAt: boundary.startedAt, id: { lt: boundary.id } },
       ] } : {}),
     },
-    include: { photos: { orderBy: { takenAt: "asc" } } },
+    include: { photos: { orderBy: { takenAt: "asc" } }, workoutCompletions: { include: { plannedWorkout: true, prescriptionRevision: true } } },
     orderBy: [{ startedAt: "desc" }, { id: "desc" }],
     take: limit + 1,
     skip: boundary ? 0 : offset,
@@ -87,10 +87,21 @@ router.get("/", async (c) => {
   });
 });
 
-function serializeActivity(activity: Prisma.ActivityGetPayload<{ include: { photos: true } }>, metadataOnly = false) {
+function serializeActivity(activity: Prisma.ActivityGetPayload<{ include: { photos: true } }> & {
+  workoutCompletions?: { prescriptionRevision?: { snapshot: Prisma.JsonValue } | null; plannedWorkoutId: string; plannedWorkout: { planVersionId: string; status: string; durationSeconds: number } }[]
+}, metadataOnly = false) {
+  const completion = activity.workoutCompletions?.[0];
+  const snapshot = completion?.prescriptionRevision?.snapshot as Record<string, unknown> | undefined;
+  const effective = snapshot?.effectiveWorkout as { targetDurationSeconds?: number; steps?: { durationSeconds: number }[] } | undefined;
+  const retainedDuration = typeof snapshot?.durationSeconds === "number" ? snapshot.durationSeconds
+    : effective?.targetDurationSeconds ?? effective?.steps?.reduce((total, step) => total + step.durationSeconds, 0);
   return {
       id: activity.id,
       clientActivityId: activity.clientActivityId,
+      completionPolicyVersion: "manual-completion-v1",
+      completion: completion ? { activityId: activity.id, plannedWorkoutId: completion.plannedWorkoutId,
+        planVersionId: completion.plannedWorkout.planVersionId, status: completion.plannedWorkout.status,
+        prescribedDurationSeconds: retainedDuration && retainedDuration > 0 ? retainedDuration : completion.plannedWorkout.durationSeconds } : null,
       clientData: activity.clientData ?? emptyClientExtras(),
       activityType: activity.type,
       title: activity.title ?? "Restored Run",
@@ -132,7 +143,7 @@ router.post("/cached-changes", zValidator("json", z.object({ records: z.array(z.
   const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
   const records = c.req.valid("json").records;
   if (!records.length) return c.json({ activities: [], hasMore: false, nextCursor: null });
-  const activities = await getPrismaClient().activity.findMany({ where: { userId: user.id, OR: records.map(record => ({ id: record.id, ...(record.updatedAt ? { updatedAt: { gt: new Date(record.updatedAt) } } : {}) })) }, include: { photos: true }, take: 200 });
+  const activities = await getPrismaClient().activity.findMany({ where: { userId: user.id, OR: records.map(record => ({ id: record.id, ...(record.updatedAt ? { updatedAt: { gt: new Date(record.updatedAt) } } : {}) })) }, include: { photos: true, workoutCompletions: { include: { plannedWorkout: true, prescriptionRevision: true } } }, take: 200 });
   return c.json({ activities: activities.map(activity => serializeActivity(activity, true)), hasMore: false, nextCursor: null });
 });
 

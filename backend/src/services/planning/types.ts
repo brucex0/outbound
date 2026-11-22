@@ -82,6 +82,7 @@ export interface SubmitReadinessInput {
 }
 
 export interface CompleteWorkoutInput {
+  manualAction?: "link" | "complete" | "undo";
   performedWorkoutReference?: import("./workoutIssuance.js").PerformedWorkoutReference;
   workoutEditId?: string | null;
   workoutRevision?: string | null;

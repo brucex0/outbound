@@ -2,7 +2,7 @@ import { planAvailability } from "./planAvailability.js";
 import { accountTimeZone, accountDateLabel, planningCalendarContext } from "../accountCalendar.js";
 import { preferredLongRunDays, LongRunDaysError } from "./longRunDays.js";
 import { runningPlanReview, runningReviewDecision, clearRunningPlanReview } from "./runningPlanReview.js";
-import { recordWorkoutCompletion } from "./workoutCompletion.js";
+import { manuallyCompleteWorkout, recordWorkoutCompletion } from "./workoutCompletion.js";
 import { issueWorkout, withIssuanceTransaction } from "./workoutIssuance.js";
 import { freshReadiness } from "./runWalkProgramme.js";
 import { RunningScheduleError } from "./runningDosePolicy.js";
@@ -480,6 +480,9 @@ export async function completeWorkout(
 
   const changed = await prisma.$transaction(async (tx) => {
     await lockPlanningUser(tx, userId);
+    if (input.manualAction) {
+      return manuallyCompleteWorkout(tx, userId, workoutId, input);
+    }
     const result = await recordWorkoutCompletion(tx, userId, workoutId, input, input.performedWorkoutReference);
     return result.changed;
   });
@@ -675,8 +678,16 @@ export async function assemblePlanningState(
     });
     const storedWorkouts = [...existingWorkouts, ...retainedCalendarWorkouts, ...retainedPastWorkouts]
       .sort((left, right) => left.scheduledDate.getTime() - right.scheduledDate.getTime());
-    const workouts = await Promise.all(storedWorkouts.map(async (workout) => workout.status === "planned" && workout.scheduledDate >= now
-      ? { ...workout, performedWorkoutReference: await issueWorkout(prisma, userId, workout.id) } : workout));
+    const completionRows = await prisma.workoutCompletion.findMany({ where: { userId, plannedWorkoutId: { in: storedWorkouts.map(row => row.id) } },
+      select: { plannedWorkoutId: true, activityId: true, prescriptionRevisionId: true, workoutEditId: true } });
+    const completionMode = (id: string) => {
+      const rows = completionRows.filter(row => row.plannedWorkoutId === id);
+      if (!rows.length) return null;
+      if (rows.some(row => row.prescriptionRevisionId || row.workoutEditId)) return "recorded";
+      return rows.some(row => row.activityId) ? "manual_recorded" : "manual_unrecorded";
+    };
+    const workouts = await Promise.all(storedWorkouts.map(async (workout) => ({ ...workout, completionMode: completionMode(workout.id),
+      ...(workout.status === "planned" && workout.scheduledDate >= now ? { performedWorkoutReference: await issueWorkout(prisma, userId, workout.id) } : {}) })));
     const today = workouts.find((workout) => sameDay(workout.scheduledDate, now) && workout.status === "planned" && !isOptionalWorkout(workout)) ?? null;
     const recommendations = plan ? [] : await trainingPlanRecommendationsForUser(userId);
 

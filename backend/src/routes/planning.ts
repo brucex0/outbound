@@ -119,6 +119,7 @@ const readinessSchema = z.object({
 });
 
 const completionSchema = z.object({
+  manualAction: z.enum(["link", "complete", "undo"]).optional(),
   performedWorkoutReference: performedWorkoutReferenceSchema.optional(),
   workoutEditId: z.string().max(160).nullable().optional(),
   workoutRevision: z.string().length(64).nullable().optional(),
