@@ -524,3 +524,8 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Account/plan/workout/command IDs, revisions, hashes, dates, weekday selections, schedule contents, readiness responses and optional reasons are excluded. Reasons remain only in private `PlanChangeCommand` audit rows and never act as readiness evidence.
 
 - iOS expanding the Plan Details past-week group uses `feature_exposed` with fixed `feature=plan_past_weeks`, `result=expanded|collapsed`; Android reuses the existing `plan_schedule_week_toggled` event for that disclosure. Opening an exactly associated completed activity uses `feature_exposed` with fixed `feature=plan_completed_activity`, `result=opened`. No week numbers, dates, account/activity/workout identifiers, receipt data or metrics are included. Backend `planned_workout_complete` reports only bounded `result=complete`, `source=active_plan`.
+
+## Explicit planned-workout completion
+
+- iOS and Android use `feature_exposed` with `feature=manual_workout_completion`, `selection_type=link|complete|undo`, and `result=success|failure` for explicit online commands from workout details. `feature=group_workout_completion` records only `result=success|failure` for an accepted optional post-save group-recording link.
+- These events exclude activity/workout/plan/event IDs, titles, dates, metrics, receipt data, candidate counts and user text. Pending recording upload is a retryable local presentation state, not a claimed successful link.
