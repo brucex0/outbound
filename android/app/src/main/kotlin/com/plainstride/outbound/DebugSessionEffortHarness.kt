@@ -108,7 +108,7 @@ class DebugSessionEffortViewModel @Inject constructor(
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass == RecordingViewModel::class.java)
             return RecordingViewModel(context, noAnalytics, groups, localRepository, media, ActivitySyncScheduler {}, voice,
-                planningApi, object : AccessTokenProvider { override suspend fun validAccessToken(): String? = null }) as T
+                planningApi, object : AccessTokenProvider { override suspend fun validAccessToken(): String? = null }, database) as T
         }
     })[RecordingViewModel::class.java]
     val recordingState = recording.state

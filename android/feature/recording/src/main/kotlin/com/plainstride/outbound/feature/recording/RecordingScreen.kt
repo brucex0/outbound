@@ -787,6 +787,7 @@ fun RecordingRoute(
             val export = postSavePhotoAlbumExport
             PostWorkoutStretchRoute(
                 onShare = { showPostSaveShare = true },
+                completionContent = { postSaveActivity?.let { GroupWorkoutCompletionPrompt(it, viewModel::groupWorkoutCandidate, viewModel::linkGroupWorkout) } },
                 fetchAudio = viewModel::fetchStretchAudio,
                 voiceProfileId = stretchVoiceProfileId,
                 isIndoor = postSaveIndoor,
@@ -809,6 +810,7 @@ fun RecordingRoute(
                 sessionKey = review.snapshot.sessionId ?: review.snapshot.recordedAtEpochMilliseconds.toString(),
                 onShare = { showPostSaveShare = true },
                 onDone = ::finishPostSaveCelebration,
+                completionContent = { postSaveActivity?.let { GroupWorkoutCompletionPrompt(it, viewModel::groupWorkoutCandidate, viewModel::linkGroupWorkout) } },
             )
         } else {
             content()

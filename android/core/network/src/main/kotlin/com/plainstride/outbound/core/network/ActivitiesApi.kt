@@ -148,6 +148,8 @@ data class RemoteActivityDto(
     val updatedAt: String,
     val photos: List<RemoteActivityPhotoDto> = emptyList(),
     val companionType: String? = null,
+    val completionPolicyVersion: String? = null,
+    val completion: CanonicalWorkoutCompletion? = null,
 )
 
 @Serializable data class ActivityListResponse(val activities: List<RemoteActivityDto>, val hasMore: Boolean, val nextCursor: String? = null)

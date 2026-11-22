@@ -81,6 +81,7 @@ interface ActivityRepository {
     suspend fun edit(activity: SavedActivity)
     suspend fun delete(accountId: String, activityId: String, deletedAt: Instant = Instant.now())
     suspend fun retryRejected(accountId: String) {}
+    suspend fun completionCandidates(accountId: String, modality: com.plainstride.outbound.core.model.Modality): List<RemoteActivityDto> = emptyList()
     suspend fun synchronize(accountId: String): ActivitySyncResult
 }
 
@@ -210,7 +211,10 @@ class OfflineFirstActivityRepository(
     private val elevationCorrector = TerrainElevationCorrector(api)
     private val elevationCorrections = ConcurrentHashMap.newKeySet<Pair<String, String>>()
 
-    override fun observeAll(accountId: String): Flow<List<SavedActivity>> = dao.observeAll(accountId).map { rows -> rows.map { it.toDomain() } }
+    override fun observeAll(accountId: String): Flow<List<SavedActivity>> = combine(dao.observeAll(accountId), reads.observe(accountId)) { rows, projection ->
+        val completions = projection?.completions.orEmpty().filter { it.canonicalCompletionJson != null }.associate { it.activityId to it.plannedWorkoutId }
+        rows.map { row -> row.toDomain().let { it.copy(linkedPlannedWorkoutId = completions[it.id]) } }
+    }
 
     override fun observePendingSyncCount(accountId: String): Flow<Int> =
         database.syncOutboxDao().observeCount(accountId)
@@ -347,6 +351,29 @@ class OfflineFirstActivityRepository(
             reads.deleted(accountId, activityId)
             enqueue(accountId, activityId, DELETE, deletedAt.toString(), "{}")
         }
+    }
+
+    override suspend fun completionCandidates(accountId: String, modality: com.plainstride.outbound.core.model.Modality): List<RemoteActivityDto> {
+        val owner = context(accountId) ?: throw IOException("authentication_required")
+        val token = accessTokens.validAccessToken(owner) ?: throw IOException("authentication_required")
+        val cutoff = now().minusSeconds(30 * 86400)
+        val candidates = mutableListOf<RemoteActivityDto>()
+        var cursor: String? = null
+        do {
+            val result = apiCall { api.activities("Bearer $token", 200, 0, cursor = cursor) }
+            if (!current(owner)) throw CancellationException()
+            if (result !is ApiResult.Success) throw IOException("activity_candidates_unavailable")
+            candidates += result.value.activities.filter { remote ->
+                remote.deletedAt == null && remote.completionPolicyVersion == "manual-completion-v1" && remote.completion == null && remote.clientData["performedWorkoutReference"].let { it == null || it == JsonNull }
+                    && when (modality) { com.plainstride.outbound.core.model.Modality.run -> remote.activityType == "running"; com.plainstride.outbound.core.model.Modality.bike -> remote.activityType == "cycling"; com.plainstride.outbound.core.model.Modality.walk -> remote.activityType in setOf("walking", "hiking"); else -> remote.activityType.equals(modality.name, true) }
+                    && Instant.parse(remote.startedAt) in cutoff..now()
+            }
+            if (!result.value.hasMore || result.value.activities.lastOrNull()?.let { Instant.parse(it.startedAt) <= cutoff } == true) break
+            val next = result.value.nextCursor
+            if (next == null || next == cursor) throw IOException("activity_cursor_unavailable")
+            cursor = next
+        } while (true)
+        return candidates
     }
 
     override suspend fun synchronize(accountId: String): ActivitySyncResult = syncMutex.withLock {
@@ -628,6 +655,8 @@ class OfflineFirstActivityRepository(
             }
             return@withTransaction true
         }
+        val priorServerUpdate = local?.serverUpdatedAt
+        if (priorServerUpdate != null && parseEpoch(priorServerUpdate) > parseEpoch(remote.updatedAt)) return@withTransaction false
         val snapshot = remote.clientData
         val decoded = snapshot.toDomain(accountId, remote.copy(clientActivityId = clientId)) ?: return@withTransaction false
         // Keep private local files attached when a server refresh supplies metadata only.
@@ -640,6 +669,15 @@ class OfflineFirstActivityRepository(
         val mergedPhotos = localPhotos.mapNotNull { old -> mergedById.firstOrNull { it.id == old.id } } +
             mergedById.filter { remote -> localPhotos.none { it.id == remote.id } }
         persist(decoded.copy(photos = mergedPhotos, track = if (preserveRoute) local?.track.orEmpty() else decoded.track, elevationMetadata = if (preserveRoute) local?.elevationMetadata else decoded.elevationMetadata), enqueue = false)
+        if (remote.completionPolicyVersion == "manual-completion-v1") {
+            val projectionDao = database.accountProjectionDao()
+            val previous = projectionDao.completion(accountId, clientId)
+            remote.completion?.let { completion ->
+                projectionDao.upsertCompletion(com.plainstride.outbound.core.database.ActivityCompletionEntity(accountId, clientId,
+                    previous?.generation ?: 0, completion.plannedWorkoutId, previous?.receiptJson, "confirmed", PlainstrideJson.encodeToString(completion),
+                    acceptedPlanningRevision = previous?.acceptedPlanningRevision))
+            } ?: projectionDao.removeCompletion(accountId, clientId)
+        }
         return@withTransaction true
     }
 

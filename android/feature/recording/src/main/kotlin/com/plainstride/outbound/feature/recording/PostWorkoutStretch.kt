@@ -54,6 +54,7 @@ fun PostWorkoutStretchRoute(
     voiceProfileId: String?,
     fetchAudio: suspend (String, String, String) -> ByteArray?,
     isIndoor: Boolean = false,
+    completionContent: @Composable () -> Unit = {},
 ) {
     StretchSessionRoute(
         launch = StretchLaunchContext(StretchEntryPoint.POST_SAVE, kind, isIndoor),
@@ -62,6 +63,7 @@ fun PostWorkoutStretchRoute(
         header = { finish ->
             PostSaveCelebrationCard(track = track, sessionKey = sessionKey, modifier = Modifier.fillMaxWidth().height(205.dp))
             PostSaveCompanionMessage(sessionKey = sessionKey, style = MaterialTheme.typography.titleMedium)
+            completionContent()
             PostSaveActivityActions(onShare = onShare, onDone = finish)
         },
     )

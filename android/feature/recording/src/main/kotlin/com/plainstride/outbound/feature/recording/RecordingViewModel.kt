@@ -83,6 +83,7 @@ class RecordingViewModel @Inject constructor(
     private val voice: RecordingVoiceCoordinator,
     private val planningApi: PlanningApiService,
     private val accessTokens: AccessTokenProvider,
+    private val database: com.plainstride.outbound.core.database.PlainstrideDatabase,
 ) : ViewModel() {
     private val photoAlbumExporter = ActivityPhotoAlbumExporter(context)
     private val launchJson=Json{ignoreUnknownKeys=true;explicitNulls=false}
@@ -555,6 +556,64 @@ class RecordingViewModel @Inject constructor(
     fun trackStartPreflight() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
         AnalyticsProperty.Feature to "activity_start_preflight",
     )))
+
+    suspend fun groupWorkoutCandidate(activity: SavedActivity): com.plainstride.outbound.core.model.PlannedWorkout? {
+        if (activity.activityEventId == null || activity.performedWorkoutReference != null) return null
+        val owner = accessTokens.captureAccount(activity.accountId) ?: return null
+        val token = accessTokens.validAccessToken(owner) ?: return null
+        val response = planningApi.state("Bearer $token")
+        if (!accessTokens.isCurrent(owner)) throw kotlinx.coroutines.CancellationException()
+        if (!response.isSuccessful) {
+            Log.w("PlainstridePlanning", "group_completion_candidate_failed status=${response.code()}")
+            return null
+        }
+        val planning = response.body() ?: return null
+        val zone = java.time.ZoneId.of(planning.calendar?.timeZone ?: "UTC")
+        val today = java.time.LocalDate.now(zone)
+        if (Instant.parse(activity.startedAt).atZone(zone).toLocalDate() != today) return null
+        val matches = planning.workouts.orEmpty().filter { workout ->
+            workout.prescription?.get("optional")?.toString() != "true" && workout.status in setOf("planned", "missed")
+                && workout.scheduledDate.take(10) == today.toString() && activity.durationSecs >= workout.durationSeconds / 2
+                && when (workout.modality) {
+                    com.plainstride.outbound.core.model.Modality.run -> activity.type == ActivityType.running
+                    com.plainstride.outbound.core.model.Modality.walk -> activity.type in setOf(ActivityType.walking, ActivityType.hiking)
+                    com.plainstride.outbound.core.model.Modality.bike -> activity.type == ActivityType.cycling
+                    else -> activity.type.name.equals(workout.modality.name, true)
+                }
+        }
+        return matches.singleOrNull()
+    }
+
+    suspend fun linkGroupWorkout(activity: SavedActivity, workout: com.plainstride.outbound.core.model.PlannedWorkout): String {
+        val owner = accessTokens.captureAccount(activity.accountId) ?: return "failure"
+        try {
+            activities.synchronize(activity.accountId)
+            if (!accessTokens.isCurrent(owner)) throw kotlinx.coroutines.CancellationException()
+            val canonical = activities.activity(activity.accountId, activity.id)?.serverActivityId ?: return "pending"
+            val token = accessTokens.validAccessToken(owner) ?: return "failure"
+            val response = planningApi.completeWorkout("Bearer $token", workout.id, com.plainstride.outbound.core.network.PlannedWorkoutCompletionRequest(manualAction = "link", activityId = canonical))
+            if (!accessTokens.isCurrent(owner)) throw kotlinx.coroutines.CancellationException()
+            val state = response.body()
+            if (!response.isSuccessful || state == null) {
+                Log.w("PlainstridePlanning", "group_completion_failed status=${response.code()}")
+                analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "group_workout_completion", AnalyticsProperty.Result to "failure")))
+                return "failure"
+            }
+            com.plainstride.outbound.core.data.AccountReadRepository(database, accessTokens).acceptPlanning(owner, state, command = true)
+            try { activities.synchronize(activity.accountId) }
+            catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                Log.w("PlainstridePlanning", "group_completion_refresh_failed category=${error.javaClass.simpleName}")
+            }
+            if (!accessTokens.isCurrent(owner)) throw kotlinx.coroutines.CancellationException()
+            analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "group_workout_completion", AnalyticsProperty.Result to "success")))
+            return "success"
+        } catch (error: Exception) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            Log.w("PlainstridePlanning", "group_completion_failed category=${error.javaClass.simpleName}")
+            return "failure"
+        }
+    }
 
     fun trackPostSaveCelebrationExposed() {
         analytics.record(AnalyticsEvent("feature_exposed", mapOf(

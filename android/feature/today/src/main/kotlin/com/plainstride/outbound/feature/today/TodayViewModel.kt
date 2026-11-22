@@ -393,6 +393,36 @@ class TodayViewModel @Inject constructor(
         messages.emit(message)
     }
 
+    suspend fun completionCandidates(workout: com.plainstride.outbound.core.model.PlannedWorkout): List<com.plainstride.outbound.core.network.RemoteActivityDto> {
+        val scope = accountScope.value
+        val result = activities.completionCandidates(scope.first, workout.modality)
+        if (accountScope.value != scope) throw kotlinx.coroutines.CancellationException()
+        return result
+    }
+
+    suspend fun setManualCompletion(workoutId: String, action: String, activityId: String?): Boolean {
+        if (mutationInFlight.value) return false
+        val scope = accountScope.value
+        mutationInFlight.value = true
+        try {
+            val result = repository.completeWorkout(scope.first, scope.second, workoutId, com.plainstride.outbound.core.network.PlannedWorkoutCompletionRequest(manualAction = action, activityId = activityId))
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (accountScope.value != scope) return false
+            analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "manual_workout_completion", AnalyticsProperty.SelectionType to action, AnalyticsProperty.Result to if (result.isSuccess) "success" else "failure")))
+            if (result.isFailure) android.util.Log.w("PlainstridePlanning", "manual_completion_failed category=${result.exceptionOrNull()?.javaClass?.simpleName ?: "unknown"}")
+            if (result.isSuccess) {
+                try { activities.synchronize(scope.first) }
+                catch (error: Exception) {
+                    if (error is kotlinx.coroutines.CancellationException) throw error
+                    android.util.Log.w("PlainstridePlanning", "manual_completion_refresh_failed category=${error.javaClass.simpleName}")
+                }
+                if (accountScope.value != scope) throw kotlinx.coroutines.CancellationException()
+                refresh()
+            }
+            return result.isSuccess
+        } finally { mutationInFlight.value = false }
+    }
+
     suspend fun updateRaceGoal(goalId: String, request: com.plainstride.outbound.core.network.RaceGoalUpdateRequest): Boolean {
         if (mutationInFlight.value) return false
         mutationInFlight.value = true

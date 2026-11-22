@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,12 +70,14 @@ fun PostSaveCelebration(
     sessionKey: String,
     onDone: () -> Unit,
     onShare: () -> Unit,
+    completionContent: @Composable () -> Unit = {},
 ) {
     val accessibilityLabel = stringResource(R.string.recording_post_save_accessibility)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .background(PostcardBackdrop)
             .semantics { contentDescription = accessibilityLabel }
             .padding(horizontal = 24.dp),
@@ -93,6 +97,7 @@ fun PostSaveCelebration(
             color = PostcardNavy,
         )
         Spacer(Modifier.height(22.dp))
+        completionContent()
         PostSaveActivityActions(onShare = onShare, onDone = onDone)
     }
 }

@@ -73,6 +73,7 @@ data class PlannedWorkout(
     val status: String,
     val blocks: List<WorkoutBlock> = emptyList(),
     val performedWorkoutReference: PerformedWorkoutReference? = null,
+    val completionMode: String? = null,
 )
 
 @Serializable

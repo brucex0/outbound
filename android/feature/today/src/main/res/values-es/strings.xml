@@ -224,4 +224,21 @@
     <string name="plan_view_completed_activity_accessibility">Ver actividad completada</string>
     <string name="plan_completed_activity_unavailable">La actividad vinculada aún no está disponible en este dispositivo.</string>
     <string name="plan_this_week">Esta semana</string>
+    <string name="plan_completion_link">Vincular actividad grabada</string>
+    <string name="plan_completion_manual">Marcar como completado sin grabación</string>
+    <string name="plan_completion_undo">Deshacer finalización</string>
+    <string name="plan_completion_unrecorded">Completado sin grabación</string>
+    <string name="plan_completion_loading">Cargando actividades</string>
+    <string name="plan_completion_manual_title">¿Marcar este entrenamiento como completado?</string>
+    <string name="plan_completion_manual_message">No se creará ninguna actividad ni se añadirán métricas grabadas.</string>
+    <string name="plan_completion_undo_title">¿Deshacer esta finalización?</string>
+    <string name="plan_completion_undo_message">El entrenamiento volverá a estar pendiente. Tu actividad guardada se conservará.</string>
+    <string name="plan_completion_choose_message">Elige una actividad reciente. Se vinculará la grabación sin afirmar que seguiste todas las fases del entrenamiento.</string>
+    <string name="plan_completion_empty">No hay actividades de este deporte sin vincular en los últimos 30 días. Guarda y sincroniza una grabación e inténtalo de nuevo.</string>
+    <string name="plan_completion_failed">No se pudo actualizar. Conéctate e inténtalo de nuevo.</string>
+    <string name="plan_completion_saved">Entrenamiento actualizado</string>
+    <string name="plan_completion_group_question">¿Contar esta actividad para el entrenamiento de hoy?</string>
+    <string name="plan_completion_count">Contar esta actividad</string>
+    <string name="plan_completion_not_now">Ahora no</string>
+    <string name="plan_completion_sync_first">Tu actividad está guardada. Espera a que termine de sincronizarse e inténtalo de nuevo.</string>
 </resources>

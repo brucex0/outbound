@@ -87,6 +87,7 @@ data class SavedActivity(
     val sessionEffortRating: Int? = null,
     val performedWorkoutReference: com.plainstride.outbound.core.model.PerformedWorkoutReference? = null,
     val plannedWorkoutCompletionQuality: String? = null,
+    @kotlinx.serialization.Transient val linkedPlannedWorkoutId: String? = null,
 ) {
     val completedWorkoutDisplayContext: com.plainstride.outbound.core.model.CompletedWorkoutDisplayContext?
         get() = if (activityEventId == null && followedRouteId == null) performedWorkoutReference?.displayContext else null

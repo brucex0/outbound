@@ -75,6 +75,8 @@ internal fun ActivePlanDetailsSheet(
     onEndPlan: () -> Unit,
     onEndConfirmation: () -> Unit,
     onRefresh: () -> Unit,
+    onManualCompletion: suspend (String, String, String?) -> Boolean = { _, _, _ -> false },
+    onCompletionCandidates: suspend (PlannedWorkout) -> List<com.plainstride.outbound.core.network.RemoteActivityDto> = { emptyList() },
     onOpenCompletedActivity: (String) -> Unit = {},
     completedActivities: List<com.plainstride.outbound.core.model.activity.SavedActivity> = emptyList(),
     onWorkoutDetailsOpened: () -> Unit = {},
@@ -176,6 +178,7 @@ internal fun ActivePlanDetailsSheet(
             onDone = onDismiss,
             onChangeWorkout = onChangeWorkout?.takeIf { workout.isFor(today) && workout.status !in TERMINAL_WORKOUT_STATUSES },
             busy = busy,
+            completionContent = { PlannedWorkoutCompletionControls(workout, planningLogicalDate(workout.scheduledDate)?.let { it <= today } == true, units, onCompletionCandidates, onManualCompletion) },
         )
     }
     if (confirmsEnd) AlertDialog(

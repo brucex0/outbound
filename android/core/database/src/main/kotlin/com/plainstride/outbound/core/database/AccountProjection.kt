@@ -57,6 +57,8 @@ interface AccountProjectionDao {
     suspend fun upsertCompletion(value: ActivityCompletionEntity)
     @Query("DELETE FROM activity_completions WHERE accountId = :accountId AND activityId = :activityId AND canonicalCompletionJson IS NULL")
     suspend fun removeUnconfirmed(accountId: String, activityId: String)
+    @Query("DELETE FROM activity_completions WHERE accountId = :accountId AND activityId = :activityId")
+    suspend fun removeCompletion(accountId: String, activityId: String)
     @Query("DELETE FROM activity_completions WHERE accountId = :accountId")
     suspend fun deleteCompletions(accountId: String)
     @Query("DELETE FROM account_projections WHERE accountId = :accountId")

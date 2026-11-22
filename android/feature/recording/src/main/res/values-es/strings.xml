@@ -111,4 +111,10 @@
     <string name="recording_countdown_voice_unavailable">La voz de la cuenta atrás no está disponible. Tu actividad empezará con normalidad.</string>
     <string name="live_ai_coach">Entrenador IA</string>
     <string name="live_ai_coach_detail">Recibe orientación adaptada a tu actividad. Con Voz desactivada, los consejos aparecen en pantalla.</string>
+    <string name="plan_completion_group_question">¿Contar esta actividad para el entrenamiento de hoy?</string>
+    <string name="plan_completion_count">Contar esta actividad</string>
+    <string name="plan_completion_not_now">Ahora no</string>
+    <string name="plan_completion_sync_first">Tu actividad está guardada. Espera a que termine de sincronizarse e inténtalo de nuevo.</string>
+    <string name="plan_completion_failed">No se pudo actualizar. Conéctate e inténtalo de nuevo.</string>
+    <string name="plan_completion_workout_duration">Duración prevista: %s</string>
 </resources>

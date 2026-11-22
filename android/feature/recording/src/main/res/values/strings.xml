@@ -111,4 +111,10 @@
     <string name="recording_countdown_voice_unavailable">Countdown voice is unavailable. Your activity will start normally.</string>
     <string name="live_ai_coach">AI Coach</string>
     <string name="live_ai_coach_detail">Get adaptive coaching. With Voice off, advice appears onscreen.</string>
+    <string name="plan_completion_group_question">Count this toward today’s workout?</string>
+    <string name="plan_completion_count">Count this activity</string>
+    <string name="plan_completion_not_now">Not now</string>
+    <string name="plan_completion_sync_first">Your activity is saved. Let it finish syncing, then try again.</string>
+    <string name="plan_completion_failed">Could not update. Connect and try again.</string>
+    <string name="plan_completion_workout_duration">Planned duration: %s</string>
 </resources>

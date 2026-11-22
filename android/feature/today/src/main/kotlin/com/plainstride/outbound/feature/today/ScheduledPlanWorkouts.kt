@@ -265,6 +265,7 @@ internal fun CompactPlanPhaseSummary(planning: PlanningState, today: LocalDate, 
 internal fun ScheduledPlanWorkoutPage(
     workout: PlannedWorkout,
     completedContent: (@Composable () -> Unit)? = null,
+    completionContent: (@Composable () -> Unit)? = null,
     suggestion: ActivitySuggestionEnvelope?,
     mobility: List<PlannedWorkout>,
     adjustment: String?,
@@ -287,6 +288,7 @@ internal fun ScheduledPlanWorkoutPage(
             if (workout.status !in setOf("planned", "completed")) Text(stringResource(statusLabel(workout.status)), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         completedContent?.invoke()
+        completionContent?.invoke()
         if (suggestion != null && adapted != null) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             suggestion.guideLine.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             adapted.why.takeIf { it.isNotBlank() && it != suggestion.guideLine }?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -443,7 +445,7 @@ internal fun CompletedPlanActivity(
     onOpen: (String) -> Unit,
     showsHeading: Boolean = true,
 ) {
-    val activity = activities.firstOrNull { it.deletedAt == null && it.performedWorkoutReference?.plannedWorkoutId == workout.id }
+    val activity = activities.firstOrNull { it.deletedAt == null && (it.performedWorkoutReference?.plannedWorkoutId == workout.id || it.linkedPlannedWorkoutId == workout.id) }
     if (showsHeading) Text(stringResource(R.string.plan_workout_complete), style = MaterialTheme.typography.titleMedium)
     if (activity != null) {
         val viewLabel = stringResource(R.string.plan_view_completed_activity_accessibility)
@@ -451,6 +453,6 @@ internal fun CompletedPlanActivity(
             Text(stringResource(R.string.plan_view_completed_activity))
         }
     } else {
-        Text(stringResource(R.string.plan_completed_activity_unavailable), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(if (workout.completionMode == "manual_unrecorded") R.string.plan_completion_unrecorded else R.string.plan_completed_activity_unavailable), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
