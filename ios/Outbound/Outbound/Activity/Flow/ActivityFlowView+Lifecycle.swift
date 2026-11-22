@@ -210,6 +210,8 @@ extension ActivityFlowView {
                     model.applyRoute(route)
                     model.dismissRouteLibrary(draft)
                 }
+                .planningContext(activity: model.setup.plannedIntent?.resolvedActivityType ?? .running,
+                                 distanceM: model.setup.plannedIntent?.targetDistanceMeters)
             }
         }
         .sheet(item: binding(\.setup.setupSheet)) { sheet in

@@ -950,6 +950,7 @@ nonisolated extension SavedActivity {
 
 nonisolated struct FollowedRouteMetadata: Codable, Hashable {
     let source: PreparedRoute.Source
+    let attribution: String?
     let routeID: String
     let direction: RouteDirection
     let finalProgress: Double
@@ -957,6 +958,7 @@ nonisolated struct FollowedRouteMetadata: Codable, Hashable {
 
     init(route: PreparedRoute, finalProgress: Double, arrived: Bool) {
         source = route.source
+        attribution = route.attribution
         routeID = route.id
         direction = route.direction
         self.finalProgress = min(1, max(0, finalProgress.isFinite ? finalProgress : 0))

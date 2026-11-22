@@ -41,6 +41,10 @@ final class APIClient {
         self.base = url
     }
 
+    func generateLoopRoutes(_ request: LoopPlanningRequest) async throws -> LoopPlanningResponse {
+        try await post("/routes/generate", body: request)
+    }
+
     func fetchGuideProfile() async throws -> GuideProfile {
         try await get("/guide/profile")
     }

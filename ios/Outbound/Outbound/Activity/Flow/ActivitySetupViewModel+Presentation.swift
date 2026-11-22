@@ -371,6 +371,21 @@ extension ActivitySetupViewModel {
     }
 
     func routeIntent(_ route: PreparedRoute, appliedTo baseIntent: SessionIntent) -> SessionIntent {
+        if route.preservesWorkoutContext {
+            // A planner adds geometry; it never rewrites the authored workout.
+            return SessionIntent(
+                id: baseIntent.id, sport: baseIntent.sport, title: baseIntent.title,
+                detail: baseIntent.detail, guideLine: baseIntent.guideLine, startLabel: baseIntent.startLabel,
+                targetDistanceMeters: baseIntent.targetDistanceMeters, targetDurationSeconds: baseIntent.targetDurationSeconds,
+                targetCalories: baseIntent.targetCalories, estimatedDistanceMeters: baseIntent.estimatedDistanceMeters,
+                estimatedDurationSeconds: baseIntent.estimatedDurationSeconds, allowsCalorieGoal: baseIntent.allowsCalorieGoal,
+                routeName: route.name, preparedRoute: route, activityTypeOverride: baseIntent.activityTypeOverride,
+                workoutSteps: baseIntent.workoutSteps, coachingTarget: baseIntent.coachingTarget,
+                workoutReference: baseIntent.workoutReference, workoutCues: baseIntent.workoutCues,
+                raceIntent: baseIntent.raceIntent, activityEvent: baseIntent.activityEvent,
+                startedFromWorkoutReminder: baseIntent.startedFromWorkoutReminder
+            )
+        }
         let resolvedSport = route.activityType.map { SportType(activityType: $0) }
             ?? baseIntent.sport
         let preservesBaseStructure = route.activityType == nil

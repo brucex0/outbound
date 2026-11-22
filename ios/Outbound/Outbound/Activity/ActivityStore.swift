@@ -1731,7 +1731,7 @@ final class ActivityStore: ObservableObject {
             heartRateZones: activity.heartRateZones,
             recordingSession: activity.recordingSession,
             activityEventID: activity.activityEventID,
-            followedRoute: stripImportedFollowedRoute && followedRoute?.source == .imported
+            followedRoute: stripImportedFollowedRoute && followedRoute?.source != .community
                 ? nil
                 : followedRoute,
             recognitionBadgeIDs: activity.recognitionBadgeIDs,

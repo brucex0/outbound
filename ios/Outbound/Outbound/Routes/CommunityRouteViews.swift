@@ -18,6 +18,10 @@ struct CommunityRouteLibraryView: View {
 #if DEBUG
     @AppStorage("debug_route_test_mode") private var routeTestMode = false
 #endif
+    @State private var showsLoopPlanner = false
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    var plannerActivity: ActivityType = .running
+    var plannerDistanceM: Double? = nil
     @State private var query = ""
     @State private var myRoutesOnly = false
     @State private var nearbyActive = false
@@ -64,6 +68,10 @@ struct CommunityRouteLibraryView: View {
         self.onClose = onClose
         embedded = false
         importRequestID = 0
+    }
+
+    func planningContext(activity: ActivityType, distanceM: Double?) -> Self {
+        var copy = self; copy.plannerActivity = activity; copy.plannerDistanceM = distanceM; return copy
     }
 
     private var routes: [CommunityRoute] {
@@ -186,6 +194,9 @@ struct CommunityRouteLibraryView: View {
                         }
                         .buttonStyle(RouteLibraryActionButtonStyle())
                     }
+                    Button { showsLoopPlanner = true } label: {
+                        Label(String(localized: "route.planner.title", defaultValue: "Find a loop"), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                    }.buttonStyle(RouteLibraryActionButtonStyle())
                     Button { importsFile = true } label: {
                         Label(
                             String(localized: "route.library.action.import", defaultValue: "Import GPX or GeoJSON"),
@@ -207,7 +218,7 @@ struct CommunityRouteLibraryView: View {
                 }
             }
             if !store.imported.isEmpty {
-                Section(String(localized: "route.library.section.imported", defaultValue: "Imported routes")) {
+                Section(String(localized: "route.planner.local_routes", defaultValue: "Routes on this device")) {
                     ForEach(store.imported) { route in
                         importedRouteDestination(route: route) { ImportedRouteRow(route: route) }
                         .swipeActions {
@@ -306,6 +317,15 @@ struct CommunityRouteLibraryView: View {
             stabilityDiagnostics.record("store_published selected=\(selectedRoute != nil) preparing=\(preparingRouteID != nil)")
         }
 #endif
+        .fullScreenCover(isPresented: $showsLoopPlanner) {
+            LoopPlannerHost(activity: plannerActivity, distanceM: plannerDistanceM, units: measurementPreferences.unitSystem) { route in
+                showsLoopPlanner = false
+                if let onSelect {
+                    selectionDraft.chooseImportedRoute(route)
+                    onSelect(route)
+                } else { store.launch(route) }
+            } onCancel: { showsLoopPlanner = false }
+        }
         .refreshable { await refreshVisibleRoutes() }
         .onChange(of: locator.location) { _, location in
             guard let location, nearbyActive else { return }
@@ -471,7 +491,7 @@ struct CommunityRouteLibraryView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-        } else if route.source == .imported {
+        } else if route.source != .community {
             NavigationLink { PreparedRoutePreview(route: route, onUse: nil) } label: { row() }
         }
     }
@@ -837,15 +857,15 @@ private struct PreparedRoutePreview: View {
             VStack(spacing: 5) {
                 Text(route.name).font(.title2.bold())
                 Text(
-                    String(
-                        localized: "route.import.preview.privacy",
-                        defaultValue: "Imported routes stay private on this device until you complete and save your own activity."
-                    )
+                    route.source == .generated
+                    ? String(localized: "route.planner.private_route", defaultValue: "Planned routes stay private on this device.")
+                    : String(localized: "route.import.preview.privacy", defaultValue: "Imported routes stay private on this device until you complete and save your own activity.")
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             }
+            if let attribution = route.attribution { Text(attribution).font(.caption).foregroundStyle(.secondary) }
             Button {
                 if let onUse { onUse() } else { store.launch(route) }
             } label: {
@@ -862,11 +882,11 @@ private struct PreparedRoutePreview: View {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel(
-                            String(localized: "route.import.delete.in_progress", defaultValue: "Deleting imported route")
+                            route.source == .generated ? String(localized: "route.planner.deleting", defaultValue: "Deleting route") : String(localized: "route.import.delete.in_progress", defaultValue: "Deleting imported route")
                         )
                 } else {
                     Label(
-                        String(localized: "route.import.action.delete", defaultValue: "Delete Imported Route"),
+                        route.source == .generated ? String(localized: "route.planner.delete", defaultValue: "Delete route") : String(localized: "route.import.action.delete", defaultValue: "Delete Imported Route"),
                         systemImage: "trash"
                     )
                 }
@@ -880,12 +900,12 @@ private struct PreparedRoutePreview: View {
         .navigationBarTitleDisplayMode(.inline)
         .interactiveDismissDisabled(isDeleting)
         .confirmationDialog(
-            String(localized: "route.import.delete.confirmation_title", defaultValue: "Delete imported route?"),
+            route.source == .generated ? String(localized: "route.planner.delete_confirm", defaultValue: "Delete route from this device?") : String(localized: "route.import.delete.confirmation_title", defaultValue: "Delete imported route?"),
             isPresented: $showsDeleteConfirmation,
             titleVisibility: .visible
         ) {
             Button(
-                String(localized: "route.import.action.delete", defaultValue: "Delete Imported Route"),
+                route.source == .generated ? String(localized: "route.planner.delete", defaultValue: "Delete route") : String(localized: "route.import.action.delete", defaultValue: "Delete Imported Route"),
                 role: .destructive
             ) {
                 Task { await deleteRoute() }
@@ -913,8 +933,9 @@ private struct PreparedRoutePreview: View {
         await Task.yield()
         guard store.deleteImported(route) else {
             isDeleting = false
-            feedbackMessage = store.errorMessage
-                ?? String(localized: "route.import.delete.error", defaultValue: "Imported route could not be deleted. Try again.")
+            feedbackMessage = route.source == .generated
+                ? String(localized: "route.planner.delete_failed", defaultValue: "Route could not be deleted. Try again.")
+                : (store.errorMessage ?? String(localized: "route.import.delete.error", defaultValue: "Imported route could not be deleted. Try again."))
             store.errorMessage = nil
             trackDeletion(result: "failed")
             return
@@ -1018,7 +1039,7 @@ private final class RoutePreviewGeometry: ObservableObject {
     }
 }
 
-private struct RouteToast: View { let message: String; var body: some View { Label(message, systemImage: "exclamationmark.circle.fill").font(.subheadline.weight(.semibold)).padding(.horizontal, 14).padding(.vertical, 10).background(.regularMaterial, in: Capsule()).shadow(radius: 8).padding(.top, 8) } }
+struct RouteToast: View { let message: String; var body: some View { Label(message, systemImage: "exclamationmark.circle.fill").font(.subheadline.weight(.semibold)).padding(.horizontal, 14).padding(.vertical, 10).background(.regularMaterial, in: Capsule()).shadow(radius: 8).padding(.top, 8) } }
 
 final class RouteDiscoveryLocator: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var location: CLLocation?

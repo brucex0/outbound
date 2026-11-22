@@ -31,8 +31,10 @@ nonisolated struct PreparedRoute: Codable, Identifiable, Hashable {
     let activityType: ActivityType?
     let routeShape: String?
     let direction: RouteDirection
+    let attribution: String?
+    let preservesWorkoutContext: Bool
 
-    nonisolated enum Source: String, Codable, Hashable { case community, imported }
+    nonisolated enum Source: String, Codable, Hashable { case community, imported, generated }
 
     init(
         id: String,
@@ -41,7 +43,9 @@ nonisolated struct PreparedRoute: Codable, Identifiable, Hashable {
         source: Source,
         activityType: ActivityType? = nil,
         routeShape: String? = nil,
-        direction: RouteDirection = .forward
+        direction: RouteDirection = .forward,
+        attribution: String? = nil,
+        preservesWorkoutContext: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -50,6 +54,8 @@ nonisolated struct PreparedRoute: Codable, Identifiable, Hashable {
         self.activityType = activityType
         self.routeShape = routeShape
         self.direction = direction
+        self.attribution = attribution
+        self.preservesWorkoutContext = preservesWorkoutContext
     }
 
     var directedPoints: [RouteCoordinate] {
@@ -83,12 +89,21 @@ nonisolated struct PreparedRoute: Codable, Identifiable, Hashable {
             source: source,
             activityType: activityType,
             routeShape: routeShape,
-            direction: direction
+            direction: direction,
+            attribution: attribution,
+            preservesWorkoutContext: preservesWorkoutContext
         )
     }
 
+    /// Canonical route caches own geometry/provenance, never a host's attachment policy.
+    func withoutWorkoutAttachmentPolicy() -> PreparedRoute {
+        PreparedRoute(id: id, name: name, points: points, source: source,
+                      activityType: activityType, routeShape: routeShape, direction: direction,
+                      attribution: attribution, preservesWorkoutContext: false)
+    }
+
     private enum CodingKeys: String, CodingKey {
-        case id, name, points, source, activityType, routeShape, direction
+        case id, name, points, source, activityType, routeShape, direction, attribution, preservesWorkoutContext
     }
 
     init(from decoder: Decoder) throws {
@@ -100,6 +115,8 @@ nonisolated struct PreparedRoute: Codable, Identifiable, Hashable {
         activityType = try container.decodeIfPresent(ActivityType.self, forKey: .activityType)
         routeShape = try container.decodeIfPresent(String.self, forKey: .routeShape)
         direction = try container.decodeIfPresent(RouteDirection.self, forKey: .direction) ?? .forward
+        attribution = try container.decodeIfPresent(String.self, forKey: .attribution)
+        preservesWorkoutContext = try container.decodeIfPresent(Bool.self, forKey: .preservesWorkoutContext) ?? false
     }
 }
 
@@ -210,7 +227,7 @@ final class CommunityRouteStore: ObservableObject {
                 var retained: [PreparedRoute] = []
                 var retainedIDs: Set<String> = []
                 var pointCount = 0
-                for route in decoded where route.source == .imported && route.isUsableForGuidance {
+                for route in decoded where route.source != .community && route.isUsableForGuidance {
                     guard retained.count < maximumImportedRoutes,
                           !retainedIDs.contains(route.id),
                           pointCount <= maximumImportedPointCount - route.points.count
@@ -227,6 +244,7 @@ final class CommunityRouteStore: ObservableObject {
             if fileManager.fileExists(atPath: communityRouteCacheURL.path) {
                 let cached = try JSONDecoder().decode([PreparedRoute].self, from: Data(contentsOf: communityRouteCacheURL))
                 let valid = cached.filter { $0.source == .community && $0.isUsableForGuidance }
+                    .map { $0.withoutWorkoutAttachmentPolicy() }
                 cachedCommunityRoutes = valid.reduce(into: [:]) { routes, route in
                     routes[route.id] = route
                 }
@@ -424,7 +442,7 @@ final class CommunityRouteStore: ObservableObject {
 
     @discardableResult
     func saveImported(_ route: PreparedRoute) -> Bool {
-        guard route.source == .imported, route.isUsableForGuidance else {
+        guard route.source != .community, route.isUsableForGuidance else {
             errorMessage = RouteImportError.invalid.localizedDescription
             return false
         }
@@ -504,6 +522,22 @@ final class CommunityRouteStore: ObservableObject {
         return route
     }
 
+    /// Selection succeeds only after an atomic canonical snapshot is durable.
+    func persistPlannerSelection(_ route: PreparedRoute) -> Bool {
+        guard route.isUsableForGuidance else { return false }
+        if route.source != .community { return saveImported(route) }
+        cacheCommunityRoute(route)
+        do {
+            try JSONEncoder().encode(cachedCommunityRouteOrder.compactMap { cachedCommunityRoutes[$0] })
+                .write(to: communityRouteCacheURL, options: .atomic)
+            try JSONEncoder().encode(cachedCommunityRouteOrder).write(to: communityRouteCacheOrderURL, options: .atomic)
+            return true
+        } catch {
+            ActivityDiagnosticLog.error(.persistence, "route_planner_selection_save_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+            return false
+        }
+    }
+
     func launch(_ route: PreparedRoute) { pendingLaunch = route }
     func consumeLaunch() { pendingLaunch = nil }
 
@@ -533,12 +567,14 @@ final class CommunityRouteStore: ObservableObject {
             try data.write(to: importedRoutesURL, options: .atomic)
             return true
         } catch {
+            ActivityDiagnosticLog.error(.persistence, "route_local_save_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
             errorMessage = String(localized: "Imported routes could not be saved.")
             return false
         }
     }
 
-    private func cacheCommunityRoute(_ route: PreparedRoute) {
+    private func cacheCommunityRoute(_ incomingRoute: PreparedRoute) {
+        let route = incomingRoute.withoutWorkoutAttachmentPolicy()
         guard route.source == .community, route.isUsableForGuidance else { return }
         let geometryChanged = cachedCommunityRoutes[route.id] != route
         cachedCommunityRoutes[route.id] = route
