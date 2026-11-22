@@ -177,3 +177,6 @@ fun PlainstrideTheme(
         }
     }
 }
+
+/** Stable semantic route colors keep comparison identities distinct across app themes. */
+val RouteComparisonColors = listOf(Color(0xFF0072B2), Color(0xFFD55E00), Color(0xFF009E73))

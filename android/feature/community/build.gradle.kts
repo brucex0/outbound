@@ -5,5 +5,7 @@ dependencies {
  implementation(project(":core:designsystem"))
  implementation(project(":feature:recording"))
  implementation(project(":core:analytics")); implementation(project(":core:database")); implementation(project(":core:network")); implementation(platform(libs.compose.bom)); implementation(libs.compose.material3); implementation(libs.compose.material.icons.extended); implementation(libs.compose.ui); implementation(libs.androidx.lifecycle.runtime.compose); implementation(libs.androidx.hilt.navigation.compose); implementation(libs.kotlinx.serialization.json); implementation(libs.retrofit.core); implementation(libs.hilt.android); ksp(libs.hilt.compiler); debugImplementation(libs.compose.ui.tooling)
+ implementation(libs.androidx.core.ktx); implementation(libs.androidx.activity.compose)
+ implementation(libs.play.services.location); implementation(libs.kotlinx.coroutines.play.services)
  implementation(libs.retrofit.kotlinx.serialization); implementation(libs.okhttp)
 }

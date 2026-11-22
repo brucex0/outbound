@@ -32,6 +32,7 @@ object HarvestRunSimulation {
     const val ROUTE_ID = "debug-redmond-harvest-half-marathon"
 
     val route = FollowedRouteConfiguration(
+        source = FollowedRouteSource.IMPORTED,
         id = ROUTE_ID,
         name = "Redmond Harvest Half Marathon",
         shape = "out_and_back",

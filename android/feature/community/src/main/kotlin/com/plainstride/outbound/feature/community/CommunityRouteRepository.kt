@@ -52,7 +52,7 @@ class CommunityRouteRepository @Inject constructor(
   }
  }
  private val importLock = kotlinx.coroutines.sync.Mutex()
- fun observeImports(accountId: String): Flow<List<CommunityRoute>> = cache.observe(accountId, "routes.imported", "library", "und").map { row ->
+ fun observeImports(accountId: String): Flow<List<CommunityRoute>> = cache.observe(accountId, "routes.imported.v2", "library", "und").map { row ->
   row?.let { decodeSnapshot<RoutesResponse>(it.payloadJson)?.routes }.orEmpty()
  }
  suspend fun saveImport(accountId: String, route: CommunityRoute) = updateImports(accountId) { routes -> listOf(route) + routes.filterNot { it.id == route.id } }
@@ -61,7 +61,7 @@ class CommunityRouteRepository @Inject constructor(
   importLock.lock()
   try {
    val routes = observeImports(accountId).first()
-   cache.upsert(AccountCacheEntity(accountId, "routes.imported", "library", "und", PlainstrideJson.encodeToString(RoutesResponse(update(routes))), null, System.currentTimeMillis(), null))
+   cache.upsert(AccountCacheEntity(accountId, "routes.imported.v2", "library", "und", PlainstrideJson.encodeToString(RoutesResponse(update(routes))), null, System.currentTimeMillis(), null))
   } finally { importLock.unlock() }
  }
  suspend fun cacheDetail(accountId: String, route: CommunityRoute) {

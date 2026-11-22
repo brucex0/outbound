@@ -20,6 +20,7 @@ object CommunityRecordingCoordinator {
             entrySource = "community_route",
             followedRoute = FollowedRouteConfiguration(
                 id = route.id,
+                source = if(route.source == CommunityRouteSource.IMPORTED) com.plainstride.outbound.feature.recording.FollowedRouteSource.IMPORTED else com.plainstride.outbound.feature.recording.FollowedRouteSource.COMMUNITY,
                 name = route.name,
                 shape = route.routeShape,
                 distanceMeters = route.distanceM,

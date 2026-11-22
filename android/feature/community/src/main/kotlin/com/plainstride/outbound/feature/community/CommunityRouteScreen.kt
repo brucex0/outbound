@@ -54,9 +54,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,
  onImportedDelete:()->Unit={}, importRequest:Int=0, searchQuery:String="", selectionMode:Boolean=false,
  initialSelection:CommunityRoute?=null, initialSelectionReverse:Boolean=false,
- onSelectRoute:(CommunityRoute?,Boolean)->Unit={_,_->}, onDismissSelection:()->Unit={},
+ onSelectRoute:(CommunityRoute?,Boolean)->Unit={_,_->}, onDismissSelection:()->Unit={}, onFindLoop:(()->Unit)?=null,
 ) {
- SharedCommunityRouteLibrary(accountId,onOpenRoute,library,scope,onScope,onRefresh,onSearch,onImport,routeDetail,routeDetailLoading,onLoadDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,searchQuery,selectionMode,initialSelection,initialSelectionReverse,onSelectRoute,onDismissSelection)
+ SharedCommunityRouteLibrary(accountId,onOpenRoute,library,scope,onScope,onRefresh,onSearch,onImport,routeDetail,routeDetailLoading,onLoadDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,searchQuery,selectionMode,initialSelection,initialSelectionReverse,onSelectRoute,onDismissSelection,onFindLoop)
 }
 
 @Composable
@@ -76,7 +76,7 @@ private fun SharedCommunityRouteLibrary(
  bottomContentPadding:androidx.compose.ui.unit.Dp,
  importRequest:Int,
  searchQuery:String, selectionMode:Boolean, initialSelection:CommunityRoute?, initialSelectionReverse:Boolean,
- onSelectRoute:(CommunityRoute?,Boolean)->Unit, onDismissSelection:()->Unit,
+ onSelectRoute:(CommunityRoute?,Boolean)->Unit, onDismissSelection:()->Unit, onFindLoop:(()->Unit)?,
 ) {
  BackHandler(enabled=selectionMode,onBack=onDismissSelection)
  val context=LocalContext.current
@@ -142,6 +142,9 @@ private fun SharedCommunityRouteLibrary(
     TextButton(onClick={onSelectRoute(selectedForToday,reverseForToday)},enabled=pendingSelectionId==null&&(selectedForToday!=null||initialSelection!=null)){
      Text(stringResource(if(selectedForToday==null&&initialSelection!=null)R.string.route_library_action_remove_selection else R.string.route_library_action_use_selection))
     }
+   }
+   onFindLoop?.let { findLoop ->
+    OutlinedButton(onClick=findLoop,modifier=Modifier.padding(horizontal=16.dp,vertical=8.dp)) { Text(stringResource(R.string.planner_title)) }
    }
    Row(Modifier.fillMaxWidth().heightIn(min=52.dp).padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
     TextField(query,{value->query=value;if(value.isBlank()&&submittedQuery){submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}},Modifier.weight(1f),singleLine=true,shape=RoundedCornerShape(28.dp),placeholder={Text(stringResource(R.string.route_library_search_prompt))},leadingIcon={Icon(Icons.Outlined.Search,null)},keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Search),keyboardActions=androidx.compose.foundation.text.KeyboardActions(onSearch={submittedQuery=query.isNotBlank();if(scope!=RouteScope.MINE)onSearch(query);keyboardController?.hide()}),trailingIcon={if(query.isNotEmpty())IconButton({query="";submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}){Icon(Icons.Outlined.Close,stringResource(R.string.route_library_action_clear_search))}},colors=TextFieldDefaults.colors(focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent))
@@ -361,7 +364,16 @@ private fun CommunityRoute.coordinates(): List<MapCoordinate> {
   val line = if (coordinates.firstOrNull() is JsonPrimitive) listOf(coordinates) else coordinates.mapNotNull { it as? JsonArray }
   return line.mapNotNull { pair -> val lon=(pair.getOrNull(0) as? JsonPrimitive)?.doubleOrNull; val lat=(pair.getOrNull(1) as? JsonPrimitive)?.doubleOrNull; if(lat!=null&&lon!=null) MapCoordinate(lat,lon) else null }
 }
-fun CommunityRoute.guidancePoints()=coordinates().map{GuidancePoint(it.latitude,it.longitude)}
+fun CommunityRoute.guidancePoints(): List<GuidancePoint> {
+    val coordinates=geometry?.get("coordinates") as? JsonArray ?: return emptyList()
+    val line=if(coordinates.firstOrNull() is JsonPrimitive)listOf(coordinates) else coordinates.mapNotNull{it as? JsonArray}
+    return line.mapNotNull { pair ->
+        val longitude=(pair.getOrNull(0) as? JsonPrimitive)?.doubleOrNull
+        val latitude=(pair.getOrNull(1) as? JsonPrimitive)?.doubleOrNull
+        val altitude=(pair.getOrNull(2) as? JsonPrimitive)?.doubleOrNull?.takeIf{it.isFinite()}
+        if(latitude!=null && longitude!=null && latitude.isFinite() && longitude.isFinite() && latitude in -90.0..90.0 && longitude in -180.0..180.0) GuidancePoint(latitude,longitude,altitude) else null
+    }
+}
 
 private fun importRoute(text:String,fileName:String?):CommunityRoute?{
  val trimmed=text.trim()
@@ -375,6 +387,6 @@ private fun importRoute(text:String,fileName:String?):CommunityRoute?{
  if(points.size<2)return null
  val geometry=buildJsonObject{put("type","LineString");put("coordinates",buildJsonArray{points.forEach{point->add(buildJsonArray{add(point.longitude);add(point.latitude)})}})}
  val name=fileName?.substringAfterLast('/')?.substringBeforeLast('.')?.takeIf(String::isNotBlank)?:"Imported route"
- return CommunityRoute("import:${UUID.randomUUID()}",name,null,"run",routeDistance(points),null,"full",owner=RouteOwner("local","You"),geometry=geometry)
+ return CommunityRoute("import:${UUID.randomUUID()}",name,null,"run",routeDistance(points),null,"full",owner=RouteOwner("local","You"),geometry=geometry,source=CommunityRouteSource.IMPORTED)
 }
 private fun routeDistance(points:List<MapCoordinate>)=points.zipWithNext().sumOf{(a,b)->val radius=6371000.0;val dLat=Math.toRadians(b.latitude-a.latitude);val dLon=Math.toRadians(b.longitude-a.longitude);val x=kotlin.math.sin(dLat/2)*kotlin.math.sin(dLat/2)+kotlin.math.cos(Math.toRadians(a.latitude))*kotlin.math.cos(Math.toRadians(b.latitude))*kotlin.math.sin(dLon/2)*kotlin.math.sin(dLon/2);radius*2*kotlin.math.atan2(kotlin.math.sqrt(x),kotlin.math.sqrt(1-x))}

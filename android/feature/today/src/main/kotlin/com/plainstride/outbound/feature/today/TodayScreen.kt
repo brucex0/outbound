@@ -213,7 +213,7 @@ fun TodayRoute(
     onOpenInbox: () -> Unit,
     onOpenStretch: () -> Unit,
     plannedWorkoutWarmupDuration: String? = null,
-    onFindRoute: () -> Unit,
+    onFindRoute: (TodayActivityChoice, Double?) -> Unit,
     selectedRoute: TodayRouteSelection? = null,
     onRemoveRoute: () -> Unit = {},
     onRouteDirectionChanged: (Boolean) -> Unit = {},
@@ -424,7 +424,7 @@ fun TodayScreen(
     onOpenStretch: () -> Unit = {},
     plannedWorkoutWarmupDuration: String? = null,
     onOpenPlannedWorkoutWarmup: () -> Unit = onOpenStretch,
-    onFindRoute: () -> Unit = {},
+    onFindRoute: (TodayActivityChoice, Double?) -> Unit = { _, _ -> },
     selectedRoute: TodayRouteSelection? = null,
     onRemoveRoute: () -> Unit = {},
     onRouteDirectionChanged: (Boolean) -> Unit = {},
@@ -583,6 +583,20 @@ fun TodayScreen(
     }
     val raceTitle = stringResource(R.string.race_planner_race_day)
     val raceGuideline = racePlan?.let { raceExecution(it, unitSystem) }
+    val findRoute = {
+        val sport = if(activityChoice == TodayActivityChoice.PLANNED) when(suggestion?.modality) {
+            Modality.walk -> TodayActivityChoice.WALK
+            Modality.bike -> TodayActivityChoice.BIKE
+            else -> TodayActivityChoice.RUN
+        } else activityChoice
+        val explicitDistance = if(activityChoice == TodayActivityChoice.PLANNED) suggestion?.effectiveWorkout?.targetDistanceMeters else when(goalChoice) {
+            TodayGoalChoice.DISTANCE -> distanceMeters
+            TodayGoalChoice.RACE -> racePlan?.distanceMeters
+            TodayGoalChoice.CURATED -> curatedWorkout?.targetDistanceMeters
+            else -> null
+        }
+        onFindRoute(sport,explicitDistance)
+    }
     val launchPreparedActivity = launch@ {
         if (activityChoice == TodayActivityChoice.PLANNED) {
             if (state.scheduledRestDay) {
@@ -647,7 +661,7 @@ fun TodayScreen(
                         DropdownMenuItem({ Text(stringResource(R.string.today_take_photo)) }, { overflowExpanded = false; photoLauncher.launch(null) }, leadingIcon = { Icon(Icons.Default.PhotoCamera, null) })
                         DropdownMenuItem(
                             text = { Text(stringResource(if (selectedRoute == null) R.string.today_find_route else R.string.today_change_route)) },
-                            onClick = { overflowExpanded = false; onFindRoute() },
+                            onClick = { overflowExpanded = false; findRoute() },
                             leadingIcon = { Icon(Icons.Default.Route, null) },
                         )
                         if (selectedRoute != null) DropdownMenuItem(
@@ -669,7 +683,7 @@ fun TodayScreen(
                 selectedRoute?.let { route ->
                     SelectedRouteCard(
                         route = route,
-                        onChange = onFindRoute,
+                        onChange = findRoute,
                         onRemove = onRemoveRoute,
                         onDirectionChanged = onRouteDirectionChanged,
                     )

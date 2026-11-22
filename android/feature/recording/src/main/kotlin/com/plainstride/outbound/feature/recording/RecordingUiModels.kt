@@ -23,7 +23,8 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val recognizesTargetLock:Boolean=false,
 )
 
-@Serializable data class FollowedRouteConfiguration(val id:String,val name:String,val shape:String?=null,val distanceMeters:Double?=null,val elevationGainMeters:Double?=null,val reverse:Boolean=false,val points:List<RecordingRoutePoint> = emptyList())
+@Serializable enum class FollowedRouteSource { COMMUNITY, IMPORTED, GENERATED }
+@Serializable data class FollowedRouteConfiguration(val id:String,val name:String,val source:FollowedRouteSource,val attribution:String?=null,val shape:String?=null,val distanceMeters:Double?=null,val elevationGainMeters:Double?=null,val reverse:Boolean=false,val points:List<RecordingRoutePoint> = emptyList())
 @Serializable data class RecordingRoutePoint(val latitude:Double,val longitude:Double,val altitudeMeters:Double?=null)
 
 @Serializable data class RecordingRaceIntent(

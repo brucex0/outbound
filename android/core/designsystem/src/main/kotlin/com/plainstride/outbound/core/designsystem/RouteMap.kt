@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
@@ -51,7 +52,7 @@ data class MapCameraSnapshot(
 )
 typealias MapCameraSnapshotReader = () -> MapCameraSnapshot
 
-data class MapRouteSegment(val points: List<MapCoordinate>, val color: Color)
+data class MapRouteSegment(val points: List<MapCoordinate>, val color: Color, val id: String? = null)
 data class MapRouteMarker(
     val id: String,
     val coordinate: MapCoordinate,
@@ -65,6 +66,7 @@ data class MapRouteMarker(
     val anchor: Offset = Offset(0.5f, 1f),
     val alpha: Float = 1f,
     val participantInitials: String? = null,
+    val pinColor: Color? = null,
 )
 
 private class SuppliedMapLocationSource : LocationSource {
@@ -114,6 +116,8 @@ fun PlainstrideRouteMap(
     onMapLoadedCallback: (() -> Unit)? = null,
     useSuppliedUserLocation: Boolean = false,
     suppliedUserLocation: android.location.Location? = null,
+    onMapClick: ((MapCoordinate) -> Unit)? = null,
+    onRouteClick: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val description = stringResource(R.string.route_map_description)
@@ -262,6 +266,7 @@ fun PlainstrideRouteMap(
             isMyLocationEnabled = showUserLocation && preciseLocationGranted,
             mapStyleOptions = mapStyle,
         ),
+        onMapClick = { onMapClick?.invoke(MapCoordinate(it.latitude, it.longitude)) },
         onMapLoaded = { mapLoaded = true; onMapLoadedCallback?.invoke() },
         contentPadding = PaddingValues(bottom = bottomContentPadding),
         uiSettings = MapUiSettings(
@@ -289,6 +294,8 @@ fun PlainstrideRouteMap(
                     Polyline(
                         points = segmentPoints,
                         color = segment.color,
+                        clickable = onRouteClick != null && segment.id != null,
+                        onClick = { segment.id?.let { onRouteClick?.invoke(it) } },
                         width = 12f,
                         zIndex = 2f,
                     )
@@ -357,9 +364,9 @@ fun PlainstrideRouteMap(
                 } else {
                     // Keep descriptor identity stable across live-pose recompositions:
                     // repeated setIcon calls reload the SDK texture and flash the pin.
-                    val icon = remember(context, marker.icon, marker.selected, marker.id, marker.participantInitials, marker.alpha) {
+                    val icon = remember(context, marker.icon, marker.selected, marker.id, marker.participantInitials, marker.alpha, marker.pinColor) {
                         marker.icon ?: marker.participantInitials?.let {
-                            createParticipantPinIcon(context, marker.id, it, marker.alpha)
+                            createParticipantPinIcon(context, marker.id, it, marker.alpha, marker.pinColor)
                         } ?: BitmapDescriptorFactory.defaultMarker(
                             if (marker.selected) BitmapDescriptorFactory.HUE_ORANGE else BitmapDescriptorFactory.HUE_AZURE,
                         )
@@ -539,7 +546,7 @@ private fun interpolateCameraPosition(start: CameraPosition, end: CameraPosition
 }
 
 /** iOS LiveGroupParticipantPin: 34dp initials circle, white ring, and a soft shadow. */
-private fun createParticipantPinIcon(context: Context, id: String, initials: String, fillAlpha: Float): BitmapDescriptor {
+private fun createParticipantPinIcon(context: Context, id: String, initials: String, fillAlpha: Float, pinColor: Color? = null): BitmapDescriptor {
     val density = context.resources.displayMetrics.density
     val size = (46f * density).toInt().coerceAtLeast(1)
     val center = size / 2f
@@ -549,7 +556,7 @@ private fun createParticipantPinIcon(context: Context, id: String, initials: Str
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     val palette = intArrayOf(0xFF007AFF.toInt(), 0xFF34C759.toInt(), 0xFFAF52DE.toInt(), 0xFFFF2D55.toInt(), 0xFF30B0C7.toInt())
     // Swift's hash is randomized per process; use a stable Android assignment from the same palette.
-    paint.color = palette[Math.floorMod(id.hashCode(), palette.size)]
+    paint.color = pinColor?.toArgb() ?: palette[Math.floorMod(id.hashCode(), palette.size)]
     paint.alpha = (fillAlpha.coerceIn(0f, 1f) * 255).toInt()
     paint.setShadowLayer(4f * density, 0f, 0f, 0x55000000)
     canvas.drawCircle(center, center, radius, paint)
@@ -560,6 +567,7 @@ private fun createParticipantPinIcon(context: Context, id: String, initials: Str
     paint.strokeWidth = 3f * density
     canvas.drawCircle(center, center, radius - 1.5f * density, paint)
     paint.style = Paint.Style.FILL
+    if(pinColor!=null)paint.color=if(pinColor.luminance()>.5f)android.graphics.Color.BLACK else android.graphics.Color.WHITE
     paint.typeface = android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD)
     paint.textSize = 12f * density
     paint.textAlign = Paint.Align.CENTER

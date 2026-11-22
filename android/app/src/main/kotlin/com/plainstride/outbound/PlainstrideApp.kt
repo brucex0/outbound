@@ -1,5 +1,6 @@
 package com.plainstride.outbound
 
+import com.plainstride.outbound.feature.community.planning.*
 import com.plainstride.outbound.core.model.activity.resolveTarget
 
 import com.plainstride.outbound.feature.recording.recordingLaunch
@@ -443,6 +444,9 @@ private fun SignedInApp(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     var todaySelectedRoute by remember(accountId) { mutableStateOf<com.plainstride.outbound.feature.community.CommunityRoute?>(null) }
+    var plannerActivityContext by rememberSaveable(accountId) { mutableStateOf(PlannerActivity.RUNNING.name) }
+    var plannerDistanceContext by rememberSaveable(accountId) { mutableStateOf<Double?>(null) }
+    var todayPlannedRoute by remember(accountId) { mutableStateOf<AcceptedPlannerRoute?>(null) }
     var todayRouteReversed by rememberSaveable(accountId) { mutableStateOf(false) }
     var selectedTodayShoeId by remember(accountId) { mutableStateOf<String?>(null) }
     LaunchedEffect(integration.defaultGearId) {
@@ -885,7 +889,7 @@ private fun SignedInApp(
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent, options, allowLaunch, onAccepted ->
                                 val launch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,aiCoachEnabled=options.aiCoachEnabled,companionType=options.companionType)
-                                recordingLaunch = if (intent.source == "today_changed_run") launch.copy(startImmediately = false, autoStopAtGoal = false) else launch.withTodayRoute(todaySelectedRoute, todayRouteReversed)
+                                recordingLaunch = if (intent.source == "today_changed_run") launch.copy(startImmediately = false, autoStopAtGoal = false) else launch.withTodayRoute(todaySelectedRoute, todayRouteReversed, todayPlannedRoute)
                                 launchTodayRecording(allowLaunch, onAccepted)
                             },
                             onStartFreestyle = { options ->
@@ -897,7 +901,7 @@ private fun SignedInApp(
                                     voiceGuideEnabled = options.voiceGuideEnabled,
                                     aiCoachEnabled = options.aiCoachEnabled,
                                     companionType = options.companionType,
-                                ).withTodayRoute(todaySelectedRoute, todayRouteReversed)
+                                ).withTodayRoute(todaySelectedRoute, todayRouteReversed, todayPlannedRoute)
                                 launchTodayRecording()
                             },
                             onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
@@ -909,7 +913,7 @@ private fun SignedInApp(
                                     workout.coachingTarget?.pace?.reference == "athlete_reference" ||
                                         workout.steps.any { it.coachingTarget?.pace?.reference == "athlete_reference" }
                                 } == true) integrationViewModel.trackCoachingReference(integration.coachingReferencePace != null)
-                                recordingLaunch = setup.toRecordingLaunch(selectedTodayShoeIdForLaunch, integration.coachingReferencePace).withTodayRoute(todaySelectedRoute, todayRouteReversed)
+                                recordingLaunch = setup.toRecordingLaunch(selectedTodayShoeIdForLaunch, integration.coachingReferencePace).withTodayRoute(todaySelectedRoute, todayRouteReversed, todayPlannedRoute)
                                 launchTodayRecording()
                             },
                             shoes = activeShoes.map { com.plainstride.outbound.feature.today.TodayShoeOption(it.id.toString(), it.displayName) },
@@ -919,14 +923,26 @@ private fun SignedInApp(
                             onOpenLiveTrack = { cheerPickerVisible = true },
                             cheerRecipientsSelected = selectedCheerIdSet.isNotEmpty(),
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
-                            onFindRoute = {
-                                selectingRouteForToday = true
-                                if (integration.routeScope != RouteScope.DISCOVERY) integrationViewModel.scope(RouteScope.DISCOVERY)
+                            onFindRoute = { sport, explicitDistance ->
+                                val plannerActivity = when(sport) {
+                                    TodayActivityChoice.WALK -> PlannerActivity.WALKING
+                                    TodayActivityChoice.HIKE -> PlannerActivity.HIKING
+                                    TodayActivityChoice.BIKE -> PlannerActivity.CYCLING
+                                    else -> PlannerActivity.RUNNING
+                                }
+                                plannerActivityContext=plannerActivity.name
+                                plannerDistanceContext=explicitDistance
+                                selectingRouteForToday=true
+                                if(integration.routeScope != RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)
                                 integrationViewModel.trackTodayRouteLibraryOpened()
                                 todaySelectedRoute?.id?.let(integrationViewModel::loadCommunityRoute)
                                 navController.navigate(COMMUNITY_ROUTES_ROUTE)
                             },
-                            selectedRoute = todaySelectedRoute?.let { route ->
+                            selectedRoute = todayPlannedRoute?.candidate?.let { route ->
+                                val distance = com.plainstride.outbound.core.model.activity.SessionFormatting.distance(route.distanceM, measurementUnitSystem)
+                                val label = resources.getString(TodayR.string.today_route_distance_format, distance.value, if(measurementUnitSystem == MeasurementUnitSystem.metric) "km" else "mi")
+                                TodayRouteSelection(route.id, route.name ?: resources.getString(com.plainstride.outbound.feature.community.R.string.planner_generated), label, route.points.map { MapCoordinate(it.latitude,it.longitude) }, todayRouteReversed)
+                            } ?: todaySelectedRoute?.let { route ->
                                 val points = route.guidancePoints().map { MapCoordinate(it.latitude, it.longitude) }
                                 val distance = com.plainstride.outbound.core.model.activity.SessionFormatting.distance(route.distanceM, measurementUnitSystem)
                                 val unit = if (measurementUnitSystem == MeasurementUnitSystem.metric) "km" else "mi"
@@ -936,6 +952,7 @@ private fun SignedInApp(
                             onRemoveRoute = {
                                 integrationViewModel.trackTodayRouteRemoved(todaySelectedRoute)
                                 todaySelectedRoute = null
+                                todayPlannedRoute = null
                                 todayRouteReversed = false
                                 integrationViewModel.clearCommunityRoute()
                             },
@@ -1147,6 +1164,13 @@ private fun SignedInApp(
                                     onLoadDetail = integrationViewModel::loadCommunityRoute,
                                     unitSystem = measurementUnitSystem, onImportedDelete = integrationViewModel::trackImportedRouteDeleted,
                                     importRequest = routeImportRequest, searchQuery = integration.routeQuery,
+                                    onFindLoop = {
+                                        selectingRouteForToday=false
+                                        plannerActivityContext=PlannerActivity.RUNNING.name
+                                        plannerDistanceContext=null
+                                        integrationViewModel.clearCommunityRoute()
+                                        navController.navigate("route_loop_planner/${PlannerActivity.RUNNING.name}?distance=0")
+                                    },
                                 )
                             },
                             notificationAccessAvailable = pushPermissionGranted,
@@ -1435,6 +1459,24 @@ private fun SignedInApp(
                 )
                 ProgressRoute(progress, onAnalyticsEvent = integrationViewModel::trackProgressEvent, onRefresh = integrationViewModel::refreshStatistics)
             }
+            composable("route_loop_planner/{activity}?distance={distance}",arguments=listOf(
+                navArgument("activity"){type=NavType.StringType},navArgument("distance"){type=NavType.StringType;defaultValue="0"},
+            )) { entry ->
+                val activity=entry.arguments?.getString("activity")?.let { value->PlannerActivity.entries.firstOrNull{it.name==value} } ?: PlannerActivity.RUNNING
+                val distance=entry.arguments?.getString("distance")?.toDoubleOrNull()?.takeIf{it.isFinite() && it>0}
+                RoutePlannerScreen(requireNotNull(accountId),activity,distance,measurementUnitSystem,
+                    onAccepted = { accepted ->
+                        if(accepted.accountId == accountId) {
+                            todayPlannedRoute=accepted.copy(candidate=accepted.candidate.copy(name=accepted.candidate.name ?: resources.getString(com.plainstride.outbound.feature.community.R.string.planner_generated)));todaySelectedRoute=null;todayRouteReversed=false
+                            val fromToday=selectingRouteForToday
+                            selectingRouteForToday=false
+                            integrationViewModel.clearCommunityRoute()
+                            navController.popBackStack()
+                            if(navController.currentDestination?.route==COMMUNITY_ROUTES_ROUTE)navController.popBackStack()
+                            if(!fromToday)selectTab(TopLevelDestination.Today.route)
+                        }
+                    }, onCancel={navController.popBackStack()})
+            }
             composable(COMMUNITY_ROUTES_ROUTE) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Column(Modifier.fillMaxSize()) {
@@ -1446,7 +1488,11 @@ private fun SignedInApp(
                         }
                         Box(Modifier.weight(1f)) {
                             key(selectingRouteForToday) {
-                                CommunityRouteScreen(requireNotNull(accountId),{navController.navigate(AppDetailRoutes.route(it.id))},integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search,integrationViewModel::trackRouteImport,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,unitSystem=measurementUnitSystem,searchQuery=integration.routeQuery,selectionMode=selectingRouteForToday,initialSelection=todaySelectedRoute,initialSelectionReverse=todayRouteReversed,onSelectRoute={route,reverse->val removedRoute=todaySelectedRoute.takeIf{route==null};todaySelectedRoute=route;todayRouteReversed=reverse;selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack();if(removedRoute!=null)integrationViewModel.trackTodayRouteRemoved(removedRoute) else route?.let{integrationViewModel.trackTodayRouteSelected(it)}},onDismissSelection={selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack()})
+                                CommunityRouteScreen(requireNotNull(accountId),{navController.navigate(AppDetailRoutes.route(it.id))},integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search,integrationViewModel::trackRouteImport,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,unitSystem=measurementUnitSystem,searchQuery=integration.routeQuery,selectionMode=selectingRouteForToday,initialSelection=todaySelectedRoute,initialSelectionReverse=todayRouteReversed,onSelectRoute={route,reverse->val removedRoute=todaySelectedRoute.takeIf{route==null};todaySelectedRoute=route;todayPlannedRoute=null;todayRouteReversed=reverse;selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack();if(removedRoute!=null)integrationViewModel.trackTodayRouteRemoved(removedRoute) else route?.let{integrationViewModel.trackTodayRouteSelected(it)}},onDismissSelection={selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack()},onFindLoop={
+                                    val activity=if(selectingRouteForToday)plannerActivityContext else PlannerActivity.RUNNING.name
+                                    val distance=if(selectingRouteForToday)plannerDistanceContext else null
+                                    navController.navigate("route_loop_planner/$activity?distance=${distance ?: 0.0}")
+                                })
                             }
                         }
                     }
@@ -1458,6 +1504,7 @@ private fun SignedInApp(
                     unitSystem = measurementUnitSystem,
                     onFollow = { route, reverse ->
                         todaySelectedRoute = route
+                        todayPlannedRoute = null
                         todayRouteReversed = reverse
                         selectingRouteForToday = false
                         integrationViewModel.clearCommunityRoute()
@@ -1713,7 +1760,15 @@ private fun activityMessageResource(message: ActivityMessage): Int = when (messa
 private fun RecordingLaunchConfiguration.withTodayRoute(
     route: com.plainstride.outbound.feature.community.CommunityRoute?,
     reverse: Boolean,
+    planned: AcceptedPlannerRoute? = null,
 ): RecordingLaunchConfiguration {
+    planned?.candidate?.let { candidate ->
+        return copy(followedRoute=FollowedRouteConfiguration(
+            id=candidate.id,name=candidate.name.orEmpty(),source=if(candidate.source==PlannerSource.COMMUNITY) com.plainstride.outbound.feature.recording.FollowedRouteSource.COMMUNITY else com.plainstride.outbound.feature.recording.FollowedRouteSource.GENERATED,
+            attribution=candidate.attribution,shape="loop",distanceMeters=candidate.distanceM,elevationGainMeters=candidate.elevationGainM,reverse=reverse,
+            points=candidate.points.map { com.plainstride.outbound.feature.recording.RecordingRoutePoint(it.latitude,it.longitude,it.altitude) },
+        ),startImmediately=true)
+    }
     if (route == null) return this
     val routeLaunch = com.plainstride.outbound.feature.community.CommunityRecordingCoordinator.launch(route, reverse)
     return copy(

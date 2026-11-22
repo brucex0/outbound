@@ -161,7 +161,17 @@ class RecordingViewModel @Inject constructor(
         viewModelScope.launch {
             var registeredSession: String? = null
             var rememberedSession: String? = null
+            var persistedLaunchSession: String? = null
+            var restoredLaunchSession: String? = null
             snapshot.collect { value ->
+                if(value.recovered && value.accountId == AccountConfigurationStore.accountId && value.sessionId != null && restoredLaunchSession != value.sessionId && !mutableState.value.startRequested) {
+                    restoredLaunchSession=value.sessionId
+                    readActiveLaunch(value)?.let { mutableState.value=mutableState.value.copy(launch=it) }
+                }
+                if (value.status == RecordingStatus.ACTIVE && value.accountId == AccountConfigurationStore.accountId && mutableState.value.startRequested && persistedLaunchSession != value.sessionId) {
+                    persistedLaunchSession=value.sessionId
+                    persistActiveLaunch(mutableState.value.launch, value.accountId)
+                }
                 if (value.status == RecordingStatus.ACTIVE && !value.recovered && mutableState.value.startRequested && rememberedSession != value.sessionId) {
                     rememberedSession = value.sessionId
                     rememberStartedConfiguration()
@@ -208,7 +218,7 @@ class RecordingViewModel @Inject constructor(
         val launch = mutableState.value.launch.copy(activityEventId = eventId, activityEventTitle = eventTitle)
         mutableState.value = mutableState.value.copy(launch = launch)
         startedWithGroup = true
-        context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY, launchJson.encodeToString(launch)).apply()
+        persistActiveLaunch(launch)
         groups.enqueueStart(eventId)
         viewModelScope.launch { groups.flush(); refreshGroupParticipants() }
         analytics.record(AnalyticsEvent("group_activity_recording_selection_changed", mapOf(AnalyticsProperty.SelectionType to "joined", AnalyticsProperty.EntrySource to "group_activity")))
@@ -232,14 +242,10 @@ class RecordingViewModel @Inject constructor(
         presentationUnitSystem = unitSystem
         val isDebugRouteTestLaunch = BuildConfig.DEBUG && RouteTestMode.enabled &&
             configuration.followedRoute != null
-        val restored=context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).getString(LAUNCH_KEY,null)?.let{runCatching{launchJson.decodeFromString<RecordingLaunchConfiguration>(it)}.getOrNull()}
-        // Direct, Group-event, and Today changed-run launches carry explicit choices.
-        // A changed run prepares setup without starting yet; its easy time prescription
-        // must still win over saved intervals, race goals, routes, and calorie targets.
-        val carriesExplicitSetup = configuration.startImmediately || configuration.followedRoute != null ||
-            configuration.activityEventId != null || configuration.performedWorkoutReference != null || configuration.entrySource == "today_changed_run"
-        val base = if (carriesExplicitSetup) configuration
-            else restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
+        val restored = readActiveLaunch(snapshot.value)
+        // Restore only the immutable launch belonging to this account's exact active session.
+        // A fresh setup never inherits a route or goal from a previous recording.
+        val base = restored ?: configuration
         val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
             .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
         val audioPreferences = com.plainstride.outbound.core.model.activity.ActivityAudioPreferences(context)
@@ -261,7 +267,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.ChangeType to "route_test_mode",
             AnalyticsProperty.SelectionType to "enabled",
         )))
-        debugLog("configure source=${effective.entrySource} direct=${configuration.startImmediately} restoredApplied=${!carriesExplicitSetup && restored?.activityKind == configuration.activityKind} requestedVoice=${configuration.voiceGuideEnabled} restoredVoice=${restored?.voiceGuideEnabled} effectiveVoice=${effective.voiceGuideEnabled}")
+        debugLog("configure source=${effective.entrySource} direct=${configuration.startImmediately} restoredApplied=${restored != null} requestedVoice=${configuration.voiceGuideEnabled} restoredVoice=${restored?.voiceGuideEnabled} effectiveVoice=${effective.voiceGuideEnabled}")
         if (!effective.startImmediately) analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
                 AnalyticsProperty.Source to effective.entrySource,
                 AnalyticsProperty.ActivityType to effective.activityKind.name.lowercase(),
@@ -313,7 +319,7 @@ class RecordingViewModel @Inject constructor(
         startedWithGroup = liveGroupSharing || launch.activityEventId != null
         didAutoPauseAtGoal = false
         mutableState.value = mutableState.value.copy(startRequested = true, countdown = null, countdownVoiceReady = false)
-        context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY,launchJson.encodeToString(launch)).apply()
+        persistActiveLaunch(launch, accountId)
         client.start(
             accountId,
             launch.activityKind,
@@ -721,7 +727,25 @@ class RecordingViewModel @Inject constructor(
         "activity_simulation_control_used",
         mapOf(AnalyticsProperty.Control to control, AnalyticsProperty.SelectionType to selection),
     ))
-    private fun clearLaunch(){context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().remove(LAUNCH_KEY).apply()}
+    private fun readActiveLaunch(active: RecordingSnapshot): RecordingLaunchConfiguration? {
+        if(active.accountId != AccountConfigurationStore.accountId || active.sessionId == null || active.status == RecordingStatus.IDLE) return null
+        val preferences=context.getSharedPreferences("${LAUNCH_PREFERENCES}_${active.accountId}",Context.MODE_PRIVATE)
+        if(preferences.getString("session",null) != active.sessionId) return null
+        return preferences.getString(LAUNCH_KEY,null)?.let { json ->
+            try { launchJson.decodeFromString<RecordingLaunchConfiguration>(json) }
+            catch(error:kotlinx.serialization.SerializationException){android.util.Log.w("PlainstrideRecording","active_launch_decode failed type=${error.javaClass.simpleName}");null}
+        }
+    }
+    private fun persistActiveLaunch(launch: RecordingLaunchConfiguration, accountId: String? = snapshot.value.accountId) {
+        if(accountId == null || accountId != AccountConfigurationStore.accountId) return
+        val preferences=context.getSharedPreferences("${LAUNCH_PREFERENCES}_$accountId",Context.MODE_PRIVATE)
+        preferences.edit().putString(LAUNCH_KEY,launchJson.encodeToString(launch))
+            .putString("session",snapshot.value.sessionId.takeIf { snapshot.value.accountId==accountId }).apply()
+    }
+    private fun clearLaunch(){
+        val accountId=snapshot.value.accountId ?: AccountConfigurationStore.accountId ?: return
+        context.getSharedPreferences("${LAUNCH_PREFERENCES}_$accountId",Context.MODE_PRIVATE).edit().remove(LAUNCH_KEY).remove("session").apply()
+    }
 
     private fun companionTitleRes(kind: ActivityKind): Int = when (kind) {
         ActivityKind.WALKING -> R.string.recording_companion_title_walk
@@ -818,7 +842,7 @@ class RecordingViewModel @Inject constructor(
                 gearJson=mutableState.value.launch.gearId?.let { "{\"id\":\"$it\"}" },
                 indoorJson="{\"indoor\":${mutableState.value.launch.indoor}}",
                 cadenceJson = snapshot.cadenceState?.summary()?.let { kotlinx.serialization.json.Json.encodeToString(it) },
-                followedRouteId=mutableState.value.launch.followedRoute?.id,
+                followedRouteId=mutableState.value.launch.followedRoute?.takeIf { it.source == FollowedRouteSource.COMMUNITY }?.id,
                 followedRouteCompleted=mutableState.value.launch.followedRoute?.let{route->snapshot.latestLocation?.let{last->route.points.lastOrNull()?.let{end->distanceMeters(last.latitude,last.longitude,end.latitude,end.longitude)<=50}}}==true,
                 reflection = ActivityReflection(
                     title = reflectionTitle,
