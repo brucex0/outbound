@@ -876,6 +876,7 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
     let steps: [TrainingPlanWorkoutStep]
     let isOptional: Bool
     var status: String? = nil
+    var completionMode: String? = nil
     var modality: String? = nil
     var stimulus: String? = nil
 
@@ -897,7 +898,8 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
         status: String? = nil,
         scheduledDateKey: String? = nil,
         modality: String? = nil,
-        stimulus: String? = nil
+        stimulus: String? = nil,
+        completionMode: String? = nil
     ) {
         self.id = id
         self.scheduledDate = scheduledDate
@@ -917,6 +919,7 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
         self.status = status
         self.modality = modality
         self.stimulus = stimulus
+        self.completionMode = completionMode
     }
 
     var durationMinutesRounded: Int {
@@ -1431,6 +1434,16 @@ final class TrainingPlanStore: ObservableObject {
         try await checkpointAcceptedCommand(state)
                 _ = try await commitServerState(state, now: now)
 
+        }
+    }
+
+    func setManualCompletion(workoutID: String, action: String, activityID: String? = nil) async throws {
+        let context = accountContext
+        try await ActivityAccountBoundary.$operation.withValue(context) {
+            refreshTask?.cancel()
+            let state = try await api.setManualWorkoutCompletion(id: workoutID, action: action, activityId: activityID, readiness: lastReadiness)
+            try Task.checkCancellation()
+            try await checkpointAcceptedCommand(state)
         }
     }
 

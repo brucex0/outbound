@@ -101,7 +101,7 @@ final class APIClient {
         return try await post("/activities/cached-changes", body: CachedActivityVersions(records: records))
     }
 
-    func fetchActivities(offset: Int = 0, cursor: String? = nil, ids: [String]? = nil, includeRoute: Bool = true) async throws -> ActivitySyncListResponse {
+    func fetchActivities(offset: Int = 0, cursor: String? = nil, ids: [String]? = nil, includeRoute: Bool = true, limit: Int = 20) async throws -> ActivitySyncListResponse {
         #if DEBUG
         if DebugActivityRepositoryTransport.enabled {
             let records = DebugRepositorySupplementalTransport.enabled && ids != nil ? DebugRepositorySupplementalTransport.canonicalRecord().map { [$0] } ?? [] : []
@@ -109,7 +109,7 @@ final class APIClient {
         }
         #endif
         return try await get("/activities", queryItems: [
-            URLQueryItem(name: "limit", value: String(ids?.count ?? 20)),
+            URLQueryItem(name: "limit", value: String(ids?.count ?? limit)),
             URLQueryItem(name: "offset", value: String(offset)),
             URLQueryItem(name: "cursor", value: cursor),
             URLQueryItem(name: "ids", value: ids?.joined(separator: ",")),
@@ -497,6 +497,12 @@ final class APIClient {
             "/planning/workouts/\(id)/complete",
             body: request
         )
+    }
+
+    func setManualWorkoutCompletion(id: String, action: String, activityId: String?, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        struct Request: Encodable { let manualAction: String; let activityId: String? }
+        let state: PlanningAPIStateResponse = try await post("/planning/workouts/\(id)/complete", body: Request(manualAction: action, activityId: activityId))
+        return state.trainingPlanState(readiness: readiness)
     }
 
     func updateRaceGoal(goalID: String, request: RaceGoalUpdateRequest, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
@@ -1825,7 +1831,8 @@ private extension PlanningAPIWorkout {
             status: status,
             scheduledDateKey: String(scheduledDate.prefix(10)),
             modality: modality,
-            stimulus: stimulus
+            stimulus: stimulus,
+            completionMode: completionMode
         )
     }
 }
@@ -2752,6 +2759,7 @@ private struct PlanningAPIWorkout: Decodable {
     let distanceMeters: Double?
     let targetCalories: Int?
     let isKeyWorkout: Bool
+    let completionMode: String?
     let status: String
     let prescription: PlanningWorkoutPrescription?
     let performedWorkoutReference: PerformedWorkoutReference?
@@ -2868,6 +2876,8 @@ struct ActivitySyncListResponse: Decodable {
 }
 
 struct RemoteActivityRecord: Decodable {
+    var completionPolicyVersion: String? = nil
+    var completion: ActivityCompletionAssociation? = nil
     let id: String
     let clientActivityId: String?
     let clientData: ActivityClientExtras?

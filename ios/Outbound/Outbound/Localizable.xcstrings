@@ -1,6 +1,380 @@
 {
   "sourceLanguage": "en",
   "strings": {
+  "plan.completion.link": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Link recorded activity"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Vincular actividad grabada"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "关联已记录的活动"
+        }
+      }
+    }
+  },
+  "plan.completion.manual": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Mark completed without recording"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Marcar como completado sin grabación"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "标记为已完成（无记录）"
+        }
+      }
+    }
+  },
+  "plan.completion.undo": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Undo completion"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Deshacer finalización"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "撤销完成标记"
+        }
+      }
+    }
+  },
+  "plan.completion.unrecorded": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Completed without a recording"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Completado sin grabación"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "已完成，未记录活动"
+        }
+      }
+    }
+  },
+  "plan.completion.loading": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Loading activities"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Cargando actividades"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "正在加载活动"
+        }
+      }
+    }
+  },
+  "plan.completion.manual_title": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Mark this workout completed?"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "¿Marcar este entrenamiento como completado?"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "将此训练标记为已完成？"
+        }
+      }
+    }
+  },
+  "plan.completion.manual_message": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No activity or recorded metrics will be created."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No se creará ninguna actividad ni se añadirán métricas grabadas."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "不会创建活动或添加运动数据。"
+        }
+      }
+    }
+  },
+  "plan.completion.undo_title": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Undo this completion?"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "¿Deshacer esta finalización?"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "撤销此次完成标记？"
+        }
+      }
+    }
+  },
+  "plan.completion.undo_message": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "The workout will become unfinished. Your saved activity will stay."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "El entrenamiento volverá a estar pendiente. Tu actividad guardada se conservará."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "此训练将恢复为未完成。已保存的活动会保留。"
+        }
+      }
+    }
+  },
+  "plan.completion.choose_message": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Choose a recent activity. This links the recording without claiming every workout phase was followed."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Elige una actividad reciente. Se vinculará la grabación sin afirmar que seguiste todas las fases del entrenamiento."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "选择近期活动。关联记录不代表你完全按照训练的每个阶段完成。"
+        }
+      }
+    }
+  },
+  "plan.completion.empty": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No unlinked activities of this sport from the last 30 days. Save and sync a recording, then try again."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No hay actividades de este deporte sin vincular en los últimos 30 días. Guarda y sincroniza una grabación e inténtalo de nuevo."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "最近30天内没有可关联的同类活动。请先保存并同步活动，再重试。"
+        }
+      }
+    }
+  },
+  "plan.completion.failed": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Could not update. Connect and try again."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No se pudo actualizar. Conéctate e inténtalo de nuevo."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "无法更新。请连接网络后重试。"
+        }
+      }
+    }
+  },
+  "plan.completion.saved": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Workout updated"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Entrenamiento actualizado"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "训练已更新"
+        }
+      }
+    }
+  },
+  "plan.completion.group_question": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Count this toward today’s workout?"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "¿Contar esta actividad para el entrenamiento de hoy?"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "将此次活动计入今天的训练？"
+        }
+      }
+    }
+  },
+  "plan.completion.count": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Count this activity"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Contar esta actividad"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "计入此次活动"
+        }
+      }
+    }
+  },
+  "plan.completion.not_now": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Not now"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Ahora no"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "暂不"
+        }
+      }
+    }
+  },
+  "plan.completion.sync_first": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Your activity is saved. Let it finish syncing, then try again."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Tu actividad está guardada. Espera a que termine de sincronizarse e inténtalo de nuevo."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "活动已保存。请等待同步完成后重试。"
+        }
+      }
+    }
+  },
     "session.phase.current": {
       "comment": "Live workout phase status. [android:session.phase]",
       "localizations": {

@@ -101,8 +101,8 @@ actor ActivityPersistence {
     func updateSyncState(_ state: SavedActivitySyncState, for id: UUID, expectedGeneration: UInt64) throws {
         try LocalActivityStore.updateSyncState(state, for: id, expectedGeneration: expectedGeneration)
     }
-    func applyRemoteBaseline(_ activity: SavedActivity, expectedGeneration: UInt64?) throws -> Bool {
-        try LocalActivityStore.applyRemoteBaseline(activity, expectedGeneration: expectedGeneration)
+    func applyRemoteBaseline(_ activity: SavedActivity, expectedGeneration: UInt64?, completion: ActivityCompletionAssociation? = nil, observesCompletion: Bool = false) throws -> Bool {
+        try LocalActivityStore.applyRemoteBaseline(activity, expectedGeneration: expectedGeneration, completion: completion, observesCompletion: observesCompletion)
     }
     func mergePhotoMetadata(_ photos: [SavedPhoto], for id: UUID, appendIfGeneration: UInt64? = nil, order: [String]? = nil) throws {
         try LocalActivityStore.mergePhotoMetadata(photos, for: id, appendIfGeneration: appendIfGeneration, order: order)
@@ -659,13 +659,14 @@ private nonisolated enum LocalActivityStore {
         try writeManifest(manifest)
     }
 
-    static func applyRemoteBaseline(_ activity: SavedActivity, expectedGeneration: UInt64?) throws -> Bool {
+    static func applyRemoteBaseline(_ activity: SavedActivity, expectedGeneration: UInt64?, completion: ActivityCompletionAssociation?, observesCompletion: Bool) throws -> Bool {
         var manifest = try readManifest()
         let owner = ActivityAccountBoundary.context.owner
         let index = manifest.records.firstIndex { $0.owner == owner && $0.activity.id == activity.id }
         if let index {
             guard manifest.records[index].generation == expectedGeneration,
-                  manifest.records[index].activity.sync?.isSynced == true else { return false }
+                  manifest.records[index].activity.sync?.isSynced == true,
+                  (manifest.records[index].activity.sync?.syncedAt ?? .distantPast) <= (activity.sync?.syncedAt ?? .distantPast) else { return false }
         } else if expectedGeneration != nil { return false }
         // Route preparation is journaled too: a remote baseline must not corrupt a
         // still-referenced sidecar if its manifest publication fails.
@@ -674,6 +675,12 @@ private nonisolated enum LocalActivityStore {
         let baseline = index.map { activity.withPhotos(manifest.records[$0].activity.photos) } ?? activity
         let record = ActivityRepositoryRecord(owner: owner, generation: (index.map { manifest.records[$0].generation } ?? 0) + 1, activity: baseline.withRoute(nil))
         if let index { manifest.records[index] = record } else { manifest.records.append(record) }
+        if observesCompletion, let serverID = activity.sync?.serverActivityId {
+            var associations = manifest.confirmedCompletions[owner] ?? []
+            associations.removeAll { $0.activityId == serverID || (completion != nil && $0.plannedWorkoutId == completion?.plannedWorkoutId) }
+            if let completion { associations.append(completion) }
+            manifest.confirmedCompletions[owner] = associations
+        }
         try writeManifest(manifest)
         try FileManager.default.removeItem(at: journal)
         return true

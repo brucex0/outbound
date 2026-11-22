@@ -711,7 +711,7 @@ struct ActiveTrainingPlanDetailView: View {
 
         NavigationLink {
             ScheduledPlanWorkoutDetailView(
-                workout: workout,
+                initialWorkout: workout,
                 displayWorkout: displayWorkout,
                 todaySuggestion: effectiveWorkout == nil ? nil : todaySuggestion,
                 mobility: mobility,
@@ -855,6 +855,8 @@ struct PlanCompletedActivityLink: View {
                 .simultaneousGesture(TapGesture().onEnded {
                     Task { await analytics?.track(.init(.featureExposed, properties: [.feature: .string("plan_completed_activity"), .result: .string("opened")])) }
                 })
+            } else if workout.completionMode == "manual_unrecorded" {
+                Text(manualCompletionText("unrecorded")).font(.subheadline).foregroundStyle(.secondary)
             } else {
                 Text(String(localized: "plan.workout.activity_unavailable", defaultValue: "The linked activity is not available on this device yet."))
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -870,7 +872,10 @@ private struct ScheduledPlanWorkoutDetailView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @State private var trackedOpen = false
 
-    let workout: TrainingPlanWorkout
+    let initialWorkout: TrainingPlanWorkout
+    private var workout: TrainingPlanWorkout {
+        (trainingPlanStore.activePlan?.plannedSchedule ?? trainingPlanStore.currentWeek?.scheduledWorkouts ?? []).first { $0.id == initialWorkout.id } ?? initialWorkout
+    }
     let displayWorkout: TrainingPlanWorkout
     let todaySuggestion: TodayTrainingSuggestion?
     let mobility: [TrainingPlanWorkout]
@@ -909,6 +914,7 @@ private struct ScheduledPlanWorkoutDetailView: View {
                 if workout.status == "completed" {
                     PlanCompletedActivityLink(workout: workout)
                 }
+                PlannedWorkoutCompletionControls(workout: workout)
                 NutritionBetaEntry(context: .scheduled(workout, display: displayWorkout, calendar: trainingPlanStore.nutritionCalendar))
 
                 if let todaySuggestion {

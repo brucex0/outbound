@@ -1312,6 +1312,16 @@ final class ActivityStore: ObservableObject {
         }
     }
 
+    func refreshCompletionAssociations() async throws {
+        try await ActivityAccountBoundary.withAccount {
+            let ids = activities.compactMap { $0.sync?.serverActivityId }
+            for start in stride(from: 0, to: ids.count, by: 200) {
+                let response = try await api.fetchActivities(ids: Array(ids[start..<min(start + 200, ids.count)]), includeRoute: false)
+                _ = try await applyRemoteActivities(response.activities, preserveCachedRoutes: true)
+            }
+        }
+    }
+
     func refreshActivityDetails(_ id: UUID) async {
         return await ActivityAccountBoundary.withAccount {
             guard AuthStore.currentUserId != nil, let local = activity(id: id), let serverID = local.sync?.serverActivityId,
@@ -1459,7 +1469,7 @@ final class ActivityStore: ObservableObject {
                     localUpdatedAt: remote.clientUpdatedAt ?? remote.updatedAt
                 )
                 let restored = restoredActivity(remote, id: activityID, extras: clientExtras, local: local, sync: synced, route: preserveCachedRoutes ? local?.route : remote.route)
-                guard try await persistence.applyRemoteBaseline(restored, expectedGeneration: baseline?.generation) else { continue }
+                guard try await persistence.applyRemoteBaseline(restored, expectedGeneration: baseline?.generation, completion: remote.completion, observesCompletion: remote.completionPolicyVersion == "manual-completion-v1") else { continue }
                 await refreshRepositoryProjection()
                 activityRevision += 1
                 restoredCount += 1
