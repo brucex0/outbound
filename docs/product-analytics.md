@@ -529,3 +529,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 
 - iOS and Android use `feature_exposed` with `feature=manual_workout_completion`, `selection_type=link|complete|undo`, and `result=success|failure` for explicit online commands from workout details. `feature=group_workout_completion` records only `result=success|failure` for an accepted optional post-save group-recording link.
 - These events exclude activity/workout/plan/event IDs, titles, dates, metrics, receipt data, candidate counts and user text. Pending recording upload is a retryable local presentation state, not a claimed successful link.
+
+- Loop planner exposure reuses `feature_exposed` with `feature=loop_planner`. Explicit generation reuses `activity_configuration_changed` with `change_type=loop_planner_generate` and bounded activity type. Route attachment retains `route_selected` with source `generated` or `community` and coarse distance bucket. No queries, places, coordinates, exact targets, provider payloads or route IDs enter analytics.

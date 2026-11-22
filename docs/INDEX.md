@@ -41,6 +41,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Account-local Monday weeks, timezone initialization, partial plan weeks and cached calendar context | `docs/account-calendar.md` |
 | Account preferences and statistics | `docs/account-preferences.md`, `docs/account-statistics.md` |
 | Git transport problems | `docs/git-transport.md` |
+| Distance-targeted loop planner, provider setup, API and attachment contract | `docs/route-planning.md` |
 | Dog-shaped walking-route prototype, CLI usage and limitations | [`scripts/dog-route-generator/README.md`](../scripts/dog-route-generator/README.md) |
 | Any other feature, historical plan, prototype, or handoff | Search `docs/reference-map.md` |
 
