@@ -1333,9 +1333,9 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
-    private func checkpointAcceptedCommand(_ state: TrainingPlanStateResponse) async throws {
+    private func checkpointAcceptedCommand(_ state: TrainingPlanStateResponse, now: Date = Date()) async throws {
         try ActivityAccountBoundary.validate()
-        _ = try await commitServerState(state, now: Date(), invalidateStatistics: true)
+        _ = try await commitServerState(state, now: now, invalidateStatistics: true)
         try ActivityAccountBoundary.validate()
         acceptedCommandGeneration &+= 1
     }
@@ -1543,8 +1543,7 @@ final class TrainingPlanStore: ObservableObject {
         isRefreshingPlanRecommendations = false
         let state = try await api.createPersonalizedTrainingPlan(request, readiness: lastReadiness)
         try Task.checkCancellation()
-        try await checkpointAcceptedCommand(state)
-                _ = try await commitServerState(state, now: now)
+        try await checkpointAcceptedCommand(state, now: now)
 
         }
     }
