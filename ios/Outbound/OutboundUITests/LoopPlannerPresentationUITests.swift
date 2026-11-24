@@ -42,22 +42,17 @@ final class LoopPlannerPresentationUITests: XCTestCase {
         }
         capture(app, "Native menu retained through parent and theme refresh")
         app.buttons["Find a route"].tap()
-        XCTAssertTrue(app.buttons["Find a loop"].waitForExistence(timeout: 10), app.debugDescription)
-        app.buttons["Find a loop"].tap()
+        XCTAssertTrue(app.buttons["loop.candidate.0"].waitForExistence(timeout: 20))
+        app.buttons["loop.distance"].tap()
         XCTAssertTrue(app.buttons["3 km"].waitForExistence(timeout: 10), app.debugDescription)
         app.buttons["3 km"].tap()
         for _ in 0..<3 { refresh(); XCTAssertTrue(app.buttons["3 km"].isHittable, app.debugDescription) }
         capture(app, "Input sheet retained through asynchronous store and theme refresh")
-        app.navigationBars["Find a loop"].buttons["Close"].tap()
-        let generate = app.buttons["Find loops"].firstMatch
-        let enabled = NSPredicate(format: "enabled == true")
-        expectation(for: enabled, evaluatedWith: generate)
-        waitForExpectations(timeout: 20)
-        generate.tap()
+        app.buttons["Done"].tap()
         for _ in 0..<3 { refresh() }
         let candidate = app.buttons["loop.candidate.0"]
-        XCTAssertTrue(candidate.waitForExistence(timeout: 15), app.debugDescription)
-        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 1)
+        waitForReady(candidate, app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 2)
         let map = app.descendants(matching: .any)["loop.map"].firstMatch
         XCTAssertTrue(map.exists, app.debugDescription)
         let paintedRoutes = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -71,9 +66,9 @@ final class LoopPlannerPresentationUITests: XCTestCase {
         for _ in 0..<3 { refresh(); XCTAssertTrue(app.buttons["Use route"].isHittable, app.debugDescription) }
         capture(app, "Details retained through store publications")
         app.navigationBars["Route details"].buttons["Close"].tap()
-        app.buttons["Start, distance & via"].tap()
+        app.buttons["loop.distance"].tap()
         XCTAssertTrue(app.buttons["3 km"].waitForExistence(timeout: 5))
-        app.navigationBars["Find a loop"].buttons["Close"].tap()
+        app.navigationBars["Distance"].buttons["Close"].tap()
         candidate.tap()
         app.buttons["Use route"].tap()
         XCTAssertTrue(app.buttons["today.overflow"].waitForExistence(timeout: 10), app.debugDescription)
@@ -85,12 +80,26 @@ final class LoopPlannerPresentationUITests: XCTestCase {
         capture(app, "Selected route returns to retained Today workout")
         app.buttons["today.overflow"].tap()
         app.buttons["Change route"].tap()
-        app.buttons["Find a loop"].tap()
-        XCTAssertTrue(app.buttons["3 km"].waitForExistence(timeout: 5))
-        app.navigationBars["Find a loop"].buttons["Close"].tap()
-        app.navigationBars["Find a loop"].buttons["Back"].tap()
+        app.buttons["loop.saved_routes"].tap()
         XCTAssertTrue(app.navigationBars["Select Route"].waitForExistence(timeout: 5))
-        app.navigationBars["Select Route"].buttons["Close"].tap()
+        let saved = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Loop 1")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 5), app.debugDescription)
+        saved.tap() // Deselect the current snapshot.
+        saved.tap() // Select canonical cached geometry with a fresh attachment policy.
+        let useSaved = app.buttons["Use This Route"]
+        XCTAssertTrue(useSaved.waitForExistence(timeout: 5))
+        XCTAssertTrue(useSaved.isEnabled)
+        useSaved.tap()
+        XCTAssertTrue(app.buttons["today.overflow"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(goal.label, originalGoal, "Saved-route attachment must retain the explicit 47-minute Run")
+        XCTAssertTrue(app.buttons["activity.mode.time"].isSelected)
+        app.buttons["today.overflow"].tap()
+        app.buttons["Change route"].tap()
+        app.buttons["loop.distance"].tap()
+        XCTAssertTrue(app.buttons["3 km"].waitForExistence(timeout: 5))
+        app.navigationBars["Distance"].buttons["Close"].tap()
+        app.navigationBars["Find a loop"].buttons["Back"].tap()
+        XCTAssertTrue(app.buttons["today.overflow"].waitForExistence(timeout: 10))
         XCTAssertEqual(app.buttons["today.overflow"].value as? String, "Route selected")
         XCTAssertEqual(goal.label, originalGoal, "Backing out must retain the selected route and manual goal")
     }
@@ -129,8 +138,8 @@ final class LoopPlannerPresentationUITests: XCTestCase {
             XCTAssertTrue(app.buttons["Find a route"].exists, "Native menu must remain open during store refreshes")
         }
         app.buttons["Find a route"].tap()
-        app.buttons["Find a loop"].tap()
-        let close = app.navigationBars["Find a loop"].buttons["Close"]
+        app.buttons["loop.distance"].tap()
+        let close = app.navigationBars["Distance"].buttons["Close"]
         XCTAssertTrue(close.waitForExistence(timeout: 8))
         Thread.sleep(forTimeInterval: 0.7) // Let the one native opening transition finish.
         let baseline = close.frame
@@ -140,13 +149,154 @@ final class LoopPlannerPresentationUITests: XCTestCase {
         while Date() < end {
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "Initial \(appearance) frame \(sample)"; screenshot.lifetime = .keepAlways; add(screenshot)
-            XCTAssertTrue(close.exists, "Initial editor disappeared at sample \(sample)")
-            XCTAssertLessThan(abs(close.frame.minY - baseline.minY), 8, "Initial editor moved at sample \(sample)")
+            XCTAssertTrue(close.exists, "Explicit distance editor disappeared at sample \(sample)")
+            XCTAssertLessThan(abs(close.frame.minY - baseline.minY), 8, "Explicit distance editor moved at sample \(sample)")
             XCTAssertTrue(app.buttons["3 km"].isHittable)
             sample += 1
         }
-        XCTAssertTrue(app.staticTexts["Nearby parks"].exists, "Real MapKit park response must arrive in the monitored opening")
-        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 0)
+        let evidence = app.descendants(matching: .any)["loop.stability"].firstMatch.value as? String ?? ""
+        XCTAssertNotNil(evidence.range(of: "parks=[1-9]", options: .regularExpression), "Real MapKit park response must arrive: \(evidence)")
+        for counter in ["sheetReplacements=0", "sheetMissing=0", "sheetMoves=0", "inputStateLost=0", "mapReplacements=0", "mapMissing=0"] {
+            XCTAssertTrue(evidence.contains(counter), evidence)
+        }
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 1)
+    }
+
+    @MainActor
+    func testAutomaticDefaultAndConfirmedStartsPreserveSelectedDistance() throws {
+        let fixture = try LoopPlannerFixture()
+        defer { fixture.stop() }
+        let tips = ["theme_discovery", "activity_overflow", "music_discovery", "cheer_me_on", "voice_guide", "shoes"]
+        let app = launchFixtureApp(extraArguments: ["-OutboundAPIBaseURL", try fixture.start(),
+            "-measurement_unit_system_v1", "metric"] + tips.flatMap { ["-tooltip.\($0).dismissed.v1", "YES"] })
+        openFindRoute(app)
+        let candidate = app.buttons["loop.candidate.0"]
+        waitForReady(candidate, app: app)
+        XCTAssertFalse(app.navigationBars["Distance"].exists, "Initial results must remain uncovered")
+        XCTAssertFalse(app.navigationBars["Select Route"].exists, "Today opens the map directly")
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 1)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").last?["targetDistanceM"] as? Double, 5000)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").last?["preference"] as? String, "balanced")
+        capture(app, "Automatic default route comparison")
+        app.buttons["loop.distance"].tap()
+        app.buttons["10 km"].tap()
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 1, "Distance remains a draft until Done")
+        app.buttons["Done"].tap()
+        XCTAssertFalse(candidate.isEnabled, "Old geometry cannot be selected while replacement is loading")
+        waitForReady(candidate, app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 2)
+        app.buttons["loop.start"].tap()
+        app.buttons["My location"].tap()
+        waitForReady(candidate, app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 2, "Unchanged My location reuses the valid current-input routes")
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").last?["targetDistanceM"] as? Double, 10000)
+        app.buttons["loop.start"].tap()
+        let search = app.textFields["Search places"]
+        search.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+        search.typeText("10201 NE 4th St Bellevue")
+        waitForSettledPlaceSearchControl(app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 2, "Search typing does not generate")
+        app.buttons["loop.place.search"].tap()
+        let place = app.buttons["loop.place.0"]
+        let feedback = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            place.exists || app.staticTexts["Searching places…"].exists || app.progressIndicators["Searching places…"].exists
+                || app.staticTexts["No places found. Try another address."].exists
+                || app.staticTexts["Places could not be loaded. Try again."].exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [feedback], timeout: 5), .completed, "A submitted search must expose loading, results, empty or failure feedback")
+        XCTAssertTrue(place.waitForExistence(timeout: 15), app.debugDescription)
+        place.tap()
+        XCTAssertFalse(app.buttons["Confirm pin"].exists, "Ordinary address selection has no entrance gate")
+        waitForReady(candidate, app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 3)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").last?["targetDistanceM"] as? Double, 10000)
+        let initialStart = fixture.bodies("POST /routes/generate").first?["start"] as? NSDictionary
+        let addressStart = fixture.bodies("POST /routes/generate").last?["start"] as? NSDictionary
+        XCTAssertNotEqual(initialStart, addressStart, "The selected address must become the request start")
+        capture(app, "Selected address generates ten kilometer loops directly")
+        app.buttons["loop.saved_routes"].tap()
+        XCTAssertTrue(app.navigationBars["Select Route"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Import GPX or GeoJSON"].exists)
+        XCTAssertFalse(app.buttons["Find a loop"].exists, "Saved routes must not recursively open another planner")
+        app.navigationBars["Select Route"].buttons["Close"].tap()
+        waitForReady(candidate, app: app)
+        app.buttons["loop.options"].tap()
+        let climbing = app.switches["loop.less_climbing"]
+        XCTAssertTrue(climbing.waitForExistence(timeout: 5))
+        climbing.tap()
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 3, "Preferences remain a draft until Done")
+        app.buttons["Done"].tap()
+        waitForReady(candidate, app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 4)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").last?["preference"] as? String, "less_climbing")
+    }
+
+    @MainActor
+    func testManualDistanceGoalSeedsInitialQuery() throws {
+        let fixture = try LoopPlannerFixture()
+        defer { fixture.stop() }
+        let tips = ["theme_discovery", "activity_overflow", "music_discovery", "cheer_me_on", "voice_guide", "shoes"]
+        let app = launchFixtureApp(extraArguments: ["-OutboundAPIBaseURL", try fixture.start(),
+            "-measurement_unit_system_v1", "metric"] + tips.flatMap { ["-tooltip.\($0).dismissed.v1", "YES"] })
+        XCTAssertTrue(app.buttons["today.overflow"].waitForExistence(timeout: 20))
+        app.buttons["activity.workout.run"].tap()
+        app.buttons["activity.mode.distance"].tap()
+        let goal = app.buttons["activity.goal.edit"]
+        goal.tap()
+        let custom = app.textFields["activity.goal.custom"]
+        XCTAssertTrue(custom.waitForExistence(timeout: 5))
+        custom.tap()
+        if let value = custom.value as? String, value != "0" {
+            custom.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value.count))
+        }
+        custom.typeText("10")
+        app.buttons["activity.goal.done"].tap()
+        XCTAssertTrue(custom.waitForNonExistence(timeout: 5))
+        let originalGoal = goal.label
+        app.buttons["today.overflow"].tap()
+        app.buttons["Find a route"].tap()
+        waitForReady(app.buttons["loop.candidate.0"], app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 1)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").last?["targetDistanceM"] as? Double, 10000)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").last?["activityType"] as? String, "running")
+        app.navigationBars["Find a loop"].buttons["Back"].tap()
+        XCTAssertTrue(app.buttons["today.overflow"].waitForExistence(timeout: 10))
+        XCTAssertEqual(goal.label, originalGoal)
+    }
+
+    @MainActor private func waitForSettledPlaceSearchControl(_ app: XCUIApplication) {
+        let button = app.buttons["loop.place.search"], keyboard = app.keyboards.firstMatch
+        var lastButtonFrame = CGRect.null, lastKeyboardFrame = CGRect.null
+        var stableSamples = 0
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard keyboard.exists, button.exists, button.isHittable else { stableSamples = 0; return false }
+            let buttonFrame = button.frame, keyboardFrame = keyboard.frame
+            guard buttonFrame.maxY < keyboardFrame.minY else { stableSamples = 0; return false }
+            stableSamples = buttonFrame == lastButtonFrame && keyboardFrame == lastKeyboardFrame ? stableSamples + 1 : 0
+            lastButtonFrame = buttonFrame; lastKeyboardFrame = keyboardFrame
+            return stableSamples >= 2
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 5), .completed,
+                       "The keyboard/sheet transition must settle before computing the magnifier tap point")
+    }
+
+    @MainActor private func openFindRoute(_ app: XCUIApplication) {
+        let overflow = app.buttons["today.overflow"]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            overflow.exists && overflow.isHittable && overflow.frame.width >= 43 && overflow.frame.minY >= 0
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed, app.debugDescription)
+        overflow.tap()
+        let find = app.buttons["Find a route"]
+        XCTAssertTrue(find.waitForExistence(timeout: 5), "Native overflow must open before planner entry: \(app.debugDescription)")
+        XCTAssertTrue(find.isHittable)
+        find.tap()
+    }
+
+    @MainActor private func waitForReady(_ candidate: XCUIElement, app: XCUIApplication) {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND enabled == true"), object: candidate)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 25), .completed, app.debugDescription)
     }
 
     /// Inspect painted route strokes, excluding the center strip containing

@@ -2,6 +2,7 @@ import SwiftUI
 
 /// References to existing domain owners, injected at the SwiftUI boundary.
 struct ActivityFlowDependencies {
+    let authStore: AuthStore
     let activityStore: ActivityStore
     let guideStore: GuideStore
     let guideCatalog: GuideCatalogStore

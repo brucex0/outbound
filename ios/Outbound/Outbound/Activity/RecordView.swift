@@ -7,6 +7,7 @@ struct RecordView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var activityFlowStore: ActivityFlowStore
+    @EnvironmentObject var authStore: AuthStore
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var guideStore: GuideStore
     @EnvironmentObject var guideCatalog: GuideCatalogStore
@@ -122,6 +123,7 @@ struct RecordView: View {
             launchID: launchID,
             initialIntent: initialIntent,
             dependencies: ActivityFlowDependencies(
+                authStore: authStore,
                 activityStore: activityStore,
                 guideStore: guideStore,
                 guideCatalog: guideCatalog,

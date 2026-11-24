@@ -46,6 +46,7 @@ struct ActivityFlowView: View {
         return flowBody
             .startupUIStabilityDiagnostics("activity_flow")
             .background {
+                StableSheetPresentationHost(presenter: model.routePlannerPresenter).frame(width: 0, height: 0)
                 StableSheetPresentationHost(presenter: model.curatedWorkoutPresenter.sheet)
                     .frame(width: 0, height: 0)
             }

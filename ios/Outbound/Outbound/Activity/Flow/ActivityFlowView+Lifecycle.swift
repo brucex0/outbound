@@ -201,19 +201,6 @@ extension ActivityFlowView {
                 embeddedActivityAssistantButton
             }
         }
-        .sheet(item: routeLibraryPresentation) { draft in
-            NavigationStack {
-                CommunityRouteLibraryView(draft: draft, onClose: {
-                    model.dismissRouteLibrary(draft)
-                }) { route in
-                    guard model.setup.routeSelectionDraft === draft, draft.canConfirm else { return }
-                    model.applyRoute(route)
-                    model.dismissRouteLibrary(draft)
-                }
-                .planningContext(activity: model.setup.plannedIntent?.resolvedActivityType ?? .running,
-                                 distanceM: model.setup.plannedIntent?.targetDistanceMeters)
-            }
-        }
         .sheet(item: binding(\.setup.setupSheet)) { sheet in
             setupSheetView(sheet)
                 .presentationDetents(sheet == .goal ? [.height(310)] : [.medium, .large])
@@ -358,15 +345,4 @@ extension ActivityFlowView {
         }
     }
 
-    private var routeLibraryPresentation: Binding<CommunityRouteSelectionDraft?> {
-        // A delayed dismissal from an older sheet must not clear a newer open.
-        let expectedDraft = model.setup.routeSelectionDraft
-        return Binding(
-            get: { model.setup.routeSelectionDraft },
-            set: { value in
-                guard value == nil, let expectedDraft else { return }
-                model.dismissRouteLibrary(expectedDraft)
-            }
-        )
-    }
 }

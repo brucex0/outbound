@@ -70,7 +70,7 @@ struct LoopPlannerFrameProbe: UIViewRepresentable {
             }
             guard sheetID != nil else { return }
             samples += 1
-            if case .inputs = presentation.sheet {} else { inputStateLost += 1 }
+            if case .distance = presentation.sheet {} else { inputStateLost += 1 }
             if let sheet {
                 if ObjectIdentifier(sheet) != sheetID { sheetReplacements += 1 }
                 let bounds = sheet.view.layer.presentation()?.frame ?? sheet.view.frame

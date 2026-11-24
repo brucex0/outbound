@@ -20,6 +20,7 @@ struct CommunityRouteLibraryView: View {
     @AppStorage("debug_route_test_mode") private var routeTestMode = false
 #endif
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    var allowsPlanner = true
     var plannerActivity: ActivityType = .running
     var plannerDistanceM: Double? = nil
     @State private var query = ""
@@ -73,6 +74,8 @@ struct CommunityRouteLibraryView: View {
     func planningContext(activity: ActivityType, distanceM: Double?) -> Self {
         var copy = self; copy.plannerActivity = activity; copy.plannerDistanceM = distanceM; return copy
     }
+
+    func savedRoutesOnly() -> Self { var copy = self; copy.allowsPlanner = false; return copy }
 
     private var routes: [CommunityRoute] {
         let storedRoutes = myRoutesOnly ? store.mine : store.discovered
@@ -194,14 +197,14 @@ struct CommunityRouteLibraryView: View {
                         }
                         .buttonStyle(RouteLibraryActionButtonStyle())
                     }
-                    Button {
-                        selectionDraft.openPlanner(activity: plannerActivity, distanceM: plannerDistanceM, units: measurementPreferences.unitSystem, store: store, authStore: authStore, analytics: analyticsManager) { route in
-                            if let onSelect { selectionDraft.chooseImportedRoute(route); onSelect(route) }
-                            else { store.launch(route) }
+                    if allowsPlanner { Button {
+                        selectionDraft.openPlanner(activity: plannerActivity, distanceM: plannerDistanceM, preferences: measurementPreferences, store: store, authStore: authStore, analytics: analyticsManager) { route in
+                            if let onSelect { if let route { selectionDraft.chooseImportedRoute(route) }; onSelect(route) }
+                            else if let route { store.launch(route) }
                         }
                     } label: {
                         Label(String(localized: "route.planner.title", defaultValue: "Find a loop"), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
-                    }.buttonStyle(RouteLibraryActionButtonStyle())
+                    }.buttonStyle(RouteLibraryActionButtonStyle()) }
                     Button { importsFile = true } label: {
                         Label(
                             String(localized: "route.library.action.import", defaultValue: "Import GPX or GeoJSON"),

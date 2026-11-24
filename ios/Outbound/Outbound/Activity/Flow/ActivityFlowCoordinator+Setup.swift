@@ -666,10 +666,17 @@ extension ActivityFlowCoordinator {
             draft.cancel()
         }
         self.trackFeatureExposure("routes")
-        self.setup.routeSelectionDraft = CommunityRouteSelectionDraft(
-            initialSelection: setup.plannedIntent?.preparedRoute
-        )
-        self.track(.init(.routeLibraryOpened))
+        let draft = CommunityRouteSelectionDraft(initialSelection: setup.plannedIntent?.preparedRoute, presenter: routePlannerPresenter)
+        setup.routeSelectionDraft = draft
+        draft.openPlanner(activity: setup.plannedIntent?.resolvedActivityType ?? .running,
+                          distanceM: setup.currentActivityGoal.targetDistanceMeters,
+                          preferences: dependencies.measurementPreferences, store: dependencies.communityRouteStore,
+                          authStore: dependencies.authStore, analytics: analyticsManager,
+                          onCancel: { [weak self] in self?.dismissRouteLibrary(draft) }) { [weak self] route in
+            guard let self, self.setup.routeSelectionDraft === draft, draft.belongsToCurrentPresentation else { return }
+            self.applyRoute(route)
+            self.dismissRouteLibrary(draft)
+        }
     }
 
     func dismissRouteLibrary(_ expectedDraft: CommunityRouteSelectionDraft? = nil) {

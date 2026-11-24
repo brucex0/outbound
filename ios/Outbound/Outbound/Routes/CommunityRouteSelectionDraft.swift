@@ -7,15 +7,15 @@ import SwiftUI
 @MainActor
 final class CommunityRouteSelectionDraft: ObservableObject, Identifiable {
     let id = UUID()
-    let plannerPresenter = StableSheetPresenter()
+    let plannerPresenter: StableSheetPresenter
     private(set) var planner: LoopPlanningPresentation?
     private var accountObservation: AnyCancellable?
 
-    func openPlanner(activity: ActivityType, distanceM: Double?, units: MeasurementUnitSystem, store: CommunityRouteStore, authStore: AuthStore, analytics: AnalyticsManager?, onSelect: @escaping (PreparedRoute) -> Void) {
+    func openPlanner(activity: ActivityType, distanceM: Double?, preferences: MeasurementPreferences, store: CommunityRouteStore, authStore: AuthStore, analytics: AnalyticsManager?, onCancel: @escaping () -> Void = {}, onSelect: @escaping (PreparedRoute?) -> Void) {
         guard belongsToCurrentPresentation, planner == nil else { return }
-        let opening = LoopPlanningPresentation(activity: activity, distanceM: distanceM, units: units)
+        let opening = LoopPlanningPresentation(activity: activity, distanceM: distanceM, units: preferences.unitSystem, initialSelection: selectedRoute)
         planner = opening
-        let presented = plannerPresenter.present(diagnosticName: "loop_planner", fullScreen: true, onPresented: { opening.didPresent() }, onDismiss: {
+        let presented = plannerPresenter.present(diagnosticName: "loop_planner", fullScreen: true, onDismiss: {
             opening.cancel()
             if self.planner === opening { self.planner = nil }
             self.accountObservation = nil
@@ -25,7 +25,12 @@ final class CommunityRouteSelectionDraft: ObservableObject, Identifiable {
                     guard self?.belongsToCurrentPresentation == true else { return }
                     onSelect(route)
                 })
-            }, onCancel: { dismiss() }).environmentObject(store).environment(\.analyticsManager, analytics)
+            }, onSavedSelection: { route in
+                dismiss(completion: { [weak self] in
+                    guard self?.belongsToCurrentPresentation == true else { return }; onSelect(route)
+                })
+            }, onCancel: { dismiss(completion: onCancel) }).environmentObject(store).environmentObject(authStore)
+                .environmentObject(preferences).environment(\.analyticsManager, analytics)
         }
         guard presented else { opening.cancel(); planner = nil; return }
         // Retain account observation with the opening, including while UIKit
@@ -48,7 +53,8 @@ final class CommunityRouteSelectionDraft: ObservableObject, Identifiable {
     private var requestID: UUID?
     private var preparationTask: Task<Void, Never>?
 
-    init(initialSelection: PreparedRoute?) {
+    init(initialSelection: PreparedRoute?, presenter: StableSheetPresenter? = nil) {
+        self.plannerPresenter = presenter ?? StableSheetPresenter()
         self.initialSelection = initialSelection
         selectedRoute = initialSelection
     }
