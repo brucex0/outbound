@@ -35,7 +35,7 @@ Open when changing loop generation, its provider, or the full-screen iOS planner
 
 - Find a loop opens from the existing route library. Start fresh at GPS, search for a start, or move the start pin. Optional via search is separate. A numeric target is explicit; comparison retains all numbered colored alternatives while details close independently.
 - Input changes cancel/invalidate candidates. Dismissal cancels work and stale completions cannot select a route. Persist canonical geometry before returning selection. Generated attachment preserves the workout sport, identity, prescription, cues and goal.
-- Permitted checks: backend TypeScript build, iOS device compile, design-system checker and scoped diff. Runtime/provider routing, map interactions, VoiceOver, large text and language/theme rendering require separate device verification. No test suite or simulator execution is authorized for this task.
+- Initial implementation checks covered backend TypeScript build, iOS device compile, design-system checker and scoped diff. Provider activation has separate bounded live evidence below. Map interactions, VoiceOver, large text and language/theme rendering still require device verification; no test suite or simulator execution ran.
 
 ## Dependency and ownership map
 
@@ -69,7 +69,7 @@ flowchart LR
 - Less climbing ranks measured elevation gain, with unknown elevation behind known values. It compares the bounded returned alternatives; it does not claim the globally flattest route.
 - Existing nearby community loops are validated against sport, geometry, loop closure, target tolerance and optional via. They remain available if ORS is unconfigured. Generated and existing candidates share comparison, diversity ranking and selection; community provenance remains intact.
 - `variationSeed` is optional integer `0...1000000`, allowing a new set of bounded proposals. Via generation uses three initial headings then three radius corrections using actual routed lengths. A via farther than the maximum round-trip budget returns no candidate.
-- Initial implementation had no provider credentials and established compile/static evidence only. Provider activation and live verification are recorded separately; physical-device interaction/rendering and permission/entrance checks remain unverified until explicitly checked.
+- Initial implementation had no provider credentials and established compile/static evidence only. Production ORS activation on November 23, bounded Bellevue 10 km live generation, and the successful repeat in the deployed Cloud Run image are recorded in [backend-deploy.md](backend-deploy.md#ors-route-provider-activation--2026-11-23). Two loops met the 9–11 km tolerance, closure/start checks passed, and less-climbing ordering matched measured ascent. Authenticated mobile API use, physical-device interaction/rendering and permission/entrance checks remain unverified.
 
 ## Android integration
 
