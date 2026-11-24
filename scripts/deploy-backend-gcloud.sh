@@ -52,6 +52,8 @@ Environment overrides:
   AI_PLANNING_ENABLED         default: true for production; false otherwise (kill switch)
   AI_FALLBACK_VALIDATED       default: false; enable only after workload validation
   OPENAI_API_KEY_SECRET       default: outbound-openai-api-key for production; required for configured GPT models
+  ORS_API_KEY_SECRET          optional Secret Manager secret name; preserves the existing binding when omitted
+  ORS_API_BASE_URL            optional provider URL; preserves the existing value when omitted
   AI_FALLBACK_MODEL           default: gemini-3.6-flash (inactive until validated)
   AI_PLANNING_MODEL           default: gemini-3.8-flash
   AI_PLANNING_DEADLINE_MILLISECONDS default: 20000
@@ -180,6 +182,8 @@ APP_AI_MODEL="${APP_AI_MODEL:-$default_app_ai_model}"
 AI_FALLBACK_VALIDATED="${AI_FALLBACK_VALIDATED:-false}"
 AI_FALLBACK_MODEL="${AI_FALLBACK_MODEL:-gemini-3.6-flash}"
 OPENAI_API_KEY_SECRET="${OPENAI_API_KEY_SECRET:-$default_openai_secret}"
+ORS_API_KEY_SECRET="${ORS_API_KEY_SECRET:-}"
+ORS_API_BASE_URL="${ORS_API_BASE_URL:-}"
 AI_PLANNING_MODEL="${AI_PLANNING_MODEL:-gemini-3.8-flash}"
 AI_PLANNING_DEADLINE_MILLISECONDS="${AI_PLANNING_DEADLINE_MILLISECONDS:-20000}"
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS="${GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS:-45000}"
@@ -270,6 +274,9 @@ secret_bindings=(
 if [[ "$ALIBABA_AI_ENABLED" == "true" && -n "$ALIBABA_AI_API_KEY_SECRET" ]]; then
   secret_bindings+=("ALIBABA_AI_API_KEY=$ALIBABA_AI_API_KEY_SECRET:latest")
 fi
+if [[ -n "$ORS_API_KEY_SECRET" ]]; then
+  secret_bindings+=("ORS_API_KEY=$ORS_API_KEY_SECRET:latest")
+fi
 uses_openai=0
 for configured_model in "$APP_AI_MODEL" "$GEMINI_LIVE_COACH_PLANNER_MODEL" "$AI_PLANNING_MODEL"; do
   if [[ "$configured_model" == gpt-* ]]; then uses_openai=1; fi
@@ -335,6 +342,9 @@ if [[ -n "$ANDROID_SHA256_CERT_FINGERPRINTS" ]]; then
     "ANDROID_PACKAGE_NAME=$ANDROID_PACKAGE_NAME"
     "ANDROID_SHA256_CERT_FINGERPRINTS=$ANDROID_SHA256_CERT_FINGERPRINTS"
   )
+fi
+if [[ -n "$ORS_API_BASE_URL" ]]; then
+  environment_bindings+=("ORS_API_BASE_URL=$ORS_API_BASE_URL")
 fi
 if [[ -n "$LIVE_COACH_AUDIO_MANIFEST_URL" ]]; then
   environment_bindings+=("LIVE_COACH_AUDIO_MANIFEST_URL=$LIVE_COACH_AUDIO_MANIFEST_URL")

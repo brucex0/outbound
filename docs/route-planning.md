@@ -24,6 +24,13 @@ Open when changing loop generation, its provider, or the full-screen iOS planner
 - Safe diagnostics contain operation/status/category only, never coordinates, queries, route IDs, landmark names, response bodies or credentials.
 - No schema change or data migration is needed.
 
+### Provider configuration
+
+- Local `npm run start:local` loads `~/.config/plainstride/ors.env` before repository env files, using the same loader as `ably.env`. Store server-only `ORS_API_KEY` there and restrict the file to its owner (`chmod 600 ~/.config/plainstride/ors.env`). An explicitly supplied process environment value takes precedence. Keep the tracked `backend/.env.example` key blank.
+- Production uses Secret Manager secret `outbound-ors-api-key` in project `outbound-494602`; grant the Cloud Run runtime identity secret accessor permission. Never pass the raw key to the deploy helper or store it in Git. Set `ORS_API_KEY_SECRET=outbound-ors-api-key` to bind `ORS_API_KEY` to that secret's latest version during an authorized deployment.
+- The helper uses `--update-secrets`, preserving existing bindings when `ORS_API_KEY_SECRET` is omitted. `ORS_API_BASE_URL` is an optional nonempty deploy override; omitting it preserves any existing Cloud Run value. Without an environment override, the adapter uses `https://api.heigit.org/openrouteservice`.
+- This configuration requires no database, schema, seed, or cache reset. Provider availability and generated geometry require a separate live check; configuring a key or compiling the backend alone does not establish routing behavior.
+
 ## Interaction and verification
 
 - Find a loop opens from the existing route library. Start fresh at GPS, search for a start, or move the start pin. Optional via search is separate. A numeric target is explicit; comparison retains all numbered colored alternatives while details close independently.
@@ -62,7 +69,7 @@ flowchart LR
 - Less climbing ranks measured elevation gain, with unknown elevation behind known values. It compares the bounded returned alternatives; it does not claim the globally flattest route.
 - Existing nearby community loops are validated against sport, geometry, loop closure, target tolerance and optional via. They remain available if ORS is unconfigured. Generated and existing candidates share comparison, diversity ranking and selection; community provenance remains intact.
 - `variationSeed` is optional integer `0...1000000`, allowing a new set of bounded proposals. Via generation uses three initial headings then three radius corrections using actual routed lengths. A via farther than the maximum round-trip budget returns no candidate.
-- No provider key was available during implementation. Provider-backed runtime routing, physical-device interaction/rendering, and permission/entrance checks remain unverified. Backend/iOS builds and source checks are compile/static evidence only.
+- Initial implementation had no provider credentials and established compile/static evidence only. Provider activation and live verification are recorded separately; physical-device interaction/rendering and permission/entrance checks remain unverified until explicitly checked.
 
 ## Android integration
 

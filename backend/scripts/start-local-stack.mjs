@@ -20,6 +20,7 @@ const databaseUrl =
   `postgresql://${dbUser}:${dbPassword}@127.0.0.1:${dbPort}/${dbName}?schema=public`;
 
 loadEnvFileIfPresent(path.join(homedir(), ".config", "plainstride", "ably.env"));
+loadEnvFileIfPresent(path.join(homedir(), ".config", "plainstride", "ors.env"));
 loadEnvFileIfPresent(path.join(backendDir, ".env"));
 loadEnvFileIfPresent(path.join(backendDir, ".env.local"));
 
