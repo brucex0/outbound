@@ -22,7 +22,7 @@ export const bikeAdapter: ModalityAdapter = {
       blocks: [{
         blockType: "main", modality: "bike", stimulus: input.stimulus, durationSeconds: duration * 60,
         metadata: {}, steps: [{ label: title, kind: input.stimulus, durationSeconds: duration * 60,
-          target: { rpe: hard ? 7 : 4 }, detail: hard ? "Keep every effort controlled and spin easily between repeats." : "Use a smooth cadence and sustainable pressure." }],
+          target: { rpe: hard ? [7, 7] : [4, 4] }, detail: hard ? "Keep every effort controlled and spin easily between repeats." : "Use a smooth cadence and sustainable pressure." }],
       }],
     };
   },

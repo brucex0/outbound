@@ -1,3 +1,4 @@
+import { normalizeWorkoutStepTargets } from "./stepTargets.js";
 import { planAvailability } from "./planAvailability.js";
 import { accountTimeZone, accountDateLabel, planningCalendarContext } from "../accountCalendar.js";
 import { preferredLongRunDays, LongRunDaysError } from "./longRunDays.js";
@@ -686,7 +687,7 @@ export async function assemblePlanningState(
       if (rows.some(row => row.prescriptionRevisionId || row.workoutEditId)) return "recorded";
       return rows.some(row => row.activityId) ? "manual_recorded" : "manual_unrecorded";
     };
-    const workouts = await Promise.all(storedWorkouts.map(async (workout) => ({ ...workout, completionMode: completionMode(workout.id),
+    const workouts = await Promise.all(storedWorkouts.map(async (workout) => ({ ...normalizeWorkoutStepTargets(workout), completionMode: completionMode(workout.id),
       ...(workout.status === "planned" && workout.scheduledDate >= now ? { performedWorkoutReference: await issueWorkout(prisma, userId, workout.id) } : {}) })));
     const today = workouts.find((workout) => sameDay(workout.scheduledDate, now) && workout.status === "planned" && !isOptionalWorkout(workout)) ?? null;
     const recommendations = plan ? [] : await trainingPlanRecommendationsForUser(userId);

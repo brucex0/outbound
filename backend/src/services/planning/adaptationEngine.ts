@@ -200,7 +200,7 @@ function softenWorkout(workout: PlannedWorkoutDraft, recoveryOnly: boolean, allo
             label: title,
             kind: stimulus,
             durationSeconds,
-            target: recoveryOnly ? { effort: "gentle" } : { rpe: 3 },
+            target: recoveryOnly ? { effort: "gentle" } : { rpe: [3, 3] },
             detail: recoveryOnly
               ? "Keep this restorative. Pain or illness beats training targets today."
               : "Keep it relaxed and let the routine count.",

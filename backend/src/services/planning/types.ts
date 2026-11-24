@@ -158,12 +158,17 @@ export interface AthleteTrainingStateSnapshot {
   modalityBreakdown: Record<string, unknown>;
 }
 
+export interface WorkoutStepTarget extends Record<string, unknown> {
+  /** Inclusive effort bounds; a fixed effort uses [value, value]. */
+  rpe?: number[] | null;
+}
+
 export interface WorkoutStepDraft {
   label: string;
   kind: string;
   durationSeconds?: number | null;
   distanceMeters?: number | null;
-  target?: Record<string, unknown> | null;
+  target?: WorkoutStepTarget | null;
   detail?: string | null;
 }
 

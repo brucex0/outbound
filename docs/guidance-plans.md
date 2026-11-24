@@ -36,6 +36,13 @@ This structure works for race preparation and for non-race use cases.
 - AI should personalize and explain, but core progression rules should stay deterministic.
 - The system must support sports beyond running.
 
+## Workout Step Effort Contract
+
+- Generated and saved workout-step `target.rpe` uses an integer array of inclusive effort bounds. Fixed effort is `[value, value]`; existing range arrays retain their values and order.
+- `services/planning/stepTargets.ts` normalizes finite saved scalar RPE at the shared planning-state response boundary. This covers creation, refresh, Today, upcoming and retained history, plus completion/edit/plan-change responses that embed that state. Other target keys, pace, missing/null targets and existing arrays are preserved.
+- New walk, bike, strength and recovery/adaptation prescriptions use arrays. Generated-step persistence also normalizes scalar input defensively. Existing database rows require no migration, reset or plan regeneration; they become readable when fetched from the updated backend.
+- Creation success/failure continues through existing plan analytics. Normalization emits no runner values, plan content or additional analytics payload.
+
 ## User Inputs
 
 The recommendation engine should combine explicit inputs and observed behavior.

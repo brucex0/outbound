@@ -1,3 +1,4 @@
+import { normalizeStepTarget } from "./stepTargets.js";
 import { raceTaperDays } from "./raceRoadmap.js";
 import { planDateExcluded, applyPlanAvailability } from "./planAvailability.js";
 import { accountDateLabel, accountTimeZone } from "../accountCalendar.js";
@@ -89,7 +90,7 @@ export async function createPlanVersionWithWorkouts(
                 kind: step.kind,
                 durationSeconds: step.durationSeconds ?? null,
                 distanceMeters: step.distanceMeters ?? null,
-                target: step.target ? json(step.target) : Prisma.JsonNull,
+                target: step.target ? json(normalizeStepTarget(step.target)) : Prisma.JsonNull,
                 detail: step.detail ?? null,
               })),
             },

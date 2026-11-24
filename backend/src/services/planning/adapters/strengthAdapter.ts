@@ -34,9 +34,9 @@ export const strengthAdapter: ModalityAdapter = {
           {
             type: "strength",
             exercises: [
-              { name: "Squat pattern", sets: 3, reps: 8, target: { rpe: 7 } },
-              { name: "Hinge pattern", sets: 3, reps: 8, target: { rpe: 7 } },
-              { name: "Push or pull", sets: 3, reps: 10, target: { rpe: 7 } },
+              { name: "Squat pattern", sets: 3, reps: 8, target: { rpe: [7, 7] } },
+              { name: "Hinge pattern", sets: 3, reps: 8, target: { rpe: [7, 7] } },
+              { name: "Push or pull", sets: 3, reps: 10, target: { rpe: [7, 7] } },
             ],
           },
         ],
@@ -54,7 +54,7 @@ export const strengthAdapter: ModalityAdapter = {
               label: "Full-body strength circuit",
               kind: "strength",
               durationSeconds: duration * 60,
-              target: { rpe: 7 },
+              target: { rpe: [7, 7] },
               detail: "Keep two or three reps in reserve. Leave the session better than you started.",
             },
           ],

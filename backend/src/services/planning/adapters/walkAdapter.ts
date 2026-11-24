@@ -44,7 +44,7 @@ export const walkAdapter: ModalityAdapter = {
               label: title,
               kind: "walk",
               durationSeconds: duration * 60,
-              target: { rpe: input.stimulus === "recovery" ? 2 : 4 },
+              target: { rpe: input.stimulus === "recovery" ? [2, 2] : [4, 4] },
               detail: "Move with purpose, but keep it sustainable.",
             },
           ],
