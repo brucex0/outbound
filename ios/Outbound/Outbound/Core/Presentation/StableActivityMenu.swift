@@ -13,6 +13,11 @@ struct StableActivityMenu: UIViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
 
     func makeCoordinator() -> Coordinator { Coordinator(onAction: onAction) }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIButton, context: Context) -> CGSize? {
+        // Native constraints size the button's contents; SwiftUI's toolbar
+        // also needs a fixed proposal so it cannot stretch/collapse the item.
+        CGSize(width: 44, height: 44)
+    }
     func makeUIView(context: Context) -> UIButton {
         let button = UIButton(type: .system)
         button.showsMenuAsPrimaryAction = true

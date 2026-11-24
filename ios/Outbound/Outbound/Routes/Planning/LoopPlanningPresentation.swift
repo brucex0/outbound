@@ -27,6 +27,9 @@ import Foundation
     func startIfNeeded() {
         guard !started else { return }
         started = true
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestDeferredPlannerLocation") { return }
+#endif
         session.requestLocation()
     }
     func cancel() { session.cancel(); sheet = nil }

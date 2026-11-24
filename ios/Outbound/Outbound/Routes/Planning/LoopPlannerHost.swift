@@ -103,6 +103,7 @@ private struct LoopPlannerScreen: View {
                     .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "Close")) { presentation.sheet = nil } } }
                 }.overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
                     .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+                    .startupUIStabilityDiagnostics("loop_inputs")
                 case .details(let candidate):
                 NavigationStack {
                     ScrollView {
@@ -134,11 +135,23 @@ private struct LoopPlannerScreen: View {
                     camera = .rect(rect.insetBy(dx: -rect.width * 0.2, dy: -rect.height * 0.2))
                 }
             }
+#if DEBUG && targetEnvironment(simulator)
+            .onReceive(NotificationCenter.default.publisher(for: TodayPrescriptionRefreshProbe.notification)) { _ in
+                if ProcessInfo.processInfo.arguments.contains("-OutboundUITestDeferredPlannerLocation") { session.requestLocation() }
+            }
+#endif
             .task {
                 presentation.startIfNeeded()
                 await analytics?.track(.init(.featureExposed, properties: [.feature: .string("loop_planner")]))
             }
         }
+#if DEBUG
+        .background {
+            if ProcessInfo.processInfo.arguments.contains("-OutboundDebugPlannerFrameProbe") {
+                LoopPlannerFrameProbe(presentation: presentation).frame(width: 1, height: 1)
+            }
+        }
+#endif
     }
     private var map: some View {
         MapReader { proxy in
@@ -168,6 +181,7 @@ private struct LoopPlannerScreen: View {
                 }
             }
             .accessibilityIdentifier("loop.map")
+            .startupUIStabilityDiagnostics("loop_map")
             .simultaneousGesture(SpatialTapGesture().onEnded { tap in
                 guard let point = proxy.convert(tap.location, from: .local) else { return }
                 if pendingPlace != nil { pendingCoordinate = point; pinWasMoved = true; return }

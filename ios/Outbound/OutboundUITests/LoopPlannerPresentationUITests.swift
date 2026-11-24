@@ -95,6 +95,60 @@ final class LoopPlannerPresentationUITests: XCTestCase {
         XCTAssertEqual(goal.label, originalGoal, "Backing out must retain the selected route and manual goal")
     }
 
+    @MainActor
+    func testUntouchedInitialDarkInputsSurviveLateLocationAndParks() throws {
+        try initialInputs(appearance: "dark")
+    }
+
+    @MainActor
+    func testUntouchedInitialLightInputsSurviveLateLocationAndParks() throws {
+        try initialInputs(appearance: "light")
+    }
+
+    @MainActor
+    func testNaturalInitialDarkInputsSurviveLocationAndParks() throws {
+        try initialInputs(appearance: "dark", deferredLocation: false)
+    }
+
+    @MainActor private func initialInputs(appearance: String, deferredLocation: Bool = true) throws {
+        let fixture = try LoopPlannerFixture()
+        defer { fixture.stop() }
+        let tips = ["theme_discovery", "activity_overflow", "music_discovery", "cheer_me_on", "voice_guide", "shoes"]
+        let app = launchFixtureApp(extraArguments: ["-OutboundAPIBaseURL", try fixture.start(),
+            "-OutboundUITestTodayPrescriptionRefresh", "-OutboundDebugPlannerFrameProbe", "-appearance_mode_v1", appearance,
+            "-outbound_theme_v1", "victoryGold", "-measurement_unit_system_v1", "metric",
+            "-tooltip.activity_overflow.dismissed.v1", "YES"]
+            + tips.flatMap { ["-tooltip.\($0).dismissed.v1", "YES"] }
+            + (deferredLocation ? ["-OutboundUITestDeferredPlannerLocation"] : []))
+        XCTAssertTrue(app.buttons["today.overflow"].waitForExistence(timeout: 20))
+        XCTAssertEqual(app.buttons["today.overflow"].frame.width, 44, accuracy: 1)
+        XCTAssertEqual(app.buttons["today.overflow"].frame.height, 44, accuracy: 1)
+        app.buttons["today.overflow"].tap()
+        for _ in 0..<3 {
+            refresh()
+            XCTAssertTrue(app.buttons["Find a route"].exists, "Native menu must remain open during store refreshes")
+        }
+        app.buttons["Find a route"].tap()
+        app.buttons["Find a loop"].tap()
+        let close = app.navigationBars["Find a loop"].buttons["Close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 8))
+        Thread.sleep(forTimeInterval: 0.7) // Let the one native opening transition finish.
+        let baseline = close.frame
+        refresh() // Real CoreLocation followed by real MKLocalSearch, after inputs are open.
+        let end = Date().addingTimeInterval(12)
+        var sample = 0
+        while Date() < end {
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "Initial \(appearance) frame \(sample)"; screenshot.lifetime = .keepAlways; add(screenshot)
+            XCTAssertTrue(close.exists, "Initial editor disappeared at sample \(sample)")
+            XCTAssertLessThan(abs(close.frame.minY - baseline.minY), 8, "Initial editor moved at sample \(sample)")
+            XCTAssertTrue(app.buttons["3 km"].isHittable)
+            sample += 1
+        }
+        XCTAssertTrue(app.staticTexts["Nearby parks"].exists, "Real MapKit park response must arrive in the monitored opening")
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 0)
+    }
+
     /// Inspect painted route strokes, excluding the center strip containing
     /// numbered pins. Candidate cards/annotations alone cannot satisfy this.
     @MainActor private func comparisonHasPaintedRoutes(_ app: XCUIApplication) -> Bool {
