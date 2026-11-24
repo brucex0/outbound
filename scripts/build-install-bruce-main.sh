@@ -43,6 +43,49 @@ log() {
   printf '[%s] %s\n' "$(timestamp)" "$*"
 }
 
+# Keep provenance beside the signed bundle, never inside it.
+write_build_provenance() {
+  local app_path="$1"
+  local output_path="$2"
+  artifact_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app_path/Info.plist")"
+  artifact_sha256="$(shasum -a 256 "$app_path/$artifact_executable" | awk '{print $1}')"
+  artifact_debug_sha256=absent
+  if [[ -f "$app_path/Outbound.debug.dylib" ]]; then
+    artifact_debug_sha256="$(shasum -a 256 "$app_path/Outbound.debug.dylib" | awk '{print $1}')"
+  fi
+  python3 - "$app_path/Info.plist" "$output_path" "$build_revision" "$build_source_state" "$artifact_sha256" "$artifact_debug_sha256" <<'PYTHON'
+import datetime
+import json
+import plistlib
+import sys
+
+with open(sys.argv[1], "rb") as source:
+    info = plistlib.load(source)
+with open(sys.argv[2], "w", encoding="utf-8") as output:
+    json.dump({
+        "revision": sys.argv[3], "source_state": sys.argv[4],
+        "executable_sha256": sys.argv[5], "debug_dylib_sha256": sys.argv[6],
+        "bundle_id": info["CFBundleIdentifier"],
+        "version": info["CFBundleShortVersionString"], "build": info["CFBundleVersion"],
+        "built_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }, output, indent=2)
+    output.write("\n")
+PYTHON
+}
+
+log_install_artifact() {
+  local actual_sha256 actual_debug_sha256=absent
+  actual_sha256="$(shasum -a 256 "$APP_PATH/$artifact_executable" | awk '{print $1}')"
+  if [[ -f "$APP_PATH/Outbound.debug.dylib" ]]; then
+    actual_debug_sha256="$(shasum -a 256 "$APP_PATH/Outbound.debug.dylib" | awk '{print $1}')"
+  fi
+  if [[ "$actual_sha256" != "$artifact_sha256" || "$actual_debug_sha256" != "$artifact_debug_sha256" ]]; then
+    echo "Install artifact changed after build; refusing installation. Rerun the helper." >&2
+    return 1
+  fi
+  log "Install artifact: revision=${build_revision} source=${build_source_state} executable_sha256=${actual_sha256} debug_dylib_sha256=${actual_debug_sha256}"
+}
+
 cleanup() {
   if [[ -n "${device_discovery_dir:-}" ]]; then
     rm -rf -- "$device_discovery_dir"
@@ -80,7 +123,7 @@ Options:
                     Includes USB and network connections; excludes simulators,
                     iPads, and Apple Watches. Cannot be used with --simulator
                     or --build-only. Continues after individual device failures.
-  --build-only      Build the app without installing it.
+  --build-only      Unsigned compile check; does not refresh installable cache.
   --launch          Launch the app after installing. Phone must be unlocked.
   --analytics-debug Enable Firebase Analytics DebugView for the launched app.
                     Requires --launch.
@@ -245,6 +288,7 @@ install_on_all_devices() {
   for ((index = 0; index < ${#device_ids[@]}; index++)); do
     device_id="${device_ids[$index]}"
     device_name="${device_names[$index]}"
+    log_install_artifact
     log "Installing Outbound on ${device_name} (${device_id})..."
     if run_with_prefix "[install]" xcrun devicectl device install app \
       --device "$device_id" --timeout "$INSTALL_TIMEOUT" "$APP_PATH"; then
@@ -543,7 +587,7 @@ if [[ "$enable_simulated_run" == true ]]; then
   log "Run simulation: Redmond Harvest route preselected"
 fi
 if [[ "$build_only" == true ]]; then
-  log "Mode: build only"
+  log "Mode: unsigned compile-only check; installable cache is NOT refreshed"
   log "Signing: disabled for compile-only validation"
 else
   mode_description="build and install"
@@ -559,6 +603,10 @@ else
   fi
 fi
 
+build_revision="$(git rev-parse HEAD)"
+build_source_state=clean
+[[ -z "$(git status --porcelain)" ]] || build_source_state=dirty
+log "Build source: revision=${build_revision} source=${build_source_state}"
 log "Building Outbound for ${target_description}..."
 if [[ "$target_simulator" == true ]]; then
   build_destination='generic/platform=iOS Simulator'
@@ -596,9 +644,12 @@ log "Build finished"
 log "App path: ${APP_PATH}"
 
 if [[ "$build_only" == true ]]; then
-  log "Build complete"
+  log "Unsigned compile check complete; NOT a signed/device-installable build. Installable cache unchanged."
   exit 0
 fi
+
+log "Verifying built app signature..."
+codesign --verify --deep --strict "$APP_PATH"
 
 # Preserve the installable app before a device install can stall or be interrupted.
 # The full temporary DerivedData directory is still cleaned up on exit.
@@ -606,9 +657,11 @@ mkdir -p "$CACHED_BUILD_ROOT/$build_product_directory"
 cache_staging_dir="$(mktemp -d "$CACHED_BUILD_ROOT/.staging.XXXXXX")"
 log "Saving latest installable build..."
 ditto "$APP_PATH" "$cache_staging_dir/Outbound.app"
+write_build_provenance "$cache_staging_dir/Outbound.app" "$cache_staging_dir/build-provenance.json"
 cached_app_path="$CACHED_BUILD_ROOT/$build_product_directory/Outbound.app"
 rm -rf -- "$cached_app_path"
 mv "$cache_staging_dir/Outbound.app" "$cached_app_path"
+mv "$cache_staging_dir/build-provenance.json" "$CACHED_BUILD_ROOT/$build_product_directory/build-provenance.json"
 rmdir "$cache_staging_dir"
 cache_staging_dir=""
 APP_PATH="$cached_app_path"
@@ -646,6 +699,7 @@ if [[ "$target_simulator" == true ]]; then
     run_with_prefix "[boot]" xcrun simctl boot "$SIMULATOR_ID"
   fi
   run_with_prefix "[boot]" xcrun simctl bootstatus "$SIMULATOR_ID" -b
+  log_install_artifact
   log "Installing Outbound on iOS Simulator..."
   run_with_prefix "[install]" xcrun simctl install "$SIMULATOR_ID" "$APP_PATH"
 else
@@ -663,6 +717,7 @@ else
     exit 1
   fi
 
+  log_install_artifact
   log "Installing Outbound on ${TARGET_DEVICE_NAME}..."
   run_with_prefix "[install]" xcrun devicectl device install app \
     --device "$CORE_DEVICE_ID" \

@@ -369,6 +369,7 @@ needed, installs the app, and launches it without requiring Xcode.
 
 The helper now prints timestamped phase logs and streams `xcodebuild` output, so if it appears slow you can see whether it is still in the build, device-check, install, or launch step.
 For install builds, it reports missing local signing inputs and still runs `xcodebuild -allowProvisioningUpdates` so Xcode can refresh certificates and provisioning profiles from the signed-in account.
+Before caching or installing, the helper verifies the built app with `codesign --verify --deep --strict` (including nested code). It saves `build-provenance.json` beside the cached app with the source revision and clean/dirty state captured before building, executable and optional `Outbound.debug.dylib` SHA-256 hashes, artifact bundle ID/version/build, and UTC completion time. Each install logs that revision and rechecks both code hashes, refusing installation if another build replaced it. Dirty provenance identifies an uncommitted source snapshot, not a reproducible commit.
 Before installing, it saves the installable app at `/tmp/outbound-latest-build/Debug-iphoneos/Outbound.app` or `/tmp/outbound-latest-build/Debug-iphonesimulator/Outbound.app`. It still deletes the full temporary DerivedData directory on exit. Device installation fails after 120 seconds instead of waiting indefinitely; set `INSTALL_TIMEOUT` to change this limit.
 If `xcrun devicectl list devices` shows `Bruce main` as `connecting`, the helper stops before installing. Unlock the phone and connect it to the Mac by USB, then rerun once CoreDevice shows it as available. A paired device can still have a stalled local-network tunnel.
 
@@ -400,7 +401,7 @@ Build without installing:
 ./scripts/build-install-bruce-main.sh --build-only
 ```
 
-This mode disables code signing with `CODE_SIGNING_ALLOWED=NO`, so it is useful for compile validation even when Xcode is not signed into an Apple Developer account. The output app is not installable on a physical device.
+This mode disables code signing with `CODE_SIGNING_ALLOWED=NO`, so it is useful for compile validation even when Xcode is not signed into an Apple Developer account. The output app is not installable on a physical device. This mode does **not** update `/tmp/outbound-latest-build` or its provenance: a subsequent manual cache install can install an older app. For a phone fix, run the helper without `--build-only` and retain the successful install output with its revision/hash; compile success alone does not prove the phone received the fix.
 
 Social is disabled by default for beta/App Review builds. To compile the optional Social tab locally:
 
