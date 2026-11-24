@@ -35,6 +35,9 @@ Open when changing loop generation, its provider, or the full-screen iOS planner
 
 - Find a loop opens from the existing route library. Start fresh at GPS, search for a start, or move the start pin. Optional via search is separate. A numeric target is explicit; comparison retains all numbered colored alternatives while details close independently.
 - Input changes cancel/invalidate candidates. Dismissal cancels work and stale completions cannot select a route. Persist canonical geometry before returning selection. Generated attachment preserves the workout sport, identity, prescription, cues and goal.
+- iOS retains one `LoopPlanningPresentation` per opening above transient SwiftUI content. It owns the observable session and one mutually exclusive input/details sheet. The route-library composition adapter retains the opening and supplies its dependencies; domain/session types do not depend on the community picker.
+- `StableSheetPresenter` owns the full-screen hosting root. The initial input sheet opens only after UIKit's outer presentation completes. Parent/store/theme publications do not replace that root or restart GPS. A child `onDisappear` is not cancellation. Explicit Back, actual dismissal and account-boundary changes cancel the session and reject stale callbacks; account observation survives removal of the original scene content until dismissal finishes.
+- Candidate geometry changes fit the comparison camera to the actual route bounds. Cards and polyline rendering still require visual verification; candidate existence alone does not establish a visible route.
 - Initial implementation checks covered backend TypeScript build, iOS device compile, design-system checker and scoped diff. Provider activation has separate bounded live evidence below. Map interactions, VoiceOver, large text and language/theme rendering still require device verification; no test suite or simulator execution ran.
 
 ## Dependency and ownership map
@@ -58,7 +61,8 @@ flowchart LR
 | Domain | Coordinates, typed activity/source, requests/candidates, shared-source ranking; no MapKit, database record or workout types |
 | Application session | Input revision, active-account/presentation checks, cancellation, observable candidate/search state |
 | Infrastructure | API DTO mapping, community geometry lookup, MapKit place search, fresh accurate GPS |
-| Screen | Map, numbered cards, input/detail sheets, explicit place access-point confirmation |
+| Presentation | One opening's session and mutually exclusive input/detail sheet; caller retains it across view updates |
+| Screen | Map, numbered cards, explicit place access-point confirmation and reactive session rendering |
 | App host | Dependency injection, localization of generated route names, durable canonical selection and callback |
 | Workout host | Compatible attachment preserving original workout identity, sport, prescription, cues, title and goals |
 

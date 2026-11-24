@@ -35,7 +35,7 @@ final class StableSheetPresenter: NSObject, UIAdaptivePresentationControllerDele
     }
 
     @discardableResult
-    func present<Content: View>(diagnosticName: String, onDismiss: @escaping () -> Void = {},
+    func present<Content: View>(diagnosticName: String, fullScreen: Bool = false, onPresented: @escaping () -> Void = {}, onDismiss: @escaping () -> Void = {},
                                content: (StableSheetDismissal) -> Content) -> Bool {
         guard controller == nil else { return false }
         guard let root = anchor?.viewIfLoaded?.window?.rootViewController, let appearance else {
@@ -57,14 +57,20 @@ final class StableSheetPresenter: NSObject, UIAdaptivePresentationControllerDele
         let hosting = StableSheetHostingController(rootView: StableSheetContent(appearance: appearance, content: view))
         hosting.onRemoved = { [weak self] in self?.finish(opening: id) }
         hosting.onAppeared = { [weak self] in self?.resumeDismissalAfterTransition(opening: id) }
-        hosting.modalPresentationStyle = .pageSheet
+        hosting.modalPresentationStyle = fullScreen ? .fullScreen : .pageSheet
         hosting.sheetPresentationController?.detents = [.large()]
         hosting.presentationController?.delegate = self
         opening = id
         controller = hosting
         afterDismiss = onDismiss
         activeLifetime = self
-        presenting.present(hosting, animated: true)
+        presenting.present(hosting, animated: true) { [weak self] in
+            guard let self, self.opening == id else { return }
+            // A close requested during the outer transition takes precedence
+            // over opening a nested editor when that transition completes.
+            if self.dismissRequested { self.dismiss() }
+            else { onPresented() }
+        }
         return true
     }
 

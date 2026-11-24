@@ -40,7 +40,7 @@ The retired `sunset` and `solarFlare` persisted values decode as Victory Gold.
 `OutboundTheme` owns the complete visual system for each theme:
 
 - `accentColor`: navigation tint, compact accents, selection marks, and primary swatches.
-- Accent colors retain one dynamic provider per theme. Repeated reads must compare equal so unrelated store refreshes do not supply a new native navigation tint. Providers still resolve light/dark traits dynamically, and selecting another theme immediately selects its own cached color.
+- Accent and action colors retain one dynamic provider per theme. Repeated reads must compare equal so unrelated store refreshes do not supply a new native navigation/button tint. Providers still resolve light/dark traits dynamically, and selecting another theme immediately selects its own cached color. UIKit layer colors must explicitly re-resolve on appearance changes.
 - `secondaryColor`: complementary color used to make each theme more than a monochrome tint.
 - `actionColor`: readable filled-button color; it may be deeper than the accent.
 - `actionForegroundColor`: black or white chosen from the resolved action fill’s relative luminance for compact primary text. It adapts to each appearance independently; existing default primary buttons retain their current styling.

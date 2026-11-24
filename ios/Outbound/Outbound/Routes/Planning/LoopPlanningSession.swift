@@ -133,6 +133,6 @@ import Foundation
             guard !Task.isCancelled else { return }; self?.toast = nil
         }
     }
-    func cancel() { active = false; location.cancel(); locationTask?.cancel(); invalidate(); clearSearch(); recommendationTask?.cancel(); toastTask?.cancel() }
+    func cancel() { guard active else { return }; active = false; location.cancel(); locationTask?.cancel(); invalidate(); clearSearch(); recommendationTask?.cancel(); toastTask?.cancel() }
     deinit { locationTask?.cancel(); task?.cancel(); placeTask?.cancel(); recommendationTask?.cancel(); toastTask?.cancel() }
 }

@@ -6,19 +6,12 @@ import SwiftUI
 /// No workout ownership or workout mutations live inside this host.
 struct LoopPlannerHost: View {
     @EnvironmentObject private var routeStore: CommunityRouteStore
-    @StateObject private var session: LoopPlanningSession
+    @ObservedObject var presentation: LoopPlanningPresentation
+    private var session: LoopPlanningSession { presentation.session }
     let onSelect: (PreparedRoute) -> Void
     let onCancel: () -> Void
-    init(activity: ActivityType = .running, distanceM: Double? = nil, units: MeasurementUnitSystem,
-         onSelect: @escaping (PreparedRoute) -> Void, onCancel: @escaping () -> Void) {
-        let account = ActivityAccountBoundary.current
-        _session = StateObject(wrappedValue: LoopPlanningSession(activity: activity, distanceM: distanceM, units: units,
-            repository: HTTPLoopPlanningRepository(), placeSearch: MapKitLoopPlaceSearch(), location: CoreLocationLoopProvider(),
-            isCurrentAccount: { account == ActivityAccountBoundary.current }))
-        self.onSelect = onSelect; self.onCancel = onCancel
-    }
     var body: some View {
-        LoopPlannerScreen(session: session, onUse: { candidate, number in
+        LoopPlannerScreen(presentation: presentation, session: session, onUse: { candidate, number in
             guard session.current, session.candidates.contains(where: { $0.id == candidate.id }) else { return false }
             let name = candidate.name ?? String(format: String(localized: "route.planner.route_number", defaultValue: "Loop %d"), number)
             let route = PreparedRoute(id: candidate.id, name: name,
@@ -34,10 +27,10 @@ struct LoopPlannerHost: View {
 private struct LoopPlannerScreen: View {
     @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analytics
+    @ObservedObject var presentation: LoopPlanningPresentation
     @ObservedObject var session: LoopPlanningSession
     @State private var camera: MapCameraPosition = .automatic
-    @State private var detail: LoopPlanningCandidate?
-    @State private var showsInputs = true
+    private var detail: LoopPlanningCandidate? { presentation.detail }
     @State private var query = ""
     @State private var searchVia = false
     @State private var movingStart = false
@@ -51,7 +44,7 @@ private struct LoopPlannerScreen: View {
             map
                 .safeAreaInset(edge: .top) {
                     HStack {
-                        Button { showsInputs = true } label: {
+                        Button { presentation.sheet = .inputs } label: {
                             Label(String(localized: "route.planner.edit_inputs", defaultValue: "Start, distance & via"), systemImage: "slider.horizontal.3").outboundTapTarget()
                         }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                         Spacer(minLength: 0)
@@ -68,7 +61,7 @@ private struct LoopPlannerScreen: View {
                         ScrollView(.horizontal) {
                             HStack(spacing: OutboundSpacing.compact) {
                                 ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
-                                    Button { detail = candidate } label: { candidateCard(candidate, number: index + 1).frame(width: 210) }.buttonStyle(.plain)
+                                    Button { presentation.sheet = .details(candidate) } label: { candidateCard(candidate, number: index + 1).frame(width: 210) }.buttonStyle(.plain).accessibilityIdentifier("loop.candidate.\(index)")
                                 }
                             }
                         }.scrollIndicators(.hidden)
@@ -89,7 +82,9 @@ private struct LoopPlannerScreen: View {
                 }
             }
             .overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
-            .sheet(isPresented: $showsInputs) {
+            .sheet(item: $presentation.sheet) { sheet in
+                switch sheet {
+                case .inputs:
                 NavigationStack {
                     ScrollView {
                         VStack(alignment: .leading, spacing: OutboundSpacing.section) {
@@ -105,11 +100,10 @@ private struct LoopPlannerScreen: View {
                         }.padding(OutboundSpacing.screen)
                     }
                     .navigationTitle(String(localized: "route.planner.title", defaultValue: "Find a loop"))
-                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "Close")) { showsInputs = false } } }
+                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "Close")) { presentation.sheet = nil } } }
                 }.overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
                     .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
-            }
-            .sheet(item: $detail) { candidate in
+                case .details(let candidate):
                 NavigationStack {
                     ScrollView {
                         VStack(alignment: .leading, spacing: OutboundSpacing.section) {
@@ -125,17 +119,23 @@ private struct LoopPlannerScreen: View {
                         }.padding(OutboundSpacing.screen)
                     }
                     .navigationTitle(String(localized: "route.planner.route_details", defaultValue: "Route details"))
-                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "Close")) { detail = nil } } }
+                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "Close")) { presentation.sheet = nil } } }
                 }.overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
                     .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
             }
-            .onChange(of: session.candidates.map(\.id)) { _, ids in
-                if let detail, !ids.contains(detail.id) { self.detail = nil }
-                camera = .automatic
             }
-            .onDisappear { session.cancel() }
+            .onChange(of: session.candidates.map(\.points)) { _, _ in
+                if let detail, !session.candidates.contains(where: { $0.id == detail.id }) { presentation.sheet = nil }
+                let points = session.candidates.flatMap(\.points).map { MKMapPoint($0.locationCoordinate) }
+                if let first = points.first {
+                    let rect = points.dropFirst().reduce(MKMapRect(origin: first, size: MKMapSize(width: 1, height: 1))) {
+                        $0.union(MKMapRect(origin: $1, size: MKMapSize(width: 1, height: 1)))
+                    }
+                    camera = .rect(rect.insetBy(dx: -rect.width * 0.2, dy: -rect.height * 0.2))
+                }
+            }
             .task {
-                session.requestLocation()
+                presentation.startIfNeeded()
                 await analytics?.track(.init(.featureExposed, properties: [.feature: .string("loop_planner")]))
             }
         }
@@ -149,7 +149,7 @@ private struct LoopPlannerScreen: View {
                     MapPolyline(coordinates: displayPoints(candidate)).stroke(routeColor(index).opacity(detail == nil || detail?.id == candidate.id ? 1 : 0.25), lineWidth: detail?.id == candidate.id ? 7 : 4)
                     if let midpoint = candidate.points.dropFirst(candidate.points.count / 2).first {
                         Annotation("\(index + 1)", coordinate: midpoint.locationCoordinate) {
-                            Button { detail = candidate } label: {
+                            Button { presentation.sheet = .details(candidate) } label: {
                                 Text("\(index + 1)").font(.headline).padding(10).background(.regularMaterial, in: Circle())
                                     .overlay(Circle().stroke(routeColor(index).opacity(detail == nil || detail?.id == candidate.id ? 1 : 0.25), lineWidth: 3))
                                     .outboundTapTarget()
@@ -167,13 +167,14 @@ private struct LoopPlannerScreen: View {
                     Marker(String(localized: "route.planner.confirm_pin", defaultValue: "Confirm pin"), coordinate: point).tint(theme.actionColor)
                 }
             }
+            .accessibilityIdentifier("loop.map")
             .simultaneousGesture(SpatialTapGesture().onEnded { tap in
                 guard let point = proxy.convert(tap.location, from: .local) else { return }
                 if pendingPlace != nil { pendingCoordinate = point; pinWasMoved = true; return }
                 if movingStart {
                     session.setStart(.init(latitude: point.latitude, longitude: point.longitude)); movingStart = false; return
                 }
-                if let candidate = nearestCandidate(point) { detail = candidate }
+                if let candidate = nearestCandidate(point) { presentation.sheet = .details(candidate) }
             })
         }
     }
@@ -181,7 +182,7 @@ private struct LoopPlannerScreen: View {
         VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
             HStack {
                 Button { session.requestLocation() } label: { Label(String(localized: "route.planner.my_location", defaultValue: "My location"), systemImage: "location") }
-                Button { movingStart.toggle(); showsInputs = false; pendingPlace = nil; pendingCoordinate = nil } label: { Label(String(localized: "route.planner.move_start", defaultValue: "Move start"), systemImage: "mappin.and.ellipse") }
+                Button { movingStart.toggle(); presentation.sheet = nil; pendingPlace = nil; pendingCoordinate = nil } label: { Label(String(localized: "route.planner.move_start", defaultValue: "Move start"), systemImage: "mappin.and.ellipse") }
             }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
             if movingStart { Text(String(localized: "route.planner.tap_start", defaultValue: "Tap the map to move the start.")).font(.footnote).foregroundStyle(.secondary) }
             Picker(String(localized: "route.planner.search_for", defaultValue: "Search for"), selection: $searchVia) {
@@ -220,7 +221,7 @@ private struct LoopPlannerScreen: View {
             Toggle(String(localized: "route.planner.less_climbing", defaultValue: "Less climbing"), isOn: $session.lessClimbing)
             Text(String(localized: "route.planner.climbing_explanation", defaultValue: "Ranks options with known elevation gain first.")).font(.caption).foregroundStyle(.secondary)
             Button {
-                showsInputs = false; generate()
+                presentation.sheet = nil; generate()
             } label: {
                 Text(String(localized: "route.planner.find_loops", defaultValue: "Find loops")).outboundTapTarget()
             }.buttonStyle(.borderedProminent).tint(theme.actionColor).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
@@ -228,7 +229,7 @@ private struct LoopPlannerScreen: View {
         }
     }
     private func generate() {
-        detail = nil; session.generate()
+        presentation.sheet = nil; session.generate()
         Task { await analytics?.track(.init(.activityConfigurationChanged, properties: [.changeType: .string("loop_planner_generate"), .activityType: .string(session.activity.rawValue)])) }
     }
     private func pinConfirmation(_ place: LoopPlanningPlace) -> some View {
@@ -269,7 +270,7 @@ private struct LoopPlannerScreen: View {
         candidate.name ?? String(format: String(localized: "route.planner.route_number", defaultValue: "Loop %d"), number)
     }
     private func preview(_ place: LoopPlanningPlace, asVia: Bool) {
-        showsInputs = false; pinWasMoved = false; searchVia = asVia; pendingPlace = place; pendingCoordinate = place.coordinate.locationCoordinate; movingStart = false
+        presentation.sheet = nil; pinWasMoved = false; searchVia = asVia; pendingPlace = place; pendingCoordinate = place.coordinate.locationCoordinate; movingStart = false
         camera = .region(.init(center: place.coordinate.locationCoordinate, latitudinalMeters: 1500, longitudinalMeters: 1500))
     }
     private func use(_ candidate: LoopPlanningCandidate) {
@@ -278,7 +279,7 @@ private struct LoopPlannerScreen: View {
         guard onUse(candidate, number) else {
             session.showToast(String(localized: "route.planner.save_failed", defaultValue: "Route could not be saved on this device. Try again.")); return
         }
-        session.cancel(); detail = nil
+        session.cancel(); presentation.sheet = nil
     }
     private func startDistance(_ candidate: LoopPlanningCandidate) -> Double {
         CLLocation(latitude: candidate.requestedStart.latitude, longitude: candidate.requestedStart.longitude)

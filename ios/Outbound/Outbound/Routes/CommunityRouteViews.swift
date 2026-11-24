@@ -14,11 +14,11 @@ struct CommunityRouteLibraryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var store: CommunityRouteStore
+    @EnvironmentObject private var authStore: AuthStore
     @StateObject private var locator = RouteDiscoveryLocator()
 #if DEBUG
     @AppStorage("debug_route_test_mode") private var routeTestMode = false
 #endif
-    @State private var showsLoopPlanner = false
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     var plannerActivity: ActivityType = .running
     var plannerDistanceM: Double? = nil
@@ -194,7 +194,12 @@ struct CommunityRouteLibraryView: View {
                         }
                         .buttonStyle(RouteLibraryActionButtonStyle())
                     }
-                    Button { showsLoopPlanner = true } label: {
+                    Button {
+                        selectionDraft.openPlanner(activity: plannerActivity, distanceM: plannerDistanceM, units: measurementPreferences.unitSystem, store: store, authStore: authStore, analytics: analyticsManager) { route in
+                            if let onSelect { selectionDraft.chooseImportedRoute(route); onSelect(route) }
+                            else { store.launch(route) }
+                        }
+                    } label: {
                         Label(String(localized: "route.planner.title", defaultValue: "Find a loop"), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
                     }.buttonStyle(RouteLibraryActionButtonStyle())
                     Button { importsFile = true } label: {
@@ -304,6 +309,12 @@ struct CommunityRouteLibraryView: View {
         }
 #if DEBUG
         .onDisappear { stabilityDiagnostics.record("disappeared") }
+#if targetEnvironment(simulator)
+        .onReceive(NotificationCenter.default.publisher(for: TodayPrescriptionRefreshProbe.notification)) { _ in
+            guard ProcessInfo.processInfo.arguments.contains("-OutboundUITestRoutePlannerRefresh") else { return }
+            Task { await store.refreshDiscovery() }
+        }
+#endif
         .onChange(of: selectedRoute) { _, selection in
             stabilityDiagnostics.record("selection_changed selected=\(selection != nil)")
         }
@@ -317,15 +328,7 @@ struct CommunityRouteLibraryView: View {
             stabilityDiagnostics.record("store_published selected=\(selectedRoute != nil) preparing=\(preparingRouteID != nil)")
         }
 #endif
-        .fullScreenCover(isPresented: $showsLoopPlanner) {
-            LoopPlannerHost(activity: plannerActivity, distanceM: plannerDistanceM, units: measurementPreferences.unitSystem) { route in
-                showsLoopPlanner = false
-                if let onSelect {
-                    selectionDraft.chooseImportedRoute(route)
-                    onSelect(route)
-                } else { store.launch(route) }
-            } onCancel: { showsLoopPlanner = false }
-        }
+        .background { StableSheetPresentationHost(presenter: selectionDraft.plannerPresenter).frame(width: 0, height: 0) }
         .refreshable { await refreshVisibleRoutes() }
         .onChange(of: locator.location) { _, location in
             guard let location, nearbyActive else { return }

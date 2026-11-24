@@ -1,11 +1,44 @@
 import Combine
 import Foundation
+import SwiftUI
 
 /// One picker presentation's draft. Its presenter retains this object so a
 /// native sheet-content rebuild cannot discard a choice or its preparation.
 @MainActor
 final class CommunityRouteSelectionDraft: ObservableObject, Identifiable {
     let id = UUID()
+    let plannerPresenter = StableSheetPresenter()
+    private(set) var planner: LoopPlanningPresentation?
+    private var accountObservation: AnyCancellable?
+
+    func openPlanner(activity: ActivityType, distanceM: Double?, units: MeasurementUnitSystem, store: CommunityRouteStore, authStore: AuthStore, analytics: AnalyticsManager?, onSelect: @escaping (PreparedRoute) -> Void) {
+        guard belongsToCurrentPresentation, planner == nil else { return }
+        let opening = LoopPlanningPresentation(activity: activity, distanceM: distanceM, units: units)
+        planner = opening
+        let presented = plannerPresenter.present(diagnosticName: "loop_planner", fullScreen: true, onPresented: { opening.didPresent() }, onDismiss: {
+            opening.cancel()
+            if self.planner === opening { self.planner = nil }
+            self.accountObservation = nil
+        }) { dismiss in
+            LoopPlannerHost(presentation: opening, onSelect: { route in
+                dismiss(completion: { [weak self] in
+                    guard self?.belongsToCurrentPresentation == true else { return }
+                    onSelect(route)
+                })
+            }, onCancel: { dismiss() }).environmentObject(store).environment(\.analyticsManager, analytics)
+        }
+        guard presented else { opening.cancel(); planner = nil; return }
+        // Retain account observation with the opening, including while UIKit
+        // covers/removes its originating scene content. objectWillChange emits
+        // before AuthStore commits its boundary, so check on the next actor turn.
+        accountObservation = authStore.objectWillChange.sink { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.account != ActivityAccountBoundary.current else { return }
+                self.selectedRoute = nil
+                self.cancel()
+            }
+        }
+    }
     let initialSelection: PreparedRoute?
     @Published private(set) var selectedRoute: PreparedRoute?
     @Published private(set) var preparingRouteID: String?
@@ -80,6 +113,8 @@ final class CommunityRouteSelectionDraft: ObservableObject, Identifiable {
     func cancel() {
         guard isActive else { return }
         isActive = false
+        planner?.cancel()
+        plannerPresenter.dismiss()
         invalidatePreparation()
     }
 

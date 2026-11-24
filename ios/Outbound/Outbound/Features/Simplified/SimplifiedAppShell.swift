@@ -884,7 +884,7 @@ struct SimplifiedAppShell: View {
 
 }
 
-private enum ActivityOverflowAction {
+enum ActivityOverflowAction {
     case photo
     case route
     case groupRun
@@ -1230,57 +1230,9 @@ private struct SimplifiedTodayView: View {
     }
 
     private var activityOverflowMenu: some View {
-        Menu {
-            Button {
-                performActivityOverflowAction(.photo)
-            } label: {
-                Label(
-                    preActivityPhoto == nil
-                        ? String(localized: "record.photo.take", defaultValue: "Take photo")
-                        : String(localized: "record.photo.view", defaultValue: "View photo"),
-                    systemImage: preActivityPhoto == nil ? "camera.fill" : "photo.fill"
-                )
-            }
-
-            Button {
-                performActivityOverflowAction(.route)
-            } label: {
-                Label(
-                    preActivityRoute == nil
-                        ? String(localized: "record.route.find", defaultValue: "Find a route")
-                        : String(localized: "record.route.change", defaultValue: "Change route"),
-                    systemImage: "map.fill"
-                )
-            }
-
-            Divider()
-
-            Button {
-                performActivityOverflowAction(.groupRun)
-            } label: {
-                Label(
-                    String(localized: "record.group.title", defaultValue: "Group run"),
-                    systemImage: "person.2.fill"
-                )
-            }
-
-            if preActivityRoute != nil {
-                Divider()
-                Button(role: .destructive) {
-                    performActivityOverflowAction(.removeRoute)
-                } label: {
-                    Label(
-                        String(localized: "record.route.remove", defaultValue: "Remove route"),
-                        systemImage: "map.fill"
-                    )
-                }
-            }
-        } label: {
-            activityOverflowLabel
-                .outboundTapTarget()
-        }
-        .accessibilityLabel(String(localized: "record.more_actions", defaultValue: "More activity options"))
-        .accessibilityValue(activityOverflowAccessibilityValue)
+        StableActivityMenu(photo: preActivityPhoto, hasRoute: preActivityRoute != nil,
+                           accessibilityValue: activityOverflowAccessibilityValue,
+                           onAction: performActivityOverflowAction)
         .startupUIStabilityDiagnostics("today_overflow")
         .coordinatedTooltip(
             .activityOverflow,
@@ -1288,32 +1240,6 @@ private struct SimplifiedTodayView: View {
             text: String(localized: "record.more_actions.discovery.tip", defaultValue: "Tap for photos and routes"),
             arrowEdge: .top
         )
-    }
-
-    @ViewBuilder
-    private var activityOverflowLabel: some View {
-        if let preActivityPhoto {
-            ZStack(alignment: .bottomTrailing) {
-                Image(uiImage: preActivityPhoto)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 34, height: 34)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(theme.actionColor, lineWidth: 2))
-
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 8, weight: .black))
-                    .foregroundStyle(.primary)
-                    .frame(width: 16, height: 16)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 1))
-                    .offset(x: 3, y: 3)
-            }
-            .frame(width: 38, height: 38)
-        } else {
-            Image(systemName: "ellipsis.circle")
-                .font(.title3.weight(.semibold))
-        }
     }
 
     private var activityOverflowAccessibilityValue: String {

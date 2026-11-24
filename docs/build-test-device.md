@@ -124,6 +124,20 @@ xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -des
 swift test
 ```
 
+### Focused Route-Planner Presentation Regression
+
+Run only when simulator UI regression checks are explicitly requested:
+
+```sh
+./scripts/run-route-planner-ui-test.sh /tmp/outbound-route-planner-ios27
+OUTBOUND_UI_SIMULATOR_RUNTIME=com.apple.CoreSimulator.SimRuntime.iOS-26-5 \
+  ./scripts/run-route-planner-ui-test.sh /tmp/outbound-route-planner-ios26
+```
+
+The runner executes only `LoopPlannerPresentationUITests` through the `RoutePlannerUI` scheme on a dedicated iPhone simulator with a synthetic GPS start. It serves delayed synthetic loop geometry over loopback HTTP through the normal app networking path. The opt-in DEBUG simulator refresh probe changes the normal Today prescription, theme and discovery store while the native menu, input sheet and details are open. It checks Close/reopen, Use/Back and retention of an explicit 47-minute Run; a bounded screenshot predicate requires painted blue and orange route strokes outside the numbered-pin strip before details open. This waits for MapKit rendering rather than treating accessible cards as proof of geometry; retained screenshots must also be inspected. This fixture does not establish ORS availability, real device behavior, continuous frame stability, place-search/entrance accuracy or the full accessibility/layout matrix.
+
+Build and package caches are isolated under each output directory. Success removes the dedicated simulator and retains the result bundle/screenshots; set `OUTBOUND_UI_KEEP_SIMULATOR=YES` to retain it for visual acceptance. `OUTBOUND_UI_DERIVED_DATA` can select a dedicated reusable build directory for follow-up checks. Failure preserves the original simulator, `.xcresult`, log and simulator ID. Follow the UI failure policy below: open a fresh investigation session and use a separate simulator; do not rerun or modify the failed original run.
+
 ### Focused Speed-Warning Regression Tests
 
 When requested, run only the detector and recorder/guide pipeline tests on a dedicated simulator:

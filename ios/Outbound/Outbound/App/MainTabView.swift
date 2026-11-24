@@ -173,6 +173,9 @@ struct MainTabView: View {
         .task { TodayPrescriptionRefreshProbe.installIfRequested() }
         .onReceive(NotificationCenter.default.publisher(for: TodayPrescriptionRefreshProbe.notification)) { _ in
             guard ProcessInfo.processInfo.arguments.contains(TodayPrescriptionRefreshProbe.launchArgument) else { return }
+            if ProcessInfo.processInfo.arguments.contains("-OutboundUITestRoutePlannerRefresh") {
+                guideCatalog.setTheme(guideCatalog.selectedTheme == .ocean ? .victoryGold : .ocean)
+            }
             // Mutate the same input as a real Today customization/refresh. The
             // normal defaultTodayIntent observer owns all reconciliation.
             let seconds = customizedTodayIntent?.targetDurationSeconds == 1_200 ? 1_800 : 1_200

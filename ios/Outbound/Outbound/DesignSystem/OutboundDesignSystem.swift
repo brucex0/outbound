@@ -61,7 +61,13 @@ enum OutboundTheme: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    var actionColor: Color {
+    var actionColor: Color { Self.actionColors[self]! }
+
+    private static let actionColors: [OutboundTheme: Color] = Dictionary(
+        uniqueKeysWithValues: allCases.map { ($0, $0.makeActionColor()) }
+    )
+
+    private func makeActionColor() -> Color {
         switch self {
         case .indigo: adaptive(0.12, 0.58, 0.52, dark: 0.23, 0.76, 0.68)
         case .ocean: adaptive(0.02, 0.43, 0.70, dark: 0.15, 0.61, 0.90)

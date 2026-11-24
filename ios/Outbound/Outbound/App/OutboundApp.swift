@@ -148,6 +148,7 @@ struct OutboundApp: App {
             DebugLiveCheerFollowerHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugCommunityRoutes") {
             DebugCommunityRouteLibraryHarness()
+                .environmentObject(authStore)
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugGroupMark") {
             DebugGroupMarkReviewHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugActivityRepository") {
