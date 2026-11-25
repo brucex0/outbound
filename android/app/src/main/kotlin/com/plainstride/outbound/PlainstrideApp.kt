@@ -711,15 +711,19 @@ private fun SignedInApp(
                         trackedAssistantExposure = true
                     }
                 }
-                Row(
+                BoxWithConstraints(
                     Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                         .offset(y = 8.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    val navigationWidth = minOf(252.dp, maxWidth - (56.dp + 10.dp) * 2)
+                    Row(
+                        Modifier.fillMaxWidth().offset(x = (-33).dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                     key(accountId) {
                         FoxCompanionLauncher(
                             eligible = companionEligible,
@@ -742,7 +746,7 @@ private fun SignedInApp(
                     Spacer(Modifier.width(10.dp))
                     val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
                     NavigationBar(
-                        modifier = Modifier.widthIn(max = 252.dp).fillMaxWidth().height(64.dp).clip(RoundedCornerShape(32.dp)),
+                        modifier = Modifier.width(navigationWidth).height(64.dp).clip(RoundedCornerShape(32.dp)),
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
                         tonalElevation = 0.dp,
                     ) {
@@ -801,6 +805,7 @@ private fun SignedInApp(
                                 ),
                             )
                         }
+                    }
                     }
                 }
             }
@@ -920,6 +925,7 @@ private fun SignedInApp(
                             selectedShoeId = selectedTodayShoeIdForLaunch,
                             onSelectShoe = { shoe -> selectedTodayShoeId = shoe.id; integrationViewModel.trackShoeSelected("active_shoe") },
                             onAddShoe = { integrationViewModel.trackShoeSelected("add_new"); addShoeSheetVisible = true },
+                            onOpenMusic = { navController.navigate(MUSIC_ROUTE) },
                             onOpenLiveTrack = { cheerPickerVisible = true },
                             cheerRecipientsSelected = selectedCheerIdSet.isNotEmpty(),
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },

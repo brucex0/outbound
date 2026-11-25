@@ -241,4 +241,6 @@
     <string name="plan_completion_count">计入此次活动</string>
     <string name="plan_completion_not_now">暂不</string>
     <string name="plan_completion_sync_first">活动已保存。请等待同步完成后重试。</string>
+    <string name="today_dock_cheer">加油</string>
+    <string name="today_dock_route">路线</string>
 </resources>

@@ -241,4 +241,6 @@
     <string name="plan_completion_count">Contar esta actividad</string>
     <string name="plan_completion_not_now">Ahora no</string>
     <string name="plan_completion_sync_first">Tu actividad está guardada. Espera a que termine de sincronizarse e inténtalo de nuevo.</string>
+    <string name="today_dock_cheer">Ánimo</string>
+    <string name="today_dock_route">Ruta</string>
 </resources>

@@ -17,6 +17,7 @@ android {
 dependencies {
     api(project(":core:model"))
     implementation(project(":core:analytics"))
+    implementation(project(":core:music"))
     implementation(project(":core:database"))
     implementation(project(":core:data"))
     implementation(project(":core:designsystem"))

@@ -52,6 +52,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Checkbox
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import com.plainstride.outbound.core.designsystem.plainstrideWarningColor
@@ -208,6 +212,7 @@ fun TodayRoute(
     selectedShoeId: String? = null,
     onSelectShoe: (TodayShoeOption) -> Unit = {},
     onAddShoe: () -> Unit,
+    onOpenMusic: () -> Unit = {},
     onOpenLiveTrack: () -> Unit,
     cheerRecipientsSelected: Boolean = false,
     onOpenInbox: () -> Unit,
@@ -236,6 +241,7 @@ fun TodayRoute(
     LaunchedEffect(refreshRequest) { if (refreshRequest > 0) viewModel.refresh() }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
+    val music by viewModel.music.collectAsStateWithLifecycle()
     val planPicker by viewModel.planPicker.collectAsStateWithLifecycle()
     var locationGranted by remember(context) { mutableStateOf(LocationPermissionAccess.hasPermission(context)) }
     var showsLocationPermission by remember { mutableStateOf(false) }
@@ -330,6 +336,9 @@ fun TodayRoute(
         selectedShoeId = selectedShoeId,
         onSelectShoe = onSelectShoe,
         onAddShoe = onAddShoe,
+        onOpenMusic = onOpenMusic,
+        musicConfigured = music.queue.items.isNotEmpty(),
+        onFeatureExposed = viewModel::trackLaunchFeatureExposed,
         onOpenLiveTrack = onOpenLiveTrack,
         cheerRecipientsSelected = cheerRecipientsSelected,
         onOpenInbox = onOpenInbox,
@@ -418,6 +427,9 @@ fun TodayScreen(
     selectedShoeId: String? = null,
     onSelectShoe: (TodayShoeOption) -> Unit = {},
     onAddShoe: () -> Unit = {},
+    onOpenMusic: () -> Unit = {},
+    musicConfigured: Boolean = false,
+    onFeatureExposed: (String) -> Unit = {},
     onOpenLiveTrack: () -> Unit = {},
     cheerRecipientsSelected: Boolean = false,
     onOpenInbox: () -> Unit = {},
@@ -659,16 +671,7 @@ fun TodayScreen(
                     }
                     DropdownMenu(overflowExpanded, { overflowExpanded = false }) {
                         DropdownMenuItem({ Text(stringResource(R.string.today_take_photo)) }, { overflowExpanded = false; photoLauncher.launch(null) }, leadingIcon = { Icon(Icons.Default.PhotoCamera, null) })
-                        DropdownMenuItem(
-                            text = { Text(stringResource(if (selectedRoute == null) R.string.today_find_route else R.string.today_change_route)) },
-                            onClick = { overflowExpanded = false; findRoute() },
-                            leadingIcon = { Icon(Icons.Default.Route, null) },
-                        )
-                        if (selectedRoute != null) DropdownMenuItem(
-                            text = { Text(stringResource(R.string.today_remove_route)) },
-                            onClick = { overflowExpanded = false; onRemoveRoute() },
-                            leadingIcon = { Icon(Icons.Default.Route, null) },
-                        )
+
                     }
                 }
             }
@@ -829,6 +832,11 @@ fun TodayScreen(
                 onAddShoe = onAddShoe,
                 onOpenLiveTrack = onOpenLiveTrack,
                 cheerRecipientsSelected = cheerRecipientsSelected,
+                onOpenMusic = onOpenMusic,
+                musicConfigured = musicConfigured,
+                onFindRoute = { onLaunchConfigurationChanged("route_entry", "launch_dock"); findRoute() },
+                routeSelected = selectedRoute != null,
+                onFeatureExposed = onFeatureExposed,
             )
     }
 
@@ -1540,6 +1548,11 @@ private fun ActivityLaunchDock(
     selectedShoeId: String?,
     onSelectShoe: (TodayShoeOption) -> Unit,
     onAddShoe: () -> Unit,
+    onOpenMusic: () -> Unit,
+    musicConfigured: Boolean,
+    onFindRoute: () -> Unit,
+    routeSelected: Boolean,
+    onFeatureExposed: (String) -> Unit,
     onOpenLiveTrack: () -> Unit,
     cheerRecipientsSelected: Boolean = false,
     modifier: Modifier = Modifier,
@@ -1553,28 +1566,65 @@ private fun ActivityLaunchDock(
             }
         }
         Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = .98f), tonalElevation = 8.dp) {
-        Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TodayActivityChoice.entries.forEach { choice ->
-                    ChoiceButton(stringResource(choice.labelResource()), choice.icon(), choice == activityChoice) { onActivityChoice(choice) }
+        Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+            var activityExpanded by remember { mutableStateOf(false) }
+            var settingsExpanded by remember { mutableStateOf(false) }
+            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {
+                // Reserve More's target on both sides of a balanced five-control
+                // lane. Narrow phones reduce only the leading reserve, never targets.
+                val availableWidth = maxWidth
+                val sideDiameter = (34f + (availableWidth.value - 308f) * 6f / 110f).coerceIn(34f, 40f).dp
+                val leadingReserve = minOf(48.dp, maxOf(0.dp, availableWidth - 288.dp))
+                val mainWidth = availableWidth - leadingReserve - 48.dp
+                Row(Modifier.width(availableWidth), verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(leadingReserve))
+                    Row(Modifier.width(mainWidth), verticalAlignment = Alignment.CenterVertically) {
+                        CompactDockIcon(stringResource(R.string.today_music), Icons.Default.MusicNote, musicConfigured, onOpenMusic, iconDiameter = sideDiameter)
+                        Spacer(Modifier.weight(1f))
+                        CompactDockIcon(stringResource(R.string.today_voice), if (voiceGuideEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            voiceGuideEnabled, { onVoiceGuideChanged(!voiceGuideEnabled) }, toggle = true, iconDiameter = sideDiameter)
+                        Spacer(Modifier.weight(1f))
+                    Box(Modifier.size(48.dp)) {
+                        ChoiceButton(stringResource(activityChoice.labelResource()), activityChoice.icon(), true) {
+                            activityExpanded = true
+                            onFeatureExposed("activity_picker")
+                        }
+                        DropdownMenu(activityExpanded, { activityExpanded = false }) {
+                            TodayActivityChoice.entries.forEach { choice ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(choice.labelResource())) },
+                                    leadingIcon = { Icon(choice.icon(), null) },
+                                    trailingIcon = if (choice == activityChoice) ({ Icon(Icons.Default.Check, null) }) else null,
+                                    onClick = { activityExpanded = false; onActivityChoice(choice) },
+                                )
+                            }
+                        }
+                    }
+                        Spacer(Modifier.weight(1f))
+                        CompactDockIcon(stringResource(R.string.today_dock_route), Icons.Default.Route, routeSelected, onFindRoute, iconDiameter = sideDiameter)
+                        Spacer(Modifier.weight(1f))
+                        CompactDockIcon(stringResource(R.string.today_cheer), Icons.Default.Favorite, cheerRecipientsSelected, onOpenLiveTrack, iconDiameter = sideDiameter)
+                    }
+                        Box(Modifier.size(48.dp)) {
+                            IconButton(
+                                onClick = { settingsExpanded = true; onFeatureExposed("launch_settings") },
+                                modifier = Modifier.size(48.dp),
+                            ) {
+                                Icon(Icons.Default.MoreVert, stringResource(R.string.today_more), Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
+                            }
+                            DropdownMenu(settingsExpanded, { settingsExpanded = false }) {
+                                if (activityChoice == TodayActivityChoice.RUN ||
+                                    (activityChoice == TodayActivityChoice.PLANNED && (suggestion == null || suggestion.modality == Modality.run))) {
+                                    UtilityButton(stringResource(R.string.today_ai_coach), { onAICoachChanged(!aiCoachEnabled) }, aiCoachEnabled, true)
+                                }
+                                TodayShoePicker(shoes, selectedShoeId, onSelectShoe, onAddShoe)
+                                if (activityChoice.isCompanionEligible(suggestion)) {
+                                    UtilityButton(stringResource(R.string.today_companion_dog_title), { onCompanionChanged(companionType == null) }, companionType != null)
+                                }
+                                UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), { onIndoorChanged(!indoor) }, true)
+                            }
+                        }
                 }
-            }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                UtilityButton(stringResource(R.string.today_voice), onClick = { onVoiceGuideChanged(!voiceGuideEnabled) }, selected = voiceGuideEnabled, toggle = true)
-                if (activityChoice == TodayActivityChoice.RUN ||
-                    (activityChoice == TodayActivityChoice.PLANNED && (suggestion == null || suggestion.modality == Modality.run))) {
-                    UtilityButton(stringResource(R.string.today_ai_coach), onClick = { onAICoachChanged(!aiCoachEnabled) }, selected = aiCoachEnabled, toggle = true)
-                }
-                if (activityChoice.isCompanionEligible(suggestion)) {
-                    UtilityButton(
-                        label = stringResource(R.string.today_companion_dog_title),
-                        onClick = { onCompanionChanged(companionType == null) },
-                        selected = companionType != null,
-                    )
-                }
-                UtilityButton(stringResource(R.string.today_cheer), onClick = onOpenLiveTrack, selected = cheerRecipientsSelected)
-                TodayShoePicker(shoes, selectedShoeId, onSelectShoe, onAddShoe)
-                UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), onClick = { onIndoorChanged(!indoor) }, selected = true)
             }
             when {
                 activeSession -> Unit
@@ -1597,7 +1647,7 @@ private fun ActivityLaunchDock(
 private fun ChoiceButton(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.size(52.dp).semantics {
+        modifier = Modifier.size(48.dp).semantics {
             contentDescription = label
             role = Role.RadioButton
             this.selected = selected
@@ -1607,6 +1657,32 @@ private fun ChoiceButton(label: String, icon: ImageVector, selected: Boolean, on
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun CompactDockIcon(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit, toggle: Boolean = false, iconDiameter: androidx.compose.ui.unit.Dp = 34.dp) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.size(48.dp).semantics {
+            contentDescription = label
+            if (toggle) {
+                role = Role.Switch
+                toggleableState = androidx.compose.ui.state.ToggleableState(selected)
+            } else { this.selected = selected }
+        },
+        shape = CircleShape,
+        color = androidx.compose.ui.graphics.Color.Transparent,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Box(Modifier.size(iconDiameter).background(
+                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                CircleShape,
+            ), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp + (iconDiameter - 34.dp) / 3),
+                    tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+            }
         }
     }
 }
@@ -1691,7 +1767,7 @@ private fun TodayActivityChoice.isCompanionEligible(suggestion: ActivitySuggesti
 }
 
 private fun TodayActivityChoice.icon(): ImageVector = when (this) {
-    TodayActivityChoice.PLANNED -> Icons.Default.Checklist
+    TodayActivityChoice.PLANNED -> Icons.Default.CalendarMonth
     TodayActivityChoice.RUN -> Icons.Default.DirectionsRun
     TodayActivityChoice.WALK -> Icons.Default.DirectionsWalk
     TodayActivityChoice.HIKE -> Icons.Default.Hiking

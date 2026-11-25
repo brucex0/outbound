@@ -151,6 +151,7 @@ class TodayViewModel @Inject constructor(
     private val analytics: ProductAnalytics,
     private val weatherPolicy: TodayWeatherPolicy,
     private val activities: ActivityRepository,
+    private val musicProvider: com.plainstride.outbound.core.music.MusicProvider,
 ) : ViewModel() {
     // A single encrypted session is active at a time; account bootstrap can later provide the
     // opaque server account ID without exposing identity details to this feature.
@@ -159,6 +160,7 @@ class TodayViewModel @Inject constructor(
     private val mutationInFlight = MutableStateFlow(false)
     private val refreshError = MutableStateFlow<TodayDataError?>(null)
     private val sessionState = MutableStateFlow(false to false)
+    val music = musicProvider.state
     val messages = MutableSharedFlow<TodayMessage>(extraBufferCapacity = 1)
     private val mutableWeather = MutableStateFlow<WeatherGuidance?>(null)
     val weather = mutableWeather
@@ -553,6 +555,10 @@ class TodayViewModel @Inject constructor(
             else -> "half_plus"
         },
     )))
+
+    fun trackLaunchFeatureExposed(feature: String) = analytics.record(
+        AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to feature)),
+    )
 
     fun trackLaunchConfiguration(changeType: String, selection: String) = analytics.record(
         AnalyticsEvent(

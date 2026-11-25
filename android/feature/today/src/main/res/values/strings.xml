@@ -241,4 +241,6 @@
     <string name="plan_completion_count">Count this activity</string>
     <string name="plan_completion_not_now">Not now</string>
     <string name="plan_completion_sync_first">Your activity is saved. Let it finish syncing, then try again.</string>
+    <string name="today_dock_cheer">Cheer</string>
+    <string name="today_dock_route">Route</string>
 </resources>
