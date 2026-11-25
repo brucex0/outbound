@@ -5,6 +5,7 @@ import { bodyLimit } from "hono/body-limit";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import type { AppEnv } from "../types/hono.js";
+import { RouteGenerationCancelled, RoutingProviderError } from "../routePlanning/domain.js";
 import { OpenRouteService } from "../routePlanning/openRouteService.js";
 import { generateLoops } from "../routePlanning/generateLoops.js";
 const coordinate = z.object({ latitude: z.number().finite().min(-85).max(85), longitude: z.number().finite().min(-180).max(180) }).strict();
@@ -15,11 +16,11 @@ router.post("/generate", bodyLimit({ maxSize: 2048 }), rateLimit({ name: "route-
   const request = c.req.valid("json"), key = process.env.ORS_API_KEY?.trim();
   if (!key || request.activityType === "cycling") return c.json({ code: "route_planning_unavailable", error: "Route planning is unavailable for this activity." }, 503);
   try {
-    const signal = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(25000)]);
-    const candidates = await generateLoops(request, new OpenRouteService(key, process.env.ORS_API_BASE_URL), signal);
+    const candidates = await generateLoops(request, new OpenRouteService(key, process.env.ORS_API_BASE_URL), c.req.raw.signal);
     return c.json({ candidates, toleranceFraction: 0.1 });
   } catch (error) {
-    console.error("route_planning generation_failed", { category: error instanceof Error ? error.name : "unknown" });
+    if (error instanceof RouteGenerationCancelled) return new Response(null, { status: 499 });
+    console.error("route_planning generation_failed", { category: error instanceof RoutingProviderError ? error.category : "unknown" });
     return c.json({ code: "route_planning_unavailable", error: "Route planning is temporarily unavailable." }, 503);
   }
 });

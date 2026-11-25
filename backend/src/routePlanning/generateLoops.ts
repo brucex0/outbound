@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { distance, type Candidate, type GenerateLoop, type RoutingProvider } from "./domain.js";
+import { RouteGenerationCancelled, RoutingProviderError, distance, type Candidate, type GenerateLoop, type RoutingProvider } from "./domain.js";
 // Resample at metric intervals before corridor comparison so provider vertex
 // density cannot change duplication or backtracking decisions.
 function corridor(points: Candidate["points"], reference: GenerateLoop["start"]): string[] {
@@ -19,27 +19,51 @@ function corridor(points: Candidate["points"], reference: GenerateLoop["start"])
   return result;
 }
 export async function generateLoops(request: GenerateLoop, provider: RoutingProvider, signal: AbortSignal): Promise<Candidate[]> {
-  if (request.via && 2 * distance(request.start, request.via) > request.targetDistanceM * 1.1) return [];
+  const started = Date.now();
+  const counts = { calls: 0, noRoute: 0, providerFailures: 0, invalidGeometry: 0, distance: 0, closure: 0, start: 0, via: 0, backtrack: 0, duplicate: 0 };
   const accepted: { route: Candidate; cells: Set<string>; backtrack: number }[] = [];
-  for (let attempt = 0; attempt < 6 && !signal.aborted; attempt++) {
-    let result;
-    try { result = await provider.generate(request, attempt, signal); }
-    catch (error) {
-      if (signal.aborted) break;
-      console.error("route_planning attempt_failed", { category: error instanceof Error ? error.name : "unknown" });
-      if (error instanceof Error && error.message === "provider_unavailable") throw error;
-      continue;
+  let failure: RoutingProviderError | undefined;
+  const budget = AbortSignal.any([signal, AbortSignal.timeout(25000)]);
+  const callerCancelled = () => signal.aborted && budget.reason === signal.reason;
+  try {
+    if (callerCancelled()) throw new RouteGenerationCancelled();
+    if (request.via && 2 * distance(request.start, request.via) > request.targetDistanceM * 1.1) {
+      counts.noRoute++;
+      return [];
     }
-    if (!result || !Number.isFinite(result.distanceM) || Math.abs(result.distanceM / request.targetDistanceM - 1) > 0.1) continue;
-    const first = result.points[0], last = result.points.at(-1)!;
-    if (distance(first, last) > 100 || distance(request.start, first) > 250) continue;
-    if (request.via && !result.points.some(p => distance(p, request.via!) <= 100)) continue;
-    const route: Candidate = { ...result, id: randomUUID(), deviationFraction: result.distanceM / request.targetDistanceM - 1, requestedStart: request.start, snappedStart: first };
-    const all = corridor(route.points, request.start), cells = new Set(all), backtrack = 1 - cells.size / Math.max(1, all.length);
-    if (backtrack >= 0.45 || accepted.some(old => [...cells].filter(c => old.cells.has(c)).length / Math.max(1, Math.min(cells.size, old.cells.size)) > 0.8)) continue;
-    accepted.push({ route, cells, backtrack });
+    for (let attempt = 0; attempt < 6 && !budget.aborted && accepted.length < 3; attempt++) {
+      let result;
+      counts.calls++;
+      try { result = await provider.generate(request, attempt, budget); }
+      catch (error) {
+        if (callerCancelled()) throw new RouteGenerationCancelled();
+        failure = error instanceof RoutingProviderError ? error : new RoutingProviderError(budget.aborted ? "timeout" : "transport");
+        counts.providerFailures++;
+        console.error("route_planning attempt_failed", { category: failure.category, ...(failure.status !== undefined ? { status: failure.status } : {}) });
+        if (budget.aborted || failure.terminal) break;
+        continue;
+      }
+      if (!result) { counts.noRoute++; continue; }
+      if (!Number.isFinite(result.distanceM) || result.distanceM <= 0 || result.points.length < 3 || result.points.some(p => !Number.isFinite(p.latitude) || !Number.isFinite(p.longitude) || Math.abs(p.latitude) > 90 || Math.abs(p.longitude) > 180)) { counts.invalidGeometry++; continue; }
+      if (Math.abs(result.distanceM / request.targetDistanceM - 1) > 0.1) { counts.distance++; continue; }
+      const first = result.points[0], last = result.points.at(-1)!;
+      if (distance(first, last) > 100) { counts.closure++; continue; }
+      if (distance(request.start, first) > 250) { counts.start++; continue; }
+      if (request.via && !result.points.some(p => distance(p, request.via!) <= 100)) { counts.via++; continue; }
+      const route: Candidate = { ...result, id: randomUUID(), deviationFraction: result.distanceM / request.targetDistanceM - 1, requestedStart: request.start, snappedStart: first };
+      const all = corridor(route.points, request.start), cells = new Set(all), backtrack = 1 - cells.size / Math.max(1, all.length);
+      if (backtrack >= 0.45) { counts.backtrack++; continue; }
+      if (accepted.some(old => [...cells].filter(c => old.cells.has(c)).length / Math.max(1, Math.min(cells.size, old.cells.size)) > 0.8)) { counts.duplicate++; continue; }
+      accepted.push({ route, cells, backtrack });
+    }
+    if (callerCancelled()) throw new RouteGenerationCancelled();
+    if (accepted.length === 0 && budget.aborted) throw new RoutingProviderError("timeout");
+    // Empty success requires actual provider evidence of no suitable route.
+    if (accepted.length === 0 && failure) throw failure;
+    if (accepted.length === 0 && counts.invalidGeometry > 0) throw new RoutingProviderError("invalid_response");
+  } finally {
+    console.info("route_planning generation_outcome", { outcome: callerCancelled() ? "cancelled" : accepted.length ? (failure || budget.aborted ? "partial" : "success") : (failure || budget.aborted || counts.invalidGeometry ? "unavailable" : "no_match"), accepted: accepted.length, ...counts, elapsedMs: Date.now() - started });
   }
-  if (signal.aborted && accepted.length === 0) throw new Error("generation_timeout");
   return accepted.sort((a,b) => {
     if (request.preference === "less_climbing") {
       const gain = (a.route.elevationGainM ?? Infinity) - (b.route.elevationGainM ?? Infinity);

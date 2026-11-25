@@ -13,7 +13,8 @@ Open when changing loop generation, its provider, or the full-screen iOS planner
 
 - Start coordinate, typed activity, explicit metric target, optional selected via coordinate; default acceptance is ±10%. Never widen silently.
 - Running, walking and hiking use the supported ORS foot profiles. Unsupported activity types return an explicit unavailable response; cycling is domain-ready but not exposed until verified.
-- Without a via, bounded seeded ORS round trips provide alternatives. With a via, bounded closed waypoint routes include that point. Every result must close, remain near the requested start/via, contain valid canonical geometry, and fall within the target range.
+- Without a via, bounded seeded ORS round trips provide alternatives. An out-of-range result can use one distance-corrected proposal with the same seed before moving to another seed; only the provider proposal changes, never the target or ±10% acceptance. With a via, bounded closed waypoint routes include that point. Every result must close, remain near the requested start/via, contain valid canonical geometry, and fall within the target range.
+- Stop as soon as three validated, diverse candidates are available. Preserve validated partial results if a later provider call fails, reaches quota, or exhausts the time budget.
 - Rank limited backtracking and geometric diversity ahead of exact target matching. At most three candidates; fewer or none is valid. Geometry overlap uses quantized undirected segments because edge IDs are unavailable.
 - No scenic, quiet or stop-count promises without verified provider evidence. Less climbing ranks returned measured elevation gain, with unknown values last. Place search remains MapKit-owned on iOS; selecting a place is explicit and does not imply its centroid is an entrance.
 
@@ -21,7 +22,10 @@ Open when changing loop generation, its provider, or the full-screen iOS planner
 
 - Set server-only `ORS_API_KEY`; optionally `ORS_API_BASE_URL` for a compatible hosted/self-hosted deployment. Default: `https://api.heigit.org/openrouteservice`. Do not put keys in either mobile app.
 - Missing credentials returns 503 `route_planning_unavailable`; no synthetic fallback. Request budgets: 6 provider calls, 25 seconds overall, 8 seconds per call, three generation requests/minute/identity per backend instance.
-- Safe diagnostics contain operation/status/category only, never coordinates, queries, route IDs, landmark names, response bodies or credentials.
+- Empty 200 responses mean no suitable route was found in the bounded search; provider failures with no accepted candidate return 503 `route_planning_unavailable`. Auth/quota/configuration failures stop provider calls immediately. ORS routing codes 2009 (no route) and 2010 (no routable point) on 400/404 are legitimate no-route results; an unrecognized 404 is a configuration failure. See the [official ORS error codes](https://giscience.github.io/openrouteservice/api-reference/error-codes).
+- Safe server operational diagnostics record bounded outcome (`success`, `partial`, `no_match`, `unavailable`, `cancelled`), accepted/call/failure/rejection counts, elapsed milliseconds, and failure category/status. These are service reliability instrumentation; never include coordinates, queries, route IDs, landmark names, target distances, response bodies or credentials.
+- Caller cancellation ends quietly with an empty 499 response and a `cancelled` info outcome; it does not count as a provider failure. The generator owns the separate 25-second deadline, and service/per-call timeouts remain failures.
+- Focused offline verification: `cd backend && npm run build && node scripts/check-route-generation.mjs`. This uses fake providers and HTTP responses; no credentials, live provider calls, database, or full test suite.
 - No schema change or data migration is needed.
 
 ### Provider configuration

@@ -8,3 +8,18 @@ export function distance(a: Coordinate, b: Coordinate): number {
   const h = Math.sin((b.latitude-a.latitude)*r/2)**2 + Math.cos(a.latitude*r)*Math.cos(b.latitude*r)*Math.sin((b.longitude-a.longitude)*r/2)**2;
   return 6371000 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
+
+export type ProviderFailureCategory = "authorization" | "quota" | "configuration" | "upstream" | "timeout" | "transport" | "invalid_response";
+export class RoutingProviderError extends Error {
+  constructor(readonly category: ProviderFailureCategory, readonly terminal = false, readonly status?: number) {
+    super(category);
+    this.name = "RoutingProviderError";
+  }
+}
+
+export class RouteGenerationCancelled extends Error {
+  constructor() {
+    super("Route generation cancelled");
+    this.name = "RouteGenerationCancelled";
+  }
+}
