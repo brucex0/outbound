@@ -80,6 +80,7 @@ private struct CompactNavigationBar: View {
     var body: some View {
         HStack(spacing: 0) {
             tabButton(.social)
+            tabButton(.today)
             Button(action: onPlan) {
                 Image(systemName: "calendar")
                     .font(.system(size: 24, weight: .semibold))
@@ -90,7 +91,6 @@ private struct CompactNavigationBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(String(localized: "Plan"))
             .accessibilityIdentifier("tab.plan")
-            tabButton(.today)
             tabButton(.me)
         }
         .padding(.horizontal, horizontalInset)
@@ -719,14 +719,13 @@ struct SimplifiedAppShell: View {
 
     private var bottomNavigationDock: some View {
         GeometryReader { geometry in
-            // The third of four equally spaced targets stays at screen center.
-            // Compact the fox and gaps first so every target remains at least 44 pt.
-            let expansion = min(1, max(0, (geometry.size.width - 320) / 73))
-            let foxDiameter = 44 + 12 * expansion
-            let gap = 10 * expansion
-            let inset = 5 * expansion
-            let slot = max(44, min(52, (geometry.size.width / 2 - foxDiameter - gap - inset - 6) / 2.5))
-            let pillLeading = geometry.size.width / 2 - 2.5 * slot - inset
+            // The second of four equally spaced targets stays at screen center,
+            // with Plan and Me to its right and the separate fox to its left.
+            let foxDiameter: CGFloat = 56
+            let gap: CGFloat = 10
+            let inset: CGFloat = 5
+            let slot: CGFloat = 52
+            let pillLeading = geometry.size.width / 2 - 1.5 * slot - inset
             ZStack(alignment: .leading) {
                 assistantLaunchButton(diameter: foxDiameter, notificationOffset: gap)
                     .offset(x: pillLeading - gap - foxDiameter)
