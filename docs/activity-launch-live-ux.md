@@ -18,10 +18,12 @@ Open this when changing the Today launch dock, activity goal selection, countdow
 
 ## Navigation Decision
 
+On iOS the bottom capsule contains Social, Plan, contextual Start/Today, and Me, with equally spaced icon-only targets. Plan opens existing plan management (active plan details or the existing no-plan picker); it does not replace the retained Today setup. Start/Today remains exactly screen-centered beneath Activity, so the capsule center sits half a slot left of screen center. The fox remains separate on the left. At 320 pt, four 44 pt slots and the 44 pt fox use zero capsule inset/gap and a 6 pt left margin; wider phones restore up to 5 pt inset, 10 pt gap, 56 pt fox and 52 pt slots. The unread envelope retains its existing vertical offset; its horizontal offset follows the available gap so its 44 pt target ends at the capsule edge.
+
 The launch surface is the Today page itself; there is no separate start-activity setup page. Reuse the center Today position contextually while retaining the production icons, order, labels, and theme tint.
 
-- On Today, the center control becomes an orange play icon with the visible label `Start` and a goal-specific accessibility label.
-- On Social or Me, the same position shows the normal Today icon and label; tapping it returns to Today.
+- On Today, the screen-centered control becomes an orange play icon with the localized accessibility label `Start` and its existing start hint.
+- On Social or Me, the same position shows the normal Today icon and localized accessibility label; tapping it returns to Today.
 - Social and Me hide the launch dock. Returning to Today restores the same retained activity setup without navigating through another screen.
 - Android keeps Today’s selected activity, goal, curated workout snapshot and catalog version, race plan, and per-sport goal drafts when the route library is opened and dismissed or a route is selected. This state is scoped to the signed-in account. Selecting, changing, removing, or reversing a route adds route guidance independently; the route’s sport does not replace the selected workout or its activity type.
 - The primary tab bar remains hidden during countdown, live recording, camera capture, and post-run completion.
@@ -156,8 +158,8 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - The text-only Curated, Free, Distance, and Time pills float above the dock for manual sports; Calories is additionally available for Run and Walk, and all manual-goal pills remain hidden for Planned.
 - Curated opens a catalog filtered to the selected Run, Walk, Hike, or Bike type and returns the chosen structured workout to that manual sport.
 - Target-based manual modes show their compact goal information layer, while Free shows no target card.
-- The native center tab contains exactly one control: an icon-only Start on idle Today and labeled Today navigation on Social or Me.
-- The floating assistant remains available in the same bottom-leading screen position on Today, Social, and Me. The bottom navigation pill is centered on the screen so its Today/Start control aligns with the activity selector. The fox stays 10 pt/dp to its left across tabs; the entire fox-plus-pill group is shifted 33 pt/dp left inside a screen-aligned container, keeping notification preview anchoring bounded. With 12 pt/dp outer insets, the pill width is `min(platform maximum, available width - 132)` (iOS maximum 204 pt; Android 252 dp). A 320-wide phone uses a 164 pt/dp pill; the three tab hit regions remain at least 44 pt iOS / 48 dp Android.
+- The native center tab contains exactly one control: an icon-only Start on idle Today and icon-only Today navigation on Social or Me, with localized accessibility names.
+- The floating assistant remains available at bottom-leading on Today, Social, and Me. iOS uses the four-action geometry in Navigation Decision; its contextual Start/Today target aligns with Activity, while the capsule shifts half a slot left. Android retains its centered three-tab capsule, 10 dp fox gap, 12 dp outer inset, and `min(252, available width - 132)` capsule width; its three targets remain at least 48 dp.
 - Idle Today exposes Route directly in the dock; Photo remains in the top-right overflow, without a redundant route action there.
 - The overflow discovery popover appears no more than twice, has no action button, dismisses on an outside tap, and stops permanently after menu use.
 - Capturing a pre-activity photo replaces the overflow ellipsis with a circular thumbnail plus an ellipsis badge; removing the photo restores the standard ellipsis.

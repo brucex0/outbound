@@ -59,7 +59,6 @@ private struct ConnectionLinkProfileLoadingView: View {
 }
 
 enum FixedTabBarLayout {
-    static let navigationWidth: CGFloat = 204
     static let navigationHeight: CGFloat = 64
     static let selectedIconDiameter: CGFloat = 46
     static let dockTopPadding: CGFloat = 6
@@ -69,21 +68,33 @@ enum FixedTabBarLayout {
 }
 
 private struct CompactNavigationBar: View {
-    let width: CGFloat
+    let slotWidth: CGFloat
+    let horizontalInset: CGFloat
     let selection: SimplifiedAppTab
     let showsStart: Bool
     let accentColor: Color
     let onSelect: (SimplifiedAppTab) -> Void
     let onStart: () -> Void
+    let onPlan: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
             tabButton(.social)
+            Button(action: onPlan) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: slotWidth, height: FixedTabBarLayout.navigationHeight)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Plan"))
+            .accessibilityIdentifier("tab.plan")
             tabButton(.today)
             tabButton(.me)
         }
-        .padding(.horizontal, 5)
-        .frame(width: width, height: FixedTabBarLayout.navigationHeight)
+        .padding(.horizontal, horizontalInset)
+        .frame(width: slotWidth * 4 + horizontalInset * 2, height: FixedTabBarLayout.navigationHeight)
         .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.white.opacity(0.24), lineWidth: 0.7))
         .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
@@ -121,13 +132,13 @@ private struct CompactNavigationBar: View {
             Image(systemName: symbol)
                 .font(.system(size: iconSize, weight: .semibold))
                 .foregroundStyle(isStart || isSelected ? accentColor : .primary)
-                .frame(width: FixedTabBarLayout.selectedIconDiameter, height: FixedTabBarLayout.selectedIconDiameter)
+                .frame(width: min(FixedTabBarLayout.selectedIconDiameter, slotWidth), height: FixedTabBarLayout.selectedIconDiameter)
                 .background {
                     if isSelected {
                         Circle().fill(Color.primary.opacity(0.10))
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(width: slotWidth, height: FixedTabBarLayout.navigationHeight)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -615,10 +626,11 @@ struct SimplifiedAppShell: View {
         }
     }
 
-    private var assistantLaunchButton: some View {
+    private func assistantLaunchButton(diameter: CGFloat, notificationOffset: CGFloat) -> some View {
         AssistantLauncherButton(
             accentColor: guideCatalog.selectedTheme.accentColor,
             analyticsDestination: assistantAnalyticsDestination,
+            buttonDiameter: diameter,
             isPresenceActive: companionPresenceIsActive,
             deliveryToken: companionPresence.deliveryToken,
             deliveryIsSubdued: companionPresence.preview?.presentation.tier == .cheersAndMilestones
@@ -642,8 +654,8 @@ struct SimplifiedAppShell: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                // Keep the 44 pt target inside the dock gap so it never covers the tab bar.
-                .offset(x: 10, y: -16)
+                // Keep the unread target beside the fox without crossing the capsule edge.
+                .offset(x: notificationOffset, y: -16)
                 .accessibilityLabel(String(localized: "fox.companion.notifications", defaultValue: "Open unread notifications"))
                 .accessibilityIdentifier("fox.companion.envelope")
             }
@@ -707,25 +719,32 @@ struct SimplifiedAppShell: View {
 
     private var bottomNavigationDock: some View {
         GeometryReader { geometry in
-            let navigationWidth = min(FixedTabBarLayout.navigationWidth, geometry.size.width - 2 * (56 + 10))
-            HStack(alignment: .center, spacing: 10) {
-                assistantLaunchButton
+            // The third of four equally spaced targets stays at screen center.
+            // Compact the fox and gaps first so every target remains at least 44 pt.
+            let expansion = min(1, max(0, (geometry.size.width - 320) / 73))
+            let foxDiameter = 44 + 12 * expansion
+            let gap = 10 * expansion
+            let inset = 5 * expansion
+            let slot = max(44, min(52, (geometry.size.width / 2 - foxDiameter - gap - inset - 6) / 2.5))
+            let pillLeading = geometry.size.width / 2 - 2.5 * slot - inset
+            ZStack(alignment: .leading) {
+                assistantLaunchButton(diameter: foxDiameter, notificationOffset: gap)
+                    .offset(x: pillLeading - gap - foxDiameter)
                 CompactNavigationBar(
-                    width: navigationWidth,
+                    slotWidth: slot,
+                    horizontalInset: inset,
                     selection: selection,
                     showsStart: selection == .today && activitySessionState == .idle,
                     accentColor: guideCatalog.selectedTheme.accentColor,
                     onSelect: selectTabWithoutAnimation,
-                    onStart: onContextualStart
+                    onStart: onContextualStart,
+                    onPlan: { openPlanManagement(from: "bottom_navigation") }
                 )
+                .offset(x: pillLeading)
             }
-            .frame(width: geometry.size.width, height: FixedTabBarLayout.navigationHeight)
-            // Center the navigation pill itself; the fox remains beside it.
-            // The outer container/notification preview stays screen-aligned.
-            .offset(x: -(56 + 10) / 2)
+            .frame(width: geometry.size.width, height: FixedTabBarLayout.navigationHeight, alignment: .leading)
         }
         .frame(height: FixedTabBarLayout.navigationHeight)
-        .padding(.horizontal, 12)
         .padding(.top, FixedTabBarLayout.dockTopPadding)
         .overlay(alignment: .bottomLeading) {
             if companionPresenceIsActive, companionPresence.isActiveAccount(companionAccountID),

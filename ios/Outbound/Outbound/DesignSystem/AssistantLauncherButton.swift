@@ -8,6 +8,7 @@ struct AssistantLauncherButton: View {
     @Environment(\.analyticsManager) private var analyticsManager
     let accentColor: Color
     let analyticsDestination: String
+    var buttonDiameter: CGFloat = Self.diameter
     var analyticsEntrySource: String = "persistent_launcher"
     var isPresenceActive = true
     var deliveryToken: UUID?
@@ -24,9 +25,10 @@ struct AssistantLauncherButton: View {
             onOpen()
         } label: {
             FoxAssistantMark()
+                .scaleEffect(buttonDiameter / Self.diameter)
                 .rotationEffect(.degrees(rotation), anchor: .bottom)
                 .offset(y: verticalOffset)
-                .frame(width: Self.diameter, height: Self.diameter)
+                .frame(width: buttonDiameter, height: buttonDiameter)
                 .background(accentColor.gradient, in: Circle())
                 .overlay {
                     Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
