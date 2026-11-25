@@ -69,6 +69,7 @@ enum FixedTabBarLayout {
 }
 
 private struct CompactNavigationBar: View {
+    let width: CGFloat
     let selection: SimplifiedAppTab
     let showsStart: Bool
     let accentColor: Color
@@ -82,7 +83,7 @@ private struct CompactNavigationBar: View {
             tabButton(.me)
         }
         .padding(.horizontal, 5)
-        .frame(width: FixedTabBarLayout.navigationWidth, height: FixedTabBarLayout.navigationHeight)
+        .frame(width: width, height: FixedTabBarLayout.navigationHeight)
         .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.white.opacity(0.24), lineWidth: 0.7))
         .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
@@ -705,17 +706,25 @@ struct SimplifiedAppShell: View {
     }
 
     private var bottomNavigationDock: some View {
-        HStack(alignment: .center, spacing: 10) {
-            assistantLaunchButton
-            CompactNavigationBar(
-                selection: selection,
-                showsStart: selection == .today && activitySessionState == .idle,
-                accentColor: guideCatalog.selectedTheme.accentColor,
-                onSelect: selectTabWithoutAnimation,
-                onStart: onContextualStart
-            )
+        GeometryReader { geometry in
+            let navigationWidth = min(FixedTabBarLayout.navigationWidth, geometry.size.width - 2 * (56 + 10))
+            HStack(alignment: .center, spacing: 10) {
+                assistantLaunchButton
+                CompactNavigationBar(
+                    width: navigationWidth,
+                    selection: selection,
+                    showsStart: selection == .today && activitySessionState == .idle,
+                    accentColor: guideCatalog.selectedTheme.accentColor,
+                    onSelect: selectTabWithoutAnimation,
+                    onStart: onContextualStart
+                )
+            }
+            .frame(width: geometry.size.width, height: FixedTabBarLayout.navigationHeight)
+            // Center the navigation pill itself; the fox remains beside it.
+            // The outer container/notification preview stays screen-aligned.
+            .offset(x: -(56 + 10) / 2)
         }
-        .frame(maxWidth: .infinity)
+        .frame(height: FixedTabBarLayout.navigationHeight)
         .padding(.horizontal, 12)
         .padding(.top, FixedTabBarLayout.dockTopPadding)
         .overlay(alignment: .bottomLeading) {
@@ -1237,22 +1246,15 @@ private struct SimplifiedTodayView: View {
         .coordinatedTooltip(
             .activityOverflow,
             isEligible: isSelected && showsActivityOverflowMenu && activitySessionState == .idle,
-            text: String(localized: "record.more_actions.discovery.tip", defaultValue: "Tap for photos and routes"),
+            text: String(localized: "record.photo.discovery.tip", defaultValue: "Tap for photos"),
             arrowEdge: .top
         )
     }
 
     private var activityOverflowAccessibilityValue: String {
-        switch (preActivityPhoto != nil, preActivityRoute != nil) {
-        case (true, true):
-            return String(localized: "record.more_actions.photo_route_selected", defaultValue: "Photo and route selected")
-        case (true, false):
-            return String(localized: "record.photo.added", defaultValue: "Photo added")
-        case (false, true):
-            return String(localized: "record.route.selected", defaultValue: "Route selected")
-        case (false, false):
-            return String(localized: "record.more_actions.none_selected", defaultValue: "No photo or route selected")
-        }
+        preActivityPhoto != nil
+            ? String(localized: "record.photo.added", defaultValue: "Photo added")
+            : String(localized: "common.none", defaultValue: "None")
     }
 
     private func performActivityOverflowAction(_ action: ActivityOverflowAction) {

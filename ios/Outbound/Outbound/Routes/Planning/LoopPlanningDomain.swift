@@ -8,10 +8,10 @@ nonisolated struct LoopPlanningCoordinate: Codable, Hashable {
         self.latitude = latitude; self.longitude = longitude; self.altitude = altitude
     }
 }
-nonisolated enum LoopPlanningActivity: String, Encodable { case running, walking, hiking, cycling }
-nonisolated enum LoopPlanningSource { case generated, community }
+nonisolated enum LoopPlanningActivity: String, Codable { case running, walking, hiking, cycling }
+nonisolated enum LoopPlanningSource: String, Codable { case generated, community }
 
-nonisolated struct LoopPlanningRequest: Encodable {
+nonisolated struct LoopPlanningRequest: Codable {
     struct Coordinate: Codable, Hashable {
         let latitude: Double
         let longitude: Double
@@ -29,7 +29,7 @@ nonisolated struct LoopPlanningPlace: Identifiable {
     let name: String
     let coordinate: LoopPlanningCoordinate
 }
-nonisolated struct LoopPlanningCandidate: Identifiable {
+nonisolated struct LoopPlanningCandidate: Identifiable, Codable {
     let id: String
     let name: String?
     let points: [LoopPlanningCoordinate]

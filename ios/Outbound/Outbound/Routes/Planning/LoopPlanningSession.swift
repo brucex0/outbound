@@ -50,19 +50,22 @@ import Foundation
     private var active = true
     private var requestingLocation = false
     private var locationRevision = UUID()
-    private struct InputKey: Hashable {
-        let start: LoopPlanningRequest.Coordinate
-        let via: LoopPlanningRequest.Coordinate?
-        let distanceM: Double
-        let lessClimbing: Bool
+    private let cache: (any LoopPlanningCache)?
+    private let account: ActivityAccountContext
+    private var recentResults: [LoopPlanningCacheEntry] = []
+    struct CacheEvent: Equatable {
+        let id = UUID()
+        let result: String
     }
-    private var recentResults: [(InputKey, [LoopPlanningCandidate])] = []
+    @Published private(set) var cacheEvent: CacheEvent?
 
     init(activity: ActivityType, distanceM: Double?, units: MeasurementUnitSystem,
          repository: any LoopPlanningRepository,
          placeSearch: any LoopPlanningPlaceSearch,
-         location: any LoopPlanningLocationProvider, isCurrentAccount: @escaping () -> Bool) {
+         location: any LoopPlanningLocationProvider, cache: (any LoopPlanningCache)? = nil,
+         account: ActivityAccountContext = ActivityAccountBoundary.current, isCurrentAccount: @escaping () -> Bool) {
         self.activity = activity; self.repository = repository; self.units = units
+        self.cache = cache; self.account = account
         committedDistanceM = distanceM ?? units.distanceMeters(from: units == .metric ? 5 : 3)
         self.placeSearch = placeSearch; self.location = location; self.isCurrentAccount = isCurrentAccount
         distanceText = distanceM.map { String(format: "%.1f", units.distanceValue(meters: $0)) } ?? (units == .metric ? "5" : "3")
@@ -140,66 +143,70 @@ import Foundation
     }
     func generate(trigger: GenerationTrigger = .explicit, reuseExisting: Bool = false) {
         guard canGenerate, let start, let distanceM else { return }
-        let key = InputKey(start: .init(start), via: via.map(LoopPlanningRequest.Coordinate.init), distanceM: distanceM, lessClimbing: lessClimbing)
         let request = LoopPlanningRequest(start: .init(start), via: via.map(LoopPlanningRequest.Coordinate.init), targetDistanceM: distanceM, activityType: LoopPlanningActivity(rawValue: activity.rawValue) ?? .running, variationSeed: Int.random(in: 0...1000000), preference: lessClimbing ? "less_climbing" : "balanced")
-        if reuseExisting, let cached = cachedCandidates(for: key, request: request, trigger: trigger) {
-            invalidate(); candidates = cached; resultsCurrent = true; searched = true; return
-        }
-        invalidate(); let token = revision; busy = true; generation = Generation(trigger: trigger)
+        invalidate(); let token = revision; busy = true
         task = Task { [weak self] in
             guard let self else { return }
-            var nearby: [LoopPlanningCandidate] = []
-            do {
+            var entries = recentResults
+            var expired = entries.contains { !$0.fresh(at: Date()) }
+            if let cache {
                 do {
-                    nearby = try await repository.existing(request)
-                    guard current, revision == token, !Task.isCancelled else { return }
-                } catch {
-                    guard current, revision == token, !Task.isCancelled else { return }
-                    ActivityDiagnosticLog.error(.sync, "route_planner_existing_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+                    let saved = try await cache.load(account: account)
+                    entries += saved.entries; expired = expired || saved.discardedExpired
                 }
-                let result = try await repository.generate(request)
+                catch is CancellationError { return }
+                catch {
+                    guard current, revision == token, !Task.isCancelled else { return }
+                    cacheEvent = .init(result: "error")
+                    ActivityDiagnosticLog.error(.sync, "route_cache_read_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+                }
+            }
+            guard current, revision == token, !Task.isCancelled else { return }
+            let fallback = LoopPlanningCacheEntry.matching(entries, request: request)
+            if reuseExisting, !fallback.isEmpty {
+                candidates = fallback; resultsCurrent = true; searched = true; busy = false
+                cacheEvent = .init(result: "hit"); return
+            }
+            cacheEvent = .init(result: reuseExisting ? (expired ? "expired" : "miss") : "bypass")
+            generation = Generation(trigger: trigger)
+            await fetch(request, token: token, fallback: fallback)
+        }
+    }
+    private func fetch(_ request: LoopPlanningRequest, token: UUID, fallback: [LoopPlanningCandidate]) async {
+        var nearby: [LoopPlanningCandidate] = []
+        do {
+            do {
+                nearby = try await repository.existing(request)
                 guard current, revision == token, !Task.isCancelled else { return }
-                candidates = LoopPlanningRanking.select(nearby + result, request: request)
-                recentResults.removeAll { $0.0 == key }
-                recentResults.append((key, candidates))
-                if recentResults.count > 4 { recentResults.removeFirst() }
-                resultsCurrent = true; searched = true; busy = false
             } catch {
                 guard current, revision == token, !Task.isCancelled else { return }
-                candidates = LoopPlanningRanking.select(nearby, request: request)
-                resultsCurrent = !candidates.isEmpty; busy = false; searched = false; generationUnavailable = true
-                ActivityDiagnosticLog.error(.sync, "route_planner_generate_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
-                if case let APIError.http(statusCode, _, _) = error, statusCode == 429 { rateLimited = true }
-                showToast(generationFailureMessage)
+                ActivityDiagnosticLog.error(.sync, "route_planner_existing_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
             }
-        }
-    }
-    private func cachedCandidates(for key: InputKey, request: LoopPlanningRequest, trigger: GenerationTrigger) -> [LoopPlanningCandidate]? {
-        if let exact = recentResults.last(where: { $0.0 == key }) { return exact.1 }
-        // Only a fresh GPS confirmation tolerates small positioning jitter.
-        // Address/map choices remain exact; never approximate an explicit start.
-        guard trigger == .myLocation else { return nil }
-        for (prior, routes) in recentResults.reversed() where prior.via == key.via && prior.distanceM == key.distanceM && prior.lessClimbing == key.lessClimbing {
-            guard Self.distance(prior.start, key.start) <= 20 else { continue }
-            let valid = routes.compactMap { candidate -> LoopPlanningCandidate? in
-                guard let first = candidate.points.first, let last = candidate.points.last,
-                      Self.distance(.init(first), .init(last)) <= 100,
-                      Self.distance(key.start, candidate.snappedStart) <= 250,
-                      Self.distance(key.start, .init(first)) <= 250,
-                      Self.distance(key.start, .init(last)) <= 250 else { return nil }
-                return .init(id: candidate.id, name: candidate.name, points: candidate.points, distanceM: candidate.distanceM,
-                             elevationGainM: candidate.elevationGainM, deviationFraction: candidate.deviationFraction,
-                             requestedStart: key.start, snappedStart: candidate.snappedStart, attribution: candidate.attribution, source: candidate.source)
+            let result = try await repository.generate(request)
+            guard current, revision == token, !Task.isCancelled else { return }
+            candidates = LoopPlanningRanking.select(nearby + result, request: request)
+            let successful = result.map { LoopPlanningCacheEntry(storedAt: Date(), request: request, route: $0) }.filter(\.valid)
+            recentResults.removeAll { old in successful.contains { $0.route.id == old.route.id } }
+            recentResults = Array((recentResults.filter { $0.fresh(at: Date()) } + successful).suffix(30))
+            if !successful.isEmpty, let cache {
+                do { try await cache.store(successful.map(\.route), request: request, account: account) }
+                catch is CancellationError { return }
+                catch {
+                    guard current, revision == token, !Task.isCancelled else { return }
+                    cacheEvent = .init(result: "error")
+                    ActivityDiagnosticLog.error(.sync, "route_cache_write_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+                }
+                guard current, revision == token, !Task.isCancelled else { return }
             }
-            let selected = LoopPlanningRanking.select(valid, request: request)
-            if !selected.isEmpty { return selected }
+            resultsCurrent = true; searched = true; busy = false
+        } catch {
+            guard current, revision == token, !Task.isCancelled else { return }
+            candidates = LoopPlanningRanking.select(nearby + fallback, request: request)
+            resultsCurrent = !candidates.isEmpty; busy = false; searched = false; generationUnavailable = true
+            ActivityDiagnosticLog.error(.sync, "route_planner_generate_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+            if case let APIError.http(statusCode, _, _) = error, statusCode == 429 { rateLimited = true }
+            showToast(fallback.isEmpty ? generationFailureMessage : String(localized: "route.planner.cached_fallback", defaultValue: "Couldn’t load new routes. Showing saved suggestions."))
         }
-        return nil
-    }
-    private static func distance(_ a: LoopPlanningRequest.Coordinate, _ b: LoopPlanningRequest.Coordinate) -> Double {
-        let r = Double.pi / 180
-        let h = pow(sin((b.latitude-a.latitude)*r/2),2) + cos(a.latitude*r)*cos(b.latitude*r)*pow(sin((b.longitude-a.longitude)*r/2),2)
-        return 12742000 * asin(min(1, sqrt(h)))
     }
     var generationFailureMessage: String {
         rateLimited

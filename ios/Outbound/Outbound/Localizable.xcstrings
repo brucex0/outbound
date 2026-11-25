@@ -1,6 +1,99 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "record.setup.cheer.short": {
+      "comment": "Compact launch-dock button opening Cheer recipients. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cheer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ánimo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加油"
+          }
+        }
+      }
+    },
+    "record.photo.discovery.tip": {
+      "comment": "Today photo overflow discovery. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap for photos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toca para ver las fotos"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻点查看照片"
+          }
+        }
+      }
+    },
+    "today.dock.route": {
+      "comment": "Compact Today route picker. [android:today] Generated Android name: today_dock_route.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路线"
+          }
+        }
+      }
+    },
+    "today.dock.cheer": {
+      "comment": "Compact Today button opening Cheer recipients. [android:today] Generated Android name: today_dock_cheer.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cheer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ánimo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加油"
+          }
+        }
+      }
+    },
+    "route.planner.cached_fallback" : {"comment": "Temporary feedback after a failed explicit refresh. [platform:ios]", "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Couldn’t load new routes. Showing saved suggestions."}}, "es": {"stringUnit": {"state": "translated", "value": "No se pudieron cargar rutas nuevas. Se muestran sugerencias guardadas."}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "无法加载新路线，已显示保存的推荐路线。"}}}},
     "route.planner.no_places" : {"comment": "Loop planner place search state. [platform:ios]", "localizations": {"en": {"stringUnit": {"state": "translated", "value": "No places found. Try another address."}}, "es": {"stringUnit": {"state": "translated", "value": "No se encontraron lugares. Prueba con otra dirección."}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "未找到地点，请尝试其他地址。"}}}},
     "route.planner.searching_places" : {"comment": "Loop planner place search state. [platform:ios]", "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Searching places…"}}, "es": {"stringUnit": {"state": "translated", "value": "Buscando lugares…"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "正在搜索地点…"}}}},
     "route.planner.retry" : {"comment": "Loop comparison action. [platform:ios]", "localizations": {"en": {"stringUnit": {"state": "translated", "value": "Try again"}}, "es": {"stringUnit": {"state": "translated", "value": "Reintentar"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "重试"}}}},

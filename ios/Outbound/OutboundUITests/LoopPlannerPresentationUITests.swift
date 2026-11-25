@@ -6,6 +6,45 @@ final class LoopPlannerPresentationUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
+    func testPersistentCacheReopenRelaunchAndExplicitBypass() throws {
+        let fixture = try LoopPlannerFixture()
+        defer { fixture.stop() }
+        let tips = ["theme_discovery", "activity_overflow", "music_discovery", "cheer_me_on", "voice_guide", "shoes"]
+        let app = launchFixtureApp(extraArguments: ["-OutboundAPIBaseURL", try fixture.start(),
+            "-OutboundUITestPlannerCacheAccount", "-measurement_unit_system_v1", "metric",
+            "-theme_discovery_tip_dismissed_v1", "YES"]
+            + tips.flatMap { ["-tooltip.\($0).dismissed.v1", "YES"] })
+        openFindRoute(app)
+        waitForReady(app.buttons["loop.candidate.0"], app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 1)
+        capture(app, "Fresh generated routes before closing planner")
+        app.navigationBars.buttons["Back"].tap()
+        openFindRoute(app)
+        waitForReady(app.buttons["loop.candidate.0"], app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 1, "Reopening must reuse the device cache without a provider call")
+        app.terminate(); app.launch(); dismissFixturePermissionAlerts(app)
+        openFindRoute(app)
+        waitForReady(app.buttons["loop.candidate.0"], app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 1, "The cache must survive process death")
+        let painted = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in self.comparisonHasPaintedRoutes(app) }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [painted], timeout: 15), .completed)
+        capture(app, "Persistent cached canonical routes painted after relaunch")
+        fixture.failGeneration()
+        app.buttons["New routes"].tap()
+        let attempted = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            fixture.bodies("POST /routes/generate").count == 2
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [attempted], timeout: 10), .completed)
+        waitForReady(app.buttons["loop.candidate.0"], app: app)
+        XCTAssertEqual(fixture.bodies("POST /routes/generate").count, 2, "New routes must attempt generation")
+        XCTAssertTrue(app.staticTexts["Couldn’t load new routes. Showing saved suggestions."].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["Loop generation is unavailable. Try again later, or choose an existing route."].exists,
+                       "Usable cached routes must not be paired with the unrecovered-failure message")
+        XCTAssertTrue(app.buttons["loop.candidate.0"].isEnabled)
+        capture(app, "Failed explicit refresh keeps cached routes with temporary fallback feedback")
+    }
+
+    @MainActor
     func testDelayedHTTPGeometryAndSheetsSurviveParentRefreshes() throws {
         let fixture = try LoopPlannerFixture()
         defer { fixture.stop() }

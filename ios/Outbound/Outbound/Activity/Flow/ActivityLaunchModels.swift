@@ -28,7 +28,7 @@ enum PendingCaloriesWeightAction {
 }
 
 enum ActivityLaunchLayout {
-    static let dockHeight: CGFloat = 148
+    static let dockHeight: CGFloat = 68
     static let peerCardGap: CGFloat = 12
     static let goalPillRowHeight: CGFloat = 64
     static let controlWidth: CGFloat = 112
@@ -57,7 +57,7 @@ enum LaunchWorkoutChoice: Hashable, Identifiable {
 
     var systemImage: String {
         switch self {
-        case .planned: "list.bullet.clipboard.fill"
+        case .planned: "calendar"
         case .sport(let sport): sport.systemImage
         }
     }

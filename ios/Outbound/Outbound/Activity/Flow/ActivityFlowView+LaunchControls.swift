@@ -4,7 +4,12 @@ import CoreLocation
 import MapKit
 
 extension ActivityFlowView {
+    @ViewBuilder
     var launchDock: some View {
+        if host.isEmbeddedInToday { centeredLaunchDock } else { standaloneLaunchDock }
+    }
+
+    var standaloneLaunchDock: some View {
         VStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 10) {
@@ -20,12 +25,12 @@ extension ActivityFlowView {
             HStack(spacing: 10) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
-                        launchMusicControl
-                        launchVoiceGuideControl
+                        launchMusicControl()
+                        launchVoiceGuideControl()
                         if (model.setup.plannedIntent?.resolvedActivityType ?? .running) == .running {
                             launchAICoachControl
                         }
-                        launchCheerMeOnControl
+                        launchCheerMeOnControl()
                         launchShoeControl
                         launchCompanionControl
                         launchWatchRecorderControl
@@ -50,16 +55,156 @@ extension ActivityFlowView {
         }
         .padding(.top, 12)
         .padding(.bottom, 16)
-        .frame(height: ActivityLaunchLayout.dockHeight)
+        .frame(height: 148)
         .background(.ultraThickMaterial)
         .overlay(alignment: .top) { Divider() }
     }
 
-    var launchMusicControl: AnyView {
+    var centeredLaunchDock: some View {
+        GeometryReader { geometry in
+            centeredLaunchRow(width: geometry.size.width)
+        }
+        .frame(height: 44)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 12)
+        .frame(height: ActivityLaunchLayout.dockHeight)
+        .background(.ultraThickMaterial)
+    }
+
+    func centeredLaunchRow(width: CGFloat) -> some View {
+        let sideDiameter = min(40, max(34, 34 + (width - 308) * 6 / 110))
+        return HStack(spacing: 0) {
+            // Match the secondary More target so the five main controls form
+            // a symmetric lane whose middle activity remains screen-centered.
+            Color.clear.frame(width: 44, height: 44).accessibilityHidden(true)
+            HStack(spacing: 0) {
+                launchMusicControl(iconDiameter: sideDiameter)
+                Spacer(minLength: 0)
+                launchVoiceGuideControl(iconDiameter: sideDiameter)
+                Spacer(minLength: 0)
+                StableLaunchMenu(
+                    symbol: model.setup.selectedWorkoutChoice.systemImage,
+                    configured: true,
+                    accessibilityLabel: model.setup.selectedWorkoutChoice.title,
+                    accessibilityValue: model.setup.selectedWorkoutChoice.accessibilityValue(
+                        plannedIntent: model.setup.plannedWorkoutIntent,
+                        curatedIntent: model.setup.curatedWorkoutIntent,
+                        selectedMode: model.setup.selectedGoalMode,
+                        manualGoal: model.setup.manualActivityGoal,
+                        unitSystem: model.dependencies.measurementPreferences.unitSystem
+                    ),
+                    accessibilityIdentifier: "activity.launch.workouts",
+                    items: LaunchWorkoutChoice.allCases.map { choice in
+                        StableLaunchMenuItem(id: choice.id, title: choice.title, symbol: choice.systemImage,
+                                             selected: choice == model.setup.selectedWorkoutChoice)
+                    },
+                    singleSelection: true,
+                    onOpen: { model.trackFeatureExposure("activity_picker") },
+                    onAction: { id in
+                        guard let choice = LaunchWorkoutChoice.allCases.first(where: { $0.id == id }) else { return }
+                        model.selectWorkoutChoice(choice)
+                    }
+                )
+                .frame(width: 44, height: 44)
+                Spacer(minLength: 0)
+                setupUtilityButton(
+                    title: String(localized: "record.setup.route", defaultValue: "Route"),
+                    value: model.setup.plannedIntent?.preparedRoute?.name ?? String(localized: "common.none", defaultValue: "None"),
+                    isConfigured: model.setup.plannedIntent?.preparedRoute != nil,
+                    systemImage: "map", iconDiameter: sideDiameter
+                ) {
+                    model.track(.init(.activityConfigurationChanged, properties: [.changeType: .string("route_entry"), .selectionType: .string("launch_dock")]))
+                    model.openRouteLibrary()
+                }
+                Spacer(minLength: 0)
+                launchCheerMeOnControl(iconDiameter: sideDiameter)
+            }
+            .frame(width: width - 88)
+            StableLaunchMenu(
+                symbol: "ellipsis", configured: false, showsBackground: false, glyphSize: 16,
+                verticalDots: true,
+                accessibilityLabel: String(localized: "record.setup.more_options", defaultValue: "More options"),
+                accessibilityIdentifier: "activity.launch.settings",
+                items: launchSettingsMenuItems,
+                onOpen: { model.trackFeatureExposure("launch_settings") },
+                onAction: performLaunchSettingsAction
+            )
+            .frame(width: 44, height: 44)
+        }
+        .frame(width: width, height: 44)
+    }
+
+    var launchSettingsMenuItems: [StableLaunchMenuItem] {
+        var items: [StableLaunchMenuItem] = []
+        if (model.setup.plannedIntent?.resolvedActivityType ?? .running) == .running {
+            items.append(.init(id: "ai_coach", title: String(localized: "record.ai_coach.title", defaultValue: "AI Coach"), selected: model.isAICoachEnabled))
+        }
+        let shoes = model.setup.sessionShoeMenuItems
+        if shoes.isEmpty {
+            items.append(.init(id: "add_shoe", title: String(localized: "record.setup.shoes", defaultValue: "Shoes")))
+        } else {
+            var choices = shoes.map { shoe in
+                StableLaunchMenuItem(id: "shoe:\(shoe.id.uuidString)", title: shoe.displayName,
+                                     selected: shoe.id == model.setup.selectedSessionShoe?.id)
+            }
+            choices.append(.init(id: "add_shoe", title: String(localized: "record.shoes.new", defaultValue: "New Shoe"), symbol: "plus"))
+            items.append(.init(id: "shoes", title: String(localized: "record.setup.shoes", defaultValue: "Shoes"), children: choices))
+        }
+        if model.setup.isCompanionControlAvailable {
+            items.append(.init(id: "companion", title: String(localized: "recording.companion.accessibility", defaultValue: "With dog"), selected: model.setup.companionType != nil))
+        }
+        items.append(.init(id: "watch", title: String(localized: "watch.app.toggle", defaultValue: "Watch app"), selected: model.startWatchApp))
+        items.append(.init(id: "environment", title: model.setup.indoorOutdoorLabel))
+        let activityType = model.setup.setupActivityType
+        if !model.setup.isIndoorSession, [.running, .cycling, .walking, .hiking].contains(activityType) {
+            items.append(.init(id: "auto_pause", title: String(localized: "record.setup.auto_pause", defaultValue: "Auto Pause"), selected: model.autoPauseEnabled(for: activityType)))
+        }
+        items.append(.init(id: "more", title: String(localized: "record.setup.more_options", defaultValue: "More options")))
+        return items
+    }
+
+    func performLaunchSettingsAction(_ id: String) {
+        // Revalidate against current eligibility, not the menu's opening snapshot.
+        guard launchSettingsMenuItems.contains(where: { $0.id == id || $0.children.contains(where: { $0.id == id }) }) else { return }
+        switch id {
+        case "ai_coach": model.setAICoachEnabled(!model.isAICoachEnabled)
+        case "add_shoe":
+            model.dependencies.tooltipCoordinator.dismiss(.shoes, outcome: "opened")
+            model.openAddShoe()
+        case "companion": model.toggleCompanionContext()
+        case "watch":
+            model.startWatchApp.toggle()
+            model.track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("watch_app"), .selectionType: .string(model.startWatchApp ? "enabled" : "disabled")
+            ]))
+        case "environment":
+            model.setup.isIndoorSession.toggle()
+            model.track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("environment"), .selectionType: .string(model.setup.isIndoorSession ? "indoor" : "outdoor")
+            ]))
+        case "auto_pause":
+            let activityType = model.setup.setupActivityType
+            let enabled = !model.autoPauseEnabled(for: activityType)
+            model.setAutoPauseEnabled(enabled, for: activityType)
+            model.track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("auto_pause"), .selectionType: .string(enabled ? "enabled" : "disabled"),
+                .activityType: .string(activityType.rawValue)
+            ]))
+        case "more": model.setup.setupSheet = .more
+        default:
+            guard let shoe = model.setup.sessionShoeMenuItems.first(where: { "shoe:\($0.id.uuidString)" == id }) else { return }
+            model.setup.selectedSessionShoeID = shoe.id
+            model.track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
+        }
+    }
+
+    func launchMusicControl(iconDiameter: CGFloat = 34) -> AnyView {
         AnyView(setupUtilityButton(
             title: String(localized: "record.setup.music", defaultValue: "Music"),
             value: model.setup.musicSetupValue,
-            isConfigured: model.setup.musicIsConfigured
+            isConfigured: model.setup.musicIsConfigured,
+            systemImage: "music.note",
+            iconDiameter: iconDiameter
         ) {
             model.trackFeatureExposure("music")
             model.setup.dismissMusicDiscoveryTip(result: "opened")
@@ -83,7 +228,7 @@ extension ActivityFlowView {
         .accessibilityHint(String(localized: "record.ai_coach.detail", defaultValue: "Get adaptive coaching. With Voice off, advice appears onscreen."))
     }
 
-    var launchVoiceGuideControl: AnyView {
+    func launchVoiceGuideControl(iconDiameter: CGFloat = 34) -> AnyView {
         AnyView(setupUtilityButton(
             title: String(localized: "record.voice_guide.title", defaultValue: "Voice"),
             value: model.isVoiceGuideExplicitlyUnavailable
@@ -91,7 +236,9 @@ extension ActivityFlowView {
                 : (model.isVoiceGuideEnabled
                     ? String(localized: "common.on", defaultValue: "On")
                     : String(localized: "common.off", defaultValue: "Off")),
-            isConfigured: model.voiceGuideSpeechEnabled
+            isConfigured: model.voiceGuideSpeechEnabled,
+            systemImage: model.voiceGuideSpeechEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
+            iconDiameter: iconDiameter
         ) {
             model.dependencies.tooltipCoordinator.dismiss(.voiceGuide, outcome: "opened")
             model.setVoiceGuideEnabled(
@@ -106,11 +253,13 @@ extension ActivityFlowView {
         ))
     }
 
-    var launchCheerMeOnControl: AnyView {
+    func launchCheerMeOnControl(iconDiameter: CGFloat = 34) -> AnyView {
         AnyView(setupUtilityButton(
             title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
             value: model.setup.liveTrackValue,
-            isConfigured: model.dependencies.liveShareStore.isArmedForNextActivity
+            isConfigured: model.dependencies.liveShareStore.isArmedForNextActivity,
+            systemImage: "hands.clap.fill",
+            iconDiameter: iconDiameter
         ) {
             model.dependencies.tooltipCoordinator.dismiss(.cheerMeOn, outcome: "opened")
             model.setup.showsTrustedContacts = true
@@ -330,23 +479,36 @@ extension ActivityFlowView {
         title: String,
         value: String,
         isConfigured: Bool,
+        systemImage: String? = nil,
+        iconDiameter: CGFloat = 34,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            utilityButtonLabel(title, isConfigured: isConfigured)
+            utilityButtonLabel(title, isConfigured: isConfigured, systemImage: systemImage, iconDiameter: iconDiameter)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityValue(value)
     }
 
-    func utilityButtonLabel(_ title: String, isConfigured: Bool) -> some View {
+    @ViewBuilder
+    func utilityButtonLabel(_ title: String, isConfigured: Bool, systemImage: String? = nil, iconDiameter: CGFloat = 34) -> some View {
+        if host.isEmbeddedInToday, let systemImage {
+            Image(systemName: systemImage)
+                .font(.system(size: 18 + (iconDiameter - 34) / 3, weight: .semibold))
+                .foregroundStyle(isConfigured ? theme.actionForegroundColor : Color.primary)
+                .frame(width: iconDiameter, height: iconDiameter)
+                .background(isConfigured ? theme.actionColor : Color(.systemFill), in: Circle())
+                .frame(width: 44, height: 44)
+                .outboundTapTarget()
+        } else {
         Text(title)
-            .font(.subheadline.weight(.semibold))
+            .font((host.isEmbeddedInToday ? Font.caption : .subheadline).weight(.semibold))
             .foregroundStyle(isConfigured ? Color.white : Color.primary)
-            .lineLimit(1)
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
+            .lineLimit(host.isEmbeddedInToday ? 2 : 1)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, host.isEmbeddedInToday ? 3 : 14)
+            .frame(minWidth: 44, maxWidth: host.isEmbeddedInToday ? .infinity : nil, minHeight: 44)
             .background(
                 isConfigured ? theme.accentColor : Color(.secondarySystemBackground),
                 in: Capsule()
@@ -355,6 +517,7 @@ extension ActivityFlowView {
                 Capsule()
                     .stroke(isConfigured ? Color.clear : Color.primary.opacity(0.08), lineWidth: 1)
             }
+        }
     }
 
     var launchShoeControl: AnyView {

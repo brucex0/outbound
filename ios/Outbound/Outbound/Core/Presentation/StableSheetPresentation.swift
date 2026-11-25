@@ -15,6 +15,7 @@ struct StableSheetDismissal {
 final class StableSheetPresenter: NSObject, UIAdaptivePresentationControllerDelegate {
     private weak var anchor: UIViewController?
     private var appearance: StableSheetAppearance?
+    private var latestAppearanceValues: StableSheetAppearance.Values?
     private var controller: UIViewController?
     private var opening: UUID?
     private var afterDismiss: (() -> Void)?
@@ -26,10 +27,15 @@ final class StableSheetPresenter: NSObject, UIAdaptivePresentationControllerDele
 
     fileprivate func attach(to anchor: UIViewController, values: StableSheetAppearance.Values) {
         self.anchor = anchor
+        latestAppearanceValues = values
         if let appearance {
             guard appearance.values != values else { return }
-            Task { @MainActor [weak appearance] in
-                if appearance?.values != values { appearance?.values = values }
+            Task { @MainActor [weak self] in
+                guard let self, let values = self.latestAppearanceValues else { return }
+                // Defer observable publication out of the representable update,
+                // but use its latest snapshot if another update arrived meanwhile.
+                self.controller?.overrideUserInterfaceStyle = values.userInterfaceStyle
+                if appearance.values != values { appearance.values = values }
             }
         } else { appearance = StableSheetAppearance(values: values) }
     }
@@ -38,7 +44,7 @@ final class StableSheetPresenter: NSObject, UIAdaptivePresentationControllerDele
     func present<Content: View>(diagnosticName: String, fullScreen: Bool = false, onPresented: @escaping () -> Void = {}, onDismiss: @escaping () -> Void = {},
                                content: (StableSheetDismissal) -> Content) -> Bool {
         guard controller == nil else { return false }
-        guard let root = anchor?.viewIfLoaded?.window?.rootViewController, let appearance else {
+        guard let root = anchor?.viewIfLoaded?.window?.rootViewController, let appearance, let values = latestAppearanceValues else {
             ActivityDiagnosticLog.error(.lifecycle, "\(diagnosticName)_present_failed reason=missing_visible_anchor")
             return false
         }
@@ -54,7 +60,12 @@ final class StableSheetPresenter: NSObject, UIAdaptivePresentationControllerDele
             self.dismiss(completion: completion)
         }
         let view = content(dismissal)
+        if appearance.values != values { appearance.values = values }
         let hosting = StableSheetHostingController(rootView: StableSheetContent(appearance: appearance, content: view))
+        // UIKit starts the transition before SwiftUI applies preferredColorScheme.
+        // Seed native traits first so the map and presentation chrome never flash
+        // the device appearance when the app has selected a different mode.
+        hosting.overrideUserInterfaceStyle = values.userInterfaceStyle
         hosting.onRemoved = { [weak self] in self?.finish(opening: id) }
         hosting.onAppeared = { [weak self] in self?.resumeDismissalAfterTransition(opening: id) }
         hosting.modalPresentationStyle = fullScreen ? .fullScreen : .pageSheet
@@ -144,6 +155,8 @@ fileprivate final class StableSheetAppearance: ObservableObject {
         let dynamicTypeSize: DynamicTypeSize
         let locale: Locale
         let layoutDirection: LayoutDirection
+        // colorScheme is resolved by the app root, including live System changes.
+        var userInterfaceStyle: UIUserInterfaceStyle { colorScheme == .dark ? .dark : .light }
         init(_ environment: EnvironmentValues) {
             theme = environment.outboundTheme
             colorScheme = environment.colorScheme

@@ -5,7 +5,7 @@ import Testing
 @MainActor struct LoopPlanningSessionTests {
     private let origin = LoopPlanningCoordinate(latitude: 47.6101, longitude: -122.2015)
 
-    @Test func myLocationJitterReusesValidatedRoutesButAddressSelectionStaysExact() async throws {
+    @Test func allConfirmedStartsReuseNearbyActualGeometry() async throws {
         let repository = Repository(), location = Location()
         location.point = origin
         let session = makeSession(repository, location)
@@ -20,7 +20,7 @@ import Testing
         #expect(session.candidates.first?.requestedStart.latitude == jitter.latitude)
         session.setStart(.init(latitude: jitter.latitude + 0.00005, longitude: jitter.longitude))
         try await settle { session.resultsCurrent }
-        #expect(repository.requests.count == 2, "An explicit address five meters away is a distinct choice")
+        #expect(repository.requests.count == 1, "Explicit starts also reuse geometry within 50 meters")
         session.cancel()
     }
 
@@ -34,7 +34,7 @@ import Testing
         location.point = .init(latitude: origin.latitude, longitude: origin.longitude - 0.0002) // About 15 m west.
         session.requestLocation()
         try await settle { !session.locating && session.resultsCurrent }
-        #expect(repository.requests.count == 2, "Nearby GPS alone must not bypass the 250 m geometry bound")
+        #expect(repository.requests.count == 2, "Nearby GPS alone must not bypass the 50 m actual-start cache bound")
         session.cancel()
     }
 
@@ -135,6 +135,84 @@ import Testing
         session.cancel()
     }
 
+    @Test func explicitRefreshBypassesCacheAndFailureRetainsIt() async throws {
+        let repository = Repository(), location = Location()
+        let session = makeSession(repository, location)
+        session.setStart(origin)
+        try await settle { session.resultsCurrent }
+        let original = session.candidates[0].points
+        repository.fail = true
+        session.generate() // New routes explicitly attempts the provider.
+        try await settle { session.generationUnavailable }
+        #expect(repository.requests.count == 2)
+        #expect(session.resultsCurrent && session.candidates[0].points == original)
+        #expect(session.toast != nil)
+        session.setStart(origin)
+        try await settle { session.resultsCurrent }
+        #expect(repository.requests.count == 2, "A failed refresh must not erase the previous successful cache")
+        session.cancel()
+    }
+
+    @Test func reopeningUsesPersistentPortWithoutAnyRepositoryCalls() async throws {
+        let cache = MemoryCache(), repository = Repository(), location = Location()
+        let first = LoopPlanningSession(activity: .running, distanceM: nil, units: .metric, repository: repository,
+            placeSearch: Places(), location: location, cache: cache, isCurrentAccount: { true })
+        first.setStart(origin)
+        try await settle { first.resultsCurrent }
+        first.cancel()
+        repository.fail = true
+        let reopened = LoopPlanningSession(activity: .running, distanceM: nil, units: .metric, repository: repository,
+            placeSearch: Places(), location: location, cache: cache, isCurrentAccount: { true })
+        reopened.setStart(origin)
+        try await settle { reopened.resultsCurrent }
+        #expect(repository.requests.count == 1 && repository.existingCount == 1)
+        #expect(reopened.cacheEvent?.result == "hit")
+        reopened.applyDistance("5.2")
+        try await settle { reopened.resultsCurrent }
+        #expect(repository.requests.count == 1)
+        #expect(abs(reopened.candidates[0].deviationFraction - (5000.0/5200 - 1)) < 0.00001)
+        reopened.cancel()
+    }
+
+    @Test func lateCacheLookupCannotReplaceNewInputOrClosedSession() async throws {
+        let cache = DeferredCache(), repository = Repository(), location = Location()
+        let session = LoopPlanningSession(activity: .running, distanceM: nil, units: .metric, repository: repository,
+            placeSearch: Places(), location: location, cache: cache, isCurrentAccount: { true })
+        session.setStart(origin)
+        try await settle { awaitableCount(cache) == 1 }
+        session.applyDistance("10")
+        try await settle { awaitableCount(cache) == 2 }
+        cache.finishFirst()
+        await Task.yield()
+        #expect(repository.requests.isEmpty)
+        cache.finishFirst()
+        try await settle { session.resultsCurrent }
+        #expect(repository.requests.count == 1 && repository.requests[0].targetDistanceM == 10000)
+        session.setStart(origin)
+        try await settle { awaitableCount(cache) == 1 }
+        session.cancel(); cache.finishFirst()
+        await Task.yield()
+        #expect(session.candidates.isEmpty && repository.requests.count == 1)
+    }
+    private func awaitableCount(_ cache: DeferredCache) -> Int { cache.pending.count }
+    private final class DeferredCache: LoopPlanningCache, @unchecked Sendable {
+        var pending: [CheckedContinuation<LoopPlanningCacheRead, Error>] = []
+        nonisolated func load(account: ActivityAccountContext) async throws -> LoopPlanningCacheRead {
+            try await withCheckedThrowingContinuation { continuation in
+                Task { @MainActor in self.pending.append(continuation) }
+            }
+        }
+        nonisolated func store(_ routes: [LoopPlanningCandidate], request: LoopPlanningRequest, account: ActivityAccountContext) async throws {}
+        func finishFirst() { pending.removeFirst().resume(returning: .init(entries: [])) }
+    }
+    private actor MemoryCache: LoopPlanningCache {
+        var entries: [LoopPlanningCacheEntry] = []
+        func load(account: ActivityAccountContext) -> LoopPlanningCacheRead { .init(entries: entries) }
+        func store(_ routes: [LoopPlanningCandidate], request: LoopPlanningRequest, account: ActivityAccountContext) {
+            entries += routes.map { .init(storedAt: Date(), request: request, route: $0) }
+        }
+    }
+
     private func makeSession(_ repository: Repository, _ location: Location) -> LoopPlanningSession {
         .init(activity: .running, distanceM: nil, units: .metric, repository: repository,
               placeSearch: Places(), location: location, isCurrentAccount: { true })
@@ -151,7 +229,8 @@ import Testing
         var requests: [LoopPlanningRequest] = []
         var longitudeOffset = 0.0
         var fail = false
-        func existing(_ request: LoopPlanningRequest) async throws -> [LoopPlanningCandidate] { [] }
+        var existingCount = 0
+        func existing(_ request: LoopPlanningRequest) async throws -> [LoopPlanningCandidate] { existingCount += 1; return [] }
         func generate(_ request: LoopPlanningRequest) async throws -> [LoopPlanningCandidate] {
             requests.append(request)
             if fail { throw APIError.http(statusCode: 429, message: "fixture", code: nil) }

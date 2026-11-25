@@ -86,12 +86,10 @@ struct StableActivityMenu: UIViewRepresentable {
                 coordinator?.onAction(value)
             }
         }
-        var actions: [UIMenuElement] = [
+        let actions: [UIMenuElement] = [
             action(titles[0], symbol: photo == nil ? "camera.fill" : "photo.fill", value: .photo),
-            action(titles[1], symbol: "map.fill", value: .route),
             UIMenu(options: .displayInline, children: [action(titles[2], symbol: "person.2.fill", value: .groupRun)])
         ]
-        if hasRoute { actions.append(UIMenu(options: .displayInline, children: [action(titles[3], symbol: "map.fill", value: .removeRoute, destructive: true)])) }
         button.menu = UIMenu(children: actions)
     }
     final class Coordinator {

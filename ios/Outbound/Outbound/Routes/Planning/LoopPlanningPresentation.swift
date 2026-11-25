@@ -38,6 +38,7 @@ import Foundation
         let account = ActivityAccountBoundary.current
         session = LoopPlanningSession(activity: activity, distanceM: distanceM, units: units,
             repository: HTTPLoopPlanningRepository(), placeSearch: MapKitLoopPlaceSearch(), location: CoreLocationLoopProvider(),
+            cache: account.owner.hasPrefix("account:") ? DiskLoopPlanningCache.shared : nil, account: account,
             isCurrentAccount: { account == ActivityAccountBoundary.current })
     }
     func openSavedRoutes() {

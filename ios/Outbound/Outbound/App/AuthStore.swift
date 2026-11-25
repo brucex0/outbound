@@ -68,6 +68,11 @@ final class AuthStore: ObservableObject {
     init(analyticsManager: AnalyticsManager? = nil) {
         self.analyticsManager = analyticsManager
         if ProcessInfo.processInfo.arguments.contains("-OutboundDisableAuthentication") || ProcessInfo.processInfo.arguments.contains("-OutboundDisableFirebase") {
+            #if DEBUG && targetEnvironment(simulator)
+            if ProcessInfo.processInfo.arguments.contains("-OutboundUITestPlannerCacheAccount") {
+                Self.cachedUserID = "loop-cache-ui-fixture"
+            }
+            #endif
             isAuthenticated = true
             localSessionLabel = "UI test session"
             resolutionState = .authenticated
@@ -242,8 +247,13 @@ final class AuthStore: ObservableObject {
     }
 
     private func clearPresentation() {
+        let previousAccount = ActivityAccountBoundary.current
         user = nil
         Self.cachedUserID = nil
+        Task {
+            do { try await DiskLoopPlanningCache.shared.purge(previousAccount) }
+            catch { ActivityDiagnosticLog.error(.sync, "route_cache_purge_failed category=\(ActivityDiagnosticLog.errorCategory(error))") }
+        }
         isAuthenticated = false
         localSessionLabel = nil
         sessionOrigin = nil

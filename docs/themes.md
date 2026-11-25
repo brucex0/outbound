@@ -5,6 +5,7 @@
 - Settings → Appearance offers System, Light, and Dark modes.
 - The selection is persisted in `UserDefaults` by `AppearancePreferences` and applied at the app root with SwiftUI's `preferredColorScheme`.
 - System is the default for people who have not chosen a mode on iOS or Android. Saved System, Light, and Dark selections remain respected. Theme colors remain a separate preference and adapt within the selected appearance.
+- iOS stable UIKit presentations seed their native hosting-controller appearance from the resolved app environment before presenting, then keep it synchronized while open. This includes the full-screen route planner; do not wait for SwiftUI's preferred appearance to update the first transition or replace the retained content to refresh appearance.
 
 Open this when adding, changing, or applying an app theme or editing appearance settings.
 

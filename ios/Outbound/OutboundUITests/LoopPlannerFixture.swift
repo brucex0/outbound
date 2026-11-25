@@ -9,6 +9,7 @@ final class LoopPlannerFixture: @unchecked Sendable {
     private let queue = DispatchQueue(label: "LoopPlannerFixture")
     private let lock = NSLock()
     private var requests: [(String, [String: Any])] = []
+    private var rejectGeneration = false
     init() throws {
         let parameters = NWParameters.tcp
         parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(IPv4Address("127.0.0.1")!), port: .any)
@@ -31,6 +32,11 @@ final class LoopPlannerFixture: @unchecked Sendable {
     }
 
     func stop() { listener.cancel() }
+
+    func failGeneration() {
+        lock.lock(); defer { lock.unlock() }
+        rejectGeneration = true
+    }
 
     func bodies(_ path: String) -> [[String: Any]] {
         lock.lock(); defer { lock.unlock() }
@@ -74,6 +80,9 @@ final class LoopPlannerFixture: @unchecked Sendable {
     }
 
     private func respond(method: String, path: String, target: String, body: [String: Any]) -> (Int, [String: Any]) {
+        if path == "/routes/generate", rejectGeneration {
+            return (503, ["error": "Synthetic provider unavailable"])
+        }
         if path == "/routes/generate", let start = body["start"] as? [String: Double],
            let latitude = start["latitude"], let longitude = start["longitude"], let distance = body["targetDistanceM"] as? Double {
             let radius = distance / (2 * Double.pi)

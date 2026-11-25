@@ -72,6 +72,11 @@ private struct LoopPlannerScreen: View {
                         .changeType: .string("loop_planner_generate"), .activityType: .string(session.activity.rawValue),
                         .entrySource: .string(generation.trigger.rawValue)])) }
                 }
+                .onChange(of: session.cacheEvent) { _, event in
+                    guard let event else { return }
+                    Task { await analytics?.track(.init(.featureExposed, properties: [
+                        .feature: .string("loop_planner_cache"), .result: .string(event.result)])) }
+                }
                 .onChange(of: session.resultsCurrent) { _, current in
                     if !current, detail != nil { presentation.sheet = nil }
                 }
@@ -142,7 +147,7 @@ private struct LoopPlannerScreen: View {
             } else if session.locationUnavailable {
                 Text(String(localized: "route.planner.location_unavailable", defaultValue: "Choose a start on the map or enable location access in Settings.")).font(.footnote)
                 Button(String(localized: "route.planner.choose_start", defaultValue: "Choose a start")) { query = ""; presentation.sheet = .location }
-            } else if session.generationUnavailable {
+            } else if session.generationUnavailable && (!session.resultsCurrent || session.candidates.isEmpty) {
                 Text(session.generationFailureMessage).font(.footnote).foregroundStyle(.secondary)
             } else if !session.supported {
                 Text(String(localized: "route.planner.unsupported", defaultValue: "Loop planning is not available for this activity yet.")).font(.footnote)
