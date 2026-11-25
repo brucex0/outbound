@@ -45,6 +45,7 @@ final class ActivityRecorder: ObservableObject {
     @Published private(set) var heartRateEffort: PlainstrideHeartRateEffort = .unavailable
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
     @Published var autoPaused = false
+    @Published private(set) var isIndoor = false
     @Published private(set) var autoPauseEnabled = true
     @Published private(set) var liveWorkoutOptions: LiveWorkoutSessionOptions?
 
@@ -65,7 +66,7 @@ final class ActivityRecorder: ObservableObject {
 
     func setLiveAutoPauseEnabled(_ enabled: Bool) {
         guard state == .active || state == .paused else { return }
-        autoPauseEnabled = enabled
+        autoPauseEnabled = enabled && !isIndoor
         autoPauseCandidateStart = nil
         autoResumeCandidateStart = nil
         persistJournal(force: true)
@@ -115,6 +116,11 @@ final class ActivityRecorder: ObservableObject {
         )
     }
     var recordingSessionMetadata: ActivityRecordingSessionMetadata? { sessionMetadata }
+
+    func clearCompletedSession() {
+        guard state == .idle else { return }
+        isIndoor = false
+    }
     private var tracksLocation: Bool {
         activityType != .strengthTraining && activityType != .mobility
     }
@@ -164,6 +170,7 @@ final class ActivityRecorder: ObservableObject {
     func start(
         activityType: ActivityType = .running,
         movingTimeDetectionEnabled: Bool = true,
+        isIndoor: Bool = false,
         autoPauseEnabled: Bool? = nil,
         routeGuidance: ActiveRouteGuidanceJournal? = nil,
         canonicalStartDate: Date? = nil,
@@ -195,7 +202,8 @@ final class ActivityRecorder: ObservableObject {
         accumulatedActiveDuration = max(0, now.timeIntervalSince(resolvedStartDate))
         self.activityType = activityType
         liveWorkoutOptions = nil
-        self.autoPauseEnabled = autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
+        self.isIndoor = isIndoor
+        self.autoPauseEnabled = !isIndoor && (autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType))
         self.sessionMetadata = sessionMetadata
         self.companionType = companionType
         recordingActivityEvent = activityEvent
@@ -203,9 +211,9 @@ final class ActivityRecorder: ObservableObject {
         recordingLiveGroupSessionID = liveGroupSessionID
         recoveredWatchLifecycle = nil
         recoveredWatchMessageSequence = nil
-        self.routeGuidance = routeGuidance
-        routeGuidance?.saveRouteSnapshot()
-        routeGuidanceEngine = routeGuidance.flatMap {
+        self.routeGuidance = isIndoor ? nil : routeGuidance
+        self.routeGuidance?.saveRouteSnapshot()
+        routeGuidanceEngine = self.routeGuidance.flatMap {
             RouteGuidanceEngine(route: $0.route, recoverySeed: $0.recoverySeed)
         }
         routeGuidanceSnapshot = routeGuidanceEngine?.currentSnapshot
@@ -214,7 +222,7 @@ final class ActivityRecorder: ObservableObject {
         recoveredWatchLifecycle = nil
         recoveredWatchMessageSequence = nil
         elapsedSeconds = 0
-        movingTimeTracker = MovingTimeTracker(isEnabled: movingTimeDetectionEnabled)
+        movingTimeTracker = MovingTimeTracker(isEnabled: movingTimeDetectionEnabled && !isIndoor)
         movingSeconds = 0
         completedAt = nil
         distanceMeters = 0
@@ -232,11 +240,11 @@ final class ActivityRecorder: ObservableObject {
         heartRateEngine = HeartRateEffortEngine()
         finalWatchHeartRateMetrics = nil
         if tracksLocation {
-            locationManager.startTracking(activityType: activityType)
+            locationManager.startTracking(activityType: activityType, isIndoor: isIndoor)
         }
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
-        if tracksLocation, !locationManager.hasRecentValidLocation {
+        if tracksLocation, !isIndoor, !locationManager.hasRecentValidLocation {
             ActivityDiagnosticLog.notice(
                 .lifecycle,
                 "Recording started without valid location fix permission_granted=\(locationManager.isLocationPermissionGranted)"
@@ -263,7 +271,7 @@ final class ActivityRecorder: ObservableObject {
         }
         cadenceTracker.suspend()
         currentCadenceStepsPerMinute = nil
-        autoPaused = autoTriggered
+        autoPaused = autoTriggered && !isIndoor
         state = .paused
         movingTimeTracker.suspend()
         accumulatedActiveDuration = TimeInterval(elapsedSeconds)
@@ -272,7 +280,7 @@ final class ActivityRecorder: ObservableObject {
         autoResumeCandidateStart = nil
         if !tracksLocation {
             timer?.cancel()
-        } else if !autoTriggered {
+        } else if !autoPaused {
             timer?.cancel()
             locationManager.pauseTracking()
         } else {
@@ -372,7 +380,7 @@ final class ActivityRecorder: ObservableObject {
         )
         ActivityDiagnosticLog.notice(
             .lifecycle,
-            "Recording finished moving_time_method=gps_observations_v2 stopped_duration=\(ActivityDiagnosticLog.durationBucket(seconds: max(0, elapsedSeconds - summary.durationSecs))) duration=\(ActivityDiagnosticLog.durationBucket(seconds: summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: summary.distanceM)) track_points=\(ActivityDiagnosticLog.countBucket(summary.trackPoints.count)) segments=\(ActivityDiagnosticLog.countBucket(summary.trackSegmentStartIndices.count)) recovery_stage=awaiting_save"
+            "Recording finished moving_time_method=\(isIndoor ? "indoor_active_duration" : "gps_observations_v2") stopped_duration=\(ActivityDiagnosticLog.durationBucket(seconds: max(0, elapsedSeconds - summary.durationSecs))) duration=\(ActivityDiagnosticLog.durationBucket(seconds: summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: summary.distanceM)) track_points=\(ActivityDiagnosticLog.countBucket(summary.trackPoints.count)) segments=\(ActivityDiagnosticLog.countBucket(summary.trackSegmentStartIndices.count)) recovery_stage=awaiting_save"
         )
         liveSnapshot = makeSnapshot(isActive: false)
         startDate = nil
@@ -420,6 +428,7 @@ final class ActivityRecorder: ObservableObject {
 
         timer?.cancel()
         resetRunSimulation()
+        isIndoor = false
         ActiveSessionJournal.clear(reason: .newRecording)
         lastJournaledTrackPointCount = 0
         let now = Date()
@@ -596,6 +605,7 @@ final class ActivityRecorder: ObservableObject {
     ) {
         timer?.cancel()
         resetRunSimulation()
+        isIndoor = false
         let now = Date()
         let route = Self.seeded10KRoute(endingAt: now)
         locationManager.seedLiveRunForUITest(
@@ -692,6 +702,7 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func handleLocationUpdate(_ location: CLLocation?) {
+        guard !isIndoor else { return }
         if state == .active, let location {
             updateMovingTime(with: location)
             updateRouteGuidance(with: location)
@@ -711,7 +722,7 @@ final class ActivityRecorder: ObservableObject {
 #if DEBUG
         guard runSimulationState == nil else { return }
 #endif
-        guard autoPauseEnabled else {
+        guard !isIndoor, autoPauseEnabled else {
             resetAutoPauseCandidate()
             return
         }
@@ -740,7 +751,7 @@ final class ActivityRecorder: ObservableObject {
 #if DEBUG
         guard runSimulationState == nil else { return }
 #endif
-        guard autoPauseEnabled else {
+        guard !isIndoor, autoPauseEnabled else {
             resetAutoResumeCandidate()
             return
         }
@@ -769,7 +780,7 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func updateMovingTime(with location: CLLocation) {
-        guard let segmentStart = currentSegmentStartDate,
+        guard !isIndoor, let segmentStart = currentSegmentStartDate,
               location.timestamp >= segmentStart,
               location.timestamp.timeIntervalSinceNow <= 5 else { return }
         let threshold: Double? = switch activityType {
@@ -804,7 +815,7 @@ final class ActivityRecorder: ObservableObject {
             )
             currentCadenceStepsPerMinute = cadenceTracker.currentStepsPerMinute
         }
-        currentPace = locationManager.currentPaceSecsPerKm
+        currentPace = isIndoor ? nil : locationManager.currentPaceSecsPerKm
         if let lastSample = heartRateEngine.snapshot.lastSampleDate,
            now.timeIntervalSince(lastSample) > heartRateStaleInterval {
             heartRate = nil
@@ -830,7 +841,8 @@ final class ActivityRecorder: ObservableObject {
         accumulatedActiveDuration = TimeInterval(journal.elapsedSeconds)
         currentSegmentStartDate = nil
         elapsedSeconds = journal.elapsedSeconds
-        movingTimeTracker = journal.movingTimeTracker ?? MovingTimeTracker()
+        isIndoor = journal.isIndoor ?? false
+        movingTimeTracker = isIndoor ? MovingTimeTracker(isEnabled: false) : (journal.movingTimeTracker ?? MovingTimeTracker())
         movingTimeTracker.suspend()
         movingSeconds = movingTimeTracker.movingSeconds(activeSeconds: elapsedSeconds)
         activityType = journal.activityType ?? .running
@@ -838,27 +850,29 @@ final class ActivityRecorder: ObservableObject {
         cadenceTracker.suspend()
         currentCadenceStepsPerMinute = nil
         liveWorkoutOptions = journal.liveWorkoutOptions
-        autoPauseEnabled = journal.autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
+        autoPauseEnabled = !isIndoor && (journal.autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType))
         goalDistanceAdjustmentMeters = journal.goalDistanceAdjustmentMeters ?? 0
         companionType = journal.companionType
         recordingActivityEvent = journal.activityEvent
         recordingWorkoutSnapshot = journal.workoutSnapshot
         recordingLiveGroupSessionID = journal.liveGroupSessionID
         locationManager.restoreTracking(
-            from: points,
+            from: isIndoor ? [] : points,
             segmentStartIndices: segmentStarts,
             activityType: activityType,
-            walkingStepCount: journal.walkingStepCount
+            walkingStepCount: journal.walkingStepCount,
+            isIndoor: isIndoor,
+            indoorDistanceMeters: journal.indoorDistanceMeters ?? 0
         )
-        distanceMeters = locationManager.totalDistanceMeters
+        distanceMeters = locationManager.totalDistanceMeters + (isIndoor ? goalDistanceAdjustmentMeters : 0)
         elevationGainMeters = locationManager.elevationGainMeters
         walkingStepCount = locationManager.walkingStepCount
-        currentPace = locationManager.currentPaceSecsPerKm
+        currentPace = isIndoor ? nil : locationManager.currentPaceSecsPerKm
         state = .paused
         recoveredSession = true
         recoveredAwaitingSave = journal.recoveryStage == .awaitingSave
         recoveredActivityType = activityType
-        routeGuidance = ActiveRouteGuidanceJournal.load(recoverySeed: journal.routeGuidanceRecoverySeed)
+        routeGuidance = isIndoor ? nil : ActiveRouteGuidanceJournal.load(recoverySeed: journal.routeGuidanceRecoverySeed)
         recoveredRouteGuidance = routeGuidance
         routeGuidanceEngine = routeGuidance.flatMap {
             RouteGuidanceEngine(route: $0.route, recoverySeed: $0.recoverySeed)
@@ -954,6 +968,8 @@ final class ActivityRecorder: ObservableObject {
             activityType: activityType,
             liveWorkoutOptions: liveWorkoutOptions,
             workoutSnapshot: recordingWorkoutSnapshot,
+            isIndoor: isIndoor,
+            indoorDistanceMeters: isIndoor ? max(0, distanceMeters - goalDistanceAdjustmentMeters) : nil,
             autoPauseEnabled: autoPauseEnabled,
             walkingStepCount: walkingStepCount,
             cadenceTracker: activityType == .running ? cadenceTracker : nil,
@@ -997,7 +1013,7 @@ final class ActivityRecorder: ObservableObject {
             currentPaceSecsPerKm: currentPace,
             activityType: activityType,
             heartRate: heartRate,
-            location: (location ?? locationManager.location).map { point in
+            location: (isIndoor ? nil : (location ?? locationManager.location)).map { point in
 #if DEBUG
                 // Synthetic route time may run at 60x or jump forward. The live
                 // wire clock records delivery, while stored route time stays synthetic.
@@ -1007,7 +1023,7 @@ final class ActivityRecorder: ObservableObject {
 #endif
             },
             isActive: isActive ?? (state == .active),
-            paceEvidenceTimestamp: locationManager.coachingPaceEvidenceTimestamp,
+            paceEvidenceTimestamp: isIndoor ? nil : locationManager.coachingPaceEvidenceTimestamp,
             movingSeconds: movingSeconds,
             cadenceStepsPerMinute: currentCadenceStepsPerMinute,
             cadenceEvidenceTimestamp: locationManager.runningCadenceReading?.measuredAt

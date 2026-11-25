@@ -20,6 +20,8 @@ struct ActiveSessionJournal {
     let activityType: ActivityType?
     let liveWorkoutOptions: LiveWorkoutSessionOptions?
     let workoutSnapshot: SessionWorkoutRecoverySnapshot?
+    let isIndoor: Bool?
+    let indoorDistanceMeters: Double?
     let autoPauseEnabled: Bool?
     let walkingStepCount: Int?
     let cadenceTracker: RunningCadenceTracker?
@@ -45,6 +47,8 @@ struct ActiveSessionJournal {
         activityType: ActivityType?,
         liveWorkoutOptions: LiveWorkoutSessionOptions? = nil,
         workoutSnapshot: SessionWorkoutRecoverySnapshot? = nil,
+        isIndoor: Bool? = nil,
+        indoorDistanceMeters: Double? = nil,
         autoPauseEnabled: Bool? = nil,
         walkingStepCount: Int? = nil,
         cadenceTracker: RunningCadenceTracker? = nil,
@@ -69,6 +73,8 @@ struct ActiveSessionJournal {
         self.activityType = activityType
         self.liveWorkoutOptions = liveWorkoutOptions
         self.workoutSnapshot = workoutSnapshot
+        self.isIndoor = isIndoor
+        self.indoorDistanceMeters = indoorDistanceMeters
         self.autoPauseEnabled = autoPauseEnabled
         self.walkingStepCount = walkingStepCount
         self.cadenceTracker = cadenceTracker
@@ -100,6 +106,8 @@ struct ActiveSessionJournal {
                 activityType: metadata.activityType,
                 liveWorkoutOptions: metadata.liveWorkoutOptions,
                 workoutSnapshot: metadata.workoutSnapshot,
+                isIndoor: metadata.isIndoor,
+                indoorDistanceMeters: metadata.indoorDistanceMeters,
                 autoPauseEnabled: metadata.autoPauseEnabled,
                 walkingStepCount: metadata.walkingStepCount,
                 cadenceTracker: metadata.cadenceTracker,
@@ -135,6 +143,8 @@ struct ActiveSessionJournal {
             activityType: activityType,
             liveWorkoutOptions: liveWorkoutOptions,
             workoutSnapshot: workoutSnapshot,
+            isIndoor: isIndoor,
+            indoorDistanceMeters: indoorDistanceMeters,
             autoPauseEnabled: autoPauseEnabled,
             walkingStepCount: walkingStepCount,
             cadenceTracker: cadenceTracker,
@@ -198,6 +208,8 @@ struct ActiveSessionJournal {
         let activityType: ActivityType?
         let liveWorkoutOptions: LiveWorkoutSessionOptions?
         var workoutSnapshot: SessionWorkoutRecoverySnapshot? = nil
+        var isIndoor: Bool? = nil
+        var indoorDistanceMeters: Double? = nil
         let autoPauseEnabled: Bool?
         let walkingStepCount: Int?
         let cadenceTracker: RunningCadenceTracker?

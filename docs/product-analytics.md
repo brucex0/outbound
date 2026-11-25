@@ -410,7 +410,7 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 - iOS and Android `live_guidance_speed_change` record `source_type=increase|decrease` and `result=detected|spoken|audio_unavailable` (plus Android `stale` for dropped queued alerts) for independent local speed-change guidance. It excludes raw speed, pace, profile, locations, timestamps, and activity identifiers. The cue-wording and bundled-recording update retains these event names and bounded properties; preparation diagnostics log only ready/expected counts, never scripts or measurements.
 
-- Phone finish/save events include `moving_time_method=gps_observations_v2` to distinguish timestamped stop accounting from the earlier timer-polled implementation. This is an implementation enum, never a location or raw observation.
+- Phone finish/save events use `moving_time_method=gps_observations_v2` for outdoor timestamped stop accounting; iOS explicit Indoor recording uses `indoor_active_duration`. Existing `indoor` and effective `auto_pause_enabled` booleans describe configuration. These bounded implementation values never contain locations, sensor readings or raw observations.
 
 - iOS and Android `activity_share_previewed` include `count_bucket` for the coarse number of geotagged photos eligible for route annotations; it excludes photo content, identifiers, and coordinates. Off-map or unavailable thumbnails may be omitted from the rendered card.
 - iOS and Android post-save sharing reuse `activity_share_previewed` and `activity_share_action` with `source_type=post_save`; preparation failure uses `result=prepare_failed`; Android share-sheet launch failure uses `result=share_failed`. No activity identifiers, exact metrics, or content are included.

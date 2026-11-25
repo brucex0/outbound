@@ -43,7 +43,7 @@ extension ActivityFlowCoordinator {
                     priorActivities: self.dependencies.activityStore.activities,
                     now: summary.endedAt
                 )),
-                .movingTimeMethod: .string("gps_observations_v2"),
+                .movingTimeMethod: .string(self.recorder.isIndoor ? "indoor_active_duration" : "gps_observations_v2"),
                 .elapsedDurationBucket: .string(ProductAnalyticsBucket.duration(
                     seconds: max(summary.durationSecs, Int(summary.endedAt.timeIntervalSince(summary.startedAt)))
                 ))

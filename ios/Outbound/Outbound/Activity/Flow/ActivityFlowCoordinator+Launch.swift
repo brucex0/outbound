@@ -144,7 +144,8 @@ extension ActivityFlowCoordinator {
         // look like it failed while GPS is acquiring a fix.
         self.presentLiveSurface()
         self.recorder.locationManager.prepareForRecording(
-            activityType: self.activeIntent?.resolvedActivityType ?? self.setup.plannedIntent?.resolvedActivityType ?? .running
+            activityType: self.activeIntent?.resolvedActivityType ?? self.setup.plannedIntent?.resolvedActivityType ?? .running,
+            isIndoor: self.setup.isIndoorSession
         )
         guard isFirstEntry else { return }
         self.showSetupToast(String(
@@ -266,6 +267,7 @@ extension ActivityFlowCoordinator {
     func restoreInterruptedSessionIfNeeded() {
         guard self.recorder.recoveredSession, !self.didRestoreSession else { return }
         self.didRestoreSession = true
+        self.setup.isIndoorSession = self.recorder.isIndoor
         ActivityDiagnosticLog.notice(
             .recovery,
             "Recovery presentation requested stage=\(self.recorder.recoveredAwaitingSave ? "awaiting_save" : "recording") route_selected=\(self.recorder.recoveredRouteGuidance != nil)"
@@ -519,12 +521,14 @@ extension ActivityFlowCoordinator {
 #if DEBUG
         if !self.isRunSimulationEnabled {
             self.recorder.locationManager.prepareForRecording(
-                activityType: self.activeIntent?.resolvedActivityType ?? .running
+                activityType: self.activeIntent?.resolvedActivityType ?? .running,
+                isIndoor: self.setup.isIndoorSession
             )
         }
 #else
         self.recorder.locationManager.prepareForRecording(
-            activityType: self.activeIntent?.resolvedActivityType ?? .running
+            activityType: self.activeIntent?.resolvedActivityType ?? .running,
+            isIndoor: self.setup.isIndoorSession
         )
 #endif
         self.guide.setSpeechEnabled(self.voiceGuideSpeechEnabled)
@@ -625,7 +629,7 @@ extension ActivityFlowCoordinator {
             return
         }
         self.isWaitingForLocation = false
-        let routeGuidance = self.activeIntent?.preparedRoute.map {
+        let routeGuidance = (self.setup.isIndoorSession ? nil : self.activeIntent?.preparedRoute).map {
             ActiveRouteGuidanceJournal(route: $0, recoverySeed: nil)
         }
         self.startRecorder(routeGuidance: routeGuidance)
@@ -643,7 +647,7 @@ extension ActivityFlowCoordinator {
         }
 
         self.recordStartedGoalMode()
-        if let route = self.activeIntent?.preparedRoute {
+        if !self.setup.isIndoorSession, let route = self.activeIntent?.preparedRoute {
             self.track(.init(.routeNavigationStarted, properties: [
                 .sourceType: .string(route.source.rawValue),
                 .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: self.preparedRouteDistance(route))),
@@ -702,6 +706,7 @@ extension ActivityFlowCoordinator {
         self.recorder.start(
             activityType: self.activeIntent?.resolvedActivityType ?? .running,
             movingTimeDetectionEnabled: !self.setup.isIndoorSession,
+            isIndoor: self.setup.isIndoorSession,
             autoPauseEnabled: self.autoPauseEnabled(for: self.activeIntent?.resolvedActivityType ?? .running),
             routeGuidance: routeGuidance,
             canonicalStartDate: canonicalStartDate,

@@ -217,7 +217,7 @@ extension ActivityFlowCoordinator {
             .goalType: .string(self.analyticsGoalType),
             .targetBucket: .string(self.analyticsTargetBucket(for: intent.activityGoal)),
             .musicEnabled: .boolean(self.musicWasConfigured),
-            .routeSelected: .boolean(self.activeIntent?.preparedRoute != nil),
+            .routeSelected: .boolean(!self.setup.isIndoorSession && self.activeIntent?.preparedRoute != nil),
             .shoeSelected: .boolean(self.setup.selectedSessionShoe != nil),
             .preRunPhotoAdded: .boolean(self.preActivityPhoto != nil),
             .groupRunEnabled: .boolean(self.dependencies.liveGroupStore.isSharing || self.activeIntent?.activityEvent != nil),

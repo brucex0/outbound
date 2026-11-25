@@ -160,7 +160,7 @@ extension ActivityFlowView {
 
     var launchAutoPauseControl: AnyView {
         let activityType = model.setup.setupActivityType
-        guard [.running, .cycling, .walking, .hiking].contains(activityType) else {
+        guard !model.setup.isIndoorSession, [.running, .cycling, .walking, .hiking].contains(activityType) else {
             return AnyView(EmptyView())
         }
         let enabled = model.autoPauseEnabled(for: activityType)

@@ -16,6 +16,7 @@ struct LiveMapView: View {
     @ObservedObject var musicStore: MusicStore
     let intent: SessionIntent?
     var locationPermissionUnavailable = false
+    var isIndoorSession = false
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
@@ -425,6 +426,7 @@ struct LiveMapView: View {
     }
 
     private var plannedRouteCoordinates: [CLLocationCoordinate2D] {
+        guard !isIndoorSession else { return [] }
         if !recorder.routeGuidanceCoordinates.isEmpty {
             return recorder.routeGuidanceCoordinates
         }
@@ -486,7 +488,7 @@ struct LiveMapView: View {
     }
 
     private func trackRouteDisplayIfNeeded() {
-        guard !hasTrackedRouteDisplay, let route = intent?.preparedRoute else { return }
+        guard !isIndoorSession, !hasTrackedRouteDisplay, let route = intent?.preparedRoute else { return }
         hasTrackedRouteDisplay = true
         track(.init(.routeDisplayed, properties: [.sourceType: .string(route.source.rawValue)]))
     }

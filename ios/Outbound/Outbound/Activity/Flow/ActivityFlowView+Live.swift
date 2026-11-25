@@ -41,6 +41,7 @@ extension ActivityFlowView {
                     musicStore: model.dependencies.musicStore,
                     intent: model.activeIntent ?? model.setup.plannedIntent,
                     locationPermissionUnavailable: model.showsLiveLocationPermissionWarning,
+                    isIndoorSession: model.setup.isIndoorSession,
                     capturedPhotoCount: model.live.capturedPhotos.count,
                     lastCapturedPhoto: model.live.capturedPhotos.last?.0,
                     activePage: binding(\.live.activePage),
@@ -166,15 +167,17 @@ extension ActivityFlowView {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Toggle(String(localized: "session.options.auto_pause", defaultValue: "Auto-pause when stopped"), isOn: Binding(
-                get: { model.recorder.autoPauseEnabled },
-                set: { enabled in
-                    model.recorder.setLiveAutoPauseEnabled(enabled)
-                    model.trackLiveOption("auto_pause", enabled: enabled)
-                }
-            ))
-            .frame(minHeight: 44)
-            .accessibilityIdentifier("LiveAutoPause")
+            if !model.recorder.isIndoor {
+                Toggle(String(localized: "session.options.auto_pause", defaultValue: "Auto-pause when stopped"), isOn: Binding(
+                    get: { model.recorder.autoPauseEnabled },
+                    set: { enabled in
+                        model.recorder.setLiveAutoPauseEnabled(enabled)
+                        model.trackLiveOption("auto_pause", enabled: enabled)
+                    }
+                ))
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("LiveAutoPause")
+            }
             if [.distance, .time, .calories].contains(model.liveGoalMode) {
                 Toggle(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"), isOn: Binding(
                     get: { model.recorder.liveWorkoutOptions?.pauseAtGoalEnabled ?? model.autoStopAtGoalEnabled },

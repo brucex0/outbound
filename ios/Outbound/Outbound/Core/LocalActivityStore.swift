@@ -1074,7 +1074,8 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     /// durationSecs is moving time; timestamps retain the complete outing.
     var elapsedDurationSecs: Int { max(durationSecs, Int(endedAt.timeIntervalSince(startedAt))) }
 
-    var routePoints: [SavedRoutePoint] { route?.points ?? [] }
+    // Indoor fixes describe GPS drift, not a traveled route. Retain raw storage.
+    var routePoints: [SavedRoutePoint] { indoor?.isIndoor == true ? [] : (route?.points ?? []) }
     var routeCoordinates: [CLLocationCoordinate2D] { routePoints.map(\.coordinate) }
     var routeCoordinateSegments: [[CLLocationCoordinate2D]] {
         guard !routePoints.isEmpty else { return [] }

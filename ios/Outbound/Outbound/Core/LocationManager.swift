@@ -83,6 +83,7 @@ final class LocationManager: NSObject, ObservableObject {
     private var wantsTracking = false
     private var isManuallyPaused = false
     private var isLocationDeliverySuspended = false
+    private var isIndoorTracking = false
     private var wantsPreparation = false
     private var wantsOneShotLocation = false
     private var isAutoPauseProbing = false
@@ -180,6 +181,7 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     var currentSpeedMetersPerSecond: Double? {
+        guard !isIndoorTracking else { return nil }
 #if DEBUG
         if isSimulatingLocations { return simulatedSpeedMetersPerSecond }
 #endif
@@ -228,6 +230,7 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     func requestCurrentLocation() {
+        guard !isIndoorTracking || !wantsTracking else { return }
         wantsOneShotLocation = true
         switch manager.authorizationStatus {
         case .notDetermined:
@@ -243,10 +246,15 @@ final class LocationManager: NSObject, ObservableObject {
 
     /// Starts high-accuracy acquisition during the visible countdown so the
     /// first recorded point can use a warm, recent fix.
-    func prepareForRecording(activityType: ActivityType) {
+    func prepareForRecording(activityType: ActivityType, isIndoor: Bool = false) {
+        if isIndoor {
+            cancelPreparation()
+            return
+        }
 #if DEBUG
         guard !isSimulatingLocations else { return }
 #endif
+        isIndoorTracking = false
         self.activityType = activityType
         configureFilters(for: activityType)
         wantsPreparation = true
@@ -270,7 +278,8 @@ final class LocationManager: NSObject, ObservableObject {
         manager.stopUpdatingLocation()
     }
 
-    func startTracking(activityType: ActivityType = .running) {
+    func startTracking(activityType: ActivityType = .running, isIndoor: Bool = false) {
+        isIndoorTracking = isIndoor
 #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData"),
            ProcessInfo.processInfo.arguments.contains("-OutboundUITestLiveLocationSingleFix") {
@@ -291,7 +300,7 @@ final class LocationManager: NSObject, ObservableObject {
         isSimulatingLocations = false
         simulatedSpeedMetersPerSecond = nil
 #endif
-        let warmLocation = preparedLocation.flatMap { candidate in
+        let warmLocation = (isIndoor ? nil : preparedLocation).flatMap { candidate in
             let age = abs(Date().timeIntervalSince(candidate.timestamp))
             return age <= maximumPreparationLocationAgeSeconds && candidate.horizontalAccuracy <= 30
                 ? candidate
@@ -310,6 +319,12 @@ final class LocationManager: NSObject, ObservableObject {
         wantsPreparation = false
         preparedLocation = nil
         startPedometerIfAvailable()
+        if isIndoor {
+            location = nil
+            signalQuality = .unavailable
+            manager.stopUpdatingLocation()
+            return
+        }
 
         if let warmLocation {
             beginSegment(with: warmLocation)
@@ -341,6 +356,10 @@ final class LocationManager: NSObject, ObservableObject {
 #if DEBUG
         guard !isSimulatingLocations else { return }
 #endif
+        guard !isIndoorTracking else {
+            manager.stopUpdatingLocation()
+            return
+        }
         let shouldDeliver = isLocationPermissionGranted
             && (wantsPreparation || (wantsTracking && !isManuallyPaused))
         guard shouldDeliver else {
@@ -382,6 +401,12 @@ final class LocationManager: NSObject, ObservableObject {
 
     func pauseTracking() {
         guard wantsTracking else { return }
+        if isIndoorTracking {
+            let motionTail = pendingMotionGapDistance
+            accumulatedDistanceMeters += motionTail
+            motionAssistedDistanceMeters += motionTail
+            pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
+        }
         isManuallyPaused = true
         manager.stopUpdatingLocation()
         stopPedometer()
@@ -390,7 +415,7 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     func beginAutoPauseProbing() {
-        guard wantsTracking, !isAutoPauseProbing else { return }
+        guard wantsTracking, !isIndoorTracking, !isAutoPauseProbing else { return }
         isAutoPauseProbing = true
         probeLocations = []
         probeFilter = LocationTrackFilter(activityType: activityType)
@@ -438,6 +463,7 @@ final class LocationManager: NSObject, ObservableObject {
         )
         motionAssistedDistanceMeters += motionTail
         wantsTracking = false
+        isIndoorTracking = false
         isManuallyPaused = false
         isLocationDeliverySuspended = false
         wantsPreparation = false
@@ -457,13 +483,17 @@ final class LocationManager: NSObject, ObservableObject {
         from points: [CLLocation],
         segmentStartIndices restoredSegmentStarts: Set<Int> = [],
         activityType: ActivityType = .running,
-        walkingStepCount restoredWalkingStepCount: Int? = nil
+        walkingStepCount restoredWalkingStepCount: Int? = nil,
+        isIndoor: Bool = false,
+        indoorDistanceMeters: Double = 0
     ) {
 #if DEBUG
         isSimulatingLocations = false
         simulatedSpeedMetersPerSecond = nil
 #endif
         self.activityType = activityType
+        isIndoorTracking = isIndoor
+        if isIndoor { resetRecordingState(preserving: nil) }
         accumulatedWalkingStepCount = max(0, restoredWalkingStepCount ?? 0)
         walkingStepCount = activityType == .walking ? restoredWalkingStepCount : nil
         configureFilters(for: activityType)
@@ -474,6 +504,10 @@ final class LocationManager: NSObject, ObservableObject {
             : restoredSegmentStarts
         accumulatedDistanceMeters = locationSegments.reduce(0) { total, segment in
             total + zip(segment, segment.dropFirst()).reduce(0) { $0 + $1.0.distance(from: $1.1) }
+        }
+        if isIndoor {
+            accumulatedDistanceMeters = max(0, indoorDistanceMeters)
+            motionAssistedDistanceMeters = accumulatedDistanceMeters
         }
         elevationAccumulator.reset()
         for segment in locationSegments {
@@ -522,6 +556,7 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     var currentPaceSecsPerKm: Double? {
+        guard !isIndoorTracking else { return nil }
 #if DEBUG
         if let testCurrentPaceSecsPerKm { return testCurrentPaceSecsPerKm }
         if isSimulatingLocations,
@@ -603,6 +638,10 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     private var pendingMotionGapDistance: Double {
+        if isIndoorTracking {
+            guard wantsTracking, !isManuallyPaused, supportsPedometerDistance else { return 0 }
+            return max(0, pedometerDistanceMeters - pedometerDistanceAtLastTrackPoint)
+        }
         guard wantsTracking,
               !isAutoPauseProbing,
               supportsPedometerDistance,
@@ -761,7 +800,8 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     private func handleLocation(_ newLocation: CLLocation, allowsMotionBridge: Bool) {
-        guard !wantsTracking || (!isManuallyPaused && isLocationPermissionGranted) else { return }
+        guard !isIndoorTracking,
+              !wantsTracking || (!isManuallyPaused && isLocationPermissionGranted) else { return }
         updateSignalQuality(using: newLocation)
         guard isPublishable(newLocation) else {
             if wantsTracking { rejectedLocationCount += 1 }
@@ -910,6 +950,7 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     func startSimulatedTracking(activityType: ActivityType = .running) {
+        isIndoorTracking = false
         manager.stopUpdatingLocation()
         clearTestOverrides()
         isSimulatingLocations = true

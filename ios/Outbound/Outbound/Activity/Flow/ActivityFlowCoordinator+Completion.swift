@@ -47,7 +47,7 @@ extension ActivityFlowCoordinator {
             activityType: savedActivityType,
             weightKilograms: self.dependencies.onboardingStore.latestWeightKilograms
         ).kilocalories
-        let followedRoute = self.activeIntent?.preparedRoute.map { route in
+        let followedRoute = (self.recorder.isIndoor ? nil : self.activeIntent?.preparedRoute).map { route in
             FollowedRouteMetadata(
                 route: route,
                 finalProgress: resolvedActivity.summary.routeGuidance?.progressFraction ?? 0,
@@ -71,7 +71,7 @@ extension ActivityFlowCoordinator {
                 title: self.savedActivityTitle(for: savedActivityType),
                 source: .outboundRecorded,
                 gear: savedActivityType == .running ? self.dependencies.gearStore.attachment(for: self.setup.selectedSessionShoe) : nil,
-                indoor: self.setup.isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
+                indoor: self.recorder.isIndoor ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
                 heartRateZones: resolvedActivity.summary.heartRateZones,
                 recordingSession: self.resolvedRecordingSession(for: resolvedActivity.summary),
                 // The recording session owns attribution; unrelated Social state may change.
@@ -100,16 +100,16 @@ extension ActivityFlowCoordinator {
         AppReviewRequestPolicy.recordSuccessfulSave(id: savedActivity.id)
         ActivityDiagnosticLog.notice(.persistence, "Post-run save completed local_state=durable")
         var savedProperties = self.outcomeProperties(for: resolvedActivity.summary)
-        savedProperties[.movingTimeMethod] = .string("gps_observations_v2")
+        savedProperties[.movingTimeMethod] = .string(self.recorder.isIndoor ? "indoor_active_duration" : "gps_observations_v2")
         savedProperties[.elapsedDurationBucket] = .string(ProductAnalyticsBucket.duration(seconds: max(resolvedActivity.summary.durationSecs, Int(resolvedActivity.summary.endedAt.timeIntervalSince(resolvedActivity.summary.startedAt)))))
         savedProperties[.activityType] = .string(savedActivityType.rawValue)
         savedProperties[.goalType] = .string(self.analyticsGoalType)
         savedProperties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(photos.count))
         savedProperties[.musicEnabled] = .boolean(self.musicWasConfigured)
-        savedProperties[.routeSelected] = .boolean(self.activeIntent?.preparedRoute != nil)
+        savedProperties[.routeSelected] = .boolean(!self.recorder.isIndoor && self.activeIntent?.preparedRoute != nil)
         savedProperties[.shoeSelected] = .boolean(self.setup.selectedSessionShoe != nil)
         savedProperties[.groupRunEnabled] = .boolean(self.activityStartedWithGroupRun)
-        savedProperties[.indoor] = .boolean(self.setup.isIndoorSession)
+        savedProperties[.indoor] = .boolean(self.recorder.isIndoor)
         savedProperties[.dogCompanionEnabled] = .boolean(self.activeIntent?.resolvedActivityType.ineligibleForCompanion != true && self.setup.companionType != nil)
         self.track(.init(.activitySaved, properties: savedProperties))
         if let followedRoute {
@@ -247,6 +247,7 @@ extension ActivityFlowCoordinator {
         self.setup.selectedRouteDistanceMeters = nil
         self.setup.selectedGuidanceChallenge = .off
         self.dependencies.phoneWorkoutCoordinator.clearCompletedSession()
+        self.recorder.clearCompletedSession()
 #if DEBUG
         self.isRunSimulationEnabled = false
 #endif
