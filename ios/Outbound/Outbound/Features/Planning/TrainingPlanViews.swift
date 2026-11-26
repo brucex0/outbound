@@ -869,16 +869,14 @@ struct PlanCompletedActivityLink: View {
             if activity != nil {
                 activityAction
             } else if canLinkUnrecordedWorkout(workout, store: trainingPlanStore, activities: activityStore) {
-                PlannedWorkoutCompletionControls(workout: workout, linkOnly: true, onSuccess: onLinkSaved)
+                PlannedWorkoutCompletionControls(workout: workout, linkOnly: true, actionPresentation: .cardText, onSuccess: onLinkSaved)
             } else {
                 // A canonical association may arrive before its local activity.
                 // Never offer a replacement link just because hydration is pending.
                 Button { } label: {
                     Text(String(localized: "today.workout.view_activity", defaultValue: "View activity"))
                 }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                .frame(minHeight: 44)
+                .outboundSecondaryActionStyle(.cardText)
                 .disabled(true)
                 .accessibilityLabel(String(localized: "plan.workout.view_activity.accessibility", defaultValue: "View completed activity"))
                 .accessibilityHint(String(localized: "plan.workout.activity_unavailable", defaultValue: "The linked activity is not available on this device yet."))
@@ -898,9 +896,7 @@ struct PlanCompletedActivityLink: View {
                     Label(String(localized: "plan.workout.view_activity", defaultValue: "View"), systemImage: "checkmark.circle.fill")
                 }
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-            .frame(minHeight: 44)
+            .outboundSecondaryActionStyle(content == .todayFooter ? .cardText : .bordered)
             .accessibilityLabel(String(localized: "plan.workout.view_activity.accessibility", defaultValue: "View completed activity"))
             .simultaneousGesture(TapGesture().onEnded {
                 Task {

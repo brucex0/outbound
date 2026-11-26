@@ -250,6 +250,7 @@ struct NutritionBetaEntry: View {
     var context: NutritionWorkoutContext? = nil
     var opensJournal = false
     var opensGuidance = false
+    var actionPresentation: OutboundSecondaryActionPresentation = .bordered
     private var calendar: Calendar { planStore.nutritionCalendar }
 
     var body: some View {
@@ -276,9 +277,14 @@ struct NutritionBetaEntry: View {
             }.buttonStyle(.plain)
         } else {
             Button(action: open) {
-                Label(NutritionText.value(opensGuidance ? "title" : "food_fueling"), systemImage: "fork.knife")
-                    .fixedSize(horizontal: false, vertical: true)
-            }.nutritionSecondary()
+                if actionPresentation == .cardText {
+                    Text(NutritionText.value(opensGuidance ? "title" : "food_fueling"))
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Label(NutritionText.value(opensGuidance ? "title" : "food_fueling"), systemImage: "fork.knife")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }.outboundSecondaryActionStyle(actionPresentation)
         }
     }
     private func open() {

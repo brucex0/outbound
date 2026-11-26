@@ -29,6 +29,7 @@ func canLinkUnrecordedWorkout(_ workout: TrainingPlanWorkout, store: TrainingPla
 struct PlannedWorkoutCompletionControls: View {
     let workout: TrainingPlanWorkout
     var linkOnly = false
+    var actionPresentation: OutboundSecondaryActionPresentation = .bordered
     var onSuccess: (() -> Void)? = nil
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var activityStore: ActivityStore
@@ -58,8 +59,7 @@ struct PlannedWorkoutCompletionControls: View {
                 }
                 if busy && !linkOnly { ProgressView().accessibilityLabel(Text(manualCompletionText("loading"))) }
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+            .outboundSecondaryActionStyle(actionPresentation)
             .disabled(busy)
             .sheet(isPresented: $choosing) { candidateSheet }
             .confirmationDialog(manualCompletionText(confirming == "undo" ? "undo_title" : "manual_title"), isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible) {

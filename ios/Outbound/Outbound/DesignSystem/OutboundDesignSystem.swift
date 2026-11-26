@@ -248,6 +248,41 @@ extension View {
     }
 }
 
+/// Text-only card actions are an explicit presentation choice; other secondary
+/// product actions retain their native bordered treatment.
+enum OutboundSecondaryActionPresentation: Equatable {
+    case bordered
+    case cardText
+}
+
+private struct OutboundCardTextButtonStyle: ButtonStyle {
+    @Environment(\.outboundTheme) private var theme
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(theme.accentColor)
+            .padding(.horizontal, OutboundSpacing.compact)
+            .outboundTapTarget()
+            .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.4)
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func outboundSecondaryActionStyle(_ presentation: OutboundSecondaryActionPresentation) -> some View {
+        switch presentation {
+        case .bordered:
+            buttonStyle(.bordered)
+                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                .frame(minHeight: 44)
+        case .cardText:
+            buttonStyle(OutboundCardTextButtonStyle())
+        }
+    }
+}
+
 struct OutboundTooltip: View {
     let text: String
     let onDismiss: () -> Void

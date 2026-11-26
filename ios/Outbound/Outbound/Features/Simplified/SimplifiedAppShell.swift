@@ -1582,7 +1582,7 @@ private struct SimplifiedTodayView: View {
 
             if !trainingPlanStore.isScheduledRestDay && !isPlannedWorkoutCardMinimized {
                 ScrollView(.horizontal) {
-                    HStack(spacing: OutboundSpacing.compact) { plannedWorkoutActions }
+                    HStack(alignment: .firstTextBaseline, spacing: OutboundSpacing.compact) { plannedWorkoutActions }
                         .fixedSize(horizontal: true, vertical: false)
                 }
                 .scrollIndicators(.hidden)
@@ -1597,11 +1597,9 @@ private struct SimplifiedTodayView: View {
     @ViewBuilder private var plannedWorkoutActions: some View {
         if trainingPlanStore.completedPlannedWorkoutToday == nil && !hasCompletedPlannedWorkoutForEditing {
             Button(action: openWorkoutChange) {
-                Label(String(localized: "today.change", defaultValue: "Change"), systemImage: "pencil")
+                Text(String(localized: "today.change", defaultValue: "Change"))
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-            .frame(minHeight: 44)
+            .outboundSecondaryActionStyle(.cardText)
             .accessibilityIdentifier("todayDirectEdit")
         }
 
@@ -1611,7 +1609,7 @@ private struct SimplifiedTodayView: View {
             })
         }
 
-        NutritionBetaEntry(context: plannedNutritionContext, opensGuidance: true)
+        NutritionBetaEntry(context: plannedNutritionContext, opensGuidance: true, actionPresentation: .cardText)
             .accessibilityIdentifier("todayNutrition")
     }
 
