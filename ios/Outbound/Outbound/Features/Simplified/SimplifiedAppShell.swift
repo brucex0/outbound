@@ -947,6 +947,7 @@ struct SharedActivityEventButton<Label: View>: View {
 }
 
 private struct SimplifiedTodayView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var activityFlowStore: ActivityFlowStore
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
@@ -1066,24 +1067,33 @@ private struct SimplifiedTodayView: View {
             .toolbar {
                 if activitySessionState == .idle {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button(stretchUI("entry")) { showsStretch = true }
-                            .font(.subheadline.weight(.semibold))
-                            .accessibilityIdentifier("today.stretch")
+                        Button { showsStretch = true } label: {
+                            Text(stretchUI("entry"))
+                                .font(.subheadline.weight(.semibold))
+                                .outboundMapToolbarSurface(colorScheme: colorScheme, horizontalPadding: OutboundSpacing.standard)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("today.stretch")
                     }
+                    .outboundMapToolbarBackground()
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    GlobalConditionsButton()
+                    GlobalConditionsButton(mapToolbarColorScheme: colorScheme)
                         .accessibilityIdentifier("today.conditions")
                 }
+                .outboundMapToolbarBackground()
                 ToolbarItem(placement: .topBarTrailing) {
                     socialInboxButton(entrySource: "today")
                         .accessibilityIdentifier("today.inbox")
                 }
+                .outboundMapToolbarBackground()
                 if showsActivityOverflowMenu, activitySessionState == .idle {
                     ToolbarItem(placement: .topBarTrailing) {
                         activityOverflowMenu
+                            .outboundMapToolbarSurface(colorScheme: colorScheme)
                             .accessibilityIdentifier("today.overflow")
                     }
+                    .outboundMapToolbarBackground()
                 }
             }
             .onAppear {
@@ -1258,7 +1268,9 @@ private struct SimplifiedTodayView: View {
             }
         } label: {
             NotificationCenterIcon(count: notificationCenterBadgeCount)
+                .outboundMapToolbarSurface(colorScheme: colorScheme)
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "app.notifications.destination", defaultValue: "Notification Center"))
         .accessibilityValue(notificationCenterAccessibilityValue(count: notificationCenterBadgeCount))
     }
@@ -1270,6 +1282,7 @@ private struct SimplifiedTodayView: View {
     private var activityOverflowMenu: some View {
         StableActivityMenu(photo: preActivityPhoto, hasRoute: preActivityRoute != nil,
                            accessibilityValue: activityOverflowAccessibilityValue,
+                           usesReadableMapTint: true,
                            onAction: performActivityOverflowAction)
         .startupUIStabilityDiagnostics("today_overflow")
         .coordinatedTooltip(
@@ -2376,32 +2389,21 @@ struct GlobalConditionsButton: View {
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @State private var showsDetails = false
+    var mapToolbarColorScheme: ColorScheme? = nil
 
+    @ViewBuilder
     var body: some View {
+        if mapToolbarColorScheme != nil {
+            conditionsButton.buttonStyle(.plain)
+        } else {
+            conditionsButton
+        }
+    }
+
+    private var conditionsButton: some View {
         Button { showsDetails = true } label: {
-            if let snapshot = weatherStore.snapshot {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 4) {
-                        Image(systemName: snapshot.symbolName)
-                        if let placeName = snapshot.placeName {
-                            Text(placeName)
-                        }
-                        Text(snapshot.temperatureLabel(unit: measurementPreferences.temperatureUnit))
-                            .monospacedDigit()
-                    }
-                    HStack(spacing: 3) {
-                        Image(systemName: snapshot.symbolName)
-                        Text(snapshot.temperatureLabel(unit: measurementPreferences.temperatureUnit))
-                            .monospacedDigit()
-                    }
-                }
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-            } else if weatherStore.isLoading {
-                ProgressView().controlSize(.small)
-            } else {
-                Image(systemName: "location.circle")
-            }
+            conditionsLabel
+                .outboundMapToolbarSurface(colorScheme: mapToolbarColorScheme, horizontalPadding: OutboundSpacing.compact)
         }
         .accessibilityLabel(accessibilityLabel)
         .sheet(isPresented: $showsDetails) {
@@ -2413,6 +2415,33 @@ struct GlobalConditionsButton: View {
                 onRefresh: { weatherStore.refresh(force: true) }
             )
             .presentationDetents([.medium])
+        }
+    }
+
+    @ViewBuilder
+    private var conditionsLabel: some View {
+        if let snapshot = weatherStore.snapshot {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 4) {
+                    Image(systemName: snapshot.symbolName)
+                    if let placeName = snapshot.placeName {
+                        Text(placeName)
+                    }
+                    Text(snapshot.temperatureLabel(unit: measurementPreferences.temperatureUnit))
+                        .monospacedDigit()
+                }
+                HStack(spacing: 3) {
+                    Image(systemName: snapshot.symbolName)
+                    Text(snapshot.temperatureLabel(unit: measurementPreferences.temperatureUnit))
+                        .monospacedDigit()
+                }
+            }
+            .font(.caption.weight(.semibold))
+            .lineLimit(1)
+        } else if weatherStore.isLoading {
+            ProgressView().controlSize(.small)
+        } else {
+            Image(systemName: "location.circle")
         }
     }
 

@@ -20,7 +20,7 @@ Measure decisions and outcomes, not every tap. An event must support a product d
 
 ## Map presentation context
 
-Existing iOS and Android events include the bounded shared context `map_appearance=light` to identify the always-light basemap policy during rollout. This is a fixed presentation policy, not a screen-view or render-success signal; it contains no location, theme preference, coordinates, or map content.
+Existing iOS and Android events include the bounded shared context `map_appearance=light` to identify the always-light basemap policy during rollout. This describes the basemap only; toolbar, weather, and other surrounding controls follow the selected app appearance and theme. Correcting their theme rendering retains existing interaction events without adding a render event. This is a fixed presentation policy, not a screen-view or render-success signal; it contains no location, theme preference, coordinates, or map content.
 
 ## Current State
 

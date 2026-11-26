@@ -13,6 +13,7 @@ Open this when adding, changing, or applying an app theme or editing appearance 
 
 - All basemaps remain light regardless of System, Light, or Dark app appearance. Surrounding controls, sheets, cards, and navigation retain the selected appearance and palette.
 - iOS scopes `outboundMapAppearance()` to SwiftUI map leaves and uses `OutboundMapAppearance` for UIKit maps and snapshot options. Do not apply a preferred color scheme to a map screen or hosting controller to enforce this rule.
+- Today’s transparent iOS navigation toolbar gives Stretch, weather, inbox, and photo overflow compact opaque `OutboundPalette.surface` backgrounds with readable semantic primary foregrounds, explicitly using the surrounding app’s color scheme. The native overflow opts into the matching resolved UIKit label tint while preserving its theme-colored photo border. iOS 26 native shared toolbar backgrounds are hidden for these items so map-backdrop sampling cannot determine their appearance. The weather surface is Today-only; Me retains its standard toolbar. Do not rely on `toolbarColorScheme` while the navigation-bar background is hidden. Android’s Today controls remain siblings of the map and consume the app’s Material theme.
 - Android uses `PlainstrideMapAppearance.colorScheme` for every Compose Google Map and its options for share-card MapViews. Route, participant, and photo overlays retain their existing styling.
 - Social route-preview cache keys include the light-map revision so cached dark snapshots are regenerated.
 

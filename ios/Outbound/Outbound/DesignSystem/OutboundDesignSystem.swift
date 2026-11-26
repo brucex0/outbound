@@ -246,6 +246,44 @@ extension View {
         frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
     }
+
+    /// A compact app-owned surface over a map, independent of native backdrop sampling.
+    /// Pass the surrounding screen's appearance; nil leaves non-map consumers unchanged.
+    func outboundMapToolbarSurface(colorScheme: ColorScheme?, horizontalPadding: CGFloat = 0) -> some View {
+        modifier(OutboundMapToolbarSurface(colorScheme: colorScheme, horizontalPadding: horizontalPadding))
+    }
+}
+
+private struct OutboundMapToolbarSurface: ViewModifier {
+    let colorScheme: ColorScheme?
+    let horizontalPadding: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let colorScheme {
+            content
+                .padding(.horizontal, horizontalPadding)
+                .outboundTapTarget()
+                .foregroundStyle(OutboundPalette.primaryText)
+                .tint(OutboundPalette.primaryText)
+                .background(OutboundPalette.surface, in: Capsule())
+                .environment(\.colorScheme, colorScheme)
+        } else {
+            content
+        }
+    }
+}
+
+extension ToolbarContent {
+    /// Map controls provide their own opaque, themed surface instead of native glass.
+    @ToolbarContentBuilder
+    func outboundMapToolbarBackground() -> some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
+    }
 }
 
 struct OutboundTooltip: View {

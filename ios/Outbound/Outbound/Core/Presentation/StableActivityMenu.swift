@@ -7,6 +7,7 @@ struct StableActivityMenu: UIViewRepresentable {
     let photo: UIImage?
     let hasRoute: Bool
     let accessibilityValue: String
+    var usesReadableMapTint: Bool = false
     let onAction: (ActivityOverflowAction) -> Void
     @Environment(\.outboundTheme) private var theme
     @Environment(\.locale) private var locale
@@ -54,12 +55,14 @@ struct StableActivityMenu: UIViewRepresentable {
         coordinator.onAction = onAction
         button.accessibilityLabel = String(localized: "record.more_actions", defaultValue: "More activity options", locale: locale)
         button.accessibilityValue = accessibilityValue
-        let tint = UIColor(theme.accentColor)
+        let traits = UITraitCollection(userInterfaceStyle: colorScheme == .dark ? .dark : .light)
+        let tint = usesReadableMapTint
+            ? UIColor.label.resolvedColor(with: traits)
+            : UIColor(theme.accentColor)
         if button.tintColor != tint { button.tintColor = tint }
         if let image = button.viewWithTag(1) as? UIImageView {
             image.image = photo
             image.isHidden = photo == nil
-            let traits = UITraitCollection(userInterfaceStyle: colorScheme == .dark ? .dark : .light)
             image.layer.borderColor = UIColor(theme.actionColor).resolvedColor(with: traits).cgColor
         }
         button.viewWithTag(2)?.isHidden = photo == nil
