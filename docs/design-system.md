@@ -16,6 +16,14 @@ Read before changing iOS or Android UI. This is the entry point; [themes.md](the
 - Localize display strings and accessibility labels. Today uses icon-only circular launch controls and sport selectors with localized accessibility labels and state. Standalone setup and manual goal options retain text-only pills. Transient API feedback uses toasts.
 - For contextual secondary actions beside a named item (such as Change plan and End plan), use compact native bordered buttons in a leading-aligned row below the item's name. Use a filled native or shared primary button for the main next step. Avoid text-link styling for product actions; use the theme action/accent for neutral actions and semantic destructive color for destructive actions. Preserve at least 44 pt on iOS and 48 dp on Android touch targets. Let labels wrap and the row reflow naturally for large text, narrow screens, and longer translations. Use a full-width primary next step only when the layout explicitly needs it.
 
+## Goal preset choices
+
+- iOS route-distance and manual Distance, Time, and Calories editors use `OutboundGoalPresetButton` in `OutboundGoalPresetFlow`.
+- Keep semantic subheadline text at its Dynamic Type size; wrap labels and reflow choices at narrow widths instead of shrinking text or fixing the pill height.
+- Apply compact visible padding and capsule fill before the minimum 44 × 44 pt touch target. Do not combine the preset with native bordered-button padding.
+- Unselected choices use primary text on a neutral system background. Selected choices use the theme action/foreground pair plus a checkmark and selected accessibility trait. Route-distance presets retain their draft-only shortcut semantics.
+- Styling does not change goal values, conversions, draft/apply/cancel behavior, or existing analytics.
+
 ## UI review checklist
 
 Include the results in the completion report; mark unperformed checks explicitly.

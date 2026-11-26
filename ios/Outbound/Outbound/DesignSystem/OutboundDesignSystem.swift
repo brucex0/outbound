@@ -462,3 +462,97 @@ struct WorkoutPhaseSummary: View {
         }
     }
 }
+
+/// Compact goal choices keep the filled surface separate from the 44 pt hit area.
+struct OutboundGoalPresetButton: View {
+    @Environment(\.outboundTheme) private var theme
+    let title: String
+    var isSelected = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: OutboundSpacing.compact) {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.bold))
+                        .accessibilityHidden(true)
+                }
+                Text(title)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.subheadline.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .foregroundStyle(isSelected ? theme.actionForegroundColor : Color.primary)
+            .padding(.horizontal, OutboundSpacing.standard)
+            .padding(.vertical, OutboundSpacing.compact)
+            .background(isSelected ? theme.actionColor : Color(.secondarySystemBackground), in: Capsule())
+            .outboundTapTarget()
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+struct OutboundGoalPresetFlow: Layout {
+    let horizontalSpacing: CGFloat
+    let verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        let rows = arrangedRows(in: maxWidth, subviews: subviews)
+        let width = rows.reduce(0) { max($0, $1.width) }
+        let height = rows.enumerated().reduce(CGFloat.zero) { total, item in
+            total + item.element.height + (item.offset == 0 ? 0 : verticalSpacing)
+        }
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var origin = bounds.origin
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(ProposedViewSize(width: min(bounds.width, subview.sizeThatFits(.unspecified).width), height: nil))
+            let wouldOverflow = origin.x > bounds.minX && origin.x + size.width > bounds.maxX
+            if wouldOverflow {
+                origin.x = bounds.minX
+                origin.y += rowHeight + verticalSpacing
+                rowHeight = 0
+            }
+
+            subview.place(
+                at: CGPoint(x: origin.x, y: origin.y),
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+            origin.x += size.width + horizontalSpacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+
+    private func arrangedRows(in maxWidth: CGFloat, subviews: Subviews) -> [(width: CGFloat, height: CGFloat)] {
+        var rows: [(width: CGFloat, height: CGFloat)] = []
+        var rowWidth: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(ProposedViewSize(width: min(maxWidth, subview.sizeThatFits(.unspecified).width), height: nil))
+            let spacing = rowWidth == 0 ? 0 : horizontalSpacing
+            let wouldOverflow = rowWidth > 0 && rowWidth + spacing + size.width > maxWidth
+            if wouldOverflow {
+                rows.append((rowWidth, rowHeight))
+                rowWidth = size.width
+                rowHeight = size.height
+            } else {
+                rowWidth += spacing + size.width
+                rowHeight = max(rowHeight, size.height)
+            }
+        }
+
+        if rowWidth > 0 {
+            rows.append((rowWidth, rowHeight))
+        }
+
+        return rows
+    }
+}

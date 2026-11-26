@@ -98,11 +98,7 @@ extension ActivityFlowView {
                 case .mode:
                     launchModeChoices
                 case .goal:
-                    if model.setup.selectedGoalMode == .calories {
-                        ScrollView { goalValueEditor.padding(20) }
-                    } else {
-                        goalValueEditor.padding(20)
-                    }
+                    ScrollView { goalValueEditor.padding(20) }
                 case .music:
                     ScrollView { musicSetupChoices.padding() }
                 case .more:

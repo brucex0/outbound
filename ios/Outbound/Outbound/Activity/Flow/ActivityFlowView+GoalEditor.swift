@@ -75,16 +75,14 @@ extension ActivityFlowView {
             }
 
             if let kind = model.setup.goalEditorKind {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(model.setup.goalEditorPresetGoals(for: kind), id: \.self) { goal in
-                            goalPresetButton(
-                                title: model.setup.goalEditorPresetTitle(goal),
-                                isSelected: model.setup.goalEditorSelection == goal
-                            ) {
-                                model.setup.goalEditorSelection = goal
-                                customGoalTextBinding(for: kind).wrappedValue = ""
-                            }
+                OutboundGoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 4) {
+                    ForEach(model.setup.goalEditorPresetGoals(for: kind), id: \.self) { goal in
+                        goalPresetButton(
+                            title: model.setup.goalEditorPresetTitle(goal),
+                            isSelected: model.setup.goalEditorSelection == goal
+                        ) {
+                            model.setup.goalEditorSelection = goal
+                            customGoalTextBinding(for: kind).wrappedValue = ""
                         }
                     }
                 }
@@ -414,26 +412,8 @@ extension ActivityFlowView {
     }
 
     func goalPresetButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.caption.weight(.bold))
-                }
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-            .padding(.horizontal, isSelected ? 18 : 20)
-            .frame(height: 40)
-            .foregroundStyle(isSelected ? .white : .primary)
-            .background(isSelected ? Color.orange : Color(.tertiarySystemBackground), in: Capsule())
-            .fixedSize(horizontal: true, vertical: false)
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("activity.goal.preset.\(title)")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        OutboundGoalPresetButton(title: title, isSelected: isSelected, action: action)
+            .accessibilityIdentifier("activity.goal.preset.\(title)")
     }
 
     func customGoalTextBinding(for kind: CustomGoalKind) -> Binding<String> {

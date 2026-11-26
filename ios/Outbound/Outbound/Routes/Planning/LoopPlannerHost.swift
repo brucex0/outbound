@@ -402,10 +402,9 @@ private struct LoopPlannerScreen: View {
                         .accessibilityLabel(String(localized: "route.planner.distance", defaultValue: "Distance"))
                     Text(session.units.distanceUnit)
                 }
-                ViewThatFits(in: .horizontal) {
-                    HStack { distancePresets }
-                    VStack(alignment: .leading) { distancePresets }
-                }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                OutboundGoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 4) {
+                    distancePresets
+                }
                 Button(String(localized: "Done")) {
                     presentation.sheet = nil; session.applyDistance(distanceDraft)
                 }.buttonStyle(.borderedProminent).tint(theme.actionColor)
@@ -450,7 +449,9 @@ private struct LoopPlannerScreen: View {
     }
     private var distancePresets: some View {
         ForEach([3,5,10], id: \.self) { value in
-            Button { distanceDraft = String(value) } label: { Text("\(value) \(session.units.distanceUnit)").outboundTapTarget() }
+            OutboundGoalPresetButton(title: "\(value) \(session.units.distanceUnit)") {
+                distanceDraft = String(value)
+            }
         }
     }
     @ViewBuilder private var locationActions: some View {
