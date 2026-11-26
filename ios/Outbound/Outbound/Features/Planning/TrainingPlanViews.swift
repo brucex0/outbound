@@ -836,7 +836,7 @@ struct PlanCompletedActivityLink: View {
         case all
         case activityAction
         case unavailableStatus
-        case todayHeader
+        case todayFooter
     }
 
     @EnvironmentObject private var activityStore: ActivityStore
@@ -865,7 +865,7 @@ struct PlanCompletedActivityLink: View {
             activityAction
         case .unavailableStatus:
             unavailableStatus
-        case .todayHeader:
+        case .todayFooter:
             if activity != nil {
                 activityAction
             } else if canLinkUnrecordedWorkout(workout, store: trainingPlanStore, activities: activityStore) {
@@ -874,8 +874,7 @@ struct PlanCompletedActivityLink: View {
                 // A canonical association may arrive before its local activity.
                 // Never offer a replacement link just because hydration is pending.
                 Button { } label: {
-                    Text(String(localized: "plan.workout.view_activity", defaultValue: "View"))
-                        .outboundTapTarget()
+                    Text(String(localized: "today.workout.view_activity", defaultValue: "View activity"))
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
@@ -893,9 +892,8 @@ struct PlanCompletedActivityLink: View {
             NavigationLink {
                 ActivityDetailView(activity: activity)
             } label: {
-                if content == .todayHeader {
-                    Text(String(localized: "plan.workout.view_activity", defaultValue: "View"))
-                        .outboundTapTarget()
+                if content == .todayFooter {
+                    Text(String(localized: "today.workout.view_activity", defaultValue: "View activity"))
                 } else {
                     Label(String(localized: "plan.workout.view_activity", defaultValue: "View"), systemImage: "checkmark.circle.fill")
                 }
@@ -907,7 +905,7 @@ struct PlanCompletedActivityLink: View {
             .simultaneousGesture(TapGesture().onEnded {
                 Task {
                     var properties: [ProductPropertyKey: AnalyticsValue] = [.feature: .string("plan_completed_activity"), .result: .string("opened")]
-                    if content == .todayHeader { properties[.entrySource] = .string("today_complete_header") }
+                    if content == .todayFooter { properties[.entrySource] = .string("today_complete_footer") }
                     await analytics?.track(.init(.featureExposed, properties: properties))
                 }
             })

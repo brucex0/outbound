@@ -83,8 +83,7 @@ struct PlannedWorkoutCompletionControls: View {
     @ViewBuilder private var actions: some View {
         Button { Task { await loadCandidates() } } label: {
             if linkOnly {
-                Text(String(localized: "today.workout.link", defaultValue: "Link"))
-                    .outboundTapTarget()
+                Text(String(localized: "today.workout.link", defaultValue: "Link activity"))
             } else {
                 Text(manualCompletionText("link")).outboundTapTarget()
             }
@@ -129,7 +128,7 @@ struct PlannedWorkoutCompletionControls: View {
         busy = true
         defer { busy = false }
         if linkOnly {
-            await analytics?.track(.init(.featureExposed, properties: [.feature: .string("manual_workout_completion"), .selectionType: .string("link"), .result: .string("opened"), .entrySource: .string("today_complete_header")]))
+            await analytics?.track(.init(.featureExposed, properties: [.feature: .string("manual_workout_completion"), .selectionType: .string("link"), .result: .string("opened"), .entrySource: .string("today_complete_footer")]))
         }
         let context = ActivityAccountBoundary.current
         do {

@@ -25,24 +25,47 @@
       }
     },
     "today.workout.link": {
-      "comment": "Compact action linking a recorded activity to the completed Today workout. [platform:ios]",
+      "comment": "Compact secondary footer action linking a recorded activity to the completed Today workout. [platform:ios]",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Link"
+            "value": "Link activity"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vincular"
+            "value": "Vincular actividad"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关联"
+            "value": "关联活动"
+          }
+        }
+      }
+    },
+    "today.workout.view_activity": {
+      "comment": "Compact secondary footer action opening the completed Today workout activity. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View activity"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver actividad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看活动"
           }
         }
       }

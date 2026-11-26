@@ -1512,13 +1512,6 @@ private struct SimplifiedTodayView: View {
                         .textCase(.uppercase)
                         .allowsHitTesting(false)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let completed = trainingPlanStore.completedPlannedWorkoutToday {
-                        PlanCompletedActivityLink(workout: completed, content: .todayHeader, onLinkSaved: {
-                            workoutChangeToast = ProfileToast(text: manualCompletionText("saved"), style: .success)
-                        })
-                            .font(.subheadline.weight(.semibold))
-                            .fixedSize(horizontal: true, vertical: true)
-                    }
                     Spacer(minLength: 0)
                     if showsPlannedRecoveryAdvice {
                         plannedRecoveryAdviceButton
@@ -1550,10 +1543,12 @@ private struct SimplifiedTodayView: View {
 
             if !trainingPlanStore.isScheduledRestDay && !isPlannedWorkoutCardMinimized {
                 VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                    if trainingPlanStore.completedPlannedWorkoutToday == nil { WorkoutWeatherGuidance(snapshot: weatherStore.snapshot) }
+                    if trainingPlanStore.completedPlannedWorkoutToday == nil {
+                        WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
+                            .allowsHitTesting(false)
+                    }
                     CompactIntervalPreview(phases: todayPhases)
                 }
-                .allowsHitTesting(false)
 
                 if trainingPlanStore.completedPlannedWorkoutToday == nil, activitySessionState == .idle, !isActivityFullscreenVisible, activeRunIntent.resolvedActivityType == .running {
                     Button {
@@ -1608,6 +1603,12 @@ private struct SimplifiedTodayView: View {
             .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
             .frame(minHeight: 44)
             .accessibilityIdentifier("todayDirectEdit")
+        }
+
+        if let completed = trainingPlanStore.completedPlannedWorkoutToday {
+            PlanCompletedActivityLink(workout: completed, content: .todayFooter, onLinkSaved: {
+                workoutChangeToast = ProfileToast(text: manualCompletionText("saved"), style: .success)
+            })
         }
 
         NutritionBetaEntry(context: plannedNutritionContext, opensGuidance: true)
@@ -2502,31 +2503,39 @@ private struct WeatherDetailSheet: View {
 private struct CompactIntervalPreview: View {
     let phases: [WorkoutPhaseItem]
 
+    @ScaledMetric(relativeTo: .subheadline) private var minimumPhaseWidth: CGFloat = 104
+    @State private var viewportWidth: CGFloat = 0
+
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(phases.prefix(3).enumerated()), id: \.element.id) { index, phase in
-                VStack(spacing: 3) {
-                    Text(expandedDuration(phase.duration))
-                        .font(.subheadline.monospacedDigit().weight(.semibold))
-                    Text(phase.title)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-                .frame(maxWidth: .infinity)
-                if index < min(phases.count, 3) - 1 {
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.tertiary)
+        ScrollView(.horizontal) {
+            HStack(spacing: OutboundSpacing.compact) {
+                ForEach(Array(phases.enumerated()), id: \.element.id) { index, phase in
+                    VStack(spacing: 3) {
+                        Text(expandedDuration(phase.duration))
+                            .font(.subheadline.monospacedDigit().weight(.semibold))
+                        Text(phase.title)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    // Keep natural text widths. A minimum relative to the viewport
+                    // reveals part of the next phase when the sequence overflows.
+                    .fixedSize(horizontal: true, vertical: true)
+                    .frame(minWidth: max(minimumPhaseWidth, viewportWidth * 0.38))
+                    .accessibilityElement(children: .combine)
+                    if index < phases.count - 1 {
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
                 }
             }
-            if phases.count > 3 {
-                Text("+\(phases.count - 3)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            }
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
+        .scrollIndicators(.hidden)
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { viewportWidth = $0 }
+        .accessibilityIdentifier("workoutPhasePreview")
     }
 
     private func expandedDuration(_ value: String) -> String {
