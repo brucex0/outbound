@@ -57,7 +57,7 @@ enum LaunchWorkoutChoice: Hashable, Identifiable {
 
     var systemImage: String {
         switch self {
-        case .planned: "calendar"
+        case .planned: "text.book.closed"
         case .sport(let sport): sport.systemImage
         }
     }
