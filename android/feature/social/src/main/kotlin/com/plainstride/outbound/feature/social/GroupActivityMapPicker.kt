@@ -1,7 +1,5 @@
 package com.plainstride.outbound.feature.social
 
-import com.plainstride.outbound.core.designsystem.PlainstrideMapAppearance
-
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -123,7 +121,6 @@ internal fun GroupActivityMapPicker(initial: LatLng?, initialQuery: String, clos
                 Text(stringResource(R.string.group_plan_map_help), Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall)
                 Box(Modifier.weight(1f)) {
                     GoogleMap(Modifier.fillMaxSize(), cameraPositionState = camera,
-                        mapColorScheme = PlainstrideMapAppearance.colorScheme,
                         uiSettings = MapUiSettings(zoomControlsEnabled = true, zoomGesturesEnabled = true, scrollGesturesEnabled = true),
                         onMapLoaded = { loaded = true },
                         onMapClick = { target ->

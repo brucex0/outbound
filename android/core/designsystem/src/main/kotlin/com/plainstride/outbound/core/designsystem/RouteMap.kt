@@ -259,7 +259,6 @@ fun PlainstrideRouteMap(
         }
     }
     GoogleMap(
-        mapColorScheme = PlainstrideMapAppearance.colorScheme,
         modifier = modifier.semantics { contentDescription = description },
         cameraPositionState = camera,
         locationSource = suppliedSource.takeIf { useSuppliedUserLocation },
