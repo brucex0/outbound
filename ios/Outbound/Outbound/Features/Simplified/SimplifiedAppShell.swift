@@ -100,7 +100,7 @@ private struct CompactNavigationBar: View {
         let symbol: String = switch tab {
         case .social: "person.2.fill"
         case .today: isStart ? "play.fill" : "sparkles"
-        case .plan: "calendar"
+        case .plan: "text.book.closed"
         case .me: "person.crop.circle"
         }
         let label: String = switch tab {
@@ -271,7 +271,7 @@ struct SimplifiedAppShell: View {
                 }
             }
             .tag(SimplifiedAppTab.plan)
-            .tabItem { Image(systemName: "calendar").accessibilityIdentifier("tab.plan") }
+            .tabItem { Image(systemName: "text.book.closed").accessibilityIdentifier("tab.plan") }
             .toolbar(.hidden, for: .tabBar)
 
             tabRoot {
