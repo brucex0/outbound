@@ -157,6 +157,10 @@ extension ActivityFlowView {
     }
 
     var routeSetupCard: some View {
+        routeSetupCard(onChange: model.openRouteLibrary, onRemove: nil)
+    }
+
+    func routeSetupCard(onChange: @escaping () -> Void, onRemove: (() -> Void)?) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if let route = model.setup.plannedIntent?.preparedRoute {
                 RoutePreviewMap(points: route.directedPoints, showsEndpoints: true)
@@ -170,16 +174,24 @@ extension ActivityFlowView {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(route.name)
                             .font(.headline)
-                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text(model.routeDistanceLabel(route))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
-                    Button(String(localized: "common.change", defaultValue: "Change")) { model.openRouteLibrary() }
-                        .font(.subheadline.weight(.semibold))
-                    Button(role: .destructive) { model.removeSelectedRoute(route) } label: {
+                    Button(action: onChange) {
+                        Text(String(localized: "common.change", defaultValue: "Change"))
+                            .font(.subheadline.weight(.semibold))
+                            .outboundTapTarget()
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                    Button(role: .destructive) {
+                        if let onRemove { onRemove() } else { model.removeSelectedRoute(route) }
+                    } label: {
                         Image(systemName: "xmark.circle.fill")
+                            .outboundTapTarget()
                     }
                     .accessibilityLabel(String(localized: "record.route.remove", defaultValue: "Remove route"))
                 }
@@ -203,6 +215,7 @@ extension ActivityFlowView {
                         .tag(RouteDirection.reverse)
                 }
                 .pickerStyle(.segmented)
+                .frame(minHeight: 44)
                 .accessibilityHint(String(localized: "record.route.direction.hint", defaultValue: "Choose which endpoint you intend to start from."))
             } else if let routeName = model.setup.plannedIntent?.routeName {
                 HStack(spacing: 12) {

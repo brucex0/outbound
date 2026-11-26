@@ -58,8 +58,8 @@ struct ActivitySetupView: View {
                     VStack(spacing: 10) {
                         offlineStatus
                         Spacer(minLength: 72)
-                        VStack(spacing: 10) {
-                            routeCard
+                        ActivityLaunchSummaryLayout {
+                            if showsRouteCard { routeCard }
                             if showsLaunchGoalCard { goalCard }
                         }
                         .padding(.horizontal, 18)
@@ -85,6 +85,35 @@ struct ActivitySetupView: View {
                 }
             }
             launchDock
+        }
+    }
+}
+
+/// Content-sized capsules, each limited to half the usable row even when alone.
+private struct ActivityLaunchSummaryLayout: Layout {
+    private let gap: CGFloat = 12
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let sizes = sizes(proposal: proposal, subviews: subviews)
+        return CGSize(width: proposal.width ?? sizes.reduce(0) { $0 + $1.width } + gap * CGFloat(max(0, sizes.count - 1)),
+                      height: sizes.map(\.height).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let sizes = sizes(proposal: ProposedViewSize(width: bounds.width, height: nil), subviews: subviews)
+        var x = bounds.minX
+        for (index, view) in subviews.enumerated() {
+            view.place(at: CGPoint(x: x, y: bounds.midY), anchor: .leading,
+                       proposal: ProposedViewSize(sizes[index]))
+            x += sizes[index].width + gap
+        }
+    }
+
+    private func sizes(proposal: ProposedViewSize, subviews: Subviews) -> [CGSize] {
+        let cap = max(0, ((proposal.width ?? 320) - gap) / 2)
+        return subviews.map { view in
+            let ideal = view.sizeThatFits(.unspecified)
+            return view.sizeThatFits(ProposedViewSize(width: min(ideal.width, cap), height: nil))
         }
     }
 }

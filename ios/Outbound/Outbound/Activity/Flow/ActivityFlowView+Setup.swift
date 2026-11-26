@@ -1,7 +1,9 @@
 import SwiftUI
+import Combine
 import PhotosUI
 import CoreLocation
 import MapKit
+import UIKit
 
 extension ActivityFlowView {
     var readyView: some View {
@@ -47,7 +49,18 @@ extension ActivityFlowView {
     @ViewBuilder
     var launchRouteCardView: some View {
         if let route = model.setup.plannedIntent?.preparedRoute {
-            launchRoutePreviewCard(route)
+            if host.isEmbeddedInToday {
+                ActivityLaunchRoutePill(
+                    name: route.name,
+                    distance: compactLaunchUnits(model.routeDistanceLabel(route)),
+                    onChange: model.openRouteLibrary,
+                    onRemove: { model.removeSelectedRoute(route) }
+                ) { change, remove in
+                    AnyView(routeSetupCard(onChange: change, onRemove: remove).padding(20))
+                }
+            } else {
+                launchRoutePreviewCard(route)
+            }
         }
     }
 
@@ -108,39 +121,60 @@ extension ActivityFlowView {
                 model.setup.setupSheet = .goal
             }
         } label: {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model.setup.launchGoalValue)
-                        .font(.system(.title2, design: .rounded).weight(.bold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
+            if host.isEmbeddedInToday {
+                HStack(spacing: 4) {
                     if model.autoStopAtGoalEnabled,
                        [.distance, .time, .calories].contains(model.setup.selectedGoalMode) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "pause.fill")
-                            Text(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"))
-                        }
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(theme.accentColor)
-                    } else if !model.setup.launchGoalHint.isEmpty {
-                        Text(model.setup.launchGoalHint)
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
+                        Image(systemName: "pause.fill")
+                            .accessibilityLabel(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"))
                     }
+                    Text([SessionGoalMode.distance, .time, .calories, .race].contains(model.setup.selectedGoalMode)
+                         ? compactLaunchUnits(model.setup.launchGoalValue) : model.setup.launchGoalValue)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
-                Spacer(minLength: 8)
-                Image(systemName: model.setup.selectedGoalMode == .freestyle ? "checkmark" : "chevron.right")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(theme.accentColor)
-                    .frame(width: 38, height: 38)
-                    .background(theme.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .background(.regularMaterial, in: Capsule())
+                .outboundTapTarget()
+                .accessibilityHint(model.setup.launchGoalHint)
+            } else {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.setup.launchGoalValue)
+                            .font(.system(.title2, design: .rounded).weight(.bold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.78)
+                        if model.autoStopAtGoalEnabled,
+                           [.distance, .time, .calories].contains(model.setup.selectedGoalMode) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "pause.fill")
+                                Text(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"))
+                            }
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(theme.accentColor)
+                        } else if !model.setup.launchGoalHint.isEmpty {
+                            Text(model.setup.launchGoalHint)
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: model.setup.selectedGoalMode == .freestyle ? "checkmark" : "chevron.right")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(theme.accentColor)
+                        .frame(width: 38, height: 38)
+                        .background(theme.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: .black.opacity(0.1), radius: 12, y: 5)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .shadow(color: .black.opacity(0.1), radius: 12, y: 5)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("activity.goal.edit")
@@ -194,5 +228,85 @@ extension ActivityFlowView {
                 .strokeBorder(theme.actionColor.opacity(0.2), lineWidth: 1)
         }
         .shadow(color: .black.opacity(0.1), radius: 12, y: 5)
+    }
+}
+
+/// Remove only number/unit whitespace; preserve spaces in workout and route names.
+private func compactLaunchUnits(_ value: String) -> String {
+    value.replacingOccurrences(of: "(?<=\\d)[\\s\\u00a0\\u202f]+(?=[^\\W\\d_])", with: "", options: .regularExpression)
+        .replacingOccurrences(of: "[.,]0(?=[^\\W\\d_])", with: "", options: .regularExpression)
+}
+
+private struct ActivityLaunchRoutePill: View {
+    let name: String
+    let distance: String
+    let onChange: () -> Void
+    let onRemove: () -> Void
+    let details: (@escaping () -> Void, @escaping () -> Void) -> AnyView
+    @State private var showsDetails = false
+    @StateObject private var dismissal = ActivityLaunchRouteDismissal()
+
+    var body: some View {
+        Button { showsDetails = true } label: {
+            HStack(spacing: 6) {
+                Text(name)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(distance)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .layoutPriority(1)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(.regularMaterial, in: Capsule())
+            .outboundTapTarget()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(name), \(distance)")
+        .popover(isPresented: $showsDetails) {
+            details(
+                { dismissal.dismiss { showsDetails = false; onChange() } },
+                { dismissal.dismiss { showsDetails = false; onRemove() } }
+            )
+            .background(ActivityLaunchRouteDismissalAnchor(dismissal: dismissal).frame(width: 0, height: 0))
+            .presentationCompactAdaptation(.popover)
+        }
+    }
+}
+
+/// SwiftUI popovers have no dismissal-completion hook. The anchor keeps route
+/// selection from presenting until UIKit has fully removed this popover.
+@MainActor
+private final class ActivityLaunchRouteDismissal: ObservableObject {
+    weak var anchor: UIViewController?
+
+    func dismiss(completion: @escaping () -> Void) {
+        guard var controller = anchor else {
+            ActivityDiagnosticLog.error(.lifecycle, "route_details_dismiss_failed reason=missing_anchor")
+            return
+        }
+        while let parent = controller.parent { controller = parent }
+        guard controller.presentingViewController != nil else {
+            ActivityDiagnosticLog.error(.lifecycle, "route_details_dismiss_failed reason=missing_presentation")
+            return
+        }
+        controller.dismiss(animated: true, completion: completion)
+    }
+}
+
+private struct ActivityLaunchRouteDismissalAnchor: UIViewControllerRepresentable {
+    let dismissal: ActivityLaunchRouteDismissal
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        let controller = UIViewController()
+        dismissal.anchor = controller
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        dismissal.anchor = uiViewController
     }
 }
