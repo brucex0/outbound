@@ -1,3 +1,4 @@
+import CryptoKit
 import Combine
 import Foundation
 
@@ -188,5 +189,55 @@ extension SessionGoalMode {
         case .planned, .curated, .race:
             return false
         }
+    }
+}
+
+// Committed route selection belongs to launch preferences, independently of any
+// workout attachment or planner's highlighted candidate. Geometry stays private.
+extension ActivityLaunchPreferenceStore {
+    private static func selectedRouteURL(owner: String) -> URL {
+        let key = SHA256.hash(data: Data(owner.utf8)).map { String(format: "%02x", $0) }.joined()
+        return URL.applicationSupportDirectory.appending(path: "SelectedRoute-v1", directoryHint: .isDirectory).appending(path: key + ".json")
+    }
+    static var selectedRoute: PreparedRoute? {
+        let account = ActivityAccountBoundary.current
+        guard account.owner.hasPrefix("account:") else { return nil }
+        let url = selectedRouteURL(owner: account.owner)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        do {
+            let route = try JSONDecoder().decode(PreparedRoute.self, from: Data(contentsOf: url))
+            guard account == ActivityAccountBoundary.current, route.isUsableForGuidance else { return nil }
+            return route
+        } catch {
+            ActivityDiagnosticLog.error(.persistence, "selected_route_read_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+            return nil
+        }
+    }
+    @discardableResult static func selectRoute(_ route: PreparedRoute?) -> Bool {
+        let account = ActivityAccountBoundary.current
+        guard account.owner.hasPrefix("account:"), route?.isUsableForGuidance ?? true else { return false }
+        let url = selectedRouteURL(owner: account.owner)
+        // Hosts may confirm the already-durable planner commit after dismissal.
+        if route?.withoutWorkoutAttachmentPolicy() == selectedRoute { return true }
+        do {
+            if let route {
+                var directory = url.deletingLastPathComponent()
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                var values = URLResourceValues(); values.isExcludedFromBackup = true
+                try directory.setResourceValues(values)
+                let data = try JSONEncoder().encode(route.withoutWorkoutAttachmentPolicy())
+                guard account == ActivityAccountBoundary.current else { return false }
+                try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            } else if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+            return true
+        } catch {
+            ActivityDiagnosticLog.error(.persistence, "selected_route_write_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+            return false
+        }
+    }
+    static func purgeSelectedRoute(owner: String) {
+        let url = selectedRouteURL(owner: owner)
+        do { if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) } }
+        catch { ActivityDiagnosticLog.error(.persistence, "selected_route_purge_failed category=\(ActivityDiagnosticLog.errorCategory(error))") }
     }
 }

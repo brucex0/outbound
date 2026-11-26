@@ -545,3 +545,12 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - iOS loop-planner shared foreground lookup emits `feature_exposed` with `feature=loop_planner_location` and only `result=cached|fresh` when resolving the requested start. It excludes coordinates, accuracy, timestamps, request IDs and per-fix samples.
 
 - iOS selected-route direction marks emit `feature_exposed` with only `feature=route_direction_arrows` when usable geometry is presented. Reverse retains its existing route configuration event; camera frames and individual arrowheads emit no events, coordinates, geometry or route identifiers.
+
+- iOS route comparison browsing reuses `feature_exposed` with only `feature=loop_planner_comparison` and `result=browsed`. No selected index, source IDs, names, place labels, coordinates or exact distance enter analytics. Saved matches retain existing attachment source analytics (`imported`, `community`, or `generated`).
+
+- iOS compact route-start search emits `feature_exposed` with only `feature=loop_planner_start_search` and `result=opened` when opening the existing place sheet. The current-location icon retains existing bounded location-result and generation-trigger events. Search text, start labels, places and coordinates are excluded.
+
+- iOS explicit planner attachment emits `feature_exposed` with only `feature=loop_planner_use`, `entry_source=map|details`, and `result=success|failure` after the shared guarded persistence callback. Stale/inactive choices do not emit an attachment attempt. Existing `route_selected` remains unchanged; no route names, indices, identifiers, coordinates or targets are added.
+
+- iOS planner autocomplete emits `feature_exposed` with `feature=loop_planner_place_search`, `result=results|empty|failure` after a current lookup settles; debounce cancellation is not a failure. Restoring the committed route emits `feature=loop_planner_selection`, `result=restored`. Existing submit-sheet exposure and explicit route-selection events remain. No query, place label, route identifier or coordinates are included.
+- iOS loop-planner exposure includes bounded `result=compact_comparison` for the naturally sized panel, single-row icon metrics and non-layout loading overlay. Loading retains the existing generation/location events. No rendered sizes, font choices, membership state, route names or route identifiers are collected.

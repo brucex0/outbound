@@ -15,10 +15,11 @@ import Foundation
     @Published private(set) var generation: Generation?
     @Published private(set) var distanceText: String { didSet { invalidate() } }
     @Published private(set) var lessClimbing = false { didSet { invalidate() } }
+    @Published private(set) var startLabel = String(localized: "route.planner.my_location", defaultValue: "My location")
     @Published private(set) var start: LoopPlanningCoordinate?
     @Published private(set) var via: LoopPlanningCoordinate?
     @Published private(set) var candidates: [LoopPlanningCandidate] = []
-    enum PlaceSearchState { case idle, loading, ready, empty, failed }
+    enum PlaceSearchState: Equatable { case idle, loading, ready, empty, failed }
     @Published private(set) var placeSearchState = PlaceSearchState.idle
     @Published private(set) var places: [LoopPlanningPlace] = []
     @Published private(set) var recommendations: [LoopPlanningPlace] = []
@@ -84,7 +85,7 @@ import Foundation
         return units.distanceMeters(from: value)
     }
     var canGenerate: Bool { current && supported && start != nil && distanceM != nil && !busy && !locating && !choosingStart && !locationUnavailable }
-    func invalidate() { revision = UUID(); task?.cancel(); task = nil; resultsCurrent = false; busy = false; searched = false; generationUnavailable = false; rateLimited = false }
+    func invalidate() { restoredRoute = nil; revision = UUID(); task?.cancel(); task = nil; resultsCurrent = false; busy = false; searched = false; generationUnavailable = false; rateLimited = false }
     /// Starting a map/access-point choice invalidates old results and late GPS,
     /// until the optional map adjustment is committed.
     func beginChoosingPoint() {
@@ -99,9 +100,10 @@ import Foundation
         requestingLocation = false; locating = false; locationRevision = UUID()
         location.cancel(); locationTask?.cancel(); locationTask = nil
     }
-    func setStart(_ point: LoopPlanningCoordinate, trigger: GenerationTrigger = .confirmedStart) {
+    func setStart(_ point: LoopPlanningCoordinate, trigger: GenerationTrigger = .confirmedStart, label: String? = nil) {
         guard current else { return }
         invalidate()
+        startLabel = label ?? ((trigger == .initialLocation || trigger == .myLocation) ? String(localized: "route.planner.my_location", defaultValue: "My location") : String(localized: "route.planner.map_start", defaultValue: "Map location"))
         switch trigger {
         case .initialLocation, .myLocation: break // GPS context is independent of an in-flight place query.
         default: clearSearch()
@@ -178,15 +180,14 @@ import Foundation
             guard current, revision == token, !Task.isCancelled else { return }
             let fallback = LoopPlanningCacheEntry.matching(entries, request: request)
             if reuseExisting, !fallback.isEmpty {
-                candidates = fallback; resultsCurrent = true; searched = true; busy = false
-                cacheEvent = .init(result: "hit"); return
+                candidates = fallback; resultsCurrent = true
+                cacheEvent = .init(result: "hit")
             }
-            cacheEvent = .init(result: reuseExisting ? (expired ? "expired" : "miss") : "bypass")
-            generation = Generation(trigger: trigger)
-            await fetch(request, token: token, fallback: fallback)
+            if fallback.isEmpty || !reuseExisting { cacheEvent = .init(result: reuseExisting ? (expired ? "expired" : "miss") : "bypass") }
+            await fetch(request, token: token, fallback: fallback, reuseExisting: reuseExisting, trigger: trigger)
         }
     }
-    private func fetch(_ request: LoopPlanningRequest, token: UUID, fallback: [LoopPlanningCandidate]) async {
+    private func fetch(_ request: LoopPlanningRequest, token: UUID, fallback: [LoopPlanningCandidate], reuseExisting: Bool, trigger: GenerationTrigger) async {
         var nearby: [LoopPlanningCandidate] = []
         do {
             do {
@@ -196,9 +197,17 @@ import Foundation
                 guard current, revision == token, !Task.isCancelled else { return }
                 ActivityDiagnosticLog.error(.sync, "route_planner_existing_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
             }
+            let available = LoopPlanningRanking.select(nearby + fallback, request: request)
+            if reuseExisting && !available.isEmpty {
+                candidates = available; resultsCurrent = true
+            }
+            if reuseExisting && available.count == 3 {
+                searched = true; busy = false; return
+            }
+            generation = Generation(trigger: trigger)
             let result = try await repository.generate(request)
             guard current, revision == token, !Task.isCancelled else { return }
-            candidates = LoopPlanningRanking.select(nearby + result, request: request)
+            candidates = LoopPlanningRanking.select(nearby + result + fallback, request: request)
             let successful = result.map { LoopPlanningCacheEntry(storedAt: Date(), request: request, route: $0) }.filter(\.valid)
             recentResults.removeAll { old in successful.contains { $0.route.id == old.route.id } }
             recentResults = Array((recentResults.filter { $0.fresh(at: Date()) } + successful).suffix(30))
@@ -228,32 +237,47 @@ import Foundation
             : String(localized: "route.planner.unavailable", defaultValue: "Loop generation is unavailable. Try again later, or choose an existing route.")
     }
     func queryChanged(_ query: String) {
-        // A queued publication of the exact submitted text is not a new draft.
+        // SwiftUI may publish the exact submitted text after the keyboard action.
         guard query != submittedQuery else { return }
-        clearSearch()
+        search(query, debounce: true)
     }
-    func search(_ query: String) {
+    func search(_ query: String, debounce: Bool = false) {
         guard current else { return }
         clearSearch()
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         submittedQuery = query; placeSearchState = .loading
         let token = searchRevision
-        ActivityDiagnosticLog.notice(.sync, "route_planner_place_search state=started")
         placeTask = Task { [weak self] in
             guard let self else { return }
-            guard current, searchRevision == token, !Task.isCancelled else { return }
             do {
+                if debounce { try await Task.sleep(for: .milliseconds(300)) }
+                guard current, searchRevision == token, !Task.isCancelled else { return }
+                ActivityDiagnosticLog.notice(.sync, "route_planner_place_search state=started")
                 let response = try await placeSearch.search(query, near: start)
                 guard current, searchRevision == token, !Task.isCancelled else { return }
                 places = response; placeSearchState = response.isEmpty ? .empty : .ready
                 ActivityDiagnosticLog.notice(.sync, "route_planner_place_search state=completed result_bucket=\(ActivityDiagnosticLog.countBucket(response.count))")
             } catch {
-                guard current, searchRevision == token, !Task.isCancelled else { return }
+                guard current, searchRevision == token, !Task.isCancelled, !(error is CancellationError) else { return }
                 placeSearchState = .failed
                 ActivityDiagnosticLog.error(.sync, "route_planner_place_search_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
-                showToast(String(localized: "route.planner.search_failed", defaultValue: "Places could not be loaded. Try again."))
             }
         }
+    }
+    private(set) var restoredRoute: PreparedRoute?
+    func restoreSelection(_ route: PreparedRoute) {
+        guard current, route.isUsableForGuidance, let first = route.directedPoints.first else { return }
+        restoredRoute = route
+        let points = route.directedPoints.map { LoopPlanningCoordinate(latitude: $0.latitude, longitude: $0.longitude, altitude: $0.altitude) }
+        let distance = zip(points, points.dropFirst()).reduce(0.0) { $0 + LoopPlanningCacheEntry.distance(.init($1.0), .init($1.1)) }
+        let gain: Double? = points.allSatisfy { $0.altitude != nil }
+            ? zip(points, points.dropFirst()).reduce(0) { $0 + max(0, $1.1.altitude! - $1.0.altitude!) } : nil
+        let origin = LoopPlanningRequest.Coordinate(.init(latitude: first.latitude, longitude: first.longitude))
+        start = points.first; startLabel = route.name
+        candidates = [.init(id: route.id, name: route.name, points: points, distanceM: distance, elevationGainM: gain,
+                            deviationFraction: 0, requestedStart: origin, snappedStart: origin,
+                            attribution: route.attribution ?? "", source: LoopPlanningSource(rawValue: route.source.rawValue) ?? .imported, saved: true)]
+        resultsCurrent = true
     }
     private func loadRecommendations() {
         recommendationTask?.cancel(); recommendationRevision = UUID(); let token = recommendationRevision

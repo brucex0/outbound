@@ -14,14 +14,17 @@ struct LoopPlannerHost: View {
     var body: some View {
         LoopPlannerScreen(presentation: presentation, session: session, onUse: { candidate, number in
             guard session.current, session.resultsCurrent, session.candidates.contains(where: { $0.id == candidate.id }) else { return false }
-            let name = candidate.name ?? String(format: String(localized: "route.planner.route_number", defaultValue: "Loop %d"), number)
-            let route = PreparedRoute(id: candidate.id, name: name,
+            let name = session.candidateTitle(candidate, number: number)
+            let route = session.restoredRoute.flatMap { $0.id == candidate.id ? $0.preservingWorkoutContext() : nil } ?? PreparedRoute(id: candidate.id, name: name,
                 points: candidate.points.map { RouteCoordinate(latitude: $0.latitude, longitude: $0.longitude, altitude: $0.altitude) },
-                source: candidate.source == .community ? .community : .generated,
+                source: PreparedRoute.Source(rawValue: candidate.source.rawValue) ?? .imported,
                 activityType: session.activity, routeShape: "loop", attribution: candidate.attribution, preservesWorkoutContext: true)
-            guard route.isUsableForGuidance, routeStore.persistPlannerSelection(route) else { return false }
+            guard route.isUsableForGuidance, routeStore.persistPlannerSelection(route), ActivityLaunchPreferenceStore.selectRoute(route) else { return false }
             onSelect(route); return true
         }, onSavedSelection: { route in
+            guard ActivityLaunchPreferenceStore.selectRoute(route) else {
+                session.showToast(String(localized: "route.planner.save_failed", defaultValue: "Route could not be saved on this device. Try again.")); return
+            }
             // Selection policy belongs to this opening; canonical caches remain unchanged.
             onSavedSelection(route.map {
                 PreparedRoute(id: $0.id, name: $0.name, points: $0.points, source: $0.source,
@@ -32,15 +35,43 @@ struct LoopPlannerHost: View {
     }
 }
 
+private extension LoopPlanningSession {
+    func candidateTitle(_ candidate: LoopPlanningCandidate, number: Int) -> String {
+        // Reopening a committed selection must keep its canonical name, even if
+        // its previous comparison position differs from this sole preview.
+        if candidates.count == 1, let restoredRoute, restoredRoute.id == candidate.id {
+            return restoredRoute.name
+        }
+        let numbered = String(format: String(localized: "route.planner.route_number", defaultValue: "Loop %d"), number)
+        guard candidate.source == .generated else { return candidate.name ?? numbered }
+        // Generated snapshots have no authored/renameable title. Their stored
+        // slot label belongs to an older comparison, not the current map order.
+        var title = numbered
+        var suffix = 2
+        while candidates.contains(where: {
+            $0.source != .generated && $0.name?.localizedCaseInsensitiveCompare(title) == .orderedSame
+        }) {
+            title = String(format: String(localized: "route.planner.duplicate_numbered_name", defaultValue: "%@ (%d)"), numbered, suffix)
+            suffix += 1
+        }
+        return title
+    }
+}
+
 private struct LoopPlannerScreen: View {
     @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analytics
     @ObservedObject var presentation: LoopPlanningPresentation
     @ObservedObject var session: LoopPlanningSession
+    @State private var summaryHeights: [String: CGFloat] = [:]
+    @State private var selectedIndex = 0
+    @State private var viewportHeight = 600.0
     @State private var camera: MapCameraPosition = .automatic
     private var detail: LoopPlanningCandidate? { presentation.detail }
     @FocusState private var placeSearchFocused: Bool
+    @FocusState private var startSearchFocused: Bool
     @State private var query = ""
+    @State private var startQuery = ""
     @State private var distanceDraft = ""
     @State private var climbingDraft = false
     let onUse: (LoopPlanningCandidate, Int) -> Bool
@@ -60,17 +91,24 @@ private struct LoopPlannerScreen: View {
             map
                 .safeAreaInset(edge: .top) { mapControls }
                 .safeAreaInset(edge: .bottom) { comparison }
-                .navigationTitle(String(localized: "route.planner.title", defaultValue: "Find a loop"))
+                .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { viewportHeight = $0 }
+                .overlay {
+                    if session.locating || session.busy {
+                        ProgressView(session.locating
+                            ? String(localized: "route.planner.locating", defaultValue: "Finding your location…")
+                            : String(localized: "route.planner.searching", defaultValue: "Finding loops…"))
+                            .font(.subheadline).multilineTextAlignment(.center)
+                            .padding(OutboundSpacing.standard)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
+                            .padding(.horizontal, OutboundSpacing.screen)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .navigationTitle(String(localized: "route.planner.title", defaultValue: "Find a route"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button(String(localized: "Back")) { presentation.cancel(); onCancel() }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(String(localized: "route.planner.saved_routes", defaultValue: "Saved routes")) {
-                            presentation.openSavedRoutes()
-                            Task { await analytics?.track(.init(.routeLibraryOpened)) }
-                        }.accessibilityIdentifier("loop.saved_routes")
                     }
                 }
                 .overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
@@ -80,6 +118,16 @@ private struct LoopPlannerScreen: View {
                     Task { await analytics?.track(.init(.activityConfigurationChanged, properties: [
                         .changeType: .string("loop_planner_generate"), .activityType: .string(session.activity.rawValue),
                         .entrySource: .string(generation.trigger.rawValue)])) }
+                }
+                .onChange(of: session.placeSearchState) { _, state in
+                    let result: String
+                    switch state {
+                    case .ready: result = "results"
+                    case .empty: result = "empty"
+                    case .failed: result = "failure"
+                    default: return
+                    }
+                    Task { await analytics?.track(.init(.featureExposed, properties: [.feature: .string("loop_planner_place_search"), .result: .string(result)])) }
                 }
                 .onChange(of: session.locationSourceResult) { _, result in
                     guard let result else { return }
@@ -94,7 +142,15 @@ private struct LoopPlannerScreen: View {
                 .onChange(of: session.resultsCurrent) { _, current in
                     if !current, detail != nil { presentation.sheet = nil }
                 }
-                .onChange(of: session.candidates.map(\.points)) { _, _ in fitCandidates() }
+                .onChange(of: session.candidates.map(\.points)) { _, _ in
+                    selectedIndex = 0; fitCandidates()
+                }
+                .onChange(of: startSearchFocused) { _, focused in
+                    if !focused, presentation.sheet == nil { session.clearSearch() }
+                }
+                .onChange(of: presentation.sheet?.id) { old, new in
+                    if old == "location", new == nil { session.clearSearch() }
+                }
                 .onChange(of: session.busy) { wasBusy, busy in
                     if wasBusy && !busy && session.candidates.isEmpty && (session.searched || session.generationUnavailable) {
                         centerOnStart()
@@ -109,7 +165,12 @@ private struct LoopPlannerScreen: View {
 #endif
                 .task {
                     presentation.startIfNeeded()
-                    await analytics?.track(.init(.featureExposed, properties: [.feature: .string("loop_planner")]))
+                    if !session.candidates.isEmpty {
+                        fitCandidates()
+                        await analytics?.track(.init(.featureExposed, properties: [.feature: .string("loop_planner_selection"), .result: .string("restored")]))
+                    }
+                    await analytics?.track(.init(.featureExposed, properties: [
+                        .feature: .string("loop_planner"), .result: .string("compact_comparison")]))
                 }
         }
 #if DEBUG
@@ -121,74 +182,171 @@ private struct LoopPlannerScreen: View {
 #endif
     }
     private var distanceButton: some View {
-        Button { distanceDraft = session.distanceText; presentation.sheet = .distance } label: {
-            Text(session.distanceM.map { session.units.distanceString(meters: $0, fractionDigits: 1) }
-                 ?? String(localized: "route.planner.distance", defaultValue: "Distance")).outboundTapTarget()
+        Button { startSearchFocused = false; distanceDraft = session.distanceText; presentation.sheet = .distance } label: {
+            compactControlLabel {
+                Text(session.distanceM.map { session.units.distanceString(meters: $0, fractionDigits: 1) }
+                     ?? String(localized: "route.planner.distance", defaultValue: "Distance"))
+            }
         }.accessibilityIdentifier("loop.distance")
     }
-    private var startButton: some View {
-        Button { query = ""; session.clearSearch(); presentation.sheet = .location } label: {
-            Label(String(localized: "route.planner.start", defaultValue: "Start"), systemImage: "location").outboundTapTarget()
-        }.accessibilityIdentifier("loop.start")
+    private var startSearch: some View {
+        HStack(spacing: 0) {
+            Button { openStartSearch() } label: {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary).outboundTapTarget()
+            }.accessibilityLabel(String(localized: "route.planner.search_places", defaultValue: "Search places"))
+            TextField(session.start == nil
+                      ? String(localized: "route.planner.search_start", defaultValue: "Search for a start")
+                      : session.startLabel, text: $startQuery)
+                .textFieldStyle(.plain).focused($startSearchFocused).autocorrectionDisabled()
+                .frame(minHeight: 44).contentShape(Rectangle())
+                .submitLabel(.search).onSubmit { openStartSearch() }
+                .onChange(of: startQuery) { _, value in
+                    guard startSearchFocused else { return }; session.queryChanged(value)
+                }
+                .accessibilityLabel(String(localized: "route.planner.start", defaultValue: "Start"))
+                .accessibilityIdentifier("loop.start")
+            Button { useMyLocation() } label: {
+                Image(systemName: "location.fill").foregroundStyle(theme.accentColor).outboundTapTarget()
+            }.accessibilityLabel(String(localized: "route.planner.my_location", defaultValue: "My location"))
+                .accessibilityIdentifier("loop.my_location")
+        }
+        .buttonStyle(.plain)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
     }
     private var optionsButton: some View {
-        Button { climbingDraft = session.lessClimbing; presentation.sheet = .options } label: {
-            Image(systemName: "slider.horizontal.3").outboundTapTarget()
-        }.accessibilityLabel(String(localized: "route.planner.options", defaultValue: "Route options")).accessibilityIdentifier("loop.options")
+        Button { startSearchFocused = false; climbingDraft = session.lessClimbing; presentation.sheet = .options } label: {
+            compactControlLabel { Image(systemName: "slider.horizontal.3") }
+        }
+            .accessibilityLabel(String(localized: "route.planner.options", defaultValue: "Route options")).accessibilityIdentifier("loop.options")
     }
     private var mapControls: some View {
-        // Only lightweight controls participate in fitting; all state and the
-        // native presentation owner remain above these layout candidates.
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: OutboundSpacing.compact) { distanceButton; startButton; Spacer(minLength: 0); optionsButton }
-            VStack(alignment: .leading, spacing: OutboundSpacing.compact) { distanceButton; startButton; optionsButton }
+        // Fit only lightweight controls; the session and presentation stay above
+        // both layouts. The compact fill sits inside each label's 44 pt hit target.
+        VStack(spacing: 0) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: OutboundSpacing.compact) {
+                    startSearch.frame(minWidth: 140)
+                    distanceButton.fixedSize(horizontal: true, vertical: false)
+                    optionsButton
+                }
+                VStack(spacing: 0) {
+                    startSearch
+                    HStack(spacing: OutboundSpacing.compact) { distanceButton; Spacer(minLength: 0); optionsButton }
+                }
+            }
+            if startSearchFocused && !startQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                ScrollView { placeResults(asVia: false) }.frame(maxHeight: 240)
+            }
         }
-        .buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-        .padding(.horizontal, OutboundSpacing.screen).frame(maxWidth: .infinity, alignment: .leading).background(.regularMaterial)
+        .buttonStyle(.plain)
+        .padding(.horizontal, OutboundSpacing.compact)
+        .padding(.bottom, 4)
+        .frame(maxWidth: .infinity, alignment: .leading).background(.regularMaterial)
+    }
+    private func openStartSearch() {
+        startSearchFocused = false
+        query = startQuery
+        presentation.sheet = .location
+        Task { await analytics?.track(.init(.featureExposed, properties: [
+            .feature: .string("loop_planner_start_search"), .result: .string("opened")])) }
+        session.search(query)
+    }
+    private func useMyLocation() {
+        startSearchFocused = false; placeSearchFocused = false
+        startQuery = ""; query = ""; session.clearSearch(); presentation.sheet = nil
+        session.requestLocation()
     }
     private var comparison: some View {
-        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+        VStack(alignment: .leading, spacing: 0) {
             if session.choosingStart {
                 HStack {
                     Text(String(localized: "route.planner.tap_start", defaultValue: "Tap the map to move the start.")).font(.footnote)
                     Button(String(localized: "Cancel")) { session.cancelChoosingPoint() }
                 }
             }
-            if session.locating {
-                ProgressView(String(localized: "route.planner.locating", defaultValue: "Finding your location…"))
-            } else if session.busy {
-                ProgressView(String(localized: "route.planner.searching", defaultValue: "Finding loops…"))
-            } else if session.locationUnavailable {
-                Text(String(localized: "route.planner.location_unavailable", defaultValue: "Choose a start on the map or enable location access in Settings.")).font(.footnote)
-                Button(String(localized: "route.planner.choose_start", defaultValue: "Choose a start")) { query = ""; presentation.sheet = .location }
-            } else if session.generationUnavailable && (!session.resultsCurrent || session.candidates.isEmpty) {
-                Text(session.generationFailureMessage).font(.footnote).foregroundStyle(.secondary)
-            } else if !session.supported {
-                Text(String(localized: "route.planner.unsupported", defaultValue: "Loop planning is not available for this activity yet.")).font(.footnote)
-            } else if session.searched && session.candidates.isEmpty {
-                Text(String(localized: "route.planner.no_results", defaultValue: "No loops found within ±10%. Try another start, distance or via place.")).font(.footnote).foregroundStyle(.secondary)
-                Button(String(localized: "route.planner.move_start", defaultValue: "Move start")) { moveStart() }
+            if !session.locating && !session.busy {
+                comparisonStatus
             }
             if !session.candidates.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(spacing: OutboundSpacing.compact) {
-                        ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
-                            Button { presentation.sheet = .details(candidate) } label: {
-                                candidateCard(candidate, number: index + 1).frame(width: 210)
-                            }.buttonStyle(.plain).disabled(!session.resultsCurrent)
-                                .accessibilityIdentifier("loop.candidate.\(index)")
-                        }
+                HStack { Spacer(minLength: 0); comparisonNavigation; Spacer(minLength: 0) }
+                TabView(selection: $selectedIndex) {
+                    ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
+                        Button { presentation.sheet = .details(candidate) } label: {
+                            ScrollView(.vertical) {
+                                candidateSummary(candidate, number: index + 1)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .outboundTapTarget()
+                                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                                        if abs((summaryHeights[candidate.id] ?? 0) - height) > 0.5 {
+                                            summaryHeights[candidate.id] = height
+                                        }
+                                    }
+                            }.scrollIndicators(.hidden)
+                        }.buttonStyle(.plain).disabled(!session.resultsCurrent).tag(index)
+                            .accessibilityIdentifier("loop.candidate.\(index)")
                     }
-                }.scrollIndicators(.hidden)
+                }.tabViewStyle(.page(indexDisplayMode: .never)).frame(height: comparisonSummaryHeight)
+                ViewThatFits(in: .horizontal) {
+                    HStack { moreRoutesButton; Spacer(); highlightedUseButton }
+                    VStack(alignment: .leading, spacing: 0) {
+                        moreRoutesButton
+                        highlightedUseButton
+                    }
+                }
+                .onChange(of: selectedIndex) { _, _ in
+                    Task { await analytics?.track(.init(.featureExposed, properties: [.feature: .string("loop_planner_comparison"), .result: .string("browsed")])) }
+                }
             }
-            if !session.busy && !session.locating && session.start != nil && !session.choosingStart && !session.locationUnavailable {
-                Button(session.resultsCurrent && !session.candidates.isEmpty
-                       ? String(localized: "route.planner.new_routes", defaultValue: "New routes")
-                       : String(localized: "route.planner.retry", defaultValue: "Try again")) { session.generate() }
-                    .buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                    .disabled(!session.canGenerate)
+            if session.candidates.isEmpty && !session.busy && !session.locating && session.start != nil && !session.choosingStart && !session.locationUnavailable {
+                moreRoutesButton
             }
-        }.padding(OutboundSpacing.standard).background(.regularMaterial)
+        }.padding(.horizontal, OutboundSpacing.compact).padding(.top, 4).background(.regularMaterial)
+    }
+    @ViewBuilder private var comparisonStatus: some View {
+        if session.locationUnavailable {
+            Text(String(localized: "route.planner.location_unavailable", defaultValue: "Choose a start on the map or enable location access in Settings.")).font(.footnote)
+            Button(String(localized: "route.planner.choose_start", defaultValue: "Choose a start")) { query = ""; presentation.sheet = .location }
+        } else if session.generationUnavailable && (!session.resultsCurrent || session.candidates.isEmpty) {
+            Text(session.generationFailureMessage).font(.footnote).foregroundStyle(.secondary)
+        } else if !session.supported {
+            Text(String(localized: "route.planner.unsupported", defaultValue: "Loop planning is not available for this activity yet.")).font(.footnote)
+        } else if session.searched && session.candidates.isEmpty {
+            Text(String(localized: "route.planner.no_results", defaultValue: "No loops found within ±10%. Try another start, distance or via place.")).font(.footnote).foregroundStyle(.secondary)
+            Button(String(localized: "route.planner.move_start", defaultValue: "Choose on map")) { moveStart() }
+        }
+    }
+    private var comparisonSummaryHeight: CGFloat {
+        let contentHeight = session.candidates.indices.contains(selectedIndex)
+            ? summaryHeights[session.candidates[selectedIndex].id] ?? 112 : 112
+        return min(max(44, contentHeight), max(80, CGFloat(viewportHeight * 0.28)))
+    }
+    private var comparisonNavigation: some View {
+        HStack(spacing: 0) {
+            Button { selectCandidate(-1) } label: { Image(systemName: "chevron.left").outboundTapTarget() }
+                .accessibilityLabel(String(localized: "route.planner.previous", defaultValue: "Previous route"))
+                .disabled(selectedIndex == 0)
+            Text(String(format: String(localized: "route.planner.position", defaultValue: "%d of %d"), selectedIndex + 1, session.candidates.count))
+                .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).fixedSize()
+            Button { selectCandidate(1) } label: { Image(systemName: "chevron.right").outboundTapTarget() }
+                .accessibilityLabel(String(localized: "route.planner.next", defaultValue: "Next route"))
+                .disabled(selectedIndex >= session.candidates.count - 1)
+        }
+    }
+    private var moreRoutesButton: some View {
+        Button { session.generate() } label: {
+            compactControlLabel {
+                Text((session.resultsCurrent || session.busy || session.locating) && !session.candidates.isEmpty
+                     ? String(localized: "route.planner.new_routes", defaultValue: "More routes")
+                     : String(localized: "route.planner.retry", defaultValue: "Try again"))
+            }
+        }.buttonStyle(.plain).disabled(!session.canGenerate)
+    }
+    private func compactControlLabel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .foregroundStyle(theme.accentColor)
+            .padding(.horizontal, OutboundSpacing.compact).padding(.vertical, 6)
+            .background(theme.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: OutboundRadius.control))
+            .outboundTapTarget()
     }
     @ViewBuilder private func sheetContent(_ sheet: LoopPlanningPresentation.Sheet) -> some View {
         switch sheet {
@@ -203,19 +361,14 @@ private struct LoopPlannerScreen: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                        candidateCard(candidate, number: (session.candidates.firstIndex(where: { $0.id == candidate.id }) ?? 0) + 1)
-                        Text(candidate.source == .community
-                             ? String(localized: "route.planner.existing_route", defaultValue: "Community route")
-                             : String(localized: "route.planner.generated_route", defaultValue: "Generated route")).font(.caption).foregroundStyle(.secondary)
-                        Text(candidate.attribution).font(.caption).foregroundStyle(.secondary)
+                        candidateSummary(candidate, number: candidateNumber(candidate), showsTitle: false, showsStartOffset: false)
                         Text(String(format: String(localized: "route.planner.start_distance", defaultValue: "Route starts %@ from your chosen start"), session.units.distanceString(meters: startDistance(candidate), fractionDigits: 2)))
                             .font(.subheadline).foregroundStyle(.secondary)
-                        Button(String(localized: "route.detail.action.use_route", defaultValue: "Use route")) { use(candidate) }
-                            .buttonStyle(.borderedProminent).tint(theme.actionColor)
-                            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control)).disabled(!session.resultsCurrent)
+                        useButton(candidate, entrySource: "details")
                     }.padding(OutboundSpacing.screen)
                 }
-                .navigationTitle(String(localized: "route.planner.route_details", defaultValue: "Route details"))
+                .navigationTitle(candidateTitle(candidate, number: candidateNumber(candidate)))
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "Close")) { presentation.sheet = nil } } }
             }
             .overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
@@ -265,6 +418,7 @@ private struct LoopPlannerScreen: View {
                         VStack(alignment: .leading) { locationActions }
                     }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                 }
+                if isVia(sheet) {
                 HStack {
                     TextField(String(localized: "route.planner.search_places", defaultValue: "Search places"), text: $query)
                         .textFieldStyle(.roundedBorder).focused($placeSearchFocused).autocorrectionDisabled()
@@ -273,15 +427,8 @@ private struct LoopPlannerScreen: View {
                     Button { submitPlaceSearch() } label: { Image(systemName: "magnifyingglass").outboundTapTarget() }
                         .accessibilityLabel(String(localized: "Search")).accessibilityIdentifier("loop.place.search")
                 }
-                if session.placeSearchState == .loading {
-                    ProgressView(String(localized: "route.planner.searching_places", defaultValue: "Searching places…"))
-                } else if session.placeSearchState == .empty {
-                    Text(String(localized: "route.planner.no_places", defaultValue: "No places found. Try another address.")).font(.footnote).foregroundStyle(.secondary)
                 }
-                ForEach(Array(session.places.enumerated()), id: \.element.id) { index, place in
-                    Button { choose(place, asVia: isVia(sheet)) } label: { Text(place.name).outboundTapTarget() }
-                        .accessibilityIdentifier("loop.place.\(index)")
-                }
+                placeResults(asVia: isVia(sheet))
                 if isVia(sheet) {
                     if session.via != nil {
                         Button(String(localized: "route.planner.remove_via", defaultValue: "Remove via place")) { presentation.sheet = nil; session.setVia(nil, lessClimbing: climbingDraft) }
@@ -307,11 +454,11 @@ private struct LoopPlannerScreen: View {
         }
     }
     @ViewBuilder private var locationActions: some View {
-        Button { presentation.sheet = nil; session.requestLocation() } label: {
+        Button { useMyLocation() } label: {
             Label(String(localized: "route.planner.my_location", defaultValue: "My location"), systemImage: "location").outboundTapTarget()
         }
         Button { moveStart() } label: {
-            Text(String(localized: "route.planner.move_start", defaultValue: "Move start")).outboundTapTarget()
+            Text(String(localized: "route.planner.move_start", defaultValue: "Choose on map")).outboundTapTarget()
         }
     }
     private func isVia(_ sheet: LoopPlanningPresentation.Sheet) -> Bool { if case .via = sheet { true } else { false } }
@@ -320,10 +467,14 @@ private struct LoopPlannerScreen: View {
         session.search(query)
     }
     private func choose(_ place: LoopPlanningPlace, asVia: Bool) {
+        startSearchFocused = false; placeSearchFocused = false
         presentation.sheet = nil; session.clearSearch(); query = ""
-        if asVia { session.setVia(place.coordinate, lessClimbing: climbingDraft) } else { session.setStart(place.coordinate) }
+        if asVia { session.setVia(place.coordinate, lessClimbing: climbingDraft) } else {
+            startQuery = ""; session.setStart(place.coordinate, label: place.name)
+        }
     }
     private func moveStart() {
+        startSearchFocused = false; startQuery = ""
         session.beginChoosingPoint(); presentation.sheet = nil; centerOnStart()
     }
     private func centerOnStart() {
@@ -344,12 +495,12 @@ private struct LoopPlannerScreen: View {
                 if let start = session.start { Marker(String(localized: "route.planner.start", defaultValue: "Start"), systemImage: "figure.walk", coordinate: start.locationCoordinate).tint(theme.accentColor) }
                 if let via = session.via { Marker(String(localized: "route.planner.via", defaultValue: "Via place"), systemImage: "mappin", coordinate: via.locationCoordinate).tint(theme.secondaryColor) }
                 ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
-                    MapPolyline(coordinates: displayPoints(candidate)).stroke(routeColor(index).opacity(detail == nil || detail?.id == candidate.id ? 1 : 0.25), lineWidth: detail?.id == candidate.id ? 7 : 4)
+                    MapPolyline(coordinates: displayPoints(candidate)).stroke(routeColor(index), lineWidth: index == selectedIndex ? 7 : 2)
                     if let midpoint = candidate.points.dropFirst(candidate.points.count / 2).first {
                         Annotation("\(index + 1)", coordinate: midpoint.locationCoordinate) {
-                            Button { guard session.resultsCurrent else { return }; presentation.sheet = .details(candidate) } label: {
+                            Button { guard session.resultsCurrent else { return }; selectedIndex = index; presentation.sheet = .details(candidate) } label: {
                                 Text("\(index + 1)").font(.headline).padding(10).background(.regularMaterial, in: Circle())
-                                    .overlay(Circle().stroke(routeColor(index).opacity(detail == nil || detail?.id == candidate.id ? 1 : 0.25), lineWidth: 3))
+                                    .overlay(Circle().stroke(routeColor(index), lineWidth: 3))
                                     .outboundTapTarget()
                             }.accessibilityLabel(candidateTitle(candidate, number: index + 1))
                         }
@@ -363,34 +514,89 @@ private struct LoopPlannerScreen: View {
                 if session.choosingStart {
                     session.setStart(.init(latitude: point.latitude, longitude: point.longitude)); return
                 }
-                if session.resultsCurrent, let candidate = nearestCandidate(point) { presentation.sheet = .details(candidate) }
+                if session.resultsCurrent, let candidate = nearestCandidate(point) {
+                    selectedIndex = session.candidates.firstIndex(where: { $0.id == candidate.id }) ?? 0
+                    presentation.sheet = .details(candidate)
+                }
             })
         }
     }
-    private func candidateCard(_ candidate: LoopPlanningCandidate, number: Int) -> some View {
-        HStack(alignment: .top, spacing: OutboundSpacing.standard) {
-            Text("\(number)").font(.headline).padding(10).background(routeColor(number-1).opacity(0.15), in: Circle())
-            VStack(alignment: .leading, spacing: 4) {
-                Text(candidateTitle(candidate, number: number)).font(.headline)
-                Text(session.units.distanceString(meters: candidate.distanceM, fractionDigits: 2)).font(.subheadline)
-                if let gain = candidate.elevationGainM {
-                    Text(String(format: String(localized: "route.planner.ascent", defaultValue: "%@ climbing"), session.units.elevationString(meters: gain))).font(.caption).foregroundStyle(.secondary)
-                }
-                if candidate.source == .community {
-                    Text(String(localized: "route.planner.existing_route", defaultValue: "Community route")).font(.caption).foregroundStyle(.secondary)
-                }
+    private func candidateSummary(_ candidate: LoopPlanningCandidate, number: Int,
+                                  showsTitle: Bool = true, showsStartOffset: Bool = true) -> some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            if showsTitle {
+                Text(candidateTitle(candidate, number: number)).font(.title3.weight(.semibold))
             }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right").foregroundStyle(.secondary)
-        }.padding(OutboundSpacing.standard).background(.regularMaterial, in: RoundedRectangle(cornerRadius: OutboundRadius.card)).outboundTapTarget()
+            HStack(alignment: .top, spacing: OutboundSpacing.standard) {
+                metric(symbol: "arrow.left.and.right", label: String(localized: "route.planner.distance", defaultValue: "Distance"),
+                       value: session.units.distanceString(meters: candidate.distanceM, fractionDigits: 2))
+                metric(symbol: "mountain.2", label: String(localized: "route.planner.climbing", defaultValue: "Climbing"),
+                       value: candidate.elevationGainM.map { session.units.elevationString(meters: $0) }
+                           ?? String(localized: "route.planner.unknown_elevation", defaultValue: "Unavailable"))
+            }
+            if showsStartOffset, startDistance(candidate) >= 50 {
+                Text(String(format: String(localized: "route.planner.start_distance", defaultValue: "Route starts %@ from your chosen start"), session.units.distanceString(meters: startDistance(candidate), fractionDigits: 2)))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private func metric(symbol: String, label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: OutboundSpacing.compact) {
+            Image(systemName: symbol).foregroundStyle(.secondary).accessibilityHidden(true)
+            Text(value).fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.title3.weight(.semibold))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(value)
+    }
+    @ViewBuilder private func placeResults(asVia: Bool) -> some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            if session.placeSearchState == .loading {
+                ProgressView(String(localized: "route.planner.searching_places", defaultValue: "Searching places…"))
+            } else if session.placeSearchState == .empty {
+                Text(String(localized: "route.planner.no_places", defaultValue: "No places found. Try another address.")).foregroundStyle(.secondary)
+            } else if session.placeSearchState == .failed {
+                Text(String(localized: "route.planner.search_failed", defaultValue: "Places could not be loaded. Try again.")).foregroundStyle(.secondary)
+            }
+            ForEach(Array(session.places.enumerated()), id: \.element.id) { index, place in
+                Button { choose(place, asVia: asVia) } label: {
+                    Text(place.name).frame(maxWidth: .infinity, alignment: .leading).outboundTapTarget()
+                }.accessibilityIdentifier("loop.place.\(index)")
+            }
+        }.font(.body).padding(.vertical, OutboundSpacing.compact)
+    }
+    private func candidateNumber(_ candidate: LoopPlanningCandidate) -> Int {
+        (session.candidates.firstIndex(where: { $0.id == candidate.id }) ?? 0) + 1
+    }
+    @ViewBuilder private var highlightedUseButton: some View {
+        if session.candidates.indices.contains(selectedIndex) {
+            useButton(session.candidates[selectedIndex], entrySource: "map")
+                .accessibilityIdentifier("loop.use_route")
+        }
+    }
+    private func useButton(_ candidate: LoopPlanningCandidate, entrySource: String) -> some View {
+        Button(String(localized: "route.detail.action.use_route", defaultValue: "Use route")) {
+            use(candidate, entrySource: entrySource)
+        }
+        .buttonStyle(.borderedProminent).tint(theme.actionColor)
+        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+        .frame(minHeight: 44)
+        .disabled(!session.current || !session.resultsCurrent)
     }
     private func candidateTitle(_ candidate: LoopPlanningCandidate, number: Int) -> String {
-        candidate.name ?? String(format: String(localized: "route.planner.route_number", defaultValue: "Loop %d"), number)
+        session.candidateTitle(candidate, number: number)
     }
-    private func use(_ candidate: LoopPlanningCandidate) {
-        guard session.current, session.resultsCurrent else { return }
-        let number = (session.candidates.firstIndex(where: { $0.id == candidate.id }) ?? 0) + 1
-        guard onUse(candidate, number) else {
+    private func use(_ candidate: LoopPlanningCandidate, entrySource: String) {
+        guard session.current, session.resultsCurrent,
+              let index = session.candidates.firstIndex(where: { $0.id == candidate.id }) else { return }
+        startSearchFocused = false; placeSearchFocused = false
+        let accepted = onUse(candidate, index + 1)
+        Task { await analytics?.track(.init(.featureExposed, properties: [
+            .feature: .string("loop_planner_use"), .entrySource: .string(entrySource),
+            .result: .string(accepted ? "success" : "failure")])) }
+        guard accepted else {
             session.showToast(String(localized: "route.planner.save_failed", defaultValue: "Route could not be saved on this device. Try again.")); return
         }
         session.cancel(); presentation.sheet = nil
@@ -416,9 +622,12 @@ private struct LoopPlannerScreen: View {
             return minimum < 100 ? (candidate, minimum) : nil
         }.min(by: { $0.1 < $1.1 })?.0
     }
+    private func selectCandidate(_ offset: Int) {
+        selectedIndex = min(max(0, selectedIndex + offset), session.candidates.count - 1)
+    }
     private func routeColor(_ index: Int) -> Color {
-        // Route identity colors are semantic and paired with visible numbers.
-        switch index % 3 { case 0: .blue; case 1: .orange; default: .purple }
+        // Semantic map selection stays blue across app themes; numbers also identify routes.
+        index == selectedIndex ? .blue : .secondary.opacity(0.55)
     }
 }
 

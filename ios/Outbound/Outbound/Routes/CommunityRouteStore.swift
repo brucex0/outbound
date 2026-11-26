@@ -95,6 +95,11 @@ nonisolated struct PreparedRoute: Codable, Identifiable, Hashable {
         )
     }
 
+    func preservingWorkoutContext() -> PreparedRoute {
+        PreparedRoute(id: id, name: name, points: points, source: source, activityType: activityType,
+                      routeShape: routeShape, direction: direction, attribution: attribution, preservesWorkoutContext: true)
+    }
+
     /// Canonical route caches own geometry/provenance, never a host's attachment policy.
     func withoutWorkoutAttachmentPolicy() -> PreparedRoute {
         PreparedRoute(id: id, name: name, points: points, source: source,
@@ -515,6 +520,46 @@ final class CommunityRouteStore: ObservableObject {
         }
     }
 
+    /// Bounded private snapshots for the planner; no discovery or publication mutation.
+    func plannerPersonalRoutes(matching request: LoopPlanningRequest) async -> [LoopPlanningSavedRoute] {
+        var summaries = mine
+        do { summaries = try await APIClient.shared.fetchMyRoutes().routes }
+        catch {
+            guard !Task.isCancelled else { return [] }
+            ActivityDiagnosticLog.error(.sync, "route_planner_saved_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+        }
+        var routes = imported.map { LoopPlanningSavedRoute(route: $0, elevationGainM: nil) }
+        // Filter metadata before the bounded detail budget so unrelated routes
+        // cannot starve matching saved routes or trigger unnecessary requests.
+        let matches = summaries.filter { summary in
+            guard summary.activityType == request.activityType.rawValue, summary.routeShape == "loop",
+                  abs(summary.distanceM / request.targetDistanceM - 1) <= 0.1 else { return false }
+            if let first = (cachedCommunityRoutes[summary.id] ?? summary.prepared)?.directedPoints.first {
+                return LoopPlanningCacheEntry.distance(request.start, .init(.init(latitude: first.latitude, longitude: first.longitude))) <= 2000
+            }
+            return true // Summaries without geometry need a bounded detail lookup.
+        }
+        for summary in matches.prefix(12) {
+            guard !Task.isCancelled else { return [] }
+            if let route = cachedCommunityRoutes[summary.id] ?? summary.prepared { routes.append(plannerSnapshot(route, summary: summary)); continue }
+            do {
+                let detail = try await APIClient.shared.fetchCommunityRoute(id: summary.id)
+                if let route = detail.prepared { routes.append(plannerSnapshot(route, summary: detail)) }
+            } catch {
+                guard !Task.isCancelled else { return [] }
+                ActivityDiagnosticLog.error(.sync, "route_planner_saved_detail_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+            }
+        }
+        return routes
+    }
+
+    private func plannerSnapshot(_ route: PreparedRoute, summary: CommunityRoute) -> LoopPlanningSavedRoute {
+        let canonical = PreparedRoute(id: route.id, name: route.name, points: route.points, source: route.source,
+            activityType: route.activityType, routeShape: route.routeShape, direction: route.direction,
+            attribution: route.attribution ?? summary.owner.displayName)
+        return .init(route: canonical, elevationGainM: summary.elevationGainM)
+    }
+
     func cachedPreparedRoute(id: String) -> PreparedRoute? {
         guard let route = cachedCommunityRoutes[id] else { return nil }
         touchCachedCommunityRoute(id: id)
@@ -538,7 +583,14 @@ final class CommunityRouteStore: ObservableObject {
         }
     }
 
-    func launch(_ route: PreparedRoute) { pendingLaunch = route }
+    @discardableResult func launch(_ route: PreparedRoute) -> Bool {
+        guard ActivityLaunchPreferenceStore.selectRoute(route) else {
+            errorMessage = String(localized: "route.planner.save_failed", defaultValue: "Route could not be saved on this device. Try again.")
+            return false
+        }
+        pendingLaunch = route
+        return true
+    }
     func consumeLaunch() { pendingLaunch = nil }
 
     private func beginLoading() {

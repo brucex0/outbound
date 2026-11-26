@@ -8,7 +8,7 @@ Open when changing private generated-route reuse, storage, or planner request ow
 - Automatic GPS, address, and map confirmations can reuse routes whose **actual first point, snapped start, and closing point** are all within 50 meters of the new start. Proximity to the previous requested point alone never qualifies a route.
 - Activity, climbing preference, and explicit required-place coordinate must match. Required places are never approximated. Canonical route distance must satisfy the new target's ±10% interval; deviation is recomputed for that target.
 - Preserve canonical geometry, distance, elevation, source, and attribution. Never add straight connectors or alter a workout target. Existing route details show the routed start offset.
-- A matching fresh cache result is displayed before any community/provider API call. No background refresh is scheduled. **New routes** bypasses automatic reuse and makes a real provider attempt; valid matching cached routes remain available after failure, with a localized temporary fallback notice.
+- A matching fresh cache result is displayed immediately, then saved/community lookup participates in the same comparison. Automatic generation fills fewer than three diverse choices; a full reusable comparison avoids provider generation. **More routes** bypasses automatic provider reuse and makes a real provider attempt; valid matching cached routes remain available after failure, with a localized temporary fallback notice.
 
 ## Ownership and privacy
 

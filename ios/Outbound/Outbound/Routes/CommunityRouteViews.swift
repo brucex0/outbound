@@ -203,7 +203,7 @@ struct CommunityRouteLibraryView: View {
                             else if let route { store.launch(route) }
                         }
                     } label: {
-                        Label(String(localized: "route.planner.title", defaultValue: "Find a loop"), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                        Label(String(localized: "route.planner.title", defaultValue: "Find a route"), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
                     }.buttonStyle(RouteLibraryActionButtonStyle()) }
                     Button { importsFile = true } label: {
                         Label(
@@ -384,6 +384,9 @@ struct CommunityRouteLibraryView: View {
 
     private func applySelection() {
         guard selectionDraft.canConfirm else { return }
+        guard ActivityLaunchPreferenceStore.selectRoute(selectedRoute) else {
+            store.errorMessage = String(localized: "route.planner.save_failed", defaultValue: "Route could not be saved on this device. Try again."); return
+        }
         onSelect?(selectedRoute)
         closeSelection()
     }
@@ -683,7 +686,7 @@ struct CommunityRouteDetailView: View {
                 }
                 Button {
                     guard let preparedRoute else { return }
-                    store.launch(preparedRoute)
+                    if !store.launch(preparedRoute) { feedbackMessage = store.errorMessage; store.errorMessage = nil }
                 } label: {
                     Label(
                         String(localized: "route.library.action.start", defaultValue: "Start Route Guidance"),
@@ -873,7 +876,8 @@ private struct PreparedRoutePreview: View {
             }
             if let attribution = route.attribution { Text(attribution).font(.caption).foregroundStyle(.secondary) }
             Button {
-                if let onUse { onUse() } else { store.launch(route) }
+                if let onUse { onUse() }
+                else if !store.launch(route) { feedbackMessage = store.errorMessage; store.errorMessage = nil }
             } label: {
                 Label(
                     String(localized: "route.import.action.use", defaultValue: "Use for Route Guidance"),
@@ -930,6 +934,12 @@ private struct PreparedRoutePreview: View {
                 RouteToast(message: feedbackMessage)
                     .onTapGesture { self.feedbackMessage = nil }
             }
+        }
+        .task(id: feedbackMessage) {
+            guard feedbackMessage != nil else { return }
+            do { try await Task.sleep(for: .seconds(2.5)) }
+            catch { return } // A replacement message or dismissed preview cancels its timeout.
+            feedbackMessage = nil
         }
     }
 

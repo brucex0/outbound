@@ -812,6 +812,9 @@ extension ActivityFlowCoordinator {
     }
 
     func applyRoute(_ route: PreparedRoute?) {
+        guard ActivityLaunchPreferenceStore.selectRoute(route) else {
+            showSetupToast(String(localized: "route.planner.save_failed", defaultValue: "Route could not be saved on this device. Try again.")); return
+        }
 #if DEBUG
         self.isRunSimulationEnabled = route != nil && self.routeTestMode
 #endif
@@ -876,6 +879,9 @@ extension ActivityFlowCoordinator {
     func updateRouteDirection(_ direction: RouteDirection, for route: PreparedRoute) {
         guard direction != route.direction else { return }
         let directedRoute = route.withDirection(direction)
+        guard ActivityLaunchPreferenceStore.selectRoute(directedRoute) else {
+            showSetupToast(String(localized: "route.planner.save_failed", defaultValue: "Route could not be saved on this device. Try again.")); return
+        }
         let currentIntent = self.setup.plannedIntent ?? .freestyleRun
         self.setup.plannedIntent = SessionIntent(
             id: currentIntent.id,

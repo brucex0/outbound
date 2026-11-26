@@ -33,14 +33,15 @@ import Foundation
         if case .details(let candidate) = sheet { candidate } else { nil }
     }
     init(activity: ActivityType, distanceM: Double?, units: MeasurementUnitSystem, initialSelection: PreparedRoute? = nil,
-         location: (any LoopPlanningLocationProvider)? = nil) {
+         location: (any LoopPlanningLocationProvider)? = nil, personalRoutes: @escaping (LoopPlanningRequest) async -> [LoopPlanningSavedRoute] = { _ in [] }) {
         attachedRoute = initialSelection
         savedDraft = CommunityRouteSelectionDraft(initialSelection: initialSelection)
         let account = ActivityAccountBoundary.current
         session = LoopPlanningSession(activity: activity, distanceM: distanceM, units: units,
-            repository: HTTPLoopPlanningRepository(), placeSearch: MapKitLoopPlaceSearch(), location: location ?? CoreLocationLoopProvider(),
+            repository: HTTPLoopPlanningRepository(personalRoutes: personalRoutes), placeSearch: MapKitLoopPlaceSearch(), location: location ?? CoreLocationLoopProvider(),
             cache: account.owner.hasPrefix("account:") ? DiskLoopPlanningCache.shared : nil, account: account,
             isCurrentAccount: { account == ActivityAccountBoundary.current })
+        if let initialSelection { session.restoreSelection(initialSelection) }
     }
     func openSavedRoutes() {
         guard session.current else { return }
@@ -55,7 +56,7 @@ import Foundation
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.arguments.contains("-OutboundUITestDeferredPlannerLocation") { return }
 #endif
-        session.beginInitialLocation()
+        if session.restoredRoute == nil { session.beginInitialLocation() }
     }
     func cancel() { session.cancel(); savedDraft.cancel(); sheet = nil }
 }

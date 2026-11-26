@@ -46,7 +46,12 @@ final class AuthStore: ObservableObject {
     }
     #endif
     private static var cachedUserID: String? {
-        didSet { ActivityAccountBoundary.activate(cachedUserID) }
+        didSet {
+            if let oldValue, oldValue != cachedUserID {
+                ActivityLaunchPreferenceStore.purgeSelectedRoute(owner: "account:" + oldValue)
+            }
+            ActivityAccountBoundary.activate(cachedUserID)
+        }
     }
     var currentLoginLabel: String? { user?.email ?? user?.displayName ?? localSessionLabel }
     var connectedProviderLabels: [String] { user == nil ? [] : [String(localized: "Apple")] }

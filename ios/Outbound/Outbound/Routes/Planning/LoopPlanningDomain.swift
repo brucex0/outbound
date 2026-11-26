@@ -9,7 +9,7 @@ nonisolated struct LoopPlanningCoordinate: Codable, Hashable {
     }
 }
 nonisolated enum LoopPlanningActivity: String, Codable { case running, walking, hiking, cycling }
-nonisolated enum LoopPlanningSource: String, Codable { case generated, community }
+nonisolated enum LoopPlanningSource: String, Codable { case generated, community, imported }
 
 nonisolated struct LoopPlanningRequest: Codable {
     struct Coordinate: Codable, Hashable {
@@ -40,6 +40,7 @@ nonisolated struct LoopPlanningCandidate: Identifiable, Codable {
     let snappedStart: LoopPlanningRequest.Coordinate
     let attribution: String
     let source: LoopPlanningSource
+    var saved: Bool? = nil // Personal-match ranking; local persistence is not explicit membership.
 }
 @MainActor protocol LoopPlanningRepository {
     func generate(_ request: LoopPlanningRequest) async throws -> [LoopPlanningCandidate]
@@ -101,13 +102,16 @@ nonisolated enum LoopPlanningRanking {
                 let gainA = a.0.elevationGainM ?? .infinity, gainB = b.0.elevationGainM ?? .infinity
                 if gainA != gainB { return gainA < gainB }
             }
+            let priorityA = a.0.saved == true ? 0 : (a.0.source == .community ? 1 : 2)
+            let priorityB = b.0.saved == true ? 0 : (b.0.source == .community ? 1 : 2)
+            if priorityA != priorityB { return priorityA < priorityB }
             if a.2 != b.2 { return a.2 < b.2 }
             return abs(a.0.deviationFraction) < abs(b.0.deviationFraction)
         }
         var selected: [(LoopPlanningCandidate, Set<String>, Double)] = []
         for candidate in scored {
             guard !selected.contains(where: {
-                Double($0.1.intersection(candidate.1).count)/Double(max(1,min($0.1.count,candidate.1.count))) > 0.8
+                $0.0.id == candidate.0.id || Double($0.1.intersection(candidate.1).count)/Double(max(1,min($0.1.count,candidate.1.count))) > 0.8
             }) else { continue }
             selected.append(candidate); if selected.count == 3 { break }
         }

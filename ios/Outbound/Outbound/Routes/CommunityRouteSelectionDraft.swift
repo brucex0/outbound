@@ -13,7 +13,10 @@ final class CommunityRouteSelectionDraft: ObservableObject, Identifiable {
 
     func openPlanner(activity: ActivityType, distanceM: Double?, preferences: MeasurementPreferences, store: CommunityRouteStore, authStore: AuthStore, analytics: AnalyticsManager?, onCancel: @escaping () -> Void = {}, onSelect: @escaping (PreparedRoute?) -> Void) {
         guard belongsToCurrentPresentation, planner == nil else { return }
-        let opening = LoopPlanningPresentation(activity: activity, distanceM: distanceM, units: preferences.unitSystem, initialSelection: selectedRoute)
+        let sharedSelection = ActivityLaunchPreferenceStore.selectedRoute.flatMap {
+            $0.activityType == nil || $0.activityType == activity ? $0 : nil
+        }
+        let opening = LoopPlanningPresentation(activity: activity, distanceM: distanceM, units: preferences.unitSystem, initialSelection: selectedRoute ?? sharedSelection, personalRoutes: { await store.plannerPersonalRoutes(matching: $0) })
         planner = opening
         let presented = plannerPresenter.present(diagnosticName: "loop_planner", fullScreen: true, onDismiss: {
             opening.cancel()
