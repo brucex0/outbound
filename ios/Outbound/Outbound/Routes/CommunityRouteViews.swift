@@ -1037,11 +1037,7 @@ private final class RoutePreviewGeometry: ObservableObject {
             ? .world
             : bounds.insetBy(dx: -2_000, dy: -2_000)
 
-        if let start, let finish {
-            endpointsOverlap = MKMapPoint(start).distance(to: MKMapPoint(finish)) <= 20
-        } else {
-            endpointsOverlap = false
-        }
+        endpointsOverlap = RouteWorkingGeometry.endpointsOverlap(points)
     }
 }
 

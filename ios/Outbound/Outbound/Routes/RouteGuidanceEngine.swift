@@ -565,6 +565,12 @@ nonisolated enum RouteWorkingGeometry {
     private static let minimumWorkingDistanceMeters = 10.0
     private static let minimumRetainedDistanceRatio = 0.70
 
+    /// Shared closure criterion for the route preview endpoint pin and loop-goal advice.
+    static func endpointsOverlap(_ points: [RouteCoordinate]) -> Bool {
+        guard let start = points.first, let finish = points.last else { return false }
+        return MKMapPoint(start.locationCoordinate).distance(to: MKMapPoint(finish.locationCoordinate)) <= 20
+    }
+
     static func navigationPoints(
         _ points: [RouteCoordinate],
         maximumCount: Int

@@ -179,15 +179,6 @@ extension ActivityFlowView {
                             systemImage: "arrow.left.arrow.right",
                             iconDiameter: 40
                         )
-                        .overlay(alignment: .bottomTrailing) {
-                            if route.direction == .reverse {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.caption)
-                                    .symbolRenderingMode(.palette)
-                                    .foregroundStyle(theme.actionForegroundColor, theme.actionColor)
-                                    .accessibilityHidden(true)
-                            }
-                        }
                     }
                     .accessibilityLabel(String(localized: "record.route.direction.reverse", defaultValue: "Reverse"))
                     .accessibilityValue(route.direction == .reverse

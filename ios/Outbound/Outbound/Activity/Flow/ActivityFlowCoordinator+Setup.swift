@@ -760,15 +760,55 @@ extension ActivityFlowCoordinator {
     func routeGoalAdvisory(_ route: PreparedRoute) -> String? {
         guard case .distanceMeters(let goalMeters) = self.setup.currentActivityGoal else { return nil }
         let routeMeters = self.preparedRouteDistance(route)
-        guard routeMeters > 0,
+        guard goalMeters.isFinite, goalMeters > 0, routeMeters.isFinite, routeMeters > 0,
               abs(routeMeters - goalMeters) > max(500, routeMeters * 0.1)
         else { return nil }
+        let units = self.dependencies.measurementPreferences.unitSystem
+        let goal = "\(units.distanceValue(meters: goalMeters).formatted(.number.locale(.autoupdatingCurrent).precision(.fractionLength(0...2)))) \(units.distanceUnit)"
+
+        if goalMeters > routeMeters, route.hasValidCanonicalGeometry,
+           RouteWorkingGeometry.endpointsOverlap(route.points) {
+            let loopCount = floor(goalMeters / routeMeters)
+            // Avoid converting an unrepresentable count supplied by malformed goal data.
+            guard loopCount < Double(Int64.max) else { return nil }
+            let remaining = goalMeters - loopCount * routeMeters
+            if remaining < 0.01 {
+                return String(
+                    format: String(localized: "record.route.goal_loops", defaultValue: "Complete %lld loops to reach your %@ goal."),
+                    locale: .autoupdatingCurrent, Int64(loopCount), goal
+                )
+            }
+            return String(
+                format: String(localized: "record.route.goal_loops_remaining", defaultValue: "Complete %lld loops, then about %@ more to reach your %@ goal."),
+                locale: .autoupdatingCurrent, Int64(loopCount), self.routeAdvisoryRemainingDistance(remaining), goal
+            )
+        }
+        if goalMeters > routeMeters {
+            return String(
+                format: String(localized: "record.route.goal_after_route", defaultValue: "After this route, continue about %@ more to reach your %@ goal."),
+                locale: .autoupdatingCurrent, self.routeAdvisoryRemainingDistance(goalMeters - routeMeters), goal
+            )
+        }
         return String(
-            format: String(localized: "record.route.goal_difference", defaultValue: "Your %@ goal and %@ route are different. You can keep both."),
-            locale: .autoupdatingCurrent,
-            self.setup.currentActivityGoal.label(unitSystem: self.dependencies.measurementPreferences.unitSystem),
-            self.routeDistanceLabel(route)
+            format: String(localized: "record.route.goal_before_route_end", defaultValue: "You’ll reach your %@ goal about %@ before the route ends."),
+            locale: .autoupdatingCurrent, goal, self.routeAdvisoryRemainingDistance(routeMeters - goalMeters)
         )
+    }
+
+    private func routeAdvisoryRemainingDistance(_ meters: Double) -> String {
+        let units = self.dependencies.measurementPreferences.unitSystem
+        let usesSmallUnit = meters < units.distanceMeters(from: 1)
+        let unit: UnitLength = units == .metric
+            ? (usesSmallUnit ? .meters : .kilometers)
+            : (usesSmallUnit ? .feet : .miles)
+        let distance = Measurement(value: meters, unit: UnitLength.meters).converted(to: unit)
+        let formatter = MeasurementFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.unitOptions = .providedUnit
+        formatter.unitStyle = .short
+        formatter.numberFormatter.maximumFractionDigits = usesSmallUnit ? 0 : 2
+        // A small positive remainder must never appear as zero distance.
+        return formatter.string(from: Measurement(value: max(usesSmallUnit ? 1 : 0.01, distance.value), unit: distance.unit))
     }
 
     func applyRoute(_ route: PreparedRoute?) {

@@ -23044,18 +23044,158 @@
         }
       }
     },
-    "record.route.goal_difference": {
+    "record.route.goal_loops": {
+      "comment": "Sport-neutral route/goal advice. Distances use the selected measurement preference. [platform:ios]",
+      "extractionState": "manual",
       "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Complete %lld loop to reach your %@ goal."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Complete %lld loops to reach your %@ goal."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Completa %lld vuelta para alcanzar tu objetivo de %@."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Completa %lld vueltas para alcanzar tu objetivo de %@."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "完成 %lld 圈即可达到 %@ 的目标。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "record.route.goal_loops_remaining": {
+      "comment": "Sport-neutral route/goal advice. Distances use the selected measurement preference. [platform:ios]",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Complete %lld loop, then about %@ more to reach your %@ goal."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Complete %lld loops, then about %@ more to reach your %@ goal."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Completa %lld vuelta y luego unos %@ más para alcanzar tu objetivo de %@."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Completa %lld vueltas y luego unos %@ más para alcanzar tu objetivo de %@."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "完成 %lld 圈后，再前进约 %@ 即可达到 %@ 的目标。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "record.route.goal_after_route": {
+      "comment": "Sport-neutral route/goal advice. Distances use the selected measurement preference. [platform:ios]",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After this route, continue about %@ more to reach your %@ goal."
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu objetivo de %@ y tu ruta de %@ son diferentes. Puedes conservar ambos."
+            "value": "Al terminar esta ruta, continúa unos %@ más para alcanzar tu objetivo de %@."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的 %@ 目标与 %@ 路线距离不同，可以同时保留。"
+            "value": "完成这条路线后，再前进约 %@ 即可达到 %@ 的目标。"
+          }
+        }
+      }
+    },
+    "record.route.goal_before_route_end": {
+      "comment": "Sport-neutral route/goal advice. Distances use the selected measurement preference. [platform:ios]",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’ll reach your %@ goal about %@ before the route ends."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcanzarás tu objetivo de %@ cuando aún queden unos %@ de ruta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "达到 %@ 的目标时，距离路线终点还约有 %@。"
           }
         }
       }
