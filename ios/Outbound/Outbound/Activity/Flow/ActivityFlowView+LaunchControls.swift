@@ -338,13 +338,13 @@ extension ActivityFlowView {
                 model.toggleCompanionContext()
             } label: {
                 Text(ActivityCompanionType.dog.displayName)
-                    .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                    .outboundTextStyle(.compactButton)
+                .foregroundStyle(isSelected ? theme.actionForegroundColor : Color.primary)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 44)
                 .background(
-                    isSelected ? theme.accentColor : Color(.secondarySystemBackground),
+                    isSelected ? theme.actionColor : Color(.secondarySystemBackground),
                     in: Capsule()
                 )
                 .overlay {
@@ -385,7 +385,7 @@ extension ActivityFlowView {
                     }
                 }
                 .frame(width: 54, height: 54)
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.actionForegroundColor)
                 .background(theme.actionColor, in: Circle())
                 .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 5))
                 .shadow(color: theme.actionColor.opacity(0.28), radius: 10, y: 5)
@@ -411,18 +411,18 @@ extension ActivityFlowView {
                     .font((host.isEmbeddedInToday ? Font.title3 : .body).weight(.semibold))
                 if !host.isEmbeddedInToday {
                     Text(choice.title)
-                        .font(.subheadline.weight(.semibold))
+                        .outboundTextStyle(.compactButton)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
                 }
             }
-            .foregroundStyle(choice == model.setup.selectedWorkoutChoice ? Color.white : Color.primary)
+            .foregroundStyle(choice == model.setup.selectedWorkoutChoice ? theme.actionForegroundColor : Color.primary)
             .frame(
                 width: host.isEmbeddedInToday ? 52 : ActivityLaunchLayout.controlWidth,
                 height: host.isEmbeddedInToday ? 52 : ActivityLaunchLayout.controlHeight
             )
             .background(
-                choice == model.setup.selectedWorkoutChoice ? theme.accentColor : Color(.secondarySystemBackground),
+                choice == model.setup.selectedWorkoutChoice ? theme.actionColor : Color(.secondarySystemBackground),
                 in: host.isEmbeddedInToday
                     ? AnyShape(Circle())
                     : AnyShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
@@ -453,11 +453,11 @@ extension ActivityFlowView {
             model.selectLaunchMode(mode)
         } label: {
             Text(mode.pillTitle)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .outboundTextStyle(.compactButton)
+                .foregroundStyle(isSelected ? theme.actionForegroundColor : Color.primary)
                 .padding(.horizontal, 18)
                 .frame(minHeight: 44)
-                .background(isSelected ? theme.accentColor : Color(.systemBackground).opacity(0.88), in: Capsule())
+                .background(isSelected ? theme.actionColor : Color(.systemBackground).opacity(0.88), in: Capsule())
                 .overlay {
                     Capsule()
                         .stroke(isSelected ? Color.clear : Color.primary.opacity(0.1), lineWidth: 1)
@@ -504,13 +504,13 @@ extension ActivityFlowView {
         } else {
         Text(title)
             .font((host.isEmbeddedInToday ? Font.caption : .subheadline).weight(.semibold))
-            .foregroundStyle(isConfigured ? Color.white : Color.primary)
+            .foregroundStyle(isConfigured ? theme.actionForegroundColor : Color.primary)
             .lineLimit(host.isEmbeddedInToday ? 2 : 1)
             .multilineTextAlignment(.center)
             .padding(.horizontal, host.isEmbeddedInToday ? 3 : 14)
             .frame(minWidth: 44, maxWidth: host.isEmbeddedInToday ? .infinity : nil, minHeight: 44)
             .background(
-                isConfigured ? theme.accentColor : Color(.secondarySystemBackground),
+                isConfigured ? theme.actionColor : Color(.secondarySystemBackground),
                 in: Capsule()
             )
             .overlay {
@@ -590,7 +590,7 @@ extension ActivityFlowView {
                         .overlay {
                             Image(systemName: "camera.fill")
                                 .font(.headline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(theme.actionForegroundColor)
                         }
                 }
             }

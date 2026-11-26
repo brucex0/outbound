@@ -86,7 +86,7 @@ struct AuthView: View {
                             .font(.subheadline.weight(.medium))
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                     .disabled(authStore.isBusy)
                     .accessibilityHint(authStore.isUsingDebugPersonas
                         ? "Choose a local debug persona"
@@ -178,6 +178,7 @@ struct AuthView: View {
 }
 
 private struct WelcomeOrbit: View {
+    @Environment(\.outboundTheme) private var theme
     var body: some View {
         GeometryReader { proxy in
             let center = CGPoint(x: proxy.size.width / 2, y: 104)
@@ -203,9 +204,9 @@ private struct WelcomeOrbit: View {
 
                     Image(systemName: "sparkles")
                         .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.actionForegroundColor)
                         .frame(width: 27, height: 27)
-                        .background(OutboundPalette.companion, in: Circle())
+                        .background(theme.actionColor, in: Circle())
                         .overlay(Circle().stroke(OutboundPalette.background, lineWidth: 3))
                         .offset(x: 4, y: -4)
                         .accessibilityHidden(true)
@@ -214,10 +215,10 @@ private struct WelcomeOrbit: View {
 
                 Label("Better together", systemImage: "sparkles")
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(OutboundPalette.companion)
+                    .foregroundStyle(Color.primary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(OutboundPalette.companion.opacity(0.1), in: Capsule())
+                    .background(OutboundPalette.surface, in: Capsule())
                     .position(x: center.x, y: 204)
             }
         }

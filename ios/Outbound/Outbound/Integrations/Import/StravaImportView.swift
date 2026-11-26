@@ -155,8 +155,8 @@ struct StravaImportView: View {
             Text(number.formatted())
                 .font(.caption.weight(.bold).monospacedDigit())
                 .frame(width: 22, height: 22)
-                .background(OutboundPalette.companion.opacity(0.15), in: Circle())
-                .foregroundStyle(OutboundPalette.companion)
+                .background(OutboundPalette.surface, in: Circle())
+                .foregroundStyle(Color.primary)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.subheadline.weight(.semibold))
                 Text(detail).font(.caption).foregroundStyle(.secondary)

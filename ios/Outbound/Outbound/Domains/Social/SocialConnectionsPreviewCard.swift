@@ -122,8 +122,9 @@ struct SocialSectionHeaderIcon: View {
     var body: some View {
         Image(systemName: systemName)
             .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.primary)
             .frame(width: 32, height: 32)
-            .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+            .background(OutboundPalette.surface, in: Circle())
             .frame(width: 44, height: 44)
     }
 }

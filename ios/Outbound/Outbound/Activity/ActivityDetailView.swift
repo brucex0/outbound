@@ -2018,7 +2018,7 @@ struct ActivitySharePreview: View {
                         )
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                     .controlSize(.large)
                     .disabled(isSaving)
 
@@ -2029,7 +2029,7 @@ struct ActivitySharePreview: View {
                         Label(String(localized: "activity.share.more", defaultValue: "Share…"), systemImage: "square.and.arrow.up")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                     .controlSize(.large)
                 }
                 .padding(.horizontal, 20)
@@ -2295,7 +2295,7 @@ private struct EditActivityView: View {
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OutboundButtonStyle(.primary))
                 .controlSize(.large)
                 .disabled(isSaving || isImporting || !hasChanges || !validMetrics)
                 .padding()

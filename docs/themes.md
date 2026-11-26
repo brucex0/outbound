@@ -44,7 +44,7 @@ The retired `sunset` and `solarFlare` persisted values decode as Victory Gold.
 - Accent and action colors retain one dynamic provider per theme. Repeated reads must compare equal so unrelated store refreshes do not supply a new native navigation/button tint. Providers still resolve light/dark traits dynamically, and selecting another theme immediately selects its own cached color. UIKit layer colors must explicitly re-resolve on appearance changes.
 - `secondaryColor`: complementary color used to make each theme more than a monochrome tint.
 - `actionColor`: readable filled-button color; it may be deeper than the accent.
-- `actionForegroundColor`: black or white chosen from the resolved action fill’s relative luminance for compact primary text. It adapts to each appearance independently; existing default primary buttons retain their current styling.
+- `actionForegroundColor`: black or white chosen from the resolved action fill’s relative luminance for compact primary text. It adapts to each appearance independently and must be used for all action-filled controls, including default primary buttons.
 - `heroGradient`: three-stop gradient for prominent themed surfaces.
 - `glowColor`: restrained theme-colored shadow for hero surfaces and preview swatches.
 - `heroForegroundColor`: readable content color over the actual hero gradient. Bright themes use dark foregrounds; darker themes use white.
@@ -58,7 +58,7 @@ The selected theme is also injected through `EnvironmentValues.outboundTheme`. A
 ## Applying Themes
 
 - Shared companion-style cards use `OutboundCard(style: .companion)`.
-- Shared filled actions use `OutboundPrimaryButton`.
+- Shared filled actions use `OutboundPrimaryButton`; native product buttons use `OutboundButtonStyle` for explicit neutral or action surface/foreground pairs. See the contrast rules and audit coverage in [design-system.md](design-system.md).
 - Companion explanations use `AIExplanationView`.
 - Feature-specific themed elements should read `@Environment(\.outboundTheme)` and select the appropriate contract color.
 - Semantic colors remain semantic. Do not theme destructive actions, warnings, map meaning, health states, or accessibility status colors.

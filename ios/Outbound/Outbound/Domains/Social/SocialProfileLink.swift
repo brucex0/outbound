@@ -79,14 +79,14 @@ struct SocialProfileDestination: View {
                         Button("Decline", role: .destructive) {
                             Task { await removeConnection() }
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutboundButtonStyle(.secondary))
                         .frame(maxWidth: .infinity)
                         .disabled(isRemovingConnection)
 
                         Button("Accept") {
                             Task { await acceptConnection() }
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(OutboundButtonStyle(.primary))
                         .frame(maxWidth: .infinity)
                         .disabled(isRemovingConnection)
                     }
@@ -227,17 +227,17 @@ struct ConnectionLinkProfileDestination: View {
         case ("pending", "incoming"):
             HStack(spacing: OutboundSpacing.compact) {
                 Button("Decline", role: .destructive) { removeConnection() }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                     .frame(maxWidth: .infinity)
                     .disabled(isMutating)
                 Button("Accept") { acceptConnection() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                     .frame(maxWidth: .infinity)
                     .disabled(isMutating)
             }
         default:
             Button("Connect") { requestConnection() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OutboundButtonStyle(.primary))
                 .disabled(isMutating)
         }
     }
@@ -311,12 +311,12 @@ private struct ConnectedProfileActions: View {
             Button(String(localized: "social.profile.disconnect", defaultValue: "Disconnect"), role: .destructive) {
                 confirmsDisconnect = true
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(OutboundButtonStyle(.secondary))
             Spacer()
             Button(String(localized: "social.profile.report", defaultValue: "Report"), role: .destructive) {
                 showsReportReasons = true
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(OutboundButtonStyle(.secondary))
         }
         .disabled(isProcessing)
         .padding(.horizontal, OutboundSpacing.screen)

@@ -47,8 +47,7 @@ struct ReadinessCheckInView: View {
                                     .font(.subheadline.weight(.semibold))
                                     .frame(maxWidth: .infinity, minHeight: 48)
                             }
-                            .buttonStyle(.bordered)
-                            .tint(selection == choice ? OutboundPalette.companion : .secondary)
+                            .buttonStyle(OutboundButtonStyle(.choice(isSelected: selection == choice)))
                             .accessibilityAddTraits(selection == choice ? .isSelected : [])
                         }
                     }

@@ -1001,9 +1001,9 @@ struct SessionStatusCard: View {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "sparkles")
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(theme.accentColor)
+                                .foregroundStyle(Color.primary)
                                 .frame(width: 32, height: 32)
-                                .background(theme.accentColor.opacity(0.12), in: Circle())
+                                .background(OutboundPalette.surface, in: Circle())
 
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(String(localized: "session.dashboard.coach", defaultValue: "Live coach"))
@@ -1092,7 +1092,7 @@ struct SessionStatusCard: View {
                                     if isCurrent {
                                         Text(String(localized: "today.change.current_short", defaultValue: "Current"))
                                             .font(.caption2.weight(.semibold))
-                                            .foregroundStyle(theme.accentColor)
+                                            .foregroundStyle(Color.primary)
                                     } else if isUpcoming {
                                         Text(String(localized: "Up next"))
                                             .font(.caption2.weight(.semibold))
@@ -1191,7 +1191,7 @@ struct SessionStatusCard: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 12 : 0)
                             .frame(minHeight: 62)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.actionForegroundColor)
                             .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -1239,7 +1239,7 @@ struct SessionStatusCard: View {
                 Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                     .font(.body.weight(.bold))
             }
-            .buttonStyle(SessionIconButtonStyle(background: theme.accentColor.opacity(0.14), foreground: theme.accentColor, size: 44))
+            .buttonStyle(SessionIconButtonStyle(background: theme.accentColor.opacity(0.14), foreground: Color.primary, size: 44))
             .accessibilityLabel(playback.isPlaying
                 ? String(localized: "Pause music")
                 : String(localized: "session.music.resume", defaultValue: "Resume music"))

@@ -311,7 +311,7 @@ struct LiveCheerView: View {
                     Button(String(localized: "cheer.session.unavailable.retry", defaultValue: "Try again")) {
                         Task { await store.refresh(id: sessionID) }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                 }
             } else {
                 ProgressView()

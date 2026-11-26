@@ -424,7 +424,7 @@ struct RunnerProgressView: View {
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(OutboundButtonStyle(.secondary))
         .controlSize(.small)
     }
 

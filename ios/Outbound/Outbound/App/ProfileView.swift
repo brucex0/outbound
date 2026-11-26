@@ -128,8 +128,7 @@ struct GearSettingsCard: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .tint(.orange)
+                .buttonStyle(OutboundButtonStyle(.secondary))
                 .accessibilityLabel("Add shoe")
 
                 if gearStore.shoes.isEmpty {
@@ -600,7 +599,7 @@ struct AssistantView: View {
                         Button(confirmation.rejectLabel) {
                             Task { await assistantStore.decidePendingCompanionAction(accept: false) }
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutboundButtonStyle(.secondary))
                         Button(confirmation.acceptLabel) {
                             Task {
                                 await assistantStore.decidePendingCompanionAction(
@@ -611,8 +610,7 @@ struct AssistantView: View {
                                 )
                             }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(personaAccentColor)
+                        .buttonStyle(OutboundButtonStyle(.primary))
                     }
                 }
                 .padding(12)
@@ -629,10 +627,9 @@ struct AssistantView: View {
                         .foregroundStyle(.secondary)
                     HStack {
                         Button("Cancel", role: .cancel) { pendingManualWorkoutDraft = nil }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(OutboundButtonStyle(.secondary))
                         Button("Review and Save") { showsManualWorkoutEntry = true }
-                            .buttonStyle(.borderedProminent)
-                            .tint(personaAccentColor)
+                            .buttonStyle(OutboundButtonStyle(.primary))
                     }
                     .disabled(isInterpreting || assistantStore.isResponding)
                 }
@@ -645,7 +642,7 @@ struct AssistantView: View {
                     trackMeaningfulEngagement(entrySource: "manual_entry")
                     showsManualWorkoutEntry = true
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(OutboundButtonStyle(.secondary))
                 .disabled(isInterpreting || assistantStore.isResponding)
             }
 
@@ -884,6 +881,7 @@ struct AssistantView: View {
 }
 
 private struct AssistantBubble: View {
+    @Environment(\.outboundTheme) private var theme
     let message: AssistantMessage
     let accentColor: Color
 
@@ -909,10 +907,10 @@ private struct AssistantBubble: View {
 
             Text(message.text)
                 .font(.subheadline)
-                .foregroundStyle(message.author == .assistant ? Color.primary : Color.white)
+                .foregroundStyle(message.author == .assistant ? Color.primary : theme.actionForegroundColor)
         }
         .padding(14)
-        .background(message.author == .assistant ? Color(.secondarySystemBackground) : accentColor)
+        .background(message.author == .assistant ? Color(.secondarySystemBackground) : theme.actionColor)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }

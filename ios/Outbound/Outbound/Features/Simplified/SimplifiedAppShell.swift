@@ -1804,7 +1804,7 @@ private struct SimplifiedTodayView: View {
                     } label: {
                         Label("Change workout", systemImage: "slider.horizontal.3")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                     .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                     .frame(minHeight: 44)
                     }
@@ -2488,7 +2488,7 @@ private struct WeatherDetailSheet: View {
                     Spacer()
                     Button("Refresh conditions", action: onRefresh)
                         .frame(maxWidth: .infinity)
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutboundButtonStyle(.secondary))
                 } else {
                     ContentUnavailableView(
                         "Conditions unavailable",
@@ -2497,7 +2497,7 @@ private struct WeatherDetailSheet: View {
                     )
                     Button("Try again", action: onRefresh)
                         .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(OutboundButtonStyle(.primary))
                 }
             }
             .padding(OutboundSpacing.screen)
@@ -2678,10 +2678,10 @@ private struct SimplifiedMeView: View {
                                             .accessibilityHidden(true)
                                     }
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(OutboundPalette.companion)
+                                    .foregroundStyle(Color.primary)
                                     .padding(.horizontal, 9)
                                     .padding(.vertical, 6)
-                                    .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
+                                    .background(OutboundPalette.surface, in: Capsule())
                                 }
                                 if AuthStore.currentUserId != nil && activityStore.accountStatistics == nil {
                                     AccountStatisticsStatus(store: activityStore)
@@ -4134,6 +4134,7 @@ private struct ProfileToastView: View {
 }
 
 private struct EditableProfileAvatar: View {
+    @Environment(\.outboundTheme) private var theme
     let url: String?
     let name: String
     let size: CGFloat
@@ -4150,9 +4151,9 @@ private struct EditableProfileAvatar: View {
 
             Image(systemName: "camera.fill")
                 .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.actionForegroundColor)
                 .frame(width: 22, height: 22)
-                .background(OutboundPalette.companion, in: Circle())
+                .background(theme.actionColor, in: Circle())
                 .overlay {
                     Circle().strokeBorder(OutboundPalette.background, lineWidth: 2)
                 }
@@ -4220,7 +4221,7 @@ private struct ProfilePhotoPreviewView: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OutboundButtonStyle(.primary))
                 .disabled(isUpdating)
             }
             .padding(OutboundSpacing.screen)
@@ -4497,11 +4498,11 @@ private struct UserAvatarView: View {
                     .overlay { ProgressView().controlSize(.small) }
             } else {
                 Circle()
-                    .fill(OutboundPalette.companion.opacity(0.16))
+                    .fill(OutboundPalette.surface)
                     .overlay {
                         Text(initials)
                             .font(.headline.weight(.bold))
-                            .foregroundStyle(OutboundPalette.companion)
+                            .foregroundStyle(Color.primary)
                     }
             }
         }

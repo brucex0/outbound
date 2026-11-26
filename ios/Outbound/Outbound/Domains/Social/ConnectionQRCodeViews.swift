@@ -117,7 +117,7 @@ struct SocialConnectionQRScannerView: View {
                     guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
                     UIApplication.shared.open(url)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OutboundButtonStyle(.primary))
             }
         }
     }

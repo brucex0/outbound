@@ -48,7 +48,7 @@ struct GroupDirectoryDetailView: View {
                     Button(String(localized: "group.loading.retry", defaultValue: "Try again")) {
                         Task { await loadGroup() }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(OutboundSpacing.screen)
@@ -135,11 +135,11 @@ private struct GroupInvitationPreviewView: View {
                             .accessibilityIdentifier("group.membership.pending")
                     } else {
                     Button(String(localized: "group.invitation.accept", defaultValue: "Accept")) { respond(accept: true) }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(OutboundButtonStyle(.primary))
                         .accessibilityIdentifier("group.invitation.preview.accept")
                     }
                     Button(invitation.status == "awaiting_approval" ? String(localized: "Withdraw request", table: "GroupMembership") : String(localized: "group.invitation.decline", defaultValue: "Decline")) { respond(accept: false) }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutboundButtonStyle(.secondary))
                         .accessibilityIdentifier("group.invitation.preview.decline")
                     if responding { ProgressView() }
                 }
@@ -262,9 +262,9 @@ struct GroupCompactContent: View {
     private var detailedContent: some View {
         HStack(spacing: OutboundSpacing.standard) {
             groupIcon
-                .foregroundStyle(OutboundPalette.companion)
+                .foregroundStyle(Color.primary)
                 .frame(width: 44, height: 44)
-                .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                .background(OutboundPalette.surface, in: Circle())
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(displayName ?? group.name).font(.headline).foregroundStyle(.primary).lineLimit(1)
@@ -289,10 +289,10 @@ struct GroupCompactContent: View {
         if group.unreadNoticeCount > 0 {
             Text(String(localized: "group.notices.unread", defaultValue: "Unread"))
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(OutboundPalette.companion)
+                .foregroundStyle(Color.primary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
+                .background(OutboundPalette.surface, in: Capsule())
                 .accessibilityLabel(String(localized: "group.notices.unread", defaultValue: "Unread"))
         }
     }
@@ -482,8 +482,7 @@ struct GroupCreateView: View {
                         }
                         .frame(minHeight: 50)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(OutboundPalette.companion)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                     .disabled(isSubmitting || (selectedTemplate == "motivation" && selectedIDs.isEmpty) || (selectedTemplate == "activities" && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
                     .padding(.horizontal, OutboundSpacing.screen)
                     .padding(.vertical, 10)
@@ -530,7 +529,7 @@ struct GroupCreateView: View {
         Button { selectTemplate(template) } label: {
             OutboundCard(style: .companion) {
                 HStack(spacing: 14) {
-                    groupTypeMark(template: template).foregroundStyle(OutboundPalette.companion).frame(width: 24, height: 24).frame(width: 44, height: 44).background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                    groupTypeMark(template: template).foregroundStyle(Color.primary).frame(width: 24, height: 24).frame(width: 44, height: 44).background(OutboundPalette.surface, in: Circle())
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title).font(.headline).foregroundStyle(.primary)
                         Text(detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
@@ -572,7 +571,7 @@ struct GroupCreateView: View {
                 ForEach(["running", "walking", "hiking", "cycling", "swimming", "strength", "mixed"], id: \.self) { interest in
                     Button { if activityInterests.contains(interest) { activityInterests.remove(interest) } else { activityInterests.insert(interest) } } label: {
                         Text(interest.capitalized).frame(maxWidth: .infinity, minHeight: 40)
-                    }.buttonStyle(.bordered).tint(activityInterests.contains(interest) ? OutboundPalette.companion : .secondary)
+                    }.buttonStyle(OutboundButtonStyle(.choice(isSelected: activityInterests.contains(interest))))
                 }
             }
             Text(String(localized: "social.groups.create.community.access", defaultValue: "Anyone can find and join this community. Members’ workouts stay private."))
@@ -596,7 +595,7 @@ struct GroupCreateView: View {
     private var creationHero: some View {
         OutboundCard(style: .companion) {
             VStack(alignment: .leading, spacing: 14) {
-                groupTypeMark(template: selectedTemplate ?? "motivation").foregroundStyle(OutboundPalette.companion).frame(width: 28, height: 28).frame(width: 52, height: 52).background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                groupTypeMark(template: selectedTemplate ?? "motivation").foregroundStyle(Color.primary).frame(width: 28, height: 28).frame(width: 52, height: 52).background(OutboundPalette.surface, in: Circle())
                 Text(selectedTemplate == "activities"
                     ? String(localized: "social.groups.create.community.hero_title", defaultValue: "Bring your community together.")
                     : String(localized: "social.groups.create.private.hero_title", defaultValue: "Active. Positive. Together."))
@@ -688,13 +687,13 @@ private struct GroupCreatedView: View {
                             .environmentObject(socialStore)
                         } label: {
                             Text(String(localized: "group.created.plan_activity", defaultValue: "Plan an activity")).frame(maxWidth: .infinity, minHeight: 44)
-                        }.buttonStyle(.borderedProminent).tint(OutboundPalette.companion)
+                        }.buttonStyle(OutboundButtonStyle(.primary))
                         NavigationLink { GroupDetailView(group: current) } label: {
                             Text(String(localized: "group.created.post_update", defaultValue: "Post an update")).frame(maxWidth: .infinity, minHeight: 44)
-                        }.buttonStyle(.bordered)
+                        }.buttonStyle(OutboundButtonStyle(.secondary))
                         NavigationLink { GroupDetailView(group: current) } label: {
                             Text(String(localized: "group.created.invite_people", defaultValue: "Invite people")).frame(maxWidth: .infinity, minHeight: 44)
-                        }.buttonStyle(.bordered)
+                        }.buttonStyle(OutboundButtonStyle(.secondary))
                     }
                 } else {
                     VStack(spacing: 0) {
@@ -708,8 +707,8 @@ private struct GroupCreatedView: View {
                     .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     VStack(spacing: 10) {
                         Button(String(localized: "group.created.choose_focus", defaultValue: "Choose a weekly theme")) { showsFocus = true }
-                            .buttonStyle(.borderedProminent).tint(OutboundPalette.companion).frame(maxWidth: .infinity, minHeight: 50)
-                        NavigationLink { GroupDetailView(group: current) } label: { Text(String(localized: "group.created.open", defaultValue: "Open Group")).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.bordered)
+                            .buttonStyle(OutboundButtonStyle(.primary)).frame(maxWidth: .infinity, minHeight: 50)
+                        NavigationLink { GroupDetailView(group: current) } label: { Text(String(localized: "group.created.open", defaultValue: "Open Group")).frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(OutboundButtonStyle(.secondary))
                         Text(String(localized: "group.created.focus_optional", defaultValue: "A numeric goal is optional. You can simply encourage each other."))
                             .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
@@ -852,9 +851,9 @@ struct GroupDetailView: View {
                         HStack(spacing: OutboundSpacing.standard) {
                             Image(systemName: "calendar.badge.clock")
                                 .font(.title2)
-                                .foregroundStyle(OutboundPalette.companion)
+                                .foregroundStyle(Color.primary)
                                 .frame(width: 42, height: 42)
-                                .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                                .background(OutboundPalette.surface, in: Circle())
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(activity.title)
@@ -885,8 +884,7 @@ struct GroupDetailView: View {
             Label(String(localized: "group.plan_activity", defaultValue: "Plan an activity"), systemImage: "calendar.badge.plus")
                 .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(OutboundPalette.companion)
+        .buttonStyle(OutboundButtonStyle(.primary))
         .accessibilityIdentifier("group.plan.activity")
     }
 
@@ -940,7 +938,7 @@ struct GroupDetailView: View {
                     Label(title, systemImage: "person.badge.plus")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OutboundButtonStyle(.primary))
                 .disabled(current.joinPolicy == "request" && current.pendingRequest?.status == "pending")
             }
             if let description = current.description, !description.isEmpty {
@@ -949,7 +947,7 @@ struct GroupDetailView: View {
                         Text(String(localized: "group.about", defaultValue: "About")).font(.headline)
                         Text(description).font(.subheadline).foregroundStyle(.secondary)
                         Text(String(localized: "group.join_policy", defaultValue: current.joinPolicy == "request" ? "Request to join" : current.joinPolicy == "open" ? "Anyone can join" : "Invitation only"))
-                            .font(.caption.weight(.semibold)).foregroundStyle(OutboundPalette.companion)
+                            .outboundTextStyle(.caption).fontWeight(.semibold).foregroundStyle(Color.primary)
                     }
                 }
             }
@@ -958,7 +956,7 @@ struct GroupDetailView: View {
                     HStack {
                         Text(String(localized: "group.notices", defaultValue: "NOTICES")).socialSectionLabel()
                         Spacer()
-                        if current.unreadNoticeCount > 0 { Text(String(localized: "group.notices.unread", defaultValue: "Unread")).font(.caption.weight(.semibold)).foregroundStyle(OutboundPalette.companion) }
+                        if current.unreadNoticeCount > 0 { Text(String(localized: "group.notices.unread", defaultValue: "Unread")).outboundTextStyle(.caption).fontWeight(.semibold).foregroundStyle(Color.primary) }
                     }
                     ForEach(current.notices) { notice in
                         OutboundCard {
@@ -983,7 +981,7 @@ struct GroupDetailView: View {
             }
             if current.role == "owner" || current.role == "admin" {
                 Button { showsNoticeComposer = true } label: { Label(String(localized: "group.notice.publish", defaultValue: "Post an update"), systemImage: "megaphone") }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
             }
             if canPlanActivity { planActivityButton }
         }
@@ -1628,8 +1626,7 @@ struct GroupFocusEditor: View {
             HStack {
                 ForEach([2, 3, 4, 5], id: \.self) { value in
                     Button("\(value)") { selection.wrappedValue = value }
-                        .buttonStyle(.bordered)
-                        .tint(selection.wrappedValue == value ? OutboundPalette.companion : .secondary)
+                        .buttonStyle(OutboundButtonStyle(.choice(isSelected: selection.wrappedValue == value)))
                         .frame(minWidth: 44, minHeight: 44)
                         .accessibilityLabel(String(localized: "group.focus.preset_accessibility", defaultValue: "\(value) activities"))
                 }
@@ -2040,8 +2037,7 @@ struct GroupCompletionCelebrationView: View {
                     .multilineTextAlignment(.center)
                 Text(group.name).font(.title3).foregroundStyle(.secondary)
                 Button(String(localized: "group.celebration.continue", defaultValue: "Keep it going"), action: onDismiss)
-                    .buttonStyle(.borderedProminent)
-                    .tint(OutboundPalette.companion)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                     .frame(minHeight: 44)
             }
             .padding(32)

@@ -114,7 +114,7 @@ struct PlannedWorkoutCompletionControls: View {
                                 Text(candidate.startedAt.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, timeZone: trainingPlanStore.nutritionCalendar.timeZone))).font(.subheadline)
                                 Text(measurementPreferences.unitSystem.distanceValueString(meters: candidate.distanceM) + " " + measurementPreferences.unitSystem.distanceUnit + " · " + Duration.seconds(candidate.durationSecs).formatted(.time(pattern: .hourMinuteSecond))).font(.subheadline)
                             }.frame(maxWidth: .infinity, alignment: .leading).outboundTapTarget()
-                        }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                        }.buttonStyle(OutboundButtonStyle(.secondary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                     }
                 }.padding()
             }
@@ -215,7 +215,7 @@ struct GroupWorkoutCompletionPrompt: View {
                 ViewThatFits(in: .horizontal) {
                     HStack { groupActions(match) }
                     VStack(alignment: .leading) { groupActions(match) }
-                }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control)).disabled(busy)
+                }.buttonStyle(OutboundButtonStyle(.secondary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control)).disabled(busy)
                 if busy { ProgressView() }
             }
             .overlay(alignment: .top) {

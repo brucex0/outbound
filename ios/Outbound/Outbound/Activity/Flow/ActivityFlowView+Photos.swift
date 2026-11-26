@@ -32,7 +32,7 @@ extension ActivityFlowView {
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(OutboundButtonStyle(.secondary))
             } else {
                 HStack(spacing: 12) {
                     Button {
@@ -44,15 +44,14 @@ extension ActivityFlowView {
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
+                    .buttonStyle(OutboundButtonStyle(.primary))
 
                     PhotosPicker(selection: binding(\.setup.selectedPreActivityPhotoItem), matching: .images, preferredItemEncoding: .current, photoLibrary: .shared()) {
                         Image(systemName: "photo.on.rectangle")
                             .font(.headline)
                             .frame(width: 44, height: 44)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                     .accessibilityLabel(String(localized: "record.photo.choose", defaultValue: "Choose a photo"))
                 }
 
@@ -93,8 +92,7 @@ extension ActivityFlowView {
                             Label(String(localized: "record.photo.retake", defaultValue: "Retake"), systemImage: "camera.fill")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.orange)
+                        .buttonStyle(OutboundButtonStyle(.primary))
 
                         Button(role: .destructive) {
                             model.track(.init(.photoRemoved, properties: [.sourceType: .string("pre_activity")]))
@@ -104,7 +102,7 @@ extension ActivityFlowView {
                             Label(String(localized: "record.photo.remove", defaultValue: "Remove"), systemImage: "trash")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutboundButtonStyle(.secondary))
                     }
                 }
             }

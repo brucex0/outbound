@@ -47,7 +47,7 @@ struct TermsAcceptanceView: View {
                         .font(.body.weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 50)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                     .disabled(authStore.isBusy)
 
                     if let error = authStore.authError {

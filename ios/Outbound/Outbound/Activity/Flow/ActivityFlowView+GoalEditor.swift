@@ -125,14 +125,14 @@ extension ActivityFlowView {
                 Button(String(localized: "common.cancel", defaultValue: "Cancel")) {
                     dismissGoalEditor()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(OutboundButtonStyle(.secondary))
                 .accessibilityIdentifier("activity.goal.cancel")
                 .frame(maxWidth: .infinity)
 
                 Button(String(localized: "common.done", defaultValue: "Done")) {
                     saveGoalEditorSelection()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OutboundButtonStyle(.primary))
                 .accessibilityIdentifier("activity.goal.done")
                 .tint(.orange)
                 .frame(maxWidth: .infinity)
@@ -249,7 +249,7 @@ extension ActivityFlowView {
                             .font(.subheadline.weight(.semibold))
                             .outboundTapTarget()
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                     .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                     Button(role: .destructive) {
                         if let onRemove { onRemove() } else { model.removeSelectedRoute(route) }
@@ -400,8 +400,7 @@ extension ActivityFlowView {
                     )
                     .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.bordered)
-                .tint(.orange)
+                .buttonStyle(OutboundButtonStyle(.secondary))
             }
         }
         .padding(18)

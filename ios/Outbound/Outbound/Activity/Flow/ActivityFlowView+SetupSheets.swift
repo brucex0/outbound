@@ -195,7 +195,7 @@ extension ActivityFlowView {
                     Button { submitMusicSearch(action: "search_icon") } label: {
                         if model.dependencies.musicStore.isSearching { ProgressView() } else { Image(systemName: "magnifyingglass") }
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                     .disabled(model.setup.musicSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.dependencies.musicStore.isSearching)
                     .accessibilityLabel(String(localized: "record.music.search.action", defaultValue: "Search music"))
                 }
@@ -311,15 +311,15 @@ extension ActivityFlowView {
                 Toggle(isOn: binding(\.dependencies.musicStore.repeatsQueue)) {
                     Label(String(localized: "record.music.repeat.short", defaultValue: "Repeat"), systemImage: "repeat")
                 }
+                .buttonStyle(OutboundButtonStyle(.choice(isSelected: model.dependencies.musicStore.repeatsQueue)))
                 .accessibilityLabel(String(localized: "record.music.repeat", defaultValue: "Repeat during workout"))
                 Toggle(isOn: binding(\.dependencies.musicStore.shufflesQueue)) {
                     Label(String(localized: "record.music.shuffle.short", defaultValue: "Shuffle"), systemImage: "shuffle")
                 }
+                .buttonStyle(OutboundButtonStyle(.choice(isSelected: model.dependencies.musicStore.shufflesQueue)))
                 .accessibilityLabel(String(localized: "record.music.shuffle", defaultValue: "Shuffle songs"))
             }
             .toggleStyle(.button)
-            .buttonStyle(.bordered)
-            .tint(.orange)
             .font(.caption.weight(.semibold))
         }
         .padding(10)

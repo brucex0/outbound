@@ -343,9 +343,9 @@ private struct LoopPlannerScreen: View {
     }
     private func compactControlLabel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
-            .foregroundStyle(theme.accentColor)
+            .foregroundStyle(Color.primary)
             .padding(.horizontal, OutboundSpacing.compact).padding(.vertical, 6)
-            .background(theme.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: OutboundRadius.control))
+            .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
             .outboundTapTarget()
     }
     @ViewBuilder private func sheetContent(_ sheet: LoopPlanningPresentation.Sheet) -> some View {
@@ -407,7 +407,7 @@ private struct LoopPlannerScreen: View {
                 }
                 Button(String(localized: "Done")) {
                     presentation.sheet = nil; session.applyDistance(distanceDraft)
-                }.buttonStyle(.borderedProminent).tint(theme.actionColor)
+                }.buttonStyle(OutboundButtonStyle(.primary))
                     .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                     .disabled(!session.validDistanceText(distanceDraft))
             case .location, .via:
@@ -415,7 +415,7 @@ private struct LoopPlannerScreen: View {
                     ViewThatFits(in: .horizontal) {
                         HStack { locationActions }
                         VStack(alignment: .leading) { locationActions }
-                    }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                    }.buttonStyle(OutboundButtonStyle(.secondary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                 }
                 if isVia(sheet) {
                 HStack {
@@ -440,9 +440,9 @@ private struct LoopPlannerScreen: View {
                 Toggle(String(localized: "route.planner.less_climbing", defaultValue: "Less climbing"), isOn: $climbingDraft).accessibilityIdentifier("loop.less_climbing")
                 Button(String(localized: "route.planner.include_place", defaultValue: "Include a place")) {
                     query = ""; session.clearSearch(); presentation.sheet = .via
-                }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                }.buttonStyle(OutboundButtonStyle(.secondary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                 Button(String(localized: "Done")) { presentation.sheet = nil; session.applyPreference(lessClimbing: climbingDraft) }
-                    .buttonStyle(.borderedProminent).tint(theme.actionColor).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                    .buttonStyle(OutboundButtonStyle(.primary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
             default: EmptyView()
             }
         }
@@ -581,7 +581,7 @@ private struct LoopPlannerScreen: View {
         Button(String(localized: "route.detail.action.use_route", defaultValue: "Use route")) {
             use(candidate, entrySource: entrySource)
         }
-        .buttonStyle(.borderedProminent).tint(theme.actionColor)
+        .buttonStyle(OutboundButtonStyle(.primary))
         .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
         .frame(minHeight: 44)
         .disabled(!session.current || !session.resultsCurrent)

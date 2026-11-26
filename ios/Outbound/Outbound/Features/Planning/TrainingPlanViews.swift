@@ -33,7 +33,8 @@ struct TrainingPlanPickerView: View {
                         Image(systemName: "chevron.right")
                     }
                     .padding(18).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .foregroundStyle(Color.primary)
+                    .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -76,8 +77,9 @@ struct TrainingPlanPickerView: View {
                         }
 
                         Label(recommendation.template.source?.name == "Plainstride plan standards" ? "Curated" : "Reviewed plan", systemImage: "checkmark.seal.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(accentColor)
+                            .outboundTextStyle(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color.primary)
 
                         if let openingWeek = recommendation.template.weeks.first {
                             Text(openingWeek.summary)
@@ -95,14 +97,12 @@ struct TrainingPlanPickerView: View {
                             Button("Details") {
                                 onSelectPlan(recommendation)
                             }
-                            .buttonStyle(.bordered)
-                            .tint(accentColor)
+                            .buttonStyle(OutboundButtonStyle(.secondary))
 
                             Button("Use plan") {
                                 onUsePlan(recommendation)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(accentColor)
+                            .buttonStyle(OutboundButtonStyle(.primary))
                         }
                         .font(.subheadline.weight(.semibold))
                     }
@@ -168,14 +168,12 @@ struct TrainingPlanRecommendationDetailView: View {
                     dismiss()
                     onMorePlans()
                 }
-                .buttonStyle(.bordered)
-                .tint(accentColor)
+                .buttonStyle(OutboundButtonStyle(.secondary))
 
                 Button("Use this plan") {
                     onUsePlan()
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(accentColor)
+                .buttonStyle(OutboundButtonStyle(.primary))
             }
             .font(.headline)
             .padding(.horizontal)
@@ -269,8 +267,9 @@ struct TrainingPlanRecommendationDetailView: View {
     private func workoutPreviewRow(_ workout: TrainingPlanWorkout) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Text(workout.dayLabel)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(accentColor)
+                .outboundTextStyle(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.primary)
                 .frame(width: 32, alignment: .leading)
             VStack(alignment: .leading, spacing: 3) {
                 Text(BuiltinWorkoutText.localized(workout.title))
@@ -333,8 +332,9 @@ struct ActiveTrainingPlanDetailView: View {
                             Text(todaySuggestion.title)
                                 .font(.subheadline.weight(.semibold))
                             Text(todaySuggestion.detail)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(accentColor)
+                                .outboundTextStyle(.body)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Color.primary)
                             Text(todaySuggestion.guideLine)
                                 .font(.body)
                                 .foregroundStyle(.secondary)
@@ -967,15 +967,16 @@ private struct ScheduledPlanWorkoutDetailView: View {
                 if let todaySuggestion {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(todaySuggestion.detail)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(accentColor)
+                            .outboundTextStyle(.body)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color.primary)
                         Text(todaySuggestion.guideLine)
                             .font(.body)
                             .foregroundStyle(.secondary)
                         if let adjustment = todaySuggestion.adjustmentLine {
                             Label(adjustment, systemImage: "heart.text.square.fill")
-                                .font(.body)
-                                .foregroundStyle(accentColor)
+                                .outboundTextStyle(.body)
+                                .foregroundStyle(Color.primary)
                         }
                     }
                 }
@@ -1137,7 +1138,7 @@ private struct TrainingPlanManagementActions: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) { actionButtons(distributingGaps: false) }
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(OutboundButtonStyle(.secondary))
         .controlSize(.regular)
         .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
         .font(.subheadline)

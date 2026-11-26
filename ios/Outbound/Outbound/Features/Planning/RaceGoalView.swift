@@ -67,7 +67,7 @@ struct RaceGoalCard: View {
                         editing = true
                         Task { await analytics?.track(.init(.planningSurfaceOpened, properties: [.sourceType: .string("race_goal_edit"), .entrySource: .string("plan_details")])) }
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                     .frame(minHeight: 44, alignment: .leading)
                 }
             }

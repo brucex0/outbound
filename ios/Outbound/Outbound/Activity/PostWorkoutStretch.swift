@@ -190,7 +190,7 @@ struct StretchSessionView<Header: View>: View {
                                         .font(.subheadline).foregroundStyle(.secondary)
                                     HStack {
                                         Button(String(localized: "activity.post_save.start_stretch", defaultValue: "Start stretch"), action: startRoutine)
-                                            .buttonStyle(.bordered).tint(.orange)
+                                            .buttonStyle(OutboundButtonStyle(.secondary))
                                         Spacer()
                                         Button(String(localized: "activity.post_save.choose_another", defaultValue: "Choose another")) { showingDetails = true }
                                             .buttonStyle(.plain)
@@ -215,7 +215,7 @@ struct StretchSessionView<Header: View>: View {
                             Text(stretchCatalogText("ui.start"))
                                 .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.borderedProminent).tint(.orange)
+                        .buttonStyle(OutboundButtonStyle(.primary))
                         .padding(.horizontal, 24).padding(.vertical, 12).background(.bar)
                     }
                 }
@@ -224,7 +224,7 @@ struct StretchSessionView<Header: View>: View {
                     Spacer()
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 64)).foregroundStyle(.green)
                     Text(stretchCatalogText("ui.complete")).font(.title.bold())
-                    Button(stretchText("post_workout_stretch.done", "Done")) { finish(nil) }.buttonStyle(.borderedProminent).frame(minHeight: 52)
+                    Button(stretchText("post_workout_stretch.done", "Done")) { finish(nil) }.buttonStyle(OutboundButtonStyle(.primary)).frame(minHeight: 52)
                     Spacer()
                 }
             } else {

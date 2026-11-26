@@ -131,7 +131,7 @@ struct PlanAdjustmentSheet: View {
                     else if let action { configuration(action) }
                     else if context != nil { menu }
                     else if busy { ProgressView(planAdjustText("loading")) }
-                    else { Text(planAdjustText("load_failed")).foregroundStyle(.secondary); Button(planAdjustText("retry")) { Task { await loadContext() } }.buttonStyle(.bordered).frame(minHeight: 44) }
+                    else { Text(planAdjustText("load_failed")).foregroundStyle(.secondary); Button(planAdjustText("retry")) { Task { await loadContext() } }.buttonStyle(OutboundButtonStyle(.secondary)).frame(minHeight: 44) }
                 }
                 .padding(OutboundSpacing.screen)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -188,7 +188,7 @@ struct PlanAdjustmentSheet: View {
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         Text(String(format: planAdjustText("availability_summary"), dateLabel(start), dateLabel(end))).font(.subheadline.weight(.semibold))
-                        Button(planAdjustText("end_adjustment")) { choose("end") }.buttonStyle(.bordered).frame(minHeight: 44)
+                        Button(planAdjustText("end_adjustment")) { choose("end") }.buttonStyle(OutboundButtonStyle(.secondary)).frame(minHeight: 44)
                     }
                 }
             }
@@ -197,7 +197,7 @@ struct PlanAdjustmentSheet: View {
                 VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
                     actionButton("rebuild", image: "arrow.clockwise")
                     if plan.raceGoal?.editable == true {
-                        Button { showsEventEditor = true } label: { Label(planAdjustText("event"), systemImage: "flag.checkered").frame(minHeight: 44) }.buttonStyle(.bordered)
+                        Button { showsEventEditor = true } label: { Label(planAdjustText("event"), systemImage: "flag.checkered").frame(minHeight: 44) }.buttonStyle(OutboundButtonStyle(.secondary))
                     }
                 }.padding(.top, OutboundSpacing.standard)
             }.font(.subheadline.weight(.semibold))
@@ -205,7 +205,7 @@ struct PlanAdjustmentSheet: View {
         }
     }
     private func actionButton(_ operation: String, image: String) -> some View {
-        Button { choose(operation) } label: { Label(planAdjustText(operation), systemImage: image).multilineTextAlignment(.leading).frame(minHeight: 44) }.buttonStyle(.bordered)
+        Button { choose(operation) } label: { Label(planAdjustText(operation), systemImage: image).multilineTextAlignment(.leading).frame(minHeight: 44) }.buttonStyle(OutboundButtonStyle(.secondary))
             .disabled((operation == "move" && (workouts.isEmpty || activelyPaused)) || (operation == "rebuild" && activelyPaused))
     }
     private func goBack() {
@@ -240,7 +240,7 @@ struct PlanAdjustmentSheet: View {
             Text(planAdjustText("move_detail")).font(.body)
             Picker(planAdjustText("workout"), selection: $selectedWorkout) {
                 ForEach(workouts) { row in Text("\(dateLabel(row.date)) · \(BuiltinWorkoutText.localized(row.title))").tag(row.id) }
-            }.pickerStyle(.menu).buttonStyle(.bordered)
+            }.pickerStyle(.menu).buttonStyle(OutboundButtonStyle(.secondary))
             DatePicker(planAdjustText("to_date"), selection: $moveDate, in: minimumDate..., displayedComponents: .date).environment(\.timeZone, TimeZone(secondsFromGMT: 0)!)
             Text(planAdjustText("move_guard")).font(.footnote).foregroundStyle(.secondary)
         } else if operation == "availability" {
@@ -275,7 +275,7 @@ struct PlanAdjustmentSheet: View {
         if operation != "undo" {
             Picker(planAdjustText("reason"), selection: $reason) {
                 ForEach(["none", "schedule", "travel", "weather", "illness", "recovery", "other"], id: \.self) { Text(planAdjustText("reason_" + $0)).tag($0) }
-            }.pickerStyle(.menu).buttonStyle(.bordered)
+            }.pickerStyle(.menu).buttonStyle(OutboundButtonStyle(.secondary))
             Text(planAdjustText("reason_detail")).font(.footnote).foregroundStyle(.secondary)
         }
     }

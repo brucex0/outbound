@@ -646,7 +646,7 @@ struct CommunityRouteDetailView: View {
                             Button(String(localized: "route.library.detail.retry", defaultValue: "Try Again")) {
                                 Task { await prepareRoute() }
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(OutboundButtonStyle(.secondary))
                         }
                     }
                 }
@@ -694,8 +694,7 @@ struct CommunityRouteDetailView: View {
                     )
                         .frame(maxWidth: .infinity, minHeight: 48)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
+                .buttonStyle(OutboundButtonStyle(.primary))
                 .disabled(preparedRoute == nil)
                 routeMembershipButton
             }.padding()
@@ -756,7 +755,7 @@ struct CommunityRouteDetailView: View {
                 )
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(OutboundButtonStyle(.secondary))
             .disabled(isMutatingMembership)
         } else {
             Button {
@@ -781,7 +780,7 @@ struct CommunityRouteDetailView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(OutboundButtonStyle(.secondary))
             .disabled(isMutatingMembership)
         }
     }
@@ -885,8 +884,7 @@ private struct PreparedRoutePreview: View {
                 )
                     .frame(maxWidth: .infinity, minHeight: 48)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.orange)
+            .buttonStyle(OutboundButtonStyle(.primary))
             Button(role: .destructive) { showsDeleteConfirmation = true } label: {
                 if isDeleting {
                     ProgressView()
@@ -901,7 +899,7 @@ private struct PreparedRoutePreview: View {
                     )
                 }
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(OutboundButtonStyle(.secondary))
             .frame(maxWidth: .infinity)
             .disabled(isDeleting)
         }

@@ -83,7 +83,7 @@ extension ActivityFlowView {
                 Text(String(localized: "record.location.chip.label", defaultValue: "Enable location"))
                     .font(.caption.weight(.bold))
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(theme.actionForegroundColor)
             .padding(.horizontal, 14)
             .frame(minHeight: 34)
             .background(theme.actionColor, in: Capsule())
@@ -166,9 +166,9 @@ extension ActivityFlowView {
                     Spacer(minLength: 8)
                     Image(systemName: model.setup.selectedGoalMode == .freestyle ? "checkmark" : "chevron.right")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(theme.accentColor)
+                        .foregroundStyle(Color.primary)
                         .frame(width: 38, height: 38)
-                        .background(theme.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -186,7 +186,7 @@ extension ActivityFlowView {
         HStack(spacing: 12) {
             Image(systemName: "map.fill")
                 .font(.headline.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.actionForegroundColor)
                 .frame(width: 40, height: 40)
                 .background(theme.actionColor.gradient, in: Circle())
 

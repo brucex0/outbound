@@ -134,7 +134,7 @@ struct ActivityLaunchMap: View {
                         ) {
                             Image(systemName: routeEndpointsOverlap ? "flag.checkered" : "figure.run")
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(routeEndpointsOverlap ? theme.actionForegroundColor : Color.white)
                                 .frame(width: 30, height: 30)
                                 .background(routeEndpointsOverlap ? theme.actionColor : Color.green, in: Circle())
                                 .overlay(Circle().stroke(.white, lineWidth: 2))
@@ -146,7 +146,7 @@ struct ActivityLaunchMap: View {
                         Annotation(String(localized: "route.guidance.map.finish", defaultValue: "Route finish"), coordinate: finish) {
                             Image(systemName: "flag.checkered")
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(theme.actionForegroundColor)
                                 .frame(width: 30, height: 30)
                                 .background(theme.actionColor, in: Circle())
                                 .overlay(Circle().stroke(.white, lineWidth: 2))

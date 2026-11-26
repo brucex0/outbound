@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SimplifiedOnboardingFlow: View {
+    @Environment(\.outboundTheme) private var theme
     @FocusState private var focusedInput: String?
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var authStore: AuthStore
@@ -77,7 +78,7 @@ struct SimplifiedOnboardingFlow: View {
 
                 if let toastMessage {
                     HStack(spacing: 12) {
-                        Text(toastMessage).font(.subheadline.weight(.semibold))
+                        Text(toastMessage).outboundTextStyle(.compactButton)
                         Spacer()
                         Button(String(localized: "common.retry", defaultValue: "Retry")) { retryToastAction() }
                     }
@@ -180,7 +181,7 @@ struct SimplifiedOnboardingFlow: View {
                 Button(String(localized: "plan_builder.conversation.change_goal", defaultValue: "Change goal")) {
                     editGoalConversation()
                 }
-                .font(.subheadline.weight(.semibold))
+                .outboundTextStyle(.compactButton)
                 .padding(.leading, 48)
 
                 if draft.objective == .eventPreparation {
@@ -212,7 +213,7 @@ struct SimplifiedOnboardingFlow: View {
                         Image(systemName: "arrow.up")
                             .font(.headline.weight(.bold))
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                     .buttonBorderShape(.circle)
                     .accessibilityLabel(String(localized: "plan_builder.coach_prompt.action", defaultValue: "Use this goal"))
                     .disabled(goalMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isInterpretingGoal)
@@ -289,7 +290,7 @@ struct SimplifiedOnboardingFlow: View {
                                 Text(String(localized: "plan_builder.smart_setup.use", defaultValue: "Use this setup"))
                                     .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(OutboundButtonStyle(.primary))
                             Button {
                                 draft.observedBaselineConfirmed = false
                                 track(.planIntakeBaselineConfirmed, [.result: .string("corrected"), .sourceType: .string("recent_activity_setup")])
@@ -297,7 +298,7 @@ struct SimplifiedOnboardingFlow: View {
                                 Text(String(localized: "plan_builder.smart_setup.adjust", defaultValue: "Adjust it"))
                                     .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(OutboundButtonStyle(.secondary))
                         }
                     }
                 }
@@ -357,12 +358,12 @@ struct SimplifiedOnboardingFlow: View {
                                 draft.observedBaselineConfirmed = true
                                 track(.planIntakeBaselineConfirmed, [.result: .string("accepted"), .sourceType: .string("recent_activities")])
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(OutboundButtonStyle(.primary))
                             Button(String(localized: "plan_builder.baseline.update", defaultValue: "Update it")) {
                                 draft.observedBaselineConfirmed = false
                                 track(.planIntakeBaselineConfirmed, [.result: .string("corrected"), .sourceType: .string("recent_activities")])
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(OutboundButtonStyle(.secondary))
                         }
                     }
                 }
@@ -474,7 +475,7 @@ struct SimplifiedOnboardingFlow: View {
                     systemImage: didConnectHealth ? "checkmark.circle.fill" : "heart.fill"
                 ).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(OutboundButtonStyle(.secondary))
             .disabled(isConnectingHealth || didConnectHealth || isSavingTrainingProfile)
             if let healthMessage { Text(healthMessage).font(.subheadline).foregroundStyle(.secondary) }
 
@@ -630,7 +631,7 @@ struct SimplifiedOnboardingFlow: View {
                 Button(String(localized: "plan_builder.result.change_days", defaultValue: "Change days")) { step = .week }
                 Button(String(localized: "plan_builder.result.change_mix", defaultValue: "Change activity mix")) { step = .activities }
             }
-            .font(.subheadline.weight(.semibold))
+            .outboundTextStyle(.compactButton)
         }
     }
 
@@ -1434,7 +1435,7 @@ struct SimplifiedOnboardingFlow: View {
                                     draft.targetTimeConfirmed = true
                                     draft.targetTimeFromGoalText = nil
                                 }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(OutboundButtonStyle(.primary))
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                             }
                             .padding(.leading, 48)
@@ -1512,7 +1513,7 @@ struct SimplifiedOnboardingFlow: View {
             draft.reviewHorizonConfirmed = true
             draft.reviewHorizonFromGoalText = nil
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(OutboundButtonStyle(.secondary))
         .frame(maxWidth: .infinity)
     }
 
@@ -1936,7 +1937,7 @@ struct SimplifiedOnboardingFlow: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: isError ? "exclamationmark" : "sparkles")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(isError ? Color.red : OutboundPalette.companion)
+                .foregroundStyle(isError ? Color.red : Color.primary)
                 .frame(width: 34, height: 34)
                 .background(
                     (isError ? Color.red : OutboundPalette.companion).opacity(0.12),
@@ -1971,11 +1972,11 @@ struct SimplifiedOnboardingFlow: View {
                         .font(.caption.weight(.bold))
                         .accessibilityHidden(true)
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .outboundTextStyle(.compactButton)
+                .foregroundStyle(theme.actionForegroundColor)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(OutboundPalette.companion, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
+                .background(theme.actionColor, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(
@@ -1992,9 +1993,9 @@ struct SimplifiedOnboardingFlow: View {
         HStack(spacing: 10) {
             Image(systemName: "sparkles")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(OutboundPalette.companion)
+                .foregroundStyle(Color.primary)
                 .frame(width: 34, height: 34)
-                .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                .background(OutboundPalette.surface, in: Circle())
             ProgressView()
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
@@ -2016,7 +2017,7 @@ struct SimplifiedOnboardingFlow: View {
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(OutboundButtonStyle(.secondary))
     }
 
     private func heading(_ title: String, _ subtitle: String) -> some View {
@@ -2031,19 +2032,20 @@ struct SimplifiedOnboardingFlow: View {
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                 }
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .outboundTextStyle(.compactButton)
                     .multilineTextAlignment(.leading)
             }
             .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading)
             .padding(12)
-            .background(selected ? OutboundPalette.companion.opacity(0.14) : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: OutboundRadius.control))
+            .background(selected ? theme.actionColor : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: OutboundRadius.control))
         }
         .buttonStyle(.plain)
-        .foregroundStyle(selected ? OutboundPalette.companion : .primary)
+        .foregroundStyle(selected ? theme.actionForegroundColor : Color.primary)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
     private func selectionRow(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) { HStack { Text(title); Spacer(); Image(systemName: selected ? "checkmark.circle.fill" : "circle") }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }
-            .buttonStyle(.bordered).tint(selected ? OutboundPalette.companion : .secondary)
+            .buttonStyle(OutboundButtonStyle(.choice(isSelected: selected)))
     }
     private func toggleChip(_ title: String, selected: Bool, minimumHeight: CGFloat = 40, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -2051,11 +2053,12 @@ struct SimplifiedOnboardingFlow: View {
                 Text(title)
                 if selected { Image(systemName: "xmark").font(.caption2.weight(.bold)) }
             }
-            .font(.subheadline.weight(.semibold))
+            .outboundTextStyle(.compactButton)
+            .foregroundStyle(selected ? theme.actionForegroundColor : Color.primary)
             .padding(.horizontal, 12)
             .frame(minHeight: minimumHeight)
-            .background(selected ? OutboundPalette.companion.opacity(0.18) : Color(.secondarySystemBackground), in: Capsule())
-            .contentShape(Rectangle())
+            .background(selected ? theme.actionColor : Color(.secondarySystemBackground), in: Capsule())
+            .outboundTapTarget()
         }
             .buttonStyle(.plain)
     }

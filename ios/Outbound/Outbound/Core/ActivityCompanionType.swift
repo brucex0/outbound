@@ -57,10 +57,10 @@ extension ActivityCompanionType {
     var liveBadge: some View {
         Text(displayName)
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(OutboundPalette.companion)
+            .foregroundStyle(Color.primary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
+            .background(OutboundPalette.surface, in: Capsule())
             .fixedSize()
             .accessibilityElement(children: .combine)
     }
@@ -69,10 +69,10 @@ extension ActivityCompanionType {
     var savedPill: some View {
         Text(displayName)
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(OutboundPalette.companion)
+            .foregroundStyle(Color.primary)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
+            .background(OutboundPalette.surface, in: Capsule())
             .fixedSize()
     }
 }

@@ -45,14 +45,12 @@ struct GoalConversationCard: View {
                 Button(progress.isComplete ? "Set next focus" : "Adjust") {
                     goalStore.reopenAdjustFlow()
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(accentColor)
+                .buttonStyle(OutboundButtonStyle(.primary))
 
                 Button("Clear") {
                     goalStore.clearGoal()
                 }
-                .buttonStyle(.bordered)
-                .tint(accentColor)
+                .buttonStyle(OutboundButtonStyle(.secondary))
             }
             .font(.subheadline.weight(.semibold))
         }
@@ -130,14 +128,12 @@ struct GoalConversationCard: View {
                 Button("Lock it in") {
                     goalStore.confirmDraft(activities: activities)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(accentColor)
+                .buttonStyle(OutboundButtonStyle(.primary))
 
                 Button("Make it easier") {
                     goalStore.easeDraftGoal()
                 }
-                .buttonStyle(.bordered)
-                .tint(accentColor)
+                .buttonStyle(OutboundButtonStyle(.secondary))
             }
             .font(.subheadline.weight(.semibold))
 

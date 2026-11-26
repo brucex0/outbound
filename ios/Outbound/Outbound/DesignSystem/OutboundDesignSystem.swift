@@ -248,8 +248,62 @@ extension View {
     }
 }
 
+/// Semantic type roles; foreground belongs to the containing surface/control.
+enum OutboundTextStyle {
+    case title, sectionHeading, body, supporting, caption, metric, button, compactButton
+
+    var font: Font {
+        switch self {
+        case .title: .title2.weight(.semibold)
+        case .sectionHeading: .headline
+        case .body: .body
+        case .supporting: .subheadline
+        case .caption: .caption
+        case .metric: .title3.weight(.semibold).monospacedDigit()
+        case .button: .headline
+        case .compactButton: .subheadline.weight(.semibold)
+        }
+    }
+}
+
+extension View {
+    func outboundTextStyle(_ style: OutboundTextStyle) -> some View {
+        font(style.font)
+    }
+}
+
+/// Four product-control families, independent of layout and semantic button role.
+enum OutboundButtonKind: Equatable {
+    case primary
+    case secondary
+    case quiet
+    case choice(isSelected: Bool)
+
+    var usesActionFill: Bool {
+        switch self {
+        case .primary: true
+        case .choice(let isSelected): isSelected
+        case .secondary, .quiet: false
+        }
+    }
+
+    var isSelected: Bool {
+        if case .choice(let isSelected) = self { return isSelected }
+        return false
+    }
+
+    func foreground(in theme: OutboundTheme) -> Color {
+        usesActionFill ? theme.actionForegroundColor : Color.primary
+    }
+
+    func surface(in theme: OutboundTheme) -> Color {
+        if self == .quiet { return .clear }
+        return usesActionFill ? theme.actionColor : OutboundPalette.surface
+    }
+}
+
 /// Text-only card actions are an explicit presentation choice; other secondary
-/// product actions retain their native bordered treatment.
+/// product actions use the shared neutral secondary family.
 enum OutboundSecondaryActionPresentation: Equatable {
     case bordered
     case cardText
@@ -259,7 +313,17 @@ private struct OutboundCardTextActionAlignmentKey: EnvironmentKey {
     static let defaultValue: Alignment = .center
 }
 
+private struct OutboundSurfaceForegroundKey: EnvironmentKey {
+    static let defaultValue: Color = .primary
+}
+
 extension EnvironmentValues {
+    /// Informative prose and quiet actions inherit ink from the actual card surface.
+    var outboundSurfaceForeground: Color {
+        get { self[OutboundSurfaceForegroundKey.self] }
+        set { self[OutboundSurfaceForegroundKey.self] = newValue }
+    }
+
     /// Opt in when adjacent card rows should keep their visible content at the target edges.
     var outboundCardTextActionAlignment: Alignment {
         get { self[OutboundCardTextActionAlignmentKey.self] }
@@ -267,15 +331,15 @@ extension EnvironmentValues {
     }
 }
 
-private struct OutboundCardTextButtonStyle: ButtonStyle {
+private struct OutboundQuietButtonStyle: ButtonStyle {
     @Environment(\.outboundCardTextActionAlignment) private var alignment
-    @Environment(\.outboundTheme) private var theme
+    @Environment(\.outboundSurfaceForeground) private var foreground
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(theme.accentColor)
+            .outboundTextStyle(.compactButton)
+            .foregroundStyle(configuration.role == .destructive ? Color.red : foreground)
             .padding(.horizontal, OutboundSpacing.compact)
             .frame(minWidth: 44, minHeight: 44, alignment: alignment)
             .outboundTapTarget()
@@ -288,11 +352,11 @@ extension View {
     func outboundSecondaryActionStyle(_ presentation: OutboundSecondaryActionPresentation) -> some View {
         switch presentation {
         case .bordered:
-            buttonStyle(.bordered)
+            buttonStyle(OutboundButtonStyle(.secondary))
                 .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                 .frame(minHeight: 44)
         case .cardText:
-            buttonStyle(OutboundCardTextButtonStyle())
+            buttonStyle(OutboundButtonStyle(.quiet))
         }
     }
 }
@@ -341,6 +405,7 @@ struct OutboundCard<Content: View>: View {
 
     var body: some View {
         content
+            .environment(\.outboundSurfaceForeground, style == .companion ? theme.heroForegroundColor : Color.primary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(contentPadding ?? (style == .companion ? 22 : 16))
             .foregroundStyle(style == .companion ? theme.heroForegroundColor : OutboundPalette.primaryText)
@@ -372,6 +437,38 @@ struct OutboundCard<Content: View>: View {
     }
 }
 
+/// Keep native layout, controlSize, roles, pressed/disabled behavior, and activation.
+/// Theme accent is decorative: secondary buttons use a neutral tint and filled
+/// buttons use the explicit action/foreground pair, never inferred white text.
+struct OutboundButtonStyle: PrimitiveButtonStyle {
+    @Environment(\.outboundTheme) private var theme
+    let kind: OutboundButtonKind
+
+    init(_ kind: OutboundButtonKind = .secondary) {
+        self.kind = kind
+    }
+
+    @ViewBuilder
+    func makeBody(configuration: Configuration) -> some View {
+        if kind == .quiet {
+            Button(configuration).buttonStyle(OutboundQuietButtonStyle())
+        } else if configuration.role == .destructive {
+            if kind.usesActionFill {
+                Button(configuration).buttonStyle(.borderedProminent)
+            } else {
+                Button(configuration).buttonStyle(.bordered)
+            }
+        } else {
+            Button(role: configuration.role, action: configuration.trigger) {
+                configuration.label.foregroundStyle(kind.foreground(in: theme))
+            }
+                .buttonStyle(.borderedProminent)
+                .tint(kind.surface(in: theme))
+                .accessibilityAddTraits(kind.isSelected ? .isSelected : [])
+        }
+    }
+}
+
 struct OutboundPrimaryButton: View {
     @Environment(\.outboundTheme) private var theme
     let title: String
@@ -385,19 +482,19 @@ struct OutboundPrimaryButton: View {
         Button(action: action) {
             if compact {
                 label
-                    .font(.subheadline.weight(.semibold))
+                    .outboundTextStyle(.compactButton)
                     .padding(.horizontal, OutboundSpacing.standard)
                     .padding(.vertical, OutboundSpacing.compact)
-                    .foregroundStyle(theme.actionForegroundColor)
-                    .background(theme.actionColor, in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
+                    .foregroundStyle(OutboundButtonKind.primary.foreground(in: theme))
+                    .background(OutboundButtonKind.primary.surface(in: theme), in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
                     .outboundTapTarget()
             } else {
                 label
-                    .font(.headline)
+                    .outboundTextStyle(.button)
                     .padding(.horizontal, expands ? 0 : OutboundSpacing.standard)
                     .frame(maxWidth: expands ? .infinity : nil, minHeight: 48)
-                    .foregroundStyle(.white)
-                    .background(theme.actionColor, in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
+                    .foregroundStyle(OutboundButtonKind.primary.foreground(in: theme))
+                    .background(OutboundButtonKind.primary.surface(in: theme), in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
             }
         }
         .buttonStyle(.plain)
@@ -411,7 +508,7 @@ struct OutboundPrimaryButton: View {
 }
 
 struct AIExplanationView: View {
-    @Environment(\.outboundTheme) private var theme
+    @Environment(\.outboundSurfaceForeground) private var foreground
     let text: String
 
     var body: some View {
@@ -419,9 +516,9 @@ struct AIExplanationView: View {
             Image(systemName: "sparkles")
                 .accessibilityHidden(true)
             Text(text)
-                .font(.subheadline)
+                .outboundTextStyle(.supporting)
         }
-        .foregroundStyle(theme.accentColor)
+        .foregroundStyle(foreground)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Companion insight: \(text)")
@@ -481,12 +578,12 @@ struct OutboundGoalPresetButton: View {
                 Text(title)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .font(.subheadline.weight(.semibold))
+            .outboundTextStyle(.compactButton)
             .multilineTextAlignment(.center)
-            .foregroundStyle(isSelected ? theme.actionForegroundColor : Color.primary)
+            .foregroundStyle(OutboundButtonKind.choice(isSelected: isSelected).foreground(in: theme))
             .padding(.horizontal, OutboundSpacing.standard)
             .padding(.vertical, OutboundSpacing.compact)
-            .background(isSelected ? theme.actionColor : Color(.secondarySystemBackground), in: Capsule())
+            .background(OutboundButtonKind.choice(isSelected: isSelected).surface(in: theme), in: Capsule())
             .outboundTapTarget()
         }
         .buttonStyle(.plain)

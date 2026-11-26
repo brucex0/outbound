@@ -293,9 +293,9 @@ struct StandaloneWorkoutPickerView: View {
                 HStack(spacing: OutboundSpacing.standard) {
                     Image(systemName: workout.systemImage)
                         .font(.title2.weight(.semibold))
-                        .foregroundStyle(theme.accentColor)
+                        .foregroundStyle(Color.primary)
                         .frame(width: 42, height: 42)
-                        .background(theme.accentColor.opacity(0.12), in: Circle())
+                        .background(OutboundPalette.surface, in: Circle())
                     VStack(alignment: .leading, spacing: 4) {
                         Text(workout.title).font(.headline).foregroundStyle(.primary)
                         Text(workout.durationLabel)

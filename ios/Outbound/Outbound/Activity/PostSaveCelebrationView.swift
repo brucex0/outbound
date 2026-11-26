@@ -73,7 +73,7 @@ struct PostSaveDoneButton: View {
             Text(String(localized: "activity.post_save.done", defaultValue: "Done"))
                 .font(.headline)
                 .frame(maxWidth: .infinity, minHeight: 52)
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.actionForegroundColor)
                 .background(theme.actionColor, in: Capsule())
         }
         .buttonStyle(.plain)

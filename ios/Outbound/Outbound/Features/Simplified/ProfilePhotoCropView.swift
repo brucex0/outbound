@@ -60,7 +60,7 @@ struct ProfilePhotoCropView: View {
                             Image(systemName: "rotate.right")
                                 .frame(width: 44, height: 44)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutboundButtonStyle(.secondary))
                         .accessibilityLabel(String(
                             localized: "profile.photo.crop.rotate",
                             defaultValue: "Rotate"

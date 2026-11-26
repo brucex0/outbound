@@ -422,8 +422,7 @@ struct ActivityEventMapPicker: View {
                 )
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(OutboundPalette.companion)
+            .buttonStyle(OutboundButtonStyle(.primary))
             .disabled(selectedPlace == nil || isResolving || isSearching)
         }
         .padding()

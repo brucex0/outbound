@@ -810,7 +810,7 @@ struct SocialHomeView: View {
                 Text(String(localized: "social.notifications.permission_enable", defaultValue: "Turn on notifications"))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(OutboundButtonStyle(.primary))
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -851,7 +851,7 @@ struct SocialHomeView: View {
                 NavigationLink("Review") {
                     SocialConnectionsView()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OutboundButtonStyle(.primary))
             }
         }
     }
@@ -867,14 +867,14 @@ struct SocialHomeView: View {
                     Button(action: openConnections) {
                         Label("Find people", systemImage: "person.badge.plus")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OutboundButtonStyle(.primary))
 
                     Button {
                         Task { await shareReferral() }
                     } label: {
                         Label("Invite", systemImage: "square.and.arrow.up")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                 }
             }
         }
@@ -1039,7 +1039,7 @@ struct SocialHomeView: View {
             } label: {
                 Label("Discover groups", systemImage: "person.3")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(OutboundButtonStyle(.secondary))
         }
     }
 
@@ -1592,9 +1592,9 @@ private struct SocialGroupsView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "binoculars")
                             .font(.title3)
-                            .foregroundStyle(OutboundPalette.companion)
+                            .foregroundStyle(Color.primary)
                             .frame(width: 36, height: 36)
-                            .background(OutboundPalette.companion.opacity(0.10), in: Circle())
+                            .background(OutboundPalette.surface, in: Circle())
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(localized: "social.groups.discover.empty", defaultValue: "No public Groups nearby yet"))
                                 .font(.subheadline.weight(.semibold))
@@ -1630,9 +1630,9 @@ private struct SocialGroupsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "person.3.fill")
                         .font(.title3)
-                        .foregroundStyle(OutboundPalette.companion)
+                        .foregroundStyle(Color.primary)
                         .frame(width: 38, height: 38)
-                        .background(OutboundPalette.companion.opacity(0.10), in: Circle())
+                        .background(OutboundPalette.surface, in: Circle())
                     VStack(alignment: .leading, spacing: 3) {
                         Text(String(localized: "social.groups.create_first.title", defaultValue: "Create your first Group"))
                             .font(.headline)
@@ -1718,10 +1718,10 @@ private struct SocialGroupsView: View {
             if unreadNoticeCount(for: group) > 0 {
                 Text(String(localized: "group.notices.unread", defaultValue: "Unread"))
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(OutboundPalette.companion)
+                    .foregroundStyle(Color.primary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
+                    .background(OutboundPalette.surface, in: Capsule())
             }
             if let trailing {
                 Image(systemName: trailing)
@@ -1738,7 +1738,7 @@ private struct SocialGroupsView: View {
                         }
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(OutboundButtonStyle(.secondary))
             }
         }
     }
@@ -1789,7 +1789,7 @@ private struct SocialGroupsView: View {
                             }
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                     } else {
                         Text(String(localized: "Waiting for membership approval", table: "GroupMembership"))
                     }
@@ -1800,7 +1800,7 @@ private struct SocialGroupsView: View {
                             }
                         }
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OutboundButtonStyle(.secondary))
                 }
             }
         }
@@ -2131,8 +2131,7 @@ struct ActivityEventDetailView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(OutboundPalette.companion)
+                .buttonStyle(OutboundButtonStyle(.primary))
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
                 .background(.bar)
@@ -2722,9 +2721,9 @@ struct SocialNotificationsView: View {
             HStack(alignment: .top, spacing: OutboundSpacing.compact) {
                 Image(systemName: "heart.text.clipboard.fill")
                     .font(.title3)
-                    .foregroundStyle(OutboundPalette.companion)
+                    .foregroundStyle(Color.primary)
                     .frame(width: 36, height: 36)
-                    .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                    .background(OutboundPalette.surface, in: Circle())
                 VStack(alignment: .leading, spacing: 4) {
                     Text(String(localized: "health.import.notification.title", defaultValue: "New Apple Health workouts"))
                         .font(.body.weight(.semibold))
@@ -2942,7 +2941,7 @@ private struct SocialNotificationActivityView: View {
                         } label: {
                             Label("View \(post.commentCount) comments", systemImage: "bubble.left")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(OutboundButtonStyle(.primary))
                     }
                 }
                 .padding(OutboundSpacing.screen)
@@ -3426,7 +3425,7 @@ struct SocialConnectionsView: View {
                             Label(String(localized: "social.people.find", defaultValue: "Find people"), systemImage: "magnifyingglass")
                                 .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(OutboundButtonStyle(.primary))
 
                         Button {
                             trackDiscoveryAction("invite_friend")
@@ -3435,7 +3434,7 @@ struct SocialConnectionsView: View {
                             Label(String(localized: "social.people.invite", defaultValue: "Invite a friend"), systemImage: "square.and.arrow.up")
                                 .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutboundButtonStyle(.secondary))
 
                         Button {
                             showsScanner = true
@@ -3444,7 +3443,7 @@ struct SocialConnectionsView: View {
                             Label(String(localized: "social.people.scan", defaultValue: "Scan QR"), systemImage: "qrcode.viewfinder")
                                 .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(OutboundButtonStyle(.secondary))
                     }
                     .padding(.vertical, 8)
                 }
@@ -3947,9 +3946,9 @@ struct SocialPersonProfileView: View {
                                 VStack(spacing: 6) {
                                     Image(systemName: display.symbolName)
                                         .font(.headline)
-                                        .foregroundStyle(OutboundPalette.companion)
+                                        .foregroundStyle(Color.primary)
                                         .frame(width: 42, height: 42)
-                                        .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                                        .background(OutboundPalette.surface, in: Circle())
                                     Text(display.title)
                                         .font(.caption2.weight(.semibold))
                                         .foregroundStyle(.primary)
@@ -4552,8 +4551,8 @@ struct SocialAvatar: View {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
                 ZStack {
-                    Circle().fill(OutboundPalette.companion.opacity(0.15))
-                    Text(initials).font(.caption.weight(.semibold))
+                    Circle().fill(OutboundPalette.surface)
+                    Text(initials).font(.caption.weight(.semibold)).foregroundStyle(Color.primary)
                 }
             }
         }

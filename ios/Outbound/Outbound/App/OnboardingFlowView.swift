@@ -305,8 +305,7 @@ struct OnboardingFlowView: View {
                 Label("Edit my answers", systemImage: "pencil")
                     .font(.subheadline.weight(.semibold))
             }
-            .buttonStyle(.bordered)
-            .tint(accentColor)
+            .buttonStyle(OutboundButtonStyle(.secondary))
         }
     }
 
@@ -324,9 +323,9 @@ struct OnboardingFlowView: View {
                 HStack(alignment: .top, spacing: 14) {
                     Image(systemName: session.sport.systemImage)
                         .font(.title2.weight(.semibold))
-                        .foregroundStyle(accentColor)
+                        .foregroundStyle(Color.primary)
                         .frame(width: 42, height: 42)
-                        .background(accentColor.opacity(0.12), in: Circle())
+                        .background(OutboundPalette.surface, in: Circle())
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(profile.planTitle)
@@ -387,8 +386,7 @@ struct OnboardingFlowView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(accentColor)
+            .buttonStyle(OutboundButtonStyle(.primary))
             .disabled(!onboardingStore.canAdvance)
 
             if onboardingStore.step == .setup {
@@ -471,9 +469,9 @@ struct OnboardingFlowView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: systemImage)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(accentColor)
+                .foregroundStyle(Color.primary)
                 .frame(width: 28, height: 28)
-                .background(accentColor.opacity(0.12), in: Circle())
+                .background(OutboundPalette.surface, in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)

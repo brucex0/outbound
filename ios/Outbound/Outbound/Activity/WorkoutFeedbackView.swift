@@ -51,8 +51,7 @@ struct WorkoutFeedbackView: View {
                             .fixedSize(horizontal: true, vertical: false)
                             .frame(minWidth: 44, minHeight: 44)
                     }
-                        .buttonStyle(.bordered)
-                        .tint(sessionEffortRating == rating ? theme.accentColor : .secondary)
+                        .buttonStyle(OutboundButtonStyle(.choice(isSelected: sessionEffortRating == rating)))
                         .accessibilityLabel(String(format: String(localized: "workout.feedback.session_effort.accessibility", defaultValue: "Effort %d of 10"), rating))
                         .accessibilityAddTraits(sessionEffortRating == rating ? .isSelected : [])
                 }

@@ -83,6 +83,7 @@ struct SocialFeatureTabBar: View {
 }
 
 private struct SocialFeatureTabBadgeView: View {
+    @Environment(\.outboundTheme) private var theme
     let badge: SocialTabBadge
 
     var body: some View {
@@ -96,10 +97,10 @@ private struct SocialFeatureTabBadgeView: View {
         case .count(let count):
             Text(count > 9 ? "9+" : "\(count)")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.actionForegroundColor)
                 .padding(.horizontal, 4)
                 .frame(minWidth: 15, minHeight: 15)
-                .background(OutboundPalette.companion, in: Capsule())
+                .background(theme.actionColor, in: Capsule())
                 .overlay { Capsule().stroke(.background, lineWidth: 1.5) }
                 .accessibilityHidden(true)
         }

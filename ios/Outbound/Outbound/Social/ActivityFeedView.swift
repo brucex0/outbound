@@ -106,8 +106,7 @@ struct ActivityFeedView: View {
                     Label(String(localized: "social.start_relay", defaultValue: "Start Relay"), systemImage: "bolt.fill")
                         .font(.subheadline.bold())
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
+                .buttonStyle(OutboundButtonStyle(.primary))
             }
 
             HStack(spacing: 10) {
@@ -932,8 +931,7 @@ private struct CommentThreadSheet: View {
                         Image(systemName: "paperplane.fill")
                             .font(.headline)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
+                    .buttonStyle(OutboundButtonStyle(.primary))
                     .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 .padding(12)
@@ -995,8 +993,7 @@ private struct RelayComposerSheet: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
+                .buttonStyle(OutboundButtonStyle(.primary))
             }
             .padding(20)
             .navigationTitle(String(localized: "social.relay.new", defaultValue: "New Relay"))

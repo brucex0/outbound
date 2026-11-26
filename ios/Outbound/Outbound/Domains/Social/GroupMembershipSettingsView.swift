@@ -52,10 +52,10 @@ struct GroupMembershipSettingsView: View {
                         }
                         HStack {
                             Button(String(localized: "Approve", table: "GroupMembership")) { review(request, approve: true) }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(OutboundButtonStyle(.primary))
                                 .accessibilityIdentifier("group.request.approve.\(request.id)")
                             Button(String(localized: "Decline", table: "GroupMembership"), role: .destructive) { review(request, approve: false) }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(OutboundButtonStyle(.secondary))
                                 .accessibilityIdentifier("group.request.deny.\(request.id)")
                             if reviewing.contains(request.id) { ProgressView() }
                         }
