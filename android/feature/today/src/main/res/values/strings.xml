@@ -233,8 +233,8 @@
     <string name="plan_completion_manual_message">No activity or recorded metrics will be created.</string>
     <string name="plan_completion_undo_title">Undo this completion?</string>
     <string name="plan_completion_undo_message">The workout will become unfinished. Your saved activity will stay.</string>
-    <string name="plan_completion_choose_message">Choose a recent activity. This links the recording without claiming every workout phase was followed.</string>
-    <string name="plan_completion_empty">No unlinked activities of this sport from the last 30 days. Save and sync a recording, then try again.</string>
+    <string name="plan_completion_choose_message">Choose an activity from the same day as this workout. This links the recording without claiming every workout phase was followed.</string>
+    <string name="plan_completion_empty">No unlinked activities of this sport on this workout’s day. Recordings must be from the last 30 days. Save and sync a recording, then try again.</string>
     <string name="plan_completion_failed">Could not update. Connect and try again.</string>
     <string name="plan_completion_saved">Workout updated</string>
     <string name="plan_completion_group_question">Count this toward today’s workout?</string>

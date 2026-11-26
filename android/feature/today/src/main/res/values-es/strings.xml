@@ -233,8 +233,8 @@
     <string name="plan_completion_manual_message">No se creará ninguna actividad ni se añadirán métricas grabadas.</string>
     <string name="plan_completion_undo_title">¿Deshacer esta finalización?</string>
     <string name="plan_completion_undo_message">El entrenamiento volverá a estar pendiente. Tu actividad guardada se conservará.</string>
-    <string name="plan_completion_choose_message">Elige una actividad reciente. Se vinculará la grabación sin afirmar que seguiste todas las fases del entrenamiento.</string>
-    <string name="plan_completion_empty">No hay actividades de este deporte sin vincular en los últimos 30 días. Guarda y sincroniza una grabación e inténtalo de nuevo.</string>
+    <string name="plan_completion_choose_message">Elige una actividad del mismo día que este entrenamiento. Se vinculará la grabación sin afirmar que seguiste todas las fases del entrenamiento.</string>
+    <string name="plan_completion_empty">No hay actividades de este deporte sin vincular del día de este entrenamiento. Las grabaciones deben ser de los últimos 30 días. Guarda y sincroniza una grabación e inténtalo de nuevo.</string>
     <string name="plan_completion_failed">No se pudo actualizar. Conéctate e inténtalo de nuevo.</string>
     <string name="plan_completion_saved">Entrenamiento actualizado</string>
     <string name="plan_completion_group_question">¿Contar esta actividad para el entrenamiento de hoy?</string>

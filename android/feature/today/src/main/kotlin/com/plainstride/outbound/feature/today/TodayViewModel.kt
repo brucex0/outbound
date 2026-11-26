@@ -397,8 +397,14 @@ class TodayViewModel @Inject constructor(
 
     suspend fun completionCandidates(workout: com.plainstride.outbound.core.model.PlannedWorkout): List<com.plainstride.outbound.core.network.RemoteActivityDto> {
         val scope = accountScope.value
-        val result = activities.completionCandidates(scope.first, workout.modality)
+        // Scheduled timestamps encode logical date labels; only activity instants use the account zone.
+        val day = planningLogicalDate(workout.scheduledDate)
+        val zone = state.value.planningSnapshot?.calendar?.zone() ?: ZoneOffset.UTC
+        val result = activities.completionCandidates(scope.first, workout.modality).filter {
+            day != null && java.time.Instant.parse(it.startedAt).atZone(zone).toLocalDate() == day
+        }
         if (accountScope.value != scope) throw kotlinx.coroutines.CancellationException()
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "manual_workout_completion_picker", AnalyticsProperty.SourceType to "same_day", AnalyticsProperty.Result to if (result.isEmpty()) "empty" else "shown")))
         return result
     }
 

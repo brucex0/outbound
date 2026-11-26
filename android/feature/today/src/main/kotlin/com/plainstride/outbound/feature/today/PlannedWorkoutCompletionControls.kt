@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
 internal fun PlannedWorkoutCompletionControls(
     workout: PlannedWorkout,
     dateEligible: Boolean,
+    accountZone: ZoneId,
     units: MeasurementUnitSystem,
     loadCandidates: suspend (PlannedWorkout) -> List<RemoteActivityDto>,
     complete: suspend (String, String, String?) -> Boolean,
@@ -99,7 +100,7 @@ internal fun PlannedWorkoutCompletionControls(
                     OutlinedButton(onClick = { candidates = null; apply("link", candidate.id) }) {
                         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(candidate.title, style = MaterialTheme.typography.titleMedium)
-                            Text(Instant.parse(candidate.startedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)), style = MaterialTheme.typography.bodyMedium)
+                            Text(Instant.parse(candidate.startedAt).atZone(accountZone).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)), style = MaterialTheme.typography.bodyMedium)
                             Text(workoutDistance(candidate.distanceM, units) + " · " + "%d:%02d".format(candidate.durationSecs / 60, candidate.durationSecs % 60), style = MaterialTheme.typography.bodyMedium)
                         }
                     }

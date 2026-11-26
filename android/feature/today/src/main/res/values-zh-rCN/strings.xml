@@ -233,8 +233,8 @@
     <string name="plan_completion_manual_message">不会创建活动或添加运动数据。</string>
     <string name="plan_completion_undo_title">撤销此次完成标记？</string>
     <string name="plan_completion_undo_message">此训练将恢复为未完成。已保存的活动会保留。</string>
-    <string name="plan_completion_choose_message">选择近期活动。关联记录不代表你完全按照训练的每个阶段完成。</string>
-    <string name="plan_completion_empty">最近30天内没有可关联的同类活动。请先保存并同步活动，再重试。</string>
+    <string name="plan_completion_choose_message">选择与此训练同一天的活动。关联记录不代表你完全按照训练的每个阶段完成。</string>
+    <string name="plan_completion_empty">此训练当天没有可关联的同类活动。记录须在最近30天内。请先保存并同步活动，再重试。</string>
     <string name="plan_completion_failed">无法更新。请连接网络后重试。</string>
     <string name="plan_completion_saved">训练已更新</string>
     <string name="plan_completion_group_question">将此次活动计入今天的训练？</string>

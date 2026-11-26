@@ -178,7 +178,7 @@ internal fun ActivePlanDetailsSheet(
             onDone = onDismiss,
             onChangeWorkout = onChangeWorkout?.takeIf { workout.isFor(today) && workout.status !in TERMINAL_WORKOUT_STATUSES },
             busy = busy,
-            completionContent = { PlannedWorkoutCompletionControls(workout, planningLogicalDate(workout.scheduledDate)?.let { it <= today } == true, units, onCompletionCandidates, onManualCompletion) },
+            completionContent = { PlannedWorkoutCompletionControls(workout, planningLogicalDate(workout.scheduledDate)?.let { it <= today } == true, planning.calendar?.zone() ?: java.time.ZoneOffset.UTC, units, onCompletionCandidates, onManualCompletion) },
         )
     }
     if (confirmsEnd) AlertDialog(
