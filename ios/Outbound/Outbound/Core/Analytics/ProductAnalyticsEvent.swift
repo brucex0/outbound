@@ -585,7 +585,7 @@ enum ProductAnalyticsSchema {
         .musicOperationFailed: [.errorCategory],
         .routeLibraryOpened: [],
         .routeLibraryRefreshed: [.sourceType, .result],
-        .routeSelected: [.sourceType, .distanceBucket],
+        .routeSelected: [.sourceType, .distanceBucket, .goalType, .targetBucket],
         .routeRemoved: [.sourceType],
         .routePublishStarted: [.entrySource],
         .routePublishCompleted: [.entrySource],

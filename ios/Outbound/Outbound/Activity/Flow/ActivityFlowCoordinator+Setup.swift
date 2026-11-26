@@ -26,7 +26,15 @@ extension ActivityFlowCoordinator {
     }
 
     var showsLaunchGoalCard: Bool {
-        !self.usesEmbeddedPlannedContent && self.setup.selectedGoalMode != .freestyle
+        guard !self.usesEmbeddedPlannedContent else { return false }
+        switch self.setup.selectedGoalMode {
+        case .freestyle:
+            return false
+        case .distance, .time, .calories:
+            return !self.setup.currentActivityGoal.isFreestyle
+        case .planned, .curated, .race:
+            return true
+        }
     }
 
     func autoPauseEnabled(for activityType: ActivityType) -> Bool {
@@ -548,8 +556,10 @@ extension ActivityFlowCoordinator {
             raceIntent: race
         )
         if let route = self.setup.plannedIntent?.preparedRoute {
+            self.setup.intentBeforeSelectedRoute = intent
             self.setup.plannedIntent = self.setup.routeIntent(route, appliedTo: intent)
         } else {
+            self.setup.intentBeforeSelectedRoute = nil
             self.setup.plannedIntent = intent
         }
         self.setup.selectedWorkoutChoice = .sport(.run)
@@ -634,8 +644,18 @@ extension ActivityFlowCoordinator {
                 estimate,
                 unitSystem: self.dependencies.measurementPreferences.unitSystem
             )
+            // Route replacement/removal restores this authored snapshot. Keep it
+            // current without replacing its workout metadata with route labels.
+            self.setup.intentBeforeSelectedRoute = self.setup.intentBeforeSelectedRoute?.replacingCalorieGoal(
+                estimate,
+                unitSystem: self.dependencies.measurementPreferences.unitSystem
+            )
         } else {
             self.setup.plannedIntent = currentIntent.replacingGoal(goal, unitSystem: self.dependencies.measurementPreferences.unitSystem)
+            self.setup.intentBeforeSelectedRoute = self.setup.intentBeforeSelectedRoute?.replacingGoal(
+                goal,
+                unitSystem: self.dependencies.measurementPreferences.unitSystem
+            )
         }
         if let sport = self.setup.selectedManualSport {
             var draft = self.setup.resolvedManualSetupDraft(for: sport)
@@ -777,7 +797,9 @@ extension ActivityFlowCoordinator {
         guard let route else { return }
         self.track(.init(.routeSelected, properties: [
             .sourceType: .string(route.source.rawValue),
-            .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: self.preparedRouteDistance(route)))
+            .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: self.preparedRouteDistance(route))),
+            .goalType: .string(self.analyticsGoalType),
+            .targetBucket: .string(self.analyticsTargetBucket(for: self.setup.currentActivityGoal))
         ]))
     }
 
