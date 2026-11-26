@@ -203,7 +203,9 @@ extension ActivityFlowView {
         }
         .sheet(item: binding(\.setup.setupSheet)) { sheet in
             setupSheetView(sheet)
-                .presentationDetents(sheet == .goal ? [.height(310)] : [.medium, .large])
+                .presentationDetents(sheet == .goal
+                    ? (model.setup.selectedGoalMode == .calories ? [.height(360), .large] : [.height(310)])
+                    : [.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $model.isAssistantPresented) {

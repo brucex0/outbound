@@ -50,8 +50,9 @@ extension ActivitySetupViewModel {
         case .race:
             return String(localized: "race.planner.tap_change", defaultValue: "Tap to adjust race strategy")
         case .calories:
-            return self.calorieEditorEstimateLabel
-                ?? ""
+            return self.calorieEstimateLabel(
+                targetCalories: self.currentActivityGoal.targetCalories ?? self.calorieGoalPresets.first ?? 300
+            ) ?? ""
         case .distance, .time:
             return ""
         }
@@ -315,7 +316,22 @@ extension ActivitySetupViewModel {
     }
 
     var calorieEditorEstimateLabel: String? {
-        let target = self.currentActivityGoal.targetCalories ?? self.calorieGoalPresets.first ?? 300
+        guard self.goalEditorKind == .calories,
+              let target = self.goalEditorGoal?.targetCalories,
+              let weight = self.dependencies.onboardingStore.latestWeightKilograms,
+              self.hasWeightForCalories,
+              let roundedUnits = Int(exactly: (Double(target) / 25).rounded()) else { return nil }
+        // Typing previews before Save: keep the estimator's integer conversions safe.
+        let (roundedCalories, overflow) = roundedUnits.multipliedReportingOverflow(by: 25)
+        guard !overflow else { return nil }
+        // One MET bounds duration above both supported run/walk estimates without
+        // imposing a product target limit or duplicating their pace/MET formulas.
+        let durationUpperBound = Double(max(50, roundedCalories)) / weight * 3_600
+        guard Int(exactly: durationUpperBound.rounded()) != nil else { return nil }
+        return self.calorieEstimateLabel(targetCalories: target)
+    }
+
+    func calorieEstimateLabel(targetCalories: Int) -> String? {
         guard let weightKilograms = self.dependencies.onboardingStore.latestWeightKilograms else { return nil }
         let estimate: PlannedCalorieEstimate?
         switch self.selectedManualSport ?? self.plannedIntent?.sport ?? .run {
@@ -325,13 +341,13 @@ extension ActivitySetupViewModel {
                 calibrationCompleted: self.dependencies.personalizationStore.snapshot.calibration.status == .completed
             ).secondsPerKilometer
             estimate = WorkoutCalorieEstimator.plannedRun(
-                targetCalories: target,
+                targetCalories: targetCalories,
                 weightKilograms: weightKilograms,
                 paceSecondsPerKilometer: pace
             )
         case .walk:
             estimate = WorkoutCalorieEstimator.plannedWalk(
-                targetCalories: target,
+                targetCalories: targetCalories,
                 weightKilograms: weightKilograms
             )
         case .bike, .hike, .swim, .strength, .mobility:

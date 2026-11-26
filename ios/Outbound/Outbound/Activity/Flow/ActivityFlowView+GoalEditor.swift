@@ -121,6 +121,13 @@ extension ActivityFlowView {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
                 }
+
+                if let estimate = model.setup.calorieEditorEstimateLabel {
+                    Text(estimate)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             HStack(spacing: 12) {

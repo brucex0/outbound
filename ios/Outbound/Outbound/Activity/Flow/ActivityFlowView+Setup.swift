@@ -156,7 +156,8 @@ extension ActivityFlowView {
                             }
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(theme.accentColor)
-                        } else if !model.setup.launchGoalHint.isEmpty {
+                        }
+                        if !model.setup.launchGoalHint.isEmpty {
                             Text(model.setup.launchGoalHint)
                                 .font(.caption2.weight(.medium))
                                 .foregroundStyle(.secondary)
