@@ -84,6 +84,7 @@ class ProductAnalytics(
         val safeName = event.name.takeIf(EVENT_NAME::matches) ?: return
         val safeProperties = buildMap {
             put("platform", "android")
+            put("map_appearance", "light")
             event.properties.forEach { (key, rawValue) ->
                 sanitize(key, rawValue)?.let { put(key.wireName, it) }
             }

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.*
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.plainstride.outbound.core.designsystem.PlainstrideMapAppearance
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.GoogleMap
 import com.google.zxing.BarcodeFormat
@@ -59,7 +60,7 @@ fun ActivitySharePreparation(
 ) {
     val context = LocalContext.current
     val mapResult = remember(activity) { CompletableDeferred<ActivityShareMapSnapshot?>() }
-    val mapView = remember(activity) { MapView(context) }
+    val mapView = remember(activity) { MapView(context, PlainstrideMapAppearance.options()) }
     var assets by remember(activity) { mutableStateOf<ActivityShareAssets?>(null) }
     var backdrop by remember(activity) { mutableStateOf<Bitmap?>(null) }
     var ready by remember(activity) { mutableStateOf(false) }

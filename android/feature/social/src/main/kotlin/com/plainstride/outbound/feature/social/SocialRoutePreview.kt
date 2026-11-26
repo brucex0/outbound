@@ -40,6 +40,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.GoogleMap
+import com.plainstride.outbound.core.designsystem.PlainstrideMapAppearance
 import com.google.maps.android.compose.MapEffect
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -126,7 +127,7 @@ internal fun SocialRoutePreview(
             val mapHeightPx = with(density) { maxHeight.toPx().toInt() }.coerceAtLeast(1)
             val routePaddingPx = with(density) { 48.dp.toPx().toInt() }
             val routeKey = remember(route) { routeCacheKey(route) }
-            val mapKey = "$routeKey|${mapWidthPx}x${mapHeightPx}"
+            val mapKey = "light-v1|$routeKey|${mapWidthPx}x${mapHeightPx}"
             val cachedMap = remember(mapKey) { SocialPreviewBitmapCache.maps.get(mapKey) }
             var snapshot by remember(mapKey) { mutableStateOf(cachedMap) }
             var diskCacheLoaded by remember(mapKey) { mutableStateOf(cachedMap != null) }
@@ -156,6 +157,7 @@ internal fun SocialRoutePreview(
                     runCatching { camera.animate(CameraUpdateFactory.newLatLngBounds(bounds, routePaddingPx)) }
                 }
                 GoogleMap(
+                    mapColorScheme = PlainstrideMapAppearance.colorScheme,
                     modifier = Modifier.fillMaxSize(),
                     cameraPositionState = camera,
                     contentPadding = PaddingValues(bottom = maxHeight / 3),
