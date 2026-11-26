@@ -95,6 +95,8 @@ extension ActivityFlowView {
         NavigationStack {
             Group {
                 switch sheet {
+                case .mode:
+                    launchModeChoices
                 case .goal:
                     if model.setup.selectedGoalMode == .calories {
                         ScrollView { goalValueEditor.padding(20) }

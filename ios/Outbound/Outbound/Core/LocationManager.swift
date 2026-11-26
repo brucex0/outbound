@@ -75,6 +75,9 @@ final class LocationManager: NSObject, ObservableObject {
     private let maximumPublishedLocationAgeSeconds: TimeInterval = 15
 
     private let manager = CLLocationManager()
+    private let foregroundSource: ForegroundLocationSource?
+    private var foregroundSubscription: AnyCancellable?
+    private var foregroundTask: Task<Void, Never>?
     private let pedometer = CMPedometer()
     private let permissionPedometer = CMPedometer()
     private var activityType: ActivityType = .running
@@ -118,7 +121,8 @@ final class LocationManager: NSObject, ObservableObject {
     private var simulatedSpeedMetersPerSecond: Double?
 #endif
 
-    override init() {
+    init(foregroundSource: ForegroundLocationSource? = nil) {
+        self.foregroundSource = foregroundSource
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
@@ -129,6 +133,14 @@ final class LocationManager: NSObject, ObservableObject {
         authorizationStatus = manager.authorizationStatus
         accuracyAuthorization = manager.accuracyAuthorization
         updateSignalQuality(using: nil)
+        foregroundSubscription = foregroundSource?.$latestLocation.sink { [weak self] fix in
+            guard let self else { return }
+            // This facade is for app preview only; recording retains its own raw-fix pipeline.
+            guard !self.wantsTracking, !self.wantsPreparation else { return }
+            self.location = self.isLocationPermissionGranted
+                ? fix.flatMap { ForegroundLocationSource.Policy.activityPreview.accepts($0) ? $0 : nil } : nil
+            self.updateSignalQuality(using: self.location)
+        }
     }
 
     var trackCoordinateSegments: [[CLLocationCoordinate2D]] {
@@ -162,6 +174,7 @@ final class LocationManager: NSObject, ObservableObject {
     /// foreground, so a permission revoked in Settings cannot keep a stale
     /// readiness state alive.
     func refreshForForeground() {
+        foregroundSource?.refreshAuthorization()
         authorizationStatus = manager.authorizationStatus
         accuracyAuthorization = manager.accuracyAuthorization
         updateSignalQuality(using: location)
@@ -231,6 +244,22 @@ final class LocationManager: NSObject, ObservableObject {
 
     func requestCurrentLocation() {
         guard !isIndoorTracking || !wantsTracking else { return }
+        if let foregroundSource, !wantsTracking, !wantsPreparation {
+            foregroundTask?.cancel()
+            foregroundTask = Task { [weak self] in
+                do {
+                    _ = try await foregroundSource.locate(id: UUID(), policy: .activityPreview, reuseCached: false)
+                } catch is CancellationError { return }
+                catch {
+                    guard !Task.isCancelled else { return }
+                    ActivityDiagnosticLog.error(.lifecycle, "activity_preview_location_failed category=\(ActivityDiagnosticLog.errorCategory(error))")
+                    // A cached fix does not establish current signal availability after failure.
+                    self?.signalQuality = .unavailable
+                    self?.currentMotionSpeed = nil
+                }
+            }
+            return
+        }
         wantsOneShotLocation = true
         switch manager.authorizationStatus {
         case .notDetermined:
@@ -811,6 +840,8 @@ final class LocationManager: NSObject, ObservableObject {
         currentMotionSpeed = motionSpeed(for: newLocation)
         previousMotionLocation = newLocation
         location = newLocation
+        // Physical delivery only: synthetic/debug/recovered tracks never enter the foreground source.
+        ForegroundLocationSource.shared.publish(newLocation)
 
         if wantsPreparation && !wantsTracking {
             if preparedLocation == nil

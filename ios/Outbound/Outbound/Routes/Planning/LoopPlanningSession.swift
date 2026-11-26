@@ -68,6 +68,7 @@ import Foundation
         self.cache = cache; self.account = account
         committedDistanceM = distanceM ?? units.distanceMeters(from: units == .metric ? 5 : 3)
         self.placeSearch = placeSearch; self.location = location; self.isCurrentAccount = isCurrentAccount
+        start = location.cachedLocation()
         distanceText = distanceM.map { String(format: "%.1f", units.distanceValue(meters: $0)) } ?? (units == .metric ? "5" : "3")
     }
     var current: Bool { active && isCurrentAccount() }
@@ -114,15 +115,28 @@ import Foundation
         if let lessClimbing { self.lessClimbing = lessClimbing }
         generate(trigger: .confirmedVia, reuseExisting: true)
     }
+    /// The opening captures a valid shared fix synchronously, before its first map render.
+    func beginInitialLocation() {
+        guard current else { return }
+        if let point = location.cachedLocation() {
+            locationSourceResult = "cached"
+            setStart(point, trigger: .initialLocation)
+        } else { requestLocation(trigger: .initialLocation) }
+    }
+    @Published private(set) var locationSourceResult: String?
     func requestLocation(trigger: GenerationTrigger = .myLocation) {
         guard current else { return }
         stopLocation(); invalidate(); choosingStart = false; requestingLocation = true; locating = true; locationUnavailable = false
+        if let point = location.cachedLocation() {
+            locationSourceResult = "cached"
+            setStart(point, trigger: trigger); return
+        }
         let token = locationRevision
         locationTask = Task { [weak self] in
             guard let self else { return }
             do {
                 let point = try await location.locate()
-                guard current, requestingLocation, locationRevision == token, !Task.isCancelled else { return }; setStart(point, trigger: trigger)
+                guard current, requestingLocation, locationRevision == token, !Task.isCancelled else { return }; locationSourceResult = "fresh"; setStart(point, trigger: trigger)
             } catch {
                 guard current, requestingLocation, locationRevision == token, !Task.isCancelled, !(error is CancellationError) else { return }
                 requestingLocation = false; locating = false; locationUnavailable = true

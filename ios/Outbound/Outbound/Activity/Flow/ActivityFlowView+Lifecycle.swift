@@ -201,7 +201,7 @@ extension ActivityFlowView {
                 embeddedActivityAssistantButton
             }
         }
-        .sheet(item: binding(\.setup.setupSheet)) { sheet in
+        .sheet(item: binding(\.setup.setupSheet), onDismiss: model.finishLaunchModeSelection) { sheet in
             setupSheetView(sheet)
                 .presentationDetents(sheet == .goal
                     ? (model.setup.selectedGoalMode == .calories ? [.height(360), .large] : [.height(310)])

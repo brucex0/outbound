@@ -67,39 +67,22 @@ nonisolated struct LoopPlanningResponse: Decodable {
         return response.mapItems.prefix(6).map { .init(id: UUID(), name: $0.name ?? "", coordinate: .init(latitude: $0.placemark.coordinate.latitude, longitude: $0.placemark.coordinate.longitude)) }
     }
 }
-@MainActor final class CoreLocationLoopProvider: NSObject, LoopPlanningLocationProvider, CLLocationManagerDelegate {
-    private let manager = CLLocationManager()
-    private var continuation: CheckedContinuation<LoopPlanningCoordinate, Error>?
-    private var timeout: Task<Void, Never>?
-    override init() { super.init(); manager.delegate = self; manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters }
+@MainActor final class CoreLocationLoopProvider: LoopPlanningLocationProvider {
+    private let source: ForegroundLocationSource
+    private var requestID: UUID?
+    init(source: ForegroundLocationSource? = nil) { self.source = source ?? .shared }
+    func cachedLocation() -> LoopPlanningCoordinate? {
+        source.cachedLocation(policy: .planner).map { .init(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+    }
     func locate() async throws -> LoopPlanningCoordinate {
         cancel()
-        return try await withCheckedThrowingContinuation { pending in
-            continuation = pending
-            timeout = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(15)) // Replaced requests cancel this timeout.
-                guard !Task.isCancelled else { return }; self?.finish(.failure(CLError(.locationUnknown)))
-            }
-            authorize()
-        }
+        let id = UUID(); requestID = id
+        defer { if requestID == id { requestID = nil } }
+        let fix = try await source.locate(id: id, policy: .planner)
+        return .init(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
     }
-    private func authorize() {
-        switch manager.authorizationStatus {
-        case .notDetermined: manager.requestWhenInUseAuthorization()
-        case .authorizedAlways, .authorizedWhenInUse: manager.requestLocation()
-        default: finish(.failure(CLError(.denied)))
-        }
-    }
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) { if continuation != nil { authorize() } }
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let point = locations.last, abs(point.timestamp.timeIntervalSinceNow) < 60,
-              point.horizontalAccuracy >= 0, point.horizontalAccuracy <= 100 else { return }
-        finish(.success(.init(latitude: point.coordinate.latitude, longitude: point.coordinate.longitude)))
-    }
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) { finish(.failure(error)) }
-    func cancel() { finish(.failure(CancellationError())) }
-    private func finish(_ result: Result<LoopPlanningCoordinate, Error>) {
-        timeout?.cancel(); timeout = nil
-        let pending = continuation; continuation = nil; pending?.resume(with: result)
+    func cancel() {
+        if let requestID { source.cancel(id: requestID) }
+        requestID = nil
     }
 }

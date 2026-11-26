@@ -111,6 +111,36 @@ extension ActivityFlowCoordinator {
         ]))
     }
 
+    func toggleSetupPauseAtGoal() {
+        autoStopAtGoalEnabled.toggle()
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("auto_stop_at_goal"),
+            .selectionType: .string(autoStopAtGoalEnabled ? "enabled" : "disabled"),
+            .activityType: .string((setup.plannedIntent ?? .freestyleRun).resolvedActivityType.rawValue)
+        ]))
+    }
+
+    /// Runs only once the selector has fully dismissed, so native presentations
+    /// for the catalog, race planner, weight prompt, or goal editor never overlap.
+    func finishLaunchModeSelection() {
+        guard let mode = setup.pendingLaunchMode else { return }
+        setup.pendingLaunchMode = nil
+        guard setup.availableManualGoalModes.contains(mode), setup.selectedWorkoutChoice != .planned else { return }
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("goal_mode"),
+            .selectionType: .string(mode.rawValue),
+            .entrySource: .string("compact_goal_card")
+        ]))
+        if mode == .calories, !setup.hasWeightForCalories {
+            presentCaloriesWeightPrompt(for: .selectMode(reopenGoalEditor: true))
+            return
+        }
+        selectLaunchMode(mode)
+        if [.distance, .time, .calories].contains(mode) {
+            setup.setupSheet = .goal
+        }
+    }
+
     func selectLaunchMode(_ mode: SessionGoalMode) {
         setup.hasEditedLaunchConfiguration = true
         guard self.setup.selectedWorkoutChoice != .planned else {

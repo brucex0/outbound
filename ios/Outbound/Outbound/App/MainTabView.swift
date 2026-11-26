@@ -25,7 +25,7 @@ struct MainTabView: View {
     @EnvironmentObject private var workoutNotificationScheduler: WorkoutNotificationScheduler
     @EnvironmentObject private var workoutReminderPreferences: WorkoutReminderPreferences
     @EnvironmentObject private var phoneWorkoutCoordinator: PhoneWorkoutSessionCoordinator
-    @StateObject private var locationManager = LocationManager()
+    @StateObject private var locationManager = LocationManager(foregroundSource: .shared)
     @State private var reviewOpportunity: UUID?
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false

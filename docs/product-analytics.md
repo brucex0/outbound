@@ -536,3 +536,10 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Today compact launch controls expose `feature_exposed` with bounded `feature=activity_picker` or `launch_settings`. Direct Route entry reuses `activity_configuration_changed` with `change_type=route_entry` and `selection_type=launch_dock`; selection and attachment keep existing route events. No selected labels, names, recipients, coordinates, or target values are added.
 
 - iOS inline Plan-tab entry retains `planning_surface_opened` with the existing `plan_details` / `plan_picker` surface and bounded entry source. Today footer View activity retains `feature_exposed(feature=plan_completed_activity,result=opened)` with `entry_source=today_complete_footer`; footer Link activity records `feature_exposed(feature=manual_workout_completion,selection_type=link,result=opened)` with the same entry source. Link results retain existing manual-completion success/failure events. No workout/activity identifiers or titles are added.
+
+## Compact goal card (iOS)
+
+- Today card/Free-entry opens retain `goal_editor_opened` with bounded `entry_source = compact_goal_card`, existing activity/goal types, and no target values or workout prose.
+- Selecting a mode emits `activity_configuration_changed` with `change_type = goal_mode`, a stable mode enum as `selection_type`, and the same bounded entry source. Existing editor, curated selection, and race planner events continue unchanged.
+
+- iOS loop-planner shared foreground lookup emits `feature_exposed` with `feature=loop_planner_location` and only `result=cached|fresh` when resolving the requested start. It excludes coordinates, accuracy, timestamps, request IDs and per-fix samples.

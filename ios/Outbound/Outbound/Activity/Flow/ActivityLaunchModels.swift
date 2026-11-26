@@ -7,6 +7,7 @@ enum SessionPage: String {
 
 enum ActivitySetupSheet: String, Identifiable {
     case goal
+    case mode
     case music
     case more
     case groupRun
@@ -15,6 +16,7 @@ enum ActivitySetupSheet: String, Identifiable {
 
     var title: String {
         switch self {
+        case .mode: String(localized: "record.goal.mode_picker", defaultValue: "Goal or workout")
         case .goal: String(localized: "record.goal.edit", defaultValue: "Edit Goal")
         case .music: String(localized: "record.setup.music", defaultValue: "Music")
         case .more: String(localized: "record.setup.more", defaultValue: "More")

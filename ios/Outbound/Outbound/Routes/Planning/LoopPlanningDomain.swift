@@ -50,8 +50,14 @@ nonisolated struct LoopPlanningCandidate: Identifiable, Codable {
     func parks(near: LoopPlanningCoordinate) async throws -> [LoopPlanningPlace]
 }
 @MainActor protocol LoopPlanningLocationProvider {
+    func cachedLocation() -> LoopPlanningCoordinate?
     func locate() async throws -> LoopPlanningCoordinate
     func cancel()
+}
+
+// Providers without an in-memory fix retain the asynchronous lookup path.
+extension LoopPlanningLocationProvider {
+    func cachedLocation() -> LoopPlanningCoordinate? { nil }
 }
 
 nonisolated enum LoopPlanningRanking {

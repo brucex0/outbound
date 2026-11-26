@@ -46,6 +46,15 @@ private struct LoopPlannerScreen: View {
     let onUse: (LoopPlanningCandidate, Int) -> Bool
     let onSavedSelection: (PreparedRoute?) -> Void
     let onCancel: () -> Void
+    init(presentation: LoopPlanningPresentation, session: LoopPlanningSession,
+         onUse: @escaping (LoopPlanningCandidate, Int) -> Bool,
+         onSavedSelection: @escaping (PreparedRoute?) -> Void, onCancel: @escaping () -> Void) {
+        self.presentation = presentation; self.session = session
+        self.onUse = onUse; self.onSavedSelection = onSavedSelection; self.onCancel = onCancel
+        if let start = session.start {
+            _camera = State(initialValue: .region(.init(center: start.locationCoordinate, latitudinalMeters: 1500, longitudinalMeters: 1500)))
+        }
+    }
     var body: some View {
         NavigationStack {
             map
@@ -71,6 +80,11 @@ private struct LoopPlannerScreen: View {
                     Task { await analytics?.track(.init(.activityConfigurationChanged, properties: [
                         .changeType: .string("loop_planner_generate"), .activityType: .string(session.activity.rawValue),
                         .entrySource: .string(generation.trigger.rawValue)])) }
+                }
+                .onChange(of: session.locationSourceResult) { _, result in
+                    guard let result else { return }
+                    Task { await analytics?.track(.init(.featureExposed, properties: [
+                        .feature: .string("loop_planner_location"), .result: .string(result)])) }
                 }
                 .onChange(of: session.cacheEvent) { _, event in
                     guard let event else { return }

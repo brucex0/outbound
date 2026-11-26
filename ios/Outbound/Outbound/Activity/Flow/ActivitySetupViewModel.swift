@@ -33,6 +33,7 @@ final class ActivitySetupViewModel: ObservableObject {
     @Published var isGroupParticipantsExpanded = false
     @Published var isMusicSetupExpanded = false
     @Published var isSessionOptionsExpanded = false
+    var pendingLaunchMode: SessionGoalMode?
     @Published var setupSheet: ActivitySetupSheet? = nil
     @Published var musicSearchText = ""
     @Published var musicSearchCategory: MusicSearchCategory = .songs

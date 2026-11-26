@@ -1,6 +1,144 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "record.goal.mode_picker": {
+      "comment": "Today compact goal or workout selector. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goal or workout"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo o entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标或训练"
+          }
+        }
+      }
+    },
+    "record.goal.set_goal_workout": {
+      "comment": "Today compact goal or workout selector. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set goal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Establecer objetivo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置目标"
+          }
+        }
+      }
+    },
+    "record.goal.mode_picker_hint": {
+      "comment": "Today compact goal or workout selector. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a goal or workout mode"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un objetivo o tipo de entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择目标或训练模式"
+          }
+        }
+      }
+    },
+    "record.goal.goal_format": {
+      "comment": "Today compact goal or workout selector. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goal: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标：%@"
+          }
+        }
+      }
+    },
+    "record.goal.workout_format": {
+      "comment": "Today compact goal or workout selector. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "训练：%@"
+          }
+        }
+      }
+    },
+    "record.goal.race_format": {
+      "comment": "Today compact goal or workout selector. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "比赛：%@"
+          }
+        }
+      }
+    },
     "today.workout.complete": {
       "comment": "Compact completed-workout status in the Today card header. [platform:ios]",
       "localizations": {

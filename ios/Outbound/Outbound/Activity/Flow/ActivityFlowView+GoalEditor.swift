@@ -53,14 +53,7 @@ extension ActivityFlowView {
     var goalValueEditor: some View {
         VStack(alignment: .leading, spacing: 18) {
             if model.setup.goalEditorKind != nil {
-                Button {
-                    model.autoStopAtGoalEnabled.toggle()
-                    model.track(.init(.activityConfigurationChanged, properties: [
-                        .changeType: .string("auto_stop_at_goal"),
-                        .selectionType: .string(model.autoStopAtGoalEnabled ? "enabled" : "disabled"),
-                        .activityType: .string((model.setup.plannedIntent ?? .freestyleRun).resolvedActivityType.rawValue)
-                    ]))
-                } label: {
+                Button(action: model.toggleSetupPauseAtGoal) {
                     HStack(spacing: 10) {
                         Image(systemName: model.autoStopAtGoalEnabled ? "checkmark.square.fill" : "square")
                             .font(.headline.weight(.semibold))

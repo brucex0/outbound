@@ -32,12 +32,13 @@ import Foundation
     var detail: LoopPlanningCandidate? {
         if case .details(let candidate) = sheet { candidate } else { nil }
     }
-    init(activity: ActivityType, distanceM: Double?, units: MeasurementUnitSystem, initialSelection: PreparedRoute? = nil) {
+    init(activity: ActivityType, distanceM: Double?, units: MeasurementUnitSystem, initialSelection: PreparedRoute? = nil,
+         location: (any LoopPlanningLocationProvider)? = nil) {
         attachedRoute = initialSelection
         savedDraft = CommunityRouteSelectionDraft(initialSelection: initialSelection)
         let account = ActivityAccountBoundary.current
         session = LoopPlanningSession(activity: activity, distanceM: distanceM, units: units,
-            repository: HTTPLoopPlanningRepository(), placeSearch: MapKitLoopPlaceSearch(), location: CoreLocationLoopProvider(),
+            repository: HTTPLoopPlanningRepository(), placeSearch: MapKitLoopPlaceSearch(), location: location ?? CoreLocationLoopProvider(),
             cache: account.owner.hasPrefix("account:") ? DiskLoopPlanningCache.shared : nil, account: account,
             isCurrentAccount: { account == ActivityAccountBoundary.current })
     }
@@ -54,7 +55,7 @@ import Foundation
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.arguments.contains("-OutboundUITestDeferredPlannerLocation") { return }
 #endif
-        session.requestLocation(trigger: .initialLocation)
+        session.beginInitialLocation()
     }
     func cancel() { session.cancel(); savedDraft.cancel(); sheet = nil }
 }

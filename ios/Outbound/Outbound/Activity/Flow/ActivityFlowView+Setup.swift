@@ -31,13 +31,13 @@ extension ActivityFlowView {
             isEmbeddedInToday: true,
             usesEmbeddedPlannedContent: model.usesEmbeddedPlannedContent,
             showsRouteCard: model.setup.plannedIntent?.preparedRoute != nil,
-            showsLaunchGoalCard: model.showsLaunchGoalCard,
-            showsManualGoalPills: model.setup.showsManualGoalPills,
+            showsLaunchGoalCard: model.setup.selectedWorkoutChoice != .planned,
+            showsManualGoalPills: false,
             showsEnableLocationChip: model.showsEnableLocationChip,
             map: AnyView(EmptyView()),
             offlineStatus: AnyView(offlineStatusBanner),
             routeCard: AnyView(launchRouteCardView),
-            goalCard: AnyView(launchGoalCard),
+            goalCard: AnyView(compactLaunchGoalCard),
             goalPillRow: AnyView(launchGoalPillRow),
             enableLocationChip: AnyView(enableLocationChip),
             launchDock: AnyView(launchDock),
@@ -251,18 +251,17 @@ private struct ActivityLaunchRoutePill: View {
         Button { showsDetails = true } label: {
             HStack(spacing: 6) {
                 Text(name)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(distance)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
+                    .fixedSize(horizontal: false, vertical: true)
                     .layoutPriority(1)
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.primary)
             .padding(.horizontal, 12)
+            .padding(.vertical, OutboundSpacing.compact)
             .frame(minHeight: 44)
-            .background(.regularMaterial, in: Capsule())
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: OutboundRadius.card, style: .continuous))
             .outboundTapTarget()
         }
         .buttonStyle(.plain)

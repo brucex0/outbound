@@ -63,7 +63,7 @@ struct ActivitySetupView: View {
                             if showsLaunchGoalCard { goalCard }
                         }
                         .padding(.horizontal, 18)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, showsLaunchGoalCard ? 20 : 12)
                         .reportsActivityLaunchFloatingContentHeight()
                         .reportsMapAttributionOcclusionHeight()
                     }
@@ -89,31 +89,44 @@ struct ActivitySetupView: View {
     }
 }
 
-/// Content-sized capsules, each limited to half the usable row even when alone.
+/// Center compact peers in a row when they fit; otherwise wrap into a centered
+/// stack. Each peer keeps its own actions and receives the full available width
+/// when wrapping so large text and long route/workout names remain readable.
 private struct ActivityLaunchSummaryLayout: Layout {
-    private let gap: CGFloat = 12
+    private let gap: CGFloat = OutboundSpacing.standard
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let sizes = sizes(proposal: proposal, subviews: subviews)
-        return CGSize(width: proposal.width ?? sizes.reduce(0) { $0 + $1.width } + gap * CGFloat(max(0, sizes.count - 1)),
-                      height: sizes.map(\.height).max() ?? 0)
+        let layout = arrangement(proposal: proposal, subviews: subviews)
+        return CGSize(width: layout.width, height: layout.isRow
+            ? layout.sizes.map(\.height).max() ?? 0
+            : layout.sizes.reduce(0) { $0 + $1.height } + gap * CGFloat(max(0, subviews.count - 1)))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let sizes = sizes(proposal: ProposedViewSize(width: bounds.width, height: nil), subviews: subviews)
-        var x = bounds.minX
+        let layout = arrangement(proposal: ProposedViewSize(width: bounds.width, height: nil), subviews: subviews)
+        let rowWidth = layout.sizes.reduce(0) { $0 + $1.width } + gap * CGFloat(max(0, subviews.count - 1))
+        var x = bounds.midX - rowWidth / 2
+        var y = bounds.minY
         for (index, view) in subviews.enumerated() {
-            view.place(at: CGPoint(x: x, y: bounds.midY), anchor: .leading,
-                       proposal: ProposedViewSize(sizes[index]))
-            x += sizes[index].width + gap
+            let size = layout.sizes[index]
+            if layout.isRow {
+                view.place(at: CGPoint(x: x, y: bounds.midY), anchor: .leading, proposal: ProposedViewSize(size))
+                x += size.width + gap
+            } else {
+                view.place(at: CGPoint(x: bounds.midX, y: y), anchor: .top, proposal: ProposedViewSize(size))
+                y += size.height + gap
+            }
         }
     }
 
-    private func sizes(proposal: ProposedViewSize, subviews: Subviews) -> [CGSize] {
-        let cap = max(0, ((proposal.width ?? 320) - gap) / 2)
-        return subviews.map { view in
-            let ideal = view.sizeThatFits(.unspecified)
-            return view.sizeThatFits(ProposedViewSize(width: min(ideal.width, cap), height: nil))
+    private func arrangement(proposal: ProposedViewSize, subviews: Subviews) -> (width: CGFloat, sizes: [CGSize], isRow: Bool) {
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        let idealWidth = ideals.reduce(0) { $0 + $1.width } + gap * CGFloat(max(0, subviews.count - 1))
+        let availableWidth = max(0, proposal.width ?? idealWidth)
+        let isRow = idealWidth <= availableWidth
+        let sizes = zip(subviews, ideals).map { view, ideal in
+            view.sizeThatFits(ProposedViewSize(width: min(ideal.width, availableWidth), height: nil))
         }
+        return (availableWidth, sizes, isRow)
     }
 }
