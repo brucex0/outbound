@@ -111,7 +111,7 @@ struct PlannedWorkoutCompletionControls: View {
                         } label: {
                             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                                 Text(candidate.title).font(.headline)
-                                Text(candidate.startedAt.formatted(date: .abbreviated, time: .shortened)).font(.subheadline)
+                                Text(candidate.startedAt.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, timeZone: trainingPlanStore.nutritionCalendar.timeZone))).font(.subheadline)
                                 Text(measurementPreferences.unitSystem.distanceValueString(meters: candidate.distanceM) + " " + measurementPreferences.unitSystem.distanceUnit + " · " + Duration.seconds(candidate.durationSecs).formatted(.time(pattern: .hourMinuteSecond))).font(.subheadline)
                             }.frame(maxWidth: .infinity, alignment: .leading).outboundTapTarget()
                         }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
@@ -134,18 +134,22 @@ struct PlannedWorkoutCompletionControls: View {
         do {
             try await ActivityAccountBoundary.$operation.withValue(context) {
                 let cutoff = Date().addingTimeInterval(-30 * 86400)
+                let calendar = trainingPlanStore.nutritionCalendar
+                // Schedule keys are logical date labels, not UTC instants.
+                let workoutDate = current.scheduledDateKey.flatMap { PlanningCalendarContext.logicalDate($0, calendar: calendar) } ?? current.logicalScheduledDate
                 var cursor: String?
                 var loaded: [RemoteActivityRecord] = []
                 repeat {
                     let response = try await APIClient.shared.fetchActivities(cursor: cursor, includeRoute: false, limit: 200)
                     try Task.checkCancellation()
                     try ActivityAccountBoundary.validate()
-                    loaded += response.activities.filter { $0.deletedAt == nil && $0.completionPolicyVersion == "manual-completion-v1" && $0.completion == nil && $0.clientData?.performedWorkoutReference == nil && manualCompletionMatches($0.activityType, modality: current.modality) && $0.startedAt <= Date() && $0.startedAt > cutoff }
+                    loaded += response.activities.filter { candidate in candidate.deletedAt == nil && candidate.completionPolicyVersion == "manual-completion-v1" && candidate.completion == nil && candidate.clientData?.performedWorkoutReference == nil && manualCompletionMatches(candidate.activityType, modality: current.modality) && candidate.startedAt <= Date() && candidate.startedAt > cutoff && workoutDate.map { calendar.isDate(candidate.startedAt, inSameDayAs: $0) } == true }
                     if !response.hasMore || response.activities.last.map({ $0.startedAt <= cutoff }) == true { break }
                     guard let next = response.nextCursor, next != cursor else { throw URLError(.badServerResponse) }
                     cursor = next
                 } while true
                 candidates = loaded
+                await analytics?.track(.init(.featureExposed, properties: [.feature: .string("manual_workout_completion_picker"), .sourceType: .string("same_day"), .result: .string(loaded.isEmpty ? "empty" : "shown")]))
                 choosing = true
             }
         } catch is CancellationError { }

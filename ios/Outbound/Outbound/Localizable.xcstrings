@@ -416,19 +416,19 @@
       "en": {
         "stringUnit": {
           "state": "translated",
-          "value": "Choose a recent activity. This links the recording without claiming every workout phase was followed."
+          "value": "Choose an activity from the same day as this workout. This links the recording without claiming every workout phase was followed."
         }
       },
       "es": {
         "stringUnit": {
           "state": "translated",
-          "value": "Elige una actividad reciente. Se vinculará la grabación sin afirmar que seguiste todas las fases del entrenamiento."
+          "value": "Elige una actividad del mismo día que este entrenamiento. Se vinculará la grabación sin afirmar que seguiste todas las fases del entrenamiento."
         }
       },
       "zh-Hans": {
         "stringUnit": {
           "state": "translated",
-          "value": "选择近期活动。关联记录不代表你完全按照训练的每个阶段完成。"
+          "value": "选择与此训练同一天的活动。关联记录不代表你完全按照训练的每个阶段完成。"
         }
       }
     }
@@ -438,19 +438,19 @@
       "en": {
         "stringUnit": {
           "state": "translated",
-          "value": "No unlinked activities of this sport from the last 30 days. Save and sync a recording, then try again."
+          "value": "No unlinked activities of this sport on this workout’s day. Recordings must be from the last 30 days. Save and sync a recording, then try again."
         }
       },
       "es": {
         "stringUnit": {
           "state": "translated",
-          "value": "No hay actividades de este deporte sin vincular en los últimos 30 días. Guarda y sincroniza una grabación e inténtalo de nuevo."
+          "value": "No hay actividades de este deporte sin vincular del día de este entrenamiento. Las grabaciones deben ser de los últimos 30 días. Guarda y sincroniza una grabación e inténtalo de nuevo."
         }
       },
       "zh-Hans": {
         "stringUnit": {
           "state": "translated",
-          "value": "最近30天内没有可关联的同类活动。请先保存并同步活动，再重试。"
+          "value": "此训练当天没有可关联的同类活动。记录须在最近30天内。请先保存并同步活动，再重试。"
         }
       }
     }
