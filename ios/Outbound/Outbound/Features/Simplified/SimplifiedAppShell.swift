@@ -1465,8 +1465,24 @@ private struct SimplifiedTodayView: View {
     }
 
     private var plannedWorkoutCard: some View {
-        OutboundCard {
+        // Keep the background action behind independent controls, including the
+        // scrolling footer, rather than attaching a tap gesture to their ancestor.
+        OutboundCard(contentPadding: 0) {
             plannedWorkoutCardContent
+                .padding(16) // Preserve OutboundCard's standard content inset.
+                .background {
+                    if !trainingPlanStore.isScheduledRestDay {
+                        Button(action: openPlannedWorkoutDetails) {
+                            Color.clear
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .outboundTapTarget()
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(todayWorkoutName)
+                        .accessibilityHint(String(localized: "Opens workout details"))
+                        .accessibilityIdentifier("todayPlannedWorkoutDetails")
+                    }
+                }
         }
     }
 
@@ -1483,6 +1499,7 @@ private struct SimplifiedTodayView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(theme.accentColor)
                         .textCase(.uppercase)
+                        .allowsHitTesting(false)
                     Spacer(minLength: 0)
                     if showsPlannedRecoveryAdvice {
                         plannedRecoveryAdviceButton
@@ -1492,11 +1509,8 @@ private struct SimplifiedTodayView: View {
                     if trainingPlanStore.isScheduledRestDay {
                         plannedWorkoutHeaderContent
                     } else {
-                        Button(action: trainingPlanStore.completedPlannedWorkoutToday == nil ? openPlannedWorkoutDetails : onOpenPlan) {
-                            plannedWorkoutHeaderContent
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint(trainingPlanStore.completedPlannedWorkoutToday == nil ? String(localized: "Opens workout details") : String(localized: "Open plan details"))
+                        plannedWorkoutHeaderContent
+                            .allowsHitTesting(false)
 
                         Button(action: togglePlannedWorkoutCard) {
                             Image(systemName: isPlannedWorkoutCardMinimized ? "chevron.down" : "chevron.up")
@@ -1520,6 +1534,7 @@ private struct SimplifiedTodayView: View {
                     if trainingPlanStore.completedPlannedWorkoutToday == nil { WorkoutWeatherGuidance(snapshot: weatherStore.snapshot) }
                     CompactIntervalPreview(phases: todayPhases)
                 }
+                .allowsHitTesting(false)
 
                 if trainingPlanStore.completedPlannedWorkoutToday == nil, activitySessionState == .idle, !isActivityFullscreenVisible, activeRunIntent.resolvedActivityType == .running {
                     Button {
@@ -1572,6 +1587,7 @@ private struct SimplifiedTodayView: View {
 
                 if let completed = trainingPlanStore.completedPlannedWorkoutToday {
                     PlanCompletedActivityLink(workout: completed, content: .unavailableStatus)
+                        .allowsHitTesting(false)
                 }
             }
         }
@@ -1714,6 +1730,28 @@ private struct SimplifiedTodayView: View {
         }
     }
 
+    private var plannedWorkoutDetailsExplanation: String {
+        if let completed = trainingPlanStore.completedPlannedWorkoutToday {
+            return localizedAppCopy(completed.purpose)
+        }
+        return todayExplanation
+    }
+
+    private var plannedWorkoutDetailsIntent: SessionIntent {
+        guard let completed = trainingPlanStore.completedPlannedWorkoutToday else { return activeRunIntent }
+        // Presentation-only: notes must describe the displayed completed workout,
+        // not a newer recommendation or retained manual setup.
+        return SessionIntent(
+            id: completed.id,
+            sport: SportType(rawValue: completed.modality ?? "run") ?? .run,
+            title: completed.title,
+            detail: completed.summary,
+            guideLine: completed.guideCue,
+            startLabel: "",
+            workoutSteps: completed.sessionIntentSteps
+        )
+    }
+
     private var plannedWorkoutDetailsSheet: some View {
         NavigationStack {
             ScrollView {
@@ -1731,16 +1769,16 @@ private struct SimplifiedTodayView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(String(localized: "today.purpose", defaultValue: "Why this workout?"))
                             .font(.headline)
-                        if trainingPlanStore.activitySuggestion?.recoveryChangeRecommended == true {
+                        if showsPlannedRecoveryAdvice {
                             Text(String(localized: "today.recovery.caution", defaultValue: "Recovery is recommended. Your planned workout is unchanged. Choose a recovery workout or skip today before adding more strain."))
                                 .font(.subheadline.weight(.semibold))
                         }
-                        Text(todayExplanation)
+                        Text(plannedWorkoutDetailsExplanation)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
 
-                    WorkoutExecutionNotes(intent: activeRunIntent)
+                    WorkoutExecutionNotes(intent: plannedWorkoutDetailsIntent)
 
                     NutritionBetaEntry(context: plannedNutritionContext)
 
