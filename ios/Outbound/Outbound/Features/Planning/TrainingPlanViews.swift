@@ -495,7 +495,7 @@ struct ActiveTrainingPlanDetailView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(localized: String.LocalizationValue("today.race_goal." + phase.phase)))
                                 .font(.subheadline.weight(phase.phase == roadmap.currentPhase ? .semibold : .regular))
-                            Text(phaseStatus(phase, calendar: calendar))
+                            Text(phaseDateRange(phase, calendar: calendar))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -514,42 +514,33 @@ struct ActiveTrainingPlanDetailView: View {
         }
     }
 
-    private func phaseStatus(_ phase: RaceGoalRoadmap.Phase, calendar: Calendar) -> String {
+    private func phaseDateRange(_ phase: RaceGoalRoadmap.Phase, calendar: Calendar) -> String {
         let startKey = String(phase.startDate.prefix(10))
         let endKey = String(phase.endDate.prefix(10))
-        let issued = scheduleWorkouts.compactMap { workout -> (String, Date)? in
-            guard !workout.isOptional else { return nil }
-            let key = workout.scheduledDateKey.map { String($0.prefix(10)) }
-                ?? workout.logicalScheduledDate.map { logicalDateKey($0, calendar: calendar) }
-            guard let key, key >= startKey, key <= endKey,
-                  let date = workout.scheduledDateKey.flatMap({ PlanningCalendarContext.logicalDate($0, calendar: calendar) }) ?? workout.logicalScheduledDate else {
-                return nil
-            }
-            return (key, date)
+        // Roadmap boundaries are logical account dates, not UTC instants or issued-workout coverage.
+        guard let start = PlanningCalendarContext.logicalDate(startKey, calendar: calendar),
+              let end = PlanningCalendarContext.logicalDate(endKey, calendar: calendar),
+              logicalDateKey(start, calendar: calendar) == startKey,
+              logicalDateKey(end, calendar: calendar) == endKey,
+              start <= end else {
+            print("[planning] phase_date_range_failed category=invalid_roadmap_dates")
+            return String(localized: "plan.details.phase_dates_unavailable", defaultValue: "Dates unavailable")
         }
-        if let first = issued.min(by: { $0.0 < $1.0 })?.1,
-           let last = issued.max(by: { $0.0 < $1.0 })?.1 {
-            let sameDay = calendar.isDate(first, inSameDayAs: last)
-            if sameDay {
-                let formatter = DateFormatter()
-                formatter.calendar = calendar
-                formatter.timeZone = calendar.timeZone
-                formatter.setLocalizedDateFormatFromTemplate("MMM d y")
-                return String(format: String(localized: "plan.details.phase_scheduled_range", defaultValue: "Scheduled %@"), formatter.string(from: first))
-            }
-            let formatter = DateIntervalFormatter()
+        if calendar.isDate(start, inSameDayAs: end) {
+            let formatter = DateFormatter()
+            formatter.locale = locale
             formatter.calendar = calendar
             formatter.timeZone = calendar.timeZone
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .none
-            let interval = formatter.string(from: first, to: last)
-            return String(format: String(localized: "plan.details.phase_scheduled_range", defaultValue: "Scheduled %@"), interval)
+            formatter.setLocalizedDateFormatFromTemplate("MMM d y")
+            return formatter.string(from: start)
         }
-        let todayKey = logicalDateKey(Date(), calendar: calendar)
-        if startKey > todayKey {
-            return String(localized: "plan.details.phase_to_be_scheduled", defaultValue: "To be scheduled")
-        }
-        return String(localized: "plan.details.phase_no_workouts_scheduled", defaultValue: "No workouts scheduled")
+        let formatter = DateIntervalFormatter()
+        formatter.locale = locale
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: start, to: end)
     }
 
     private func logicalDateKey(_ date: Date, calendar: Calendar) -> String {
