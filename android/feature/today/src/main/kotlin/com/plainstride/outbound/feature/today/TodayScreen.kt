@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -683,13 +684,18 @@ fun TodayScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                selectedRoute?.let { route ->
-                    SelectedRouteCard(
-                        route = route,
-                        onChange = findRoute,
-                        onRemove = onRemoveRoute,
-                        onDirectionChanged = onRouteDirectionChanged,
-                    )
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val pillCap = (maxWidth - 12.dp) / 2
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        selectedRoute?.let { route ->
+                            SelectedRoutePill(route, Modifier.widthIn(max = pillCap), findRoute, onRemoveRoute, onRouteDirectionChanged)
+                        }
+                        if (activityChoice != TodayActivityChoice.PLANNED && goalChoice != TodayGoalChoice.FREE) {
+                            ManualGoalCard(goalChoice, racePlan, unitSystem, curatedWorkout, distanceMeters, durationSeconds, calories, caloriePlan, autoStopAtGoal, Modifier.widthIn(max = pillCap)) {
+                                if (goalChoice == TodayGoalChoice.RACE) showsRacePlanner = true else if (goalChoice == TodayGoalChoice.CURATED) showsCatalog = true else editingGoal = true
+                            }
+                        }
+                    }
                 }
                 when {
                     groupActivityContent != null -> groupActivityContent.invoke(
@@ -767,11 +773,6 @@ fun TodayScreen(
                         onStartFreestyle = { onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) },
                         onSetUpPlan = onSetUpPlan,
                     )
-                }
-                if (activityChoice != TodayActivityChoice.PLANNED && goalChoice != TodayGoalChoice.FREE) {
-                    ManualGoalCard(goalChoice, racePlan, unitSystem, curatedWorkout, distanceMeters, durationSeconds, calories,caloriePlan, autoStopAtGoal) {
-                        if (goalChoice == TodayGoalChoice.RACE) showsRacePlanner = true else if (goalChoice == TodayGoalChoice.CURATED) showsCatalog = true else editingGoal = true
-                    }
                 }
                 guidanceContent()
             }
@@ -1267,12 +1268,37 @@ private fun SelectedRouteCard(
     }
 }
 
+private fun compactLaunchUnits(value: String): String = value
+    .replace(Regex("(?<=\\d)[\\s\\u00a0\\u202f]+(?=[\\p{L}])"), "")
+    .replace(Regex("([.,])0(?=[\\p{L}])"), "")
+
 @Composable
-private fun ManualGoalCard(goal: TodayGoalChoice, racePlan: TodayRacePlan?, unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, caloriePlan: PlannedCalorieEstimate?, autoStopAtGoal: Boolean, onEdit: () -> Unit) {
-    Card(onClick = onEdit, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(when (goal) {
+private fun SelectedRoutePill(route: TodayRouteSelection, modifier: Modifier, onChange: () -> Unit, onRemove: () -> Unit, onDirectionChanged: (Boolean) -> Unit) {
+    var showsDetails by remember { mutableStateOf(false) }
+    val distance = compactLaunchUnits(route.distanceLabel)
+    Surface(onClick = { showsDetails = true }, modifier = modifier, shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = .96f)) {
+        Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 12.dp).semantics(mergeDescendants = true) { contentDescription = "${route.name}, $distance" }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(route.name, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(distance, style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false)
+        }
+    }
+    if (showsDetails) AlertDialog(
+        onDismissRequest = { showsDetails = false },
+        title = { Text(route.name) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                PlainstrideRouteMap(points = if (route.reverse) route.points.reversed() else route.points, modifier = Modifier.fillMaxWidth().height(138.dp))
+                SelectedRouteCard(route, { showsDetails = false; onChange() }, { showsDetails = false; onRemove() }, onDirectionChanged)
+            }
+        },
+        confirmButton = { TextButton(onClick = { showsDetails = false }) { Text(stringResource(R.string.today_done)) } },
+    )
+}
+
+@Composable
+private fun ManualGoalCard(goal: TodayGoalChoice, racePlan: TodayRacePlan?, unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, caloriePlan: PlannedCalorieEstimate?, autoStopAtGoal: Boolean, modifier: Modifier, onEdit: () -> Unit) {
+    val value = when (goal) {
                 TodayGoalChoice.CURATED -> curatedWorkout?.title ?: stringResource(goal.valueResource())
                 TodayGoalChoice.RACE -> {
                     val distance = com.plainstride.outbound.core.model.activity.SessionFormatting.distance(racePlan?.distanceMeters ?: distanceMeters, unitSystem)
@@ -1282,24 +1308,18 @@ private fun ManualGoalCard(goal: TodayGoalChoice, racePlan: TodayRacePlan?, unit
                 TodayGoalChoice.TIME -> stringResource(R.string.today_time_format, durationSeconds / 60)
                 TodayGoalChoice.CALORIES -> stringResource(R.string.today_calories_format, calories)
                 TodayGoalChoice.FREE -> stringResource(goal.valueResource())
-            }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            val pauseAtGoalEligible = autoStopAtGoal && goal in setOf(TodayGoalChoice.DISTANCE, TodayGoalChoice.TIME, TodayGoalChoice.CALORIES)
-            val editHint = if (goal == TodayGoalChoice.RACE) stringResource(R.string.race_planner_tap_change) else if (goal == TodayGoalChoice.CALORIES && caloriePlan != null && !pauseAtGoalEligible) {
-                "${stringResource(R.string.today_distance_format, caloriePlan.distanceMeters / 1_000)} · ${stringResource(R.string.today_time_format, caloriePlan.durationSeconds / 60)}"
-            } else {
-                ""
             }
-            if (pauseAtGoalEligible) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Pause, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.today_stop_at_goal), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-            } else if (editHint.isNotEmpty()) {
-                Text(editHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Icon(Icons.Default.ChevronRight, null)
+    val pauseAtGoal = autoStopAtGoal && goal in setOf(TodayGoalChoice.DISTANCE, TodayGoalChoice.TIME, TodayGoalChoice.CALORIES)
+    val pauseLabel = stringResource(R.string.today_stop_at_goal)
+    val hint = if (goal == TodayGoalChoice.RACE) stringResource(R.string.race_planner_tap_change) else if (goal == TodayGoalChoice.CALORIES && caloriePlan != null) {
+        "${stringResource(R.string.today_distance_format, caloriePlan.distanceMeters / 1_000)} · ${stringResource(R.string.today_time_format, caloriePlan.durationSeconds / 60)}"
+    } else ""
+    Surface(onClick = onEdit, modifier = modifier, shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = .96f)) {
+        Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 12.dp).semantics(mergeDescendants = true) {
+            contentDescription = listOf(value, if (pauseAtGoal) pauseLabel else hint).filter { it.isNotEmpty() }.joinToString(", ")
+        }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (pauseAtGoal) Icon(Icons.Default.Pause, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(if (goal == TodayGoalChoice.CURATED) value else compactLaunchUnits(value), style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
