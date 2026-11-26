@@ -1,6 +1,52 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "today.workout.complete": {
+      "comment": "Compact completed-workout status in the Today card header. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成"
+          }
+        }
+      }
+    },
+    "today.workout.link": {
+      "comment": "Compact action linking a recorded activity to the completed Today workout. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincular"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关联"
+          }
+        }
+      }
+    },
     "record.setup.cheer.short": {
       "comment": "Compact launch-dock button opening Cheer recipients. [platform:ios]",
       "localizations": {

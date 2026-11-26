@@ -7,12 +7,14 @@ import WidgetKit
 enum SimplifiedAppTab: Hashable {
     case social
     case today
+    case plan
     case me
 
     var feedbackPageName: String {
         switch self {
         case .social: "Social"
         case .today: "Today"
+        case .plan: "Plan"
         case .me: "Me"
         }
     }
@@ -81,16 +83,7 @@ private struct CompactNavigationBar: View {
         HStack(spacing: 0) {
             tabButton(.social)
             tabButton(.today)
-            Button(action: onPlan) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: slotWidth, height: FixedTabBarLayout.navigationHeight)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "Plan"))
-            .accessibilityIdentifier("tab.plan")
+            tabButton(.plan)
             tabButton(.me)
         }
         .padding(.horizontal, horizontalInset)
@@ -107,6 +100,7 @@ private struct CompactNavigationBar: View {
         let symbol: String = switch tab {
         case .social: "person.2.fill"
         case .today: isStart ? "play.fill" : "sparkles"
+        case .plan: "calendar"
         case .me: "person.crop.circle"
         }
         let label: String = switch tab {
@@ -114,17 +108,21 @@ private struct CompactNavigationBar: View {
         case .today: isStart
             ? String(localized: "record.start.short", defaultValue: "Start")
             : String(localized: "Today")
+        case .plan: String(localized: "Plan")
         case .me: String(localized: "Me")
         }
         let identifier: String = switch tab {
         case .social: "tab.social"
         case .today: isStart ? "tab.start" : "tab.today"
+        case .plan: "tab.plan"
         case .me: "tab.me"
         }
 
         return Button {
             if isStart {
                 onStart()
+            } else if tab == .plan, !isSelected {
+                onPlan()
             } else if !isSelected {
                 onSelect(tab)
             }
@@ -189,7 +187,6 @@ struct SimplifiedAppShell: View {
     @StateObject private var companionPresence = CompanionPresenceStore()
     @State private var hasPresentedSurface = false
     @State private var selectedRouteName: String?
-    @State private var showsPlanDetails = false
     @State private var showsPlanPicker = false
     @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
@@ -252,7 +249,6 @@ struct SimplifiedAppShell: View {
                     onRouteSelectionAction: onRouteSelectionAction,
                     onRouteRemovalAction: onRouteRemovalAction,
                     onGroupRunAction: onGroupRunAction,
-                    onOpenPlan: { openPlanManagement(from: "today_planned_card_plan") },
                     onStartRun: onStartRun
                 )
                 .assistantHighlightAnchor("today.primary-action")
@@ -262,6 +258,20 @@ struct SimplifiedAppShell: View {
                 Image(systemName: "sparkles")
                     .accessibilityIdentifier("tab.today")
             }
+            .toolbar(.hidden, for: .tabBar)
+
+            tabRoot {
+                NavigationStack {
+                    if trainingPlanStore.activePlan != nil || !trainingPlanStore.hasAuthoritativeNoPlan {
+                        ActiveTrainingPlanDetailsProjectionView(store: trainingPlanStore, accentColor: theme.accentColor,
+                            onChangePlan: changePlanFromDetails, onEndPlan: endPlanFromDetails, showsDismissButton: false)
+                    } else {
+                        planPicker(showsDismissButton: false)
+                    }
+                }
+            }
+            .tag(SimplifiedAppTab.plan)
+            .tabItem { Image(systemName: "calendar").accessibilityIdentifier("tab.plan") }
             .toolbar(.hidden, for: .tabBar)
 
             tabRoot {
@@ -415,29 +425,8 @@ struct SimplifiedAppShell: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showsPlanDetails) {
-            NavigationStack {
-                ActiveTrainingPlanDetailsProjectionView(store: trainingPlanStore, accentColor: theme.accentColor,
-                    onChangePlan: changePlanFromDetails, onEndPlan: endPlanFromDetails)
-            }
-        }
         .sheet(isPresented: $showsPlanPicker) {
-            NavigationStack {
-                TrainingPlanPickerView(
-                    recommendations: trainingPlanStore.planOptions,
-                    isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
-                    accentColor: theme.accentColor,
-                    onBuildPlan: {
-                        showsPlanPicker = false
-                        onboardingStore.beginPlanBuilder(source: .allPlans)
-                    },
-                    onSelectPlan: {
-                        showsPlanPicker = false
-                        selectedPlanRecommendation = $0
-                    },
-                    onUsePlan: { requestPlanActivation($0) }
-                )
-            }
+            NavigationStack { planPicker(showsDismissButton: true) }
         }
         .sheet(item: $selectedPlanRecommendation) { recommendation in
             NavigationStack {
@@ -621,6 +610,8 @@ struct SimplifiedAppShell: View {
                 return String(localized: "Today · \(activity.title) · \(activity.detail)")
             }
             return String(localized: "Today")
+        case .plan:
+            return String(localized: "Plan")
         case .me:
             return String(localized: "Me")
         }
@@ -673,7 +664,7 @@ struct SimplifiedAppShell: View {
     private var companionPresenceIsActive: Bool {
         scenePhase == .active && activitySessionState == .idle && !isActivityFullscreenVisible
             && !hasPresentedSurface && !showsAssistant && !showsHomeWidgetOnboarding
-            && !showsPlanDetails && !showsPlanPicker && selectedPlanRecommendation == nil
+            && !showsPlanPicker && selectedPlanRecommendation == nil
             && replacementPlanRecommendation == nil && connectionProfilePresentation == nil
             && appShellPresentation == nil && appNavigationStore.sharedDestinations.isEmpty
     }
@@ -794,6 +785,7 @@ struct SimplifiedAppShell: View {
         switch selection {
         case .social: "social"
         case .today: "today"
+        case .plan: "plan"
         case .me: "me"
         }
     }
@@ -831,17 +823,33 @@ struct SimplifiedAppShell: View {
         showsHomeWidgetOnboarding = true
     }
 
+    private func planPicker(showsDismissButton: Bool) -> some View {
+        TrainingPlanPickerView(
+            recommendations: trainingPlanStore.planOptions,
+            isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
+            accentColor: theme.accentColor,
+            onBuildPlan: {
+                showsPlanPicker = false
+                onboardingStore.beginPlanBuilder(source: .allPlans)
+            },
+            onSelectPlan: {
+                showsPlanPicker = false
+                selectedPlanRecommendation = $0
+            },
+            onUsePlan: { requestPlanActivation($0) },
+            showsDismissButton: showsDismissButton
+        )
+    }
+
     private func openPlanManagement(from entrySource: String) {
         if trainingPlanStore.activePlan == nil {
-            presentPlanPicker(from: entrySource)
-        } else {
-            trackPlanningSurfaceOpened("plan_details", entrySource: entrySource)
-            showsPlanDetails = true
+            preparePlanRecommendations()
         }
+        trackPlanningSurfaceOpened(trainingPlanStore.activePlan == nil ? "plan_picker" : "plan_details", entrySource: entrySource)
+        selectTabWithoutAnimation(.plan)
     }
 
     private func changePlanFromDetails() {
-        showsPlanDetails = false
         Task { @MainActor in
             await Task.yield()
             presentPlanPicker(from: "plan_details_change")
@@ -850,7 +858,7 @@ struct SimplifiedAppShell: View {
 
     private func endPlanFromDetails() {
         trainingPlanStore.clearActivePlan()
-        showsPlanDetails = false
+        preparePlanRecommendations()
         Task {
             await analyticsManager?.track(.init(.trainingPlanEnded, properties: [
                 .entrySource: .string("plan_details"),
@@ -858,12 +866,16 @@ struct SimplifiedAppShell: View {
         }
     }
 
-    private func presentPlanPicker(from entrySource: String) {
+    private func preparePlanRecommendations() {
         trainingPlanStore.prepareRecommendations(
             activities: activityStore.activities,
             readiness: dailyCheckInStore.readiness,
             phase: DailyMotivationEngine.phase(for: activityStore.activities)
         )
+    }
+
+    private func presentPlanPicker(from entrySource: String) {
+        preparePlanRecommendations()
         trackPlanningSurfaceOpened("plan_picker", entrySource: entrySource)
         showsPlanPicker = true
     }
@@ -968,7 +980,6 @@ private struct SimplifiedTodayView: View {
     let onRouteSelectionAction: () -> Void
     let onRouteRemovalAction: () -> Void
     let onGroupRunAction: () -> Void
-    let onOpenPlan: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @EnvironmentObject private var launchLocationManager: LocationManager
     @State private var showsStretch = false
@@ -1500,6 +1511,14 @@ private struct SimplifiedTodayView: View {
                         .foregroundStyle(theme.accentColor)
                         .textCase(.uppercase)
                         .allowsHitTesting(false)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let completed = trainingPlanStore.completedPlannedWorkoutToday {
+                        PlanCompletedActivityLink(workout: completed, content: .todayHeader, onLinkSaved: {
+                            workoutChangeToast = ProfileToast(text: manualCompletionText("saved"), style: .success)
+                        })
+                            .font(.subheadline.weight(.semibold))
+                            .fixedSize(horizontal: true, vertical: true)
+                    }
                     Spacer(minLength: 0)
                     if showsPlannedRecoveryAdvice {
                         plannedRecoveryAdviceButton
@@ -1566,16 +1585,7 @@ private struct SimplifiedTodayView: View {
                 }
             }
 
-            if trainingPlanStore.isScheduledRestDay {
-                Button(action: onOpenPlan) {
-                    Label(String(localized: "Plan"), systemImage: "calendar")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint(String(localized: "Open plan details"))
-                .accessibilityIdentifier("todayScheduledRestPlan")
-            } else if !isPlannedWorkoutCardMinimized {
+            if !trainingPlanStore.isScheduledRestDay && !isPlannedWorkoutCardMinimized {
                 ScrollView(.horizontal) {
                     HStack(spacing: OutboundSpacing.compact) { plannedWorkoutActions }
                         .fixedSize(horizontal: true, vertical: false)
@@ -1584,29 +1594,13 @@ private struct SimplifiedTodayView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-                if let completed = trainingPlanStore.completedPlannedWorkoutToday {
-                    PlanCompletedActivityLink(workout: completed, content: .unavailableStatus)
-                        .allowsHitTesting(false)
-                }
             }
         }
         .animation(.snappy, value: isPlannedWorkoutCardMinimized)
     }
 
     @ViewBuilder private var plannedWorkoutActions: some View {
-        Button(action: onOpenPlan) {
-            Label(String(localized: "Plan"), systemImage: "calendar")
-        }
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-        .frame(minHeight: 44)
-        .accessibilityHint(String(localized: "Open plan details"))
-        .accessibilityIdentifier("todayScheduledRestPlan")
-
-        if let completed = trainingPlanStore.completedPlannedWorkoutToday {
-            PlanCompletedActivityLink(workout: completed, content: .activityAction)
-        } else if !hasCompletedPlannedWorkoutForEditing {
+        if trainingPlanStore.completedPlannedWorkoutToday == nil && !hasCompletedPlannedWorkoutForEditing {
             Button(action: openWorkoutChange) {
                 Label(String(localized: "today.change", defaultValue: "Change"), systemImage: "pencil")
             }
@@ -1691,7 +1685,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var plannedWorkoutHeaderOverline: String {
-        if trainingPlanStore.completedPlannedWorkoutToday != nil { return String(localized: "plan.workout.complete", defaultValue: "Planned workout complete") }
+        if trainingPlanStore.completedPlannedWorkoutToday != nil { return String(localized: "today.workout.complete", defaultValue: "Complete") }
         guard !trainingPlanStore.isScheduledRestDay else { return String(localized: "Today’s workout") }
         return trainingPlanStore.activitySuggestion?.relationship == "optionalRecovery"
             ? String(localized: "Up next")

@@ -17,6 +17,8 @@ struct TrainingPlanPickerView: View {
     let onSelectPlan: (TrainingPlanRecommendation) -> Void
     let onUsePlan: (TrainingPlanRecommendation) -> Void
 
+    var showsDismissButton = true
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -114,9 +116,9 @@ struct TrainingPlanPickerView: View {
         }
         .navigationTitle("More Plans")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
-                    dismiss()
+            if showsDismissButton {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -311,6 +313,8 @@ struct ActiveTrainingPlanDetailView: View {
     @State private var showsPlanAdjustment = false
     @State private var adjustmentSaved = false
 
+    var showsDismissButton = true
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -422,9 +426,9 @@ struct ActiveTrainingPlanDetailView: View {
         .onAppear(perform: initializeScheduleDisclosureIfNeeded)
         .onChange(of: activePlan.id) { _, _ in initializeScheduleDisclosureIfNeeded() }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
-                    dismiss()
+            if showsDismissButton {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -828,10 +832,11 @@ private func workoutStatusLabel(_ status: String) -> String {
 }
 
 struct PlanCompletedActivityLink: View {
-    enum Content {
+    enum Content: Equatable {
         case all
         case activityAction
         case unavailableStatus
+        case todayHeader
     }
 
     @EnvironmentObject private var activityStore: ActivityStore
@@ -840,6 +845,7 @@ struct PlanCompletedActivityLink: View {
     let workout: TrainingPlanWorkout
     var showsHeading = true
     var content: Content = .all
+    var onLinkSaved: (() -> Void)? = nil
 
     private var activity: SavedActivity? {
         guard let id = trainingPlanStore.completedPlanActivities.first(where: { $0.workoutID == workout.id })?.activityID else { return nil }
@@ -859,6 +865,25 @@ struct PlanCompletedActivityLink: View {
             activityAction
         case .unavailableStatus:
             unavailableStatus
+        case .todayHeader:
+            if activity != nil {
+                activityAction
+            } else if canLinkUnrecordedWorkout(workout, store: trainingPlanStore, activities: activityStore) {
+                PlannedWorkoutCompletionControls(workout: workout, linkOnly: true, onSuccess: onLinkSaved)
+            } else {
+                // A canonical association may arrive before its local activity.
+                // Never offer a replacement link just because hydration is pending.
+                Button { } label: {
+                    Text(String(localized: "plan.workout.view_activity", defaultValue: "View"))
+                        .outboundTapTarget()
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                .frame(minHeight: 44)
+                .disabled(true)
+                .accessibilityLabel(String(localized: "plan.workout.view_activity.accessibility", defaultValue: "View completed activity"))
+                .accessibilityHint(String(localized: "plan.workout.activity_unavailable", defaultValue: "The linked activity is not available on this device yet."))
+            }
         }
     }
 
@@ -868,14 +893,23 @@ struct PlanCompletedActivityLink: View {
             NavigationLink {
                 ActivityDetailView(activity: activity)
             } label: {
-                Label(String(localized: "plan.workout.view_activity", defaultValue: "View"), systemImage: "checkmark.circle.fill")
+                if content == .todayHeader {
+                    Text(String(localized: "plan.workout.view_activity", defaultValue: "View"))
+                        .outboundTapTarget()
+                } else {
+                    Label(String(localized: "plan.workout.view_activity", defaultValue: "View"), systemImage: "checkmark.circle.fill")
+                }
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
             .frame(minHeight: 44)
             .accessibilityLabel(String(localized: "plan.workout.view_activity.accessibility", defaultValue: "View completed activity"))
             .simultaneousGesture(TapGesture().onEnded {
-                Task { await analytics?.track(.init(.featureExposed, properties: [.feature: .string("plan_completed_activity"), .result: .string("opened")])) }
+                Task {
+                    var properties: [ProductPropertyKey: AnalyticsValue] = [.feature: .string("plan_completed_activity"), .result: .string("opened")]
+                    if content == .todayHeader { properties[.entrySource] = .string("today_complete_header") }
+                    await analytics?.track(.init(.featureExposed, properties: properties))
+                }
             })
         }
     }
@@ -1191,6 +1225,8 @@ struct ActiveTrainingPlanPendingDetailView: View {
     var onChangePlan: (() -> Void)? = nil
     var onEndPlan: (() -> Void)? = nil
 
+    var showsDismissButton = true
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -1226,9 +1262,9 @@ struct ActiveTrainingPlanPendingDetailView: View {
         }
         .navigationTitle("Plan Details")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
-                    dismiss()
+            if showsDismissButton {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -1242,26 +1278,30 @@ struct ActiveTrainingPlanDetailsProjectionView: View {
     var onChangePlan: (() -> Void)? = nil
     var onEndPlan: (() -> Void)? = nil
 
+    var showsDismissButton = true
+
     var body: some View {
         if let plan = store.activePlan {
             if let week = store.currentWeek {
                 ActiveTrainingPlanDetailView(activePlan: plan, week: week, todaySuggestion: store.todaySuggestion,
                     accentColor: accentColor, onChangePlan: onChangePlan, onEndPlan: onEndPlan,
-                    completedActivities: store.completedPlanActivities)
+                    completedActivities: store.completedPlanActivities, showsDismissButton: showsDismissButton)
             } else {
                 ActiveTrainingPlanPendingDetailView(activePlan: plan, accentColor: accentColor,
-                    onChangePlan: onChangePlan, onEndPlan: onEndPlan)
+                    onChangePlan: onChangePlan, onEndPlan: onEndPlan, showsDismissButton: showsDismissButton)
             }
         } else if store.hasAuthoritativeNoPlan {
-            ActiveTrainingPlanEmptyDetailView()
+            ActiveTrainingPlanEmptyDetailView(showsDismissButton: showsDismissButton)
         } else {
-            ActiveTrainingPlanSyncingDetailView(accentColor: accentColor)
+            ActiveTrainingPlanSyncingDetailView(accentColor: accentColor, showsDismissButton: showsDismissButton)
         }
     }
 }
 
 struct ActiveTrainingPlanEmptyDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    var showsDismissButton = true
+
     var body: some View {
         ContentUnavailableView {
             Label(String(localized: "settings.no.active.plan"), systemImage: "calendar")
@@ -1269,7 +1309,11 @@ struct ActiveTrainingPlanEmptyDetailView: View {
             Text(String(localized: "settings.no.active.plan.body"))
         }
         .navigationTitle("Plan Details")
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+        .toolbar {
+            if showsDismissButton {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+            }
+        }
     }
 }
 
@@ -1277,6 +1321,8 @@ struct ActiveTrainingPlanSyncingDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     let accentColor: Color
+
+    var showsDismissButton = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1297,9 +1343,9 @@ struct ActiveTrainingPlanSyncingDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .navigationTitle("Plan Details")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
-                    dismiss()
+            if showsDismissButton {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
                 }
             }
         }

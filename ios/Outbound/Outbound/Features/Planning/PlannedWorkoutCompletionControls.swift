@@ -14,9 +14,22 @@ func manualCompletionMatches(_ type: ActivityType, modality: String?) -> Bool {
     }
 }
 
+/// Only an explicitly unrecorded completion with no recorded association can
+/// offer a first link from Today. Local hydration alone cannot establish this.
+func canLinkUnrecordedWorkout(_ workout: TrainingPlanWorkout, store: TrainingPlanStore, activities: ActivityStore) -> Bool {
+    workout.completionMode == "manual_unrecorded"
+        && workout.status == "completed"
+        && !activities.repositoryProjection.confirmedCompletions.contains {
+            $0.plannedWorkoutId == workout.id && $0.status == "completed"
+        }
+        && !store.completedPlanActivities.contains { $0.workoutID == workout.id }
+}
+
 /// Online, explicit association editing. Saving the recording remains independently durable.
 struct PlannedWorkoutCompletionControls: View {
     let workout: TrainingPlanWorkout
+    var linkOnly = false
+    var onSuccess: (() -> Void)? = nil
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -37,13 +50,13 @@ struct PlannedWorkoutCompletionControls: View {
     }
 
     var body: some View {
-        if eligible {
+        if eligible && (!linkOnly || canLinkUnrecordedWorkout(current, store: trainingPlanStore, activities: activityStore)) {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                 ViewThatFits(in: .horizontal) {
                     HStack { actions }
                     VStack(alignment: .leading) { actions }
                 }
-                if busy { ProgressView().accessibilityLabel(Text(manualCompletionText("loading"))) }
+                if busy && !linkOnly { ProgressView().accessibilityLabel(Text(manualCompletionText("loading"))) }
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
@@ -68,10 +81,20 @@ struct PlannedWorkoutCompletionControls: View {
     }
 
     @ViewBuilder private var actions: some View {
-        Button { Task { await loadCandidates() } } label: { Text(manualCompletionText("link")).outboundTapTarget() }
-        if current.status != "completed" {
+        Button { Task { await loadCandidates() } } label: {
+            if linkOnly {
+                Text(String(localized: "today.workout.link", defaultValue: "Link"))
+                    .outboundTapTarget()
+            } else {
+                Text(manualCompletionText("link")).outboundTapTarget()
+            }
+        }
+        .frame(minHeight: 44)
+        .accessibilityLabel(manualCompletionText("link"))
+        .accessibilityValue(busy ? manualCompletionText("loading") : "")
+        if !linkOnly && current.status != "completed" {
             Button { confirming = "complete" } label: { Text(manualCompletionText("manual")).outboundTapTarget() }
-        } else {
+        } else if !linkOnly {
             Button(role: .destructive) { confirming = "undo" } label: { Text(manualCompletionText("undo")).outboundTapTarget() }
         }
     }
@@ -102,8 +125,12 @@ struct PlannedWorkoutCompletionControls: View {
     }
 
     private func loadCandidates() async {
+        guard !busy, !linkOnly || canLinkUnrecordedWorkout(current, store: trainingPlanStore, activities: activityStore) else { return }
         busy = true
         defer { busy = false }
+        if linkOnly {
+            await analytics?.track(.init(.featureExposed, properties: [.feature: .string("manual_workout_completion"), .selectionType: .string("link"), .result: .string("opened"), .entrySource: .string("today_complete_header")]))
+        }
         let context = ActivityAccountBoundary.current
         do {
             try await ActivityAccountBoundary.$operation.withValue(context) {
@@ -130,15 +157,19 @@ struct PlannedWorkoutCompletionControls: View {
     }
 
     private func apply(_ action: String, activityID: String? = nil) async {
+        guard !linkOnly || canLinkUnrecordedWorkout(current, store: trainingPlanStore, activities: activityStore) else { return }
         busy = true
         defer { busy = false }
         do {
             try await trainingPlanStore.setManualCompletion(workoutID: current.id, action: action, activityID: activityID)
+            // Today replaces Link with View as soon as the command checkpoints.
+            // Let its stable page own success feedback before this control unmounts.
+            onSuccess?()
             // Accepted command is already checkpointed. A metadata failure must not suggest it was rejected.
             do { try await activityStore.refreshCompletionAssociations() }
             catch is CancellationError { return }
             catch { ActivityDiagnosticLog.error(.sync, "Manual workout association refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))") }
-            toast = manualCompletionText("saved")
+            if onSuccess == nil { toast = manualCompletionText("saved") }
             await analytics?.track(.init(.featureExposed, properties: [.feature: .string("manual_workout_completion"), .selectionType: .string(action), .result: .string("success")]))
         } catch is CancellationError { }
         catch {
