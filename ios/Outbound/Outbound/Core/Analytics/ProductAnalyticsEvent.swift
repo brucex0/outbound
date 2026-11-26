@@ -294,7 +294,6 @@ enum ProductEventName: String, Sendable, CaseIterable {
 }
 
 enum ProductPropertyKey: String, Sendable, CaseIterable {
-    case mapAppearance = "map_appearance"
     case schemaVersion = "schema_version"
     case appVersion = "app_version"
     case appBuild = "app_build"
@@ -390,7 +389,7 @@ struct ProductAnalyticsEvent: Sendable, Equatable {
 
 enum ProductAnalyticsSchema {
     nonisolated private static let sharedKeys: Set<ProductPropertyKey> = [
-        .schemaVersion, .appVersion, .appBuild, .osMajorVersion, .language, .authenticationState, .mapAppearance
+        .schemaVersion, .appVersion, .appBuild, .osMajorVersion, .language, .authenticationState
     ]
 
     nonisolated private static let eventKeys: [ProductEventName: Set<ProductPropertyKey>] = [

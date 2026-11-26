@@ -111,7 +111,6 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
                 }
             }
         }
-        .outboundMapAppearance()
         .task(id: RunnerMotionRequest(location: location, followsLocation: followsLocation, reduceMotion: reduceMotion, isMoving: isMoving)) {
             guard let target = location else { displayedLocation = nil; runnerMotion = nil; return }
             // Sample the previous motion at retarget time, even when rapid

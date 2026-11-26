@@ -44,7 +44,6 @@ actor AnalyticsManager {
         else { return }
 
         properties[.schemaVersion] = .integer(event.schemaVersion)
-        properties[.mapAppearance] = .string("light")
         properties[.appVersion] = .string(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown")
         properties[.appBuild] = .string(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown")
         properties[.osMajorVersion] = .integer(ProcessInfo.processInfo.operatingSystemVersion.majorVersion)

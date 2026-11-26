@@ -321,7 +321,6 @@ private enum ActivityShareMapSnapshotRenderer {
         guard coordinates.count > 1 else { throw ActivityShareCardError.renderFailed }
 
         let options = MKMapSnapshotter.Options()
-        OutboundMapAppearance.apply(to: options)
         options.size = size
         // Render above the final card resolution and downsample through SwiftUI.
         // This preserves small roads and labels while keeping the exported card at 1080p.

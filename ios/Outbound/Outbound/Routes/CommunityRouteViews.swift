@@ -1011,7 +1011,6 @@ struct RoutePreviewMap: View {
                 }
             }
         }
-            .outboundMapAppearance()
             .mapStyle(.standard(elevation: .realistic))
             .accessibilityLabel(String(localized: "route.library.map.accessibility_label", defaultValue: "Route preview map"))
             .onAppear { position = .rect(geometry.mapRect) }
