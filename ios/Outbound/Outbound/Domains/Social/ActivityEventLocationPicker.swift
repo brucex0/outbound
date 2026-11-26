@@ -167,6 +167,7 @@ struct ActivityEventMapPicker: View {
             Map(position: $position) {
                 UserAnnotation()
             }
+            .outboundMapAppearance()
             .mapStyle(.standard(elevation: .realistic))
             .onMapCameraChange(frequency: .continuous) { context in
                 if position.positionedByUser {

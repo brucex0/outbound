@@ -1593,6 +1593,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
+        OutboundMapAppearance.apply(to: mapView)
         mapView.delegate = context.coordinator
         mapView.showsCompass = false
         mapView.showsScale = false

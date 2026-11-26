@@ -1437,6 +1437,7 @@ private struct ActivityEventMeetingPointView: View {
                         .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
                 }
             }
+            .outboundMapAppearance()
             .mapStyle(.standard(elevation: .realistic))
             .frame(height: 180)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -4677,7 +4678,7 @@ private actor SocialRoutePreviewCache {
         let routeSignature = sampledCoordinates.map { coordinate in
             coordinate.prefix(2).map { String(format: "%.6f", $0) }.joined(separator: ",")
         }.joined(separator: ";")
-        let raw = "v6|\(activity.id)|\(coordinates.count)|\(routeSignature)"
+        let raw = "v7-light|\(activity.id)|\(coordinates.count)|\(routeSignature)"
         let digest = SHA256.hash(data: Data(raw.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
@@ -4731,6 +4732,7 @@ private actor SocialRoutePreviewCache {
         }
 
         let options = MKMapSnapshotter.Options()
+        OutboundMapAppearance.apply(to: options)
         options.size = Self.imageSize
         options.scale = 1
         options.mapType = .standard

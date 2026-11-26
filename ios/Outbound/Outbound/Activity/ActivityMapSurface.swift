@@ -155,6 +155,7 @@ struct ActivityLaunchMap: View {
 
                 UserAnnotation()
             }
+            .outboundMapAppearance()
             .onAppear { frameRouteIfNeeded() }
             .onChange(of: routeCameraKey) { _, _ in frameRouteIfNeeded() }
         }

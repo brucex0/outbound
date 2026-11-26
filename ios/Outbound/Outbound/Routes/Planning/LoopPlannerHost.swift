@@ -342,6 +342,7 @@ private struct LoopPlannerScreen: View {
                     }
                 }
             }
+            .outboundMapAppearance()
             .accessibilityIdentifier("loop.map")
             .startupUIStabilityDiagnostics("loop_map")
             .simultaneousGesture(SpatialTapGesture().onEnded { tap in

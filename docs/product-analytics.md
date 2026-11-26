@@ -18,6 +18,10 @@ Measure decisions and outcomes, not every tap. An event must support a product d
 
 `nutrition_beta_exposed`, `nutrition_advice_viewed`, `nutrition_advice_explained`, `nutrition_log_saved` and `nutrition_log_deleted` measure discovery, source review and successful local log operations. Diary events `nutrition_journal_viewed`, `nutrition_journal_date_changed`, `nutrition_history_viewed`, `nutrition_food_repeated` and `nutrition_association_changed` measure diary/history discovery, editable repeat drafts and explicit association changes. Each has no feature properties; shared app context follows the standard contract. Food/drink content, portions, consumption timestamps, workout identifiers and health information are never included. See `docs/nutrition-beta.md` for the local-only storage boundary.
 
+## Map presentation context
+
+Existing iOS and Android events include the bounded shared context `map_appearance=light` to identify the always-light basemap policy during rollout. This is a fixed presentation policy, not a screen-view or render-success signal; it contains no location, theme preference, coordinates, or map content.
+
 ## Current State
 
 The app already has a provider-neutral foundation in `Core/Analytics`:

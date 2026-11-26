@@ -486,6 +486,7 @@ struct PostRunSummaryView: View {
                 }
             }
         }
+        .outboundMapAppearance()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .disabled(true)
     }

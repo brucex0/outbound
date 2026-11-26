@@ -9,6 +9,13 @@
 
 Open this when adding, changing, or applying an app theme or editing appearance settings.
 
+## Map Appearance
+
+- All basemaps remain light regardless of System, Light, or Dark app appearance. Surrounding controls, sheets, cards, and navigation retain the selected appearance and palette.
+- iOS scopes `outboundMapAppearance()` to SwiftUI map leaves and uses `OutboundMapAppearance` for UIKit maps and snapshot options. Do not apply a preferred color scheme to a map screen or hosting controller to enforce this rule.
+- Android uses `PlainstrideMapAppearance.colorScheme` for every Compose Google Map and its options for share-card MapViews. Route, participant, and photo overlays retain their existing styling.
+- Social route-preview cache keys include the light-map revision so cached dark snapshots are regenerated.
+
 ## Product Rules
 
 - Theme is an app appearance preference, not a companion identity or avatar.
