@@ -66,6 +66,13 @@ enum FixedTabBarLayout {
     static let dockTopPadding: CGFloat = 6
     static let dockBottomOffset: CGFloat = 8
     static let dockHeight = navigationHeight + dockTopPadding
+    // The launch row has no bottom padding. Account for the navigation capsule's
+    // existing top inset and visual offset without moving the capsule itself.
+    static let todayLaunchNavigationGap = OutboundSpacing.standard
+    static let todayContentBottomInset = dockHeight + todayLaunchNavigationGap - dockTopPadding - dockBottomOffset
+    // The backplate must start below the launch row, even though the capsule's
+    // visual offset leaves its shell reservation taller than Today's inset.
+    static let todayNavigationBackgroundTopInset = max(0, dockHeight - todayContentBottomInset)
     static let embeddedSetupBottomInset: CGFloat = 0
 }
 
@@ -762,6 +769,7 @@ struct SimplifiedAppShell: View {
             if selection == .today {
                 Rectangle()
                     .fill(.ultraThickMaterial)
+                    .padding(.top, FixedTabBarLayout.todayNavigationBackgroundTopInset)
                     .ignoresSafeArea(edges: .bottom)
             }
         }
@@ -775,7 +783,7 @@ struct SimplifiedAppShell: View {
             if !isActivityFullscreenVisible {
                 // Preserve the page viewport without tying the dock to keyboard resizing.
                 Color.clear
-                    .frame(height: FixedTabBarLayout.dockHeight)
+                    .frame(height: selection == .today ? FixedTabBarLayout.todayContentBottomInset : FixedTabBarLayout.dockHeight)
                     .accessibilityHidden(true)
             }
         }
@@ -1480,7 +1488,8 @@ private struct SimplifiedTodayView: View {
         // scrolling footer, rather than attaching a tap gesture to their ancestor.
         OutboundCard(contentPadding: 0) {
             plannedWorkoutCardContent
-                .padding(16) // Preserve OutboundCard's standard content inset.
+                .padding([.top, .horizontal], 16)
+                .padding(.bottom, trainingPlanStore.isScheduledRestDay || isPlannedWorkoutCardMinimized ? 16 : OutboundSpacing.compact)
                 .background {
                     if !trainingPlanStore.isScheduledRestDay {
                         Button(action: openPlannedWorkoutDetails) {
@@ -1542,41 +1551,45 @@ private struct SimplifiedTodayView: View {
             }
 
             if !trainingPlanStore.isScheduledRestDay && !isPlannedWorkoutCardMinimized {
-                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                    if trainingPlanStore.completedPlannedWorkoutToday == nil {
-                        WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
-                            .allowsHitTesting(false)
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                        if trainingPlanStore.completedPlannedWorkoutToday == nil {
+                            WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
+                                .allowsHitTesting(false)
+                        }
+                        CompactIntervalPreview(phases: todayPhases, bottomPadding: showsPlannedWorkoutWarmup ? 4 : 0)
                     }
-                    CompactIntervalPreview(phases: todayPhases)
-                }
 
-                if trainingPlanStore.completedPlannedWorkoutToday == nil, activitySessionState == .idle, !isActivityFullscreenVisible, activeRunIntent.resolvedActivityType == .running {
-                    Button {
-                        Task {
-                            await analyticsManager?.track(.init(.featureExposed, properties: [
-                                .feature: .string("planned_workout_warmup"),
-                                .result: .string("opened")
-                            ]))
+                    if showsPlannedWorkoutWarmup {
+                        Button {
+                            Task {
+                                await analyticsManager?.track(.init(.featureExposed, properties: [
+                                    .feature: .string("planned_workout_warmup"),
+                                    .result: .string("opened")
+                                ]))
+                            }
+                            showsStretch = true
+                        } label: {
+                            HStack(spacing: OutboundSpacing.compact) {
+                                Text(String(localized: "record.planned_warmup.title", defaultValue: "Warm-up exercises"))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(theme.accentColor)
+                                Spacer(minLength: 8)
+                                Text(plannedWorkoutWarmupRoutine.calculatedDuration)
+                                    .font(.caption.weight(.semibold).monospacedDigit())
+                                    .foregroundStyle(.primary)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            // Keep a full touch target while its label meets the footer
+                            // across the stack's 12-point visible-content gap.
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .bottomLeading)
+                            .contentShape(Rectangle())
                         }
-                        showsStretch = true
-                    } label: {
-                        HStack(spacing: OutboundSpacing.compact) {
-                            Text(String(localized: "record.planned_warmup.title", defaultValue: "Warm-up exercises"))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(theme.accentColor)
-                            Spacer(minLength: 8)
-                            Text(plannedWorkoutWarmupRoutine.calculatedDuration)
-                                .font(.caption.weight(.semibold).monospacedDigit())
-                                .foregroundStyle(.primary)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                        .accessibilityHint(String(localized: "record.planned_warmup.hint", defaultValue: "Opens the warm-up routine without starting your workout."))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(String(localized: "record.planned_warmup.hint", defaultValue: "Opens the warm-up routine without starting your workout."))
                 }
             }
 
@@ -1588,10 +1601,16 @@ private struct SimplifiedTodayView: View {
                 .scrollIndicators(.hidden)
                 .fixedSize(horizontal: false, vertical: true)
                 .font(.subheadline.weight(.semibold))
+                .environment(\.outboundCardTextActionAlignment, .top)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .animation(.snappy, value: isPlannedWorkoutCardMinimized)
+    }
+
+    private var showsPlannedWorkoutWarmup: Bool {
+        trainingPlanStore.completedPlannedWorkoutToday == nil && activitySessionState == .idle
+            && !isActivityFullscreenVisible && activeRunIntent.resolvedActivityType == .running
     }
 
     @ViewBuilder private var plannedWorkoutActions: some View {
@@ -2500,6 +2519,7 @@ private struct WeatherDetailSheet: View {
 
 private struct CompactIntervalPreview: View {
     let phases: [WorkoutPhaseItem]
+    var bottomPadding: CGFloat = 4
 
     @ScaledMetric(relativeTo: .subheadline) private var minimumPhaseWidth: CGFloat = 104
     @State private var viewportWidth: CGFloat = 0
@@ -2528,7 +2548,8 @@ private struct CompactIntervalPreview: View {
                     }
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.top, 4)
+            .padding(.bottom, bottomPadding)
         }
         .scrollIndicators(.hidden)
         .fixedSize(horizontal: false, vertical: true)

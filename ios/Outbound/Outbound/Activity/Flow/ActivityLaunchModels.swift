@@ -28,7 +28,7 @@ enum PendingCaloriesWeightAction {
 }
 
 enum ActivityLaunchLayout {
-    static let dockHeight: CGFloat = 68
+    static let dockHeight: CGFloat = 44 + OutboundSpacing.standard
     static let peerCardGap: CGFloat = 12
     static let goalPillRowHeight: CGFloat = 64
     static let controlWidth: CGFloat = 112

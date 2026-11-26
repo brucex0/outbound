@@ -255,7 +255,20 @@ enum OutboundSecondaryActionPresentation: Equatable {
     case cardText
 }
 
+private struct OutboundCardTextActionAlignmentKey: EnvironmentKey {
+    static let defaultValue: Alignment = .center
+}
+
+extension EnvironmentValues {
+    /// Opt in when adjacent card rows should keep their visible content at the target edges.
+    var outboundCardTextActionAlignment: Alignment {
+        get { self[OutboundCardTextActionAlignmentKey.self] }
+        set { self[OutboundCardTextActionAlignmentKey.self] = newValue }
+    }
+}
+
 private struct OutboundCardTextButtonStyle: ButtonStyle {
+    @Environment(\.outboundCardTextActionAlignment) private var alignment
     @Environment(\.outboundTheme) private var theme
     @Environment(\.isEnabled) private var isEnabled
 
@@ -264,6 +277,7 @@ private struct OutboundCardTextButtonStyle: ButtonStyle {
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(theme.accentColor)
             .padding(.horizontal, OutboundSpacing.compact)
+            .frame(minWidth: 44, minHeight: 44, alignment: alignment)
             .outboundTapTarget()
             .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.4)
     }

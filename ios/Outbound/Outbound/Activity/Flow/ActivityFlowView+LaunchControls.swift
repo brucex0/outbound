@@ -66,7 +66,7 @@ extension ActivityFlowView {
         }
         .frame(height: 44)
         .padding(.horizontal, 6)
-        .padding(.vertical, 12)
+        .padding(.top, OutboundSpacing.standard)
         .frame(height: ActivityLaunchLayout.dockHeight)
         .background(.ultraThickMaterial)
     }
