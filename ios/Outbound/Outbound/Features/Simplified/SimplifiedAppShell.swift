@@ -1561,13 +1561,18 @@ private struct SimplifiedTodayView: View {
                 .accessibilityHint(String(localized: "Open plan details"))
                 .accessibilityIdentifier("todayScheduledRestPlan")
             } else if !isPlannedWorkoutCardMinimized {
-                ViewThatFits(in: .horizontal) {
+                ScrollView(.horizontal) {
                     HStack(spacing: OutboundSpacing.compact) { plannedWorkoutActions }
                         .fixedSize(horizontal: true, vertical: false)
-                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) { plannedWorkoutActions }
                 }
+                .scrollIndicators(.hidden)
+                .fixedSize(horizontal: false, vertical: true)
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let completed = trainingPlanStore.completedPlannedWorkoutToday {
+                    PlanCompletedActivityLink(workout: completed, content: .unavailableStatus)
+                }
             }
         }
         .animation(.snappy, value: isPlannedWorkoutCardMinimized)
@@ -1584,7 +1589,7 @@ private struct SimplifiedTodayView: View {
         .accessibilityIdentifier("todayScheduledRestPlan")
 
         if let completed = trainingPlanStore.completedPlannedWorkoutToday {
-            PlanCompletedActivityLink(workout: completed, showsHeading: false)
+            PlanCompletedActivityLink(workout: completed, content: .activityAction)
         } else if !hasCompletedPlannedWorkoutForEditing {
             Button(action: openWorkoutChange) {
                 Label(String(localized: "today.change", defaultValue: "Change"), systemImage: "pencil")

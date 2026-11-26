@@ -828,34 +828,62 @@ private func workoutStatusLabel(_ status: String) -> String {
 }
 
 struct PlanCompletedActivityLink: View {
+    enum Content {
+        case all
+        case activityAction
+        case unavailableStatus
+    }
+
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @Environment(\.analyticsManager) private var analytics
     let workout: TrainingPlanWorkout
     var showsHeading = true
+    var content: Content = .all
 
     private var activity: SavedActivity? {
         guard let id = trainingPlanStore.completedPlanActivities.first(where: { $0.workoutID == workout.id })?.activityID else { return nil }
         return activityStore.activities.first { $0.id == id }
     }
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-            if showsHeading { Text(String(localized: "plan.workout.complete", defaultValue: "Planned workout complete")).font(.headline) }
-            if let activity {
-                NavigationLink {
-                    ActivityDetailView(activity: activity)
-                } label: {
-                    Label(String(localized: "plan.workout.view_activity", defaultValue: "View"), systemImage: "checkmark.circle.fill")
-                }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                .frame(minHeight: 44)
-                .accessibilityLabel(String(localized: "plan.workout.view_activity.accessibility", defaultValue: "View completed activity"))
-                .simultaneousGesture(TapGesture().onEnded {
-                    Task { await analytics?.track(.init(.featureExposed, properties: [.feature: .string("plan_completed_activity"), .result: .string("opened")])) }
-                })
-            } else if workout.completionMode == "manual_unrecorded" {
+        switch content {
+        case .all:
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                if showsHeading { Text(String(localized: "plan.workout.complete", defaultValue: "Planned workout complete")).font(.headline) }
+                activityAction
+                unavailableStatus
+            }
+        case .activityAction:
+            activityAction
+        case .unavailableStatus:
+            unavailableStatus
+        }
+    }
+
+    @ViewBuilder
+    private var activityAction: some View {
+        if let activity {
+            NavigationLink {
+                ActivityDetailView(activity: activity)
+            } label: {
+                Label(String(localized: "plan.workout.view_activity", defaultValue: "View"), systemImage: "checkmark.circle.fill")
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+            .frame(minHeight: 44)
+            .accessibilityLabel(String(localized: "plan.workout.view_activity.accessibility", defaultValue: "View completed activity"))
+            .simultaneousGesture(TapGesture().onEnded {
+                Task { await analytics?.track(.init(.featureExposed, properties: [.feature: .string("plan_completed_activity"), .result: .string("opened")])) }
+            })
+        }
+    }
+
+    @ViewBuilder
+    private var unavailableStatus: some View {
+        if activity == nil {
+            if workout.completionMode == "manual_unrecorded" {
                 Text(manualCompletionText("unrecorded")).font(.subheadline).foregroundStyle(.secondary)
             } else {
                 Text(String(localized: "plan.workout.activity_unavailable", defaultValue: "The linked activity is not available on this device yet."))
