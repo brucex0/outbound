@@ -116,44 +116,46 @@ struct ActivityLaunchMap: View {
 
     var body: some View {
         ActivityMapSurface(safeZone: safeZone) {
-            Map(position: $position, interactionModes: [.pan, .zoom, .rotate]) {
-                if routeCoordinates.count > 1 {
-                    MapPolyline(coordinates: routeCoordinates)
-                        .stroke(.white.opacity(0.9), lineWidth: 8)
-                    MapPolyline(coordinates: routeCoordinates)
-                        .stroke(theme.actionColor, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                }
-
-                if let start = routeCoordinates.first {
-                    Annotation(
-                        routeEndpointsOverlap
-                            ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
-                            : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
-                        coordinate: start
-                    ) {
-                        Image(systemName: routeEndpointsOverlap ? "flag.checkered" : "figure.run")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
-                            .background(routeEndpointsOverlap ? theme.actionColor : Color.green, in: Circle())
-                            .overlay(Circle().stroke(.white, lineWidth: 2))
-                            .shadow(radius: 3)
+            RouteDirectionMap(coordinates: routeCoordinates, color: theme.actionColor) {
+                Map(position: $position, interactionModes: [.pan, .zoom, .rotate]) {
+                    if routeCoordinates.count > 1 {
+                        MapPolyline(coordinates: routeCoordinates)
+                            .stroke(.white.opacity(0.9), lineWidth: 8)
+                        MapPolyline(coordinates: routeCoordinates)
+                            .stroke(theme.actionColor, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
                     }
-                }
 
-                if let finish = routeCoordinates.last, !routeEndpointsOverlap {
-                    Annotation(String(localized: "route.guidance.map.finish", defaultValue: "Route finish"), coordinate: finish) {
-                        Image(systemName: "flag.checkered")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
-                            .background(theme.actionColor, in: Circle())
-                            .overlay(Circle().stroke(.white, lineWidth: 2))
-                            .shadow(radius: 3)
+                    if let start = routeCoordinates.first {
+                        Annotation(
+                            routeEndpointsOverlap
+                                ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
+                                : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
+                            coordinate: start
+                        ) {
+                            Image(systemName: routeEndpointsOverlap ? "flag.checkered" : "figure.run")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 30, height: 30)
+                                .background(routeEndpointsOverlap ? theme.actionColor : Color.green, in: Circle())
+                                .overlay(Circle().stroke(.white, lineWidth: 2))
+                                .shadow(radius: 3)
+                        }
                     }
-                }
 
-                UserAnnotation()
+                    if let finish = routeCoordinates.last, !routeEndpointsOverlap {
+                        Annotation(String(localized: "route.guidance.map.finish", defaultValue: "Route finish"), coordinate: finish) {
+                            Image(systemName: "flag.checkered")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 30, height: 30)
+                                .background(theme.actionColor, in: Circle())
+                                .overlay(Circle().stroke(.white, lineWidth: 2))
+                                .shadow(radius: 3)
+                        }
+                    }
+
+                    UserAnnotation()
+                }
             }
             .onAppear { frameRouteIfNeeded() }
             .onChange(of: routeCameraKey) { _, _ in frameRouteIfNeeded() }

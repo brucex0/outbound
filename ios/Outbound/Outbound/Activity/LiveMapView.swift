@@ -127,6 +127,8 @@ struct LiveMapView: View {
                 isMoving: recorder.state == .active,
                 reduceMotion: reduceMotion,
                 followsLocation: isFollowingUser && !(recorder.state == .idle && !plannedRouteCoordinates.isEmpty),
+                directionCoordinates: plannedRouteCoordinates,
+                directionColor: selectedRouteColor,
                 participants: liveGroupStore.visibleParticipants,
                 focusedParticipantID: focusedParticipantID,
                 onSelectParticipant: { participant in

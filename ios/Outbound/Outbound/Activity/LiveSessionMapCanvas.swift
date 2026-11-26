@@ -20,6 +20,8 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
     @Binding var isFollowingLocation: Bool
     let location: LiveSessionMapLocation?
     let routeSegments: [[CLLocationCoordinate2D]]
+    let directionCoordinates: [CLLocationCoordinate2D]
+    let directionColor: Color
     let activityType: ActivityType
     let tint: Color
     let isMoving: Bool
@@ -48,6 +50,8 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
         isMoving: Bool,
         reduceMotion: Bool,
         followsLocation: Bool,
+        directionCoordinates: [CLLocationCoordinate2D] = [],
+        directionColor: Color = .orange,
         participants: [LiveGroupParticipant] = [],
         focusedParticipantID: String? = nil,
         onSelectParticipant: @escaping (LiveGroupParticipant) -> Void = { _ in },
@@ -58,6 +62,8 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
         _isFollowingLocation = isFollowingLocation
         self.location = location
         self.routeSegments = routeSegments
+        self.directionCoordinates = directionCoordinates
+        self.directionColor = directionColor
         self.activityType = activityType
         self.tint = tint
         self.isMoving = isMoving
@@ -71,43 +77,50 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
     }
 
     var body: some View {
-        Map(position: $position, interactionModes: [.pan, .zoom, .rotate]) {
-            ForEach(Array(routeSegments.enumerated()), id: \.offset) { _, segment in
-                if segment.count > 1 {
-                    MapPolyline(coordinates: segment)
-                        .stroke(.black.opacity(0.2), lineWidth: 8)
-                    MapPolyline(coordinates: segment)
-                        .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                }
+        RouteDirectionMap(coordinates: directionCoordinates, color: directionColor, onCameraChange: {
+            if position.positionedByUser {
+                isFollowingLocation = false
+                if focusedParticipantID != nil { onParticipantFocusInterrupted() }
             }
-
-            additionalContent()
-
-            ForEach(participants) { participant in
-                if let coordinate = displayedParticipants[participant.id] ?? participant.coordinate {
-                    Annotation(participant.displayName, coordinate: coordinate) {
-                        LiveGroupParticipantPin(participant: participant, displayedAt: Date())
-                            .onTapGesture { onSelectParticipant(participant) }
+        }) {
+            Map(position: $position, interactionModes: [.pan, .zoom, .rotate]) {
+                ForEach(Array(routeSegments.enumerated()), id: \.offset) { _, segment in
+                    if segment.count > 1 {
+                        MapPolyline(coordinates: segment)
+                            .stroke(.black.opacity(0.2), lineWidth: 8)
+                        MapPolyline(coordinates: segment)
+                            .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
                     }
                 }
-            }
 
-            if let location = displayedLocation ?? location {
-                Annotation(
-                    "",
-                    coordinate: location.coordinate
-                ) {
-                    LiveActivityAvatar(
-                        activityType: activityType,
-                        tint: tint,
-                        course: location.course,
-                        isMoving: isMoving,
-                        reduceMotion: reduceMotion
-                    )
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(
-                        String(localized: "map.annotation.current_activity", defaultValue: "Current activity position")
-                    )
+                additionalContent()
+
+                ForEach(participants) { participant in
+                    if let coordinate = displayedParticipants[participant.id] ?? participant.coordinate {
+                        Annotation(participant.displayName, coordinate: coordinate) {
+                            LiveGroupParticipantPin(participant: participant, displayedAt: Date())
+                                .onTapGesture { onSelectParticipant(participant) }
+                        }
+                    }
+                }
+
+                if let location = displayedLocation ?? location {
+                    Annotation(
+                        "",
+                        coordinate: location.coordinate
+                    ) {
+                        LiveActivityAvatar(
+                            activityType: activityType,
+                            tint: tint,
+                            course: location.course,
+                            isMoving: isMoving,
+                            reduceMotion: reduceMotion
+                        )
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(
+                            String(localized: "map.annotation.current_activity", defaultValue: "Current activity position")
+                        )
+                    }
                 }
             }
         }
@@ -152,12 +165,6 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
         }
         .task {
             await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("live_map_motion_smoothing")]))
-        }
-        .onMapCameraChange(frequency: .continuous) { _ in
-            if position.positionedByUser {
-                isFollowingLocation = false
-                if focusedParticipantID != nil { onParticipantFocusInterrupted() }
-            }
         }
     }
 

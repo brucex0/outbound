@@ -543,3 +543,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Selecting a mode emits `activity_configuration_changed` with `change_type = goal_mode`, a stable mode enum as `selection_type`, and the same bounded entry source. Existing editor, curated selection, and race planner events continue unchanged.
 
 - iOS loop-planner shared foreground lookup emits `feature_exposed` with `feature=loop_planner_location` and only `result=cached|fresh` when resolving the requested start. It excludes coordinates, accuracy, timestamps, request IDs and per-fix samples.
+
+- iOS selected-route direction marks emit `feature_exposed` with only `feature=route_direction_arrows` when usable geometry is presented. Reverse retains its existing route configuration event; camera frames and individual arrowheads emit no events, coordinates, geometry or route identifiers.
