@@ -156,6 +156,81 @@ extension ActivityFlowView {
         model.setup.setupSheet = nil
     }
 
+    func routeDetailsPopover(onChange: @escaping () -> Void, onRemove: @escaping () -> Void) -> some View {
+        VStack(spacing: OutboundSpacing.standard) {
+            if let route = model.setup.plannedIntent?.preparedRoute {
+                VStack(spacing: OutboundSpacing.compact / 2) {
+                    Text(route.name)
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(model.routeDistanceLabel(route))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .multilineTextAlignment(.center)
+
+                HStack(spacing: OutboundSpacing.section) {
+                    Button {
+                        model.updateRouteDirection(route.direction == .reverse ? .forward : .reverse, for: route)
+                    } label: {
+                        utilityButtonLabel(
+                            String(localized: "record.route.direction.reverse", defaultValue: "Reverse"),
+                            isConfigured: route.direction == .reverse,
+                            systemImage: "arrow.left.arrow.right",
+                            iconDiameter: 40
+                        )
+                        .overlay(alignment: .bottomTrailing) {
+                            if route.direction == .reverse {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption)
+                                    .symbolRenderingMode(.palette)
+                                    .foregroundStyle(theme.actionForegroundColor, theme.actionColor)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                    }
+                    .accessibilityLabel(String(localized: "record.route.direction.reverse", defaultValue: "Reverse"))
+                    .accessibilityValue(route.direction == .reverse
+                        ? String(localized: "common.on", defaultValue: "On")
+                        : String(localized: "common.off", defaultValue: "Off"))
+                    .accessibilityAddTraits(route.direction == .reverse ? .isSelected : [])
+                    .accessibilityHint(String(localized: "record.route.direction.hint", defaultValue: "Choose which endpoint you intend to start from."))
+
+                    Button(action: onChange) {
+                        utilityButtonLabel(
+                            String(localized: "common.change", defaultValue: "Change"),
+                            isConfigured: false,
+                            systemImage: "arrow.triangle.2.circlepath",
+                            iconDiameter: 40
+                        )
+                    }
+                    .accessibilityLabel(String(localized: "common.change", defaultValue: "Change"))
+
+                    Button(role: .destructive, action: onRemove) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(.red)
+                            .frame(width: 40, height: 40)
+                            .background(Color(.systemFill), in: Circle())
+                            .outboundTapTarget()
+                    }
+                    .accessibilityLabel(String(localized: "record.route.remove", defaultValue: "Remove route"))
+                }
+                .buttonStyle(.plain)
+
+                if let advisory = model.routeGoalAdvisory(route) {
+                    Text(advisory)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .frame(width: 240)
+        .padding(OutboundSpacing.screen)
+    }
+
     var routeSetupCard: some View {
         routeSetupCard(onChange: model.openRouteLibrary, onRemove: nil)
     }

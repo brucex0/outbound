@@ -56,7 +56,7 @@ extension ActivityFlowView {
                     onChange: model.openRouteLibrary,
                     onRemove: { model.removeSelectedRoute(route) }
                 ) { change, remove in
-                    AnyView(routeSetupCard(onChange: change, onRemove: remove).padding(20))
+                    AnyView(routeDetailsPopover(onChange: change, onRemove: remove))
                 }
             } else {
                 launchRoutePreviewCard(route)
