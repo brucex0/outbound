@@ -115,7 +115,7 @@ import Foundation
     func setVia(_ point: LoopPlanningCoordinate?, name: String? = nil, lessClimbing: Bool? = nil) {
         guard current else { return }
         invalidate(); choosingStart = false
-        includedPlace = point.map { LoopPlanningPlace(id: UUID(), name: name ?? String(localized: "route.planner.via", defaultValue: "Via place"), coordinate: $0) }
+        includedPlace = point.map { LoopPlanningPlace(id: UUID(), name: name ?? String(localized: "route.planner.via", defaultValue: "Waypoint"), coordinate: $0) }
         if let lessClimbing { self.lessClimbing = lessClimbing }
         generate(trigger: .confirmedVia, reuseExisting: true)
     }

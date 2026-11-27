@@ -60,6 +60,7 @@ private extension LoopPlanningSession {
 
 private struct LoopPlannerScreen: View {
     @Environment(\.outboundTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.analyticsManager) private var analytics
     @ObservedObject var presentation: LoopPlanningPresentation
     @ObservedObject var session: LoopPlanningSession
@@ -73,6 +74,8 @@ private struct LoopPlannerScreen: View {
     @State private var startQuery = ""
     @State private var distanceDraft = ""
     @State private var climbingDraft = false
+    @State private var showingWaypointName = false
+    @State private var waypointMarkerSize = CGSize(width: 44, height: 44)
     let onUse: (LoopPlanningCandidate, Int) -> Bool
     let onSavedSelection: (PreparedRoute?) -> Void
     let onCancel: () -> Void
@@ -111,7 +114,15 @@ private struct LoopPlannerScreen: View {
                     }
                 }
                 .overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
-                .sheet(item: $presentation.sheet) { sheetContent($0) }
+                .sheet(item: $presentation.sheet) { sheet in
+                    sheetContent(sheet)
+                        // A nested sheet is its own appearance boundary. Reapply
+                        // the retained planner's resolved app mode and palette.
+                        .environment(\.outboundTheme, theme)
+                        .preferredColorScheme(colorScheme)
+                        .tint(theme.accentColor)
+                }
+                .onChange(of: session.includedPlace?.id) { _, _ in showingWaypointName = false }
                 .onChange(of: session.generation) { _, generation in
                     guard let generation else { return }
                     Task { await analytics?.track(.init(.activityConfigurationChanged, properties: [
@@ -355,7 +366,19 @@ private struct LoopPlannerScreen: View {
                 ScrollView { editor(sheet).padding(OutboundSpacing.screen) }
                     .navigationTitle(editorTitle(sheet))
                     .navigationBarTitleDisplayMode(.inline)
-                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "Close")) { presentation.sheet = nil } } }
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(isDraftEditor(sheet) ? String(localized: "Cancel") : String(localized: "Close")) {
+                                placeSearchFocused = false; presentation.sheet = nil
+                            }
+                        }
+                        if isDraftEditor(sheet) {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button(String(localized: "Done")) { applyEditor(sheet) }
+                                    .disabled(sheet.id == "distance" && !session.validDistanceText(distanceDraft))
+                            }
+                        }
+                    }
             }
             .overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
             .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
@@ -366,7 +389,7 @@ private struct LoopPlannerScreen: View {
         switch sheet {
         case .distance: String(localized: "route.planner.distance", defaultValue: "Distance")
         case .location: String(localized: "route.planner.start", defaultValue: "Start")
-        case .via: String(localized: "route.planner.include_place", defaultValue: "Include a place")
+        case .via: String(localized: "route.planner.via", defaultValue: "Waypoint")
         default: String(localized: "route.planner.options", defaultValue: "Route options")
         }
     }
@@ -382,11 +405,6 @@ private struct LoopPlannerScreen: View {
                 OutboundGoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 4) {
                     distancePresets
                 }
-                Button(String(localized: "Done")) {
-                    presentation.sheet = nil; session.applyDistance(distanceDraft)
-                }.buttonStyle(OutboundButtonStyle(.primary))
-                    .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                    .disabled(!session.validDistanceText(distanceDraft))
             case .location, .via:
                 if case .location = sheet {
                     ViewThatFits(in: .horizontal) {
@@ -395,14 +413,9 @@ private struct LoopPlannerScreen: View {
                     }.buttonStyle(OutboundButtonStyle(.secondary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                 }
                 if isVia(sheet) {
-                HStack {
-                    TextField(String(localized: "route.planner.search_places", defaultValue: "Search places"), text: $query)
-                        .textFieldStyle(.roundedBorder).focused($placeSearchFocused).autocorrectionDisabled()
-                        .submitLabel(.search).onSubmit { submitPlaceSearch() }
-                        .onChange(of: query) { _, value in session.queryChanged(value) }
-                    Button { submitPlaceSearch() } label: { Image(systemName: "magnifyingglass").outboundTapTarget() }
-                        .accessibilityLabel(String(localized: "Search")).accessibilityIdentifier("loop.place.search")
-                }
+                    waypointSearch
+                    Text(String(localized: "route.planner.waypoint_help", defaultValue: "Choose a place for your route to pass through."))
+                        .outboundTextStyle(.supporting).foregroundStyle(.secondary)
                 }
                 placeResults(asVia: isVia(sheet))
                 if isVia(sheet) {
@@ -414,34 +427,62 @@ private struct LoopPlannerScreen: View {
             case .options:
                 Toggle(String(localized: "route.planner.less_climbing", defaultValue: "Less climbing"), isOn: $climbingDraft).accessibilityIdentifier("loop.less_climbing")
                 includedPlaceControl
-                Button(String(localized: "route.planner.include_place", defaultValue: "Include a place")) {
+                Button(session.includedPlace == nil
+                       ? String(localized: "route.planner.include_place", defaultValue: "Add waypoint")
+                       : String(localized: "route.planner.change_waypoint", defaultValue: "Change waypoint")) {
                     query = ""; session.clearSearch(); presentation.sheet = .via
                 }.buttonStyle(OutboundButtonStyle(.secondary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                Button(String(localized: "Done")) { presentation.sheet = nil; session.applyPreference(lessClimbing: climbingDraft) }
-                    .buttonStyle(OutboundButtonStyle(.primary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
             default: EmptyView()
             }
         }
     }
+    private func isDraftEditor(_ sheet: LoopPlanningPresentation.Sheet) -> Bool {
+        sheet.id == "distance" || sheet.id == "options"
+    }
+    private func applyEditor(_ sheet: LoopPlanningPresentation.Sheet) {
+        presentation.sheet = nil
+        if sheet.id == "distance" { session.applyDistance(distanceDraft) }
+        else { session.applyPreference(lessClimbing: climbingDraft) }
+    }
+    private var waypointSearch: some View {
+        HStack(spacing: OutboundSpacing.compact) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+            TextField(String(localized: "route.planner.search_places", defaultValue: "Search places"), text: $query)
+                .textFieldStyle(.plain).focused($placeSearchFocused).autocorrectionDisabled()
+                .frame(minHeight: 44)
+                .submitLabel(.search).onSubmit { submitPlaceSearch() }
+                .onChange(of: query) { _, value in session.queryChanged(value) }
+                .accessibilityIdentifier("loop.place.search")
+            if !query.isEmpty {
+                Button { query = ""; session.clearSearch(); placeSearchFocused = true } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary).outboundTapTarget()
+                }.accessibilityLabel(String(localized: "Clear search"))
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, OutboundSpacing.compact)
+        .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
+    }
     @ViewBuilder private var includedPlaceControl: some View {
         if let place = session.includedPlace {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                Text(String(localized: "route.planner.included_place", defaultValue: "Included place"))
+                Text(String(localized: "route.planner.included_place", defaultValue: "Waypoint"))
                     .outboundTextStyle(.sectionHeading)
-                Text(place.name)
-                    .outboundTextStyle(.body)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("loop.included_place")
-                Button(role: .destructive) {
-                    session.setVia(nil, lessClimbing: climbingDraft)
-                    trackIncludedPlaceChange("removed")
-                } label: {
-                    Text(String(localized: "Remove")).outboundTapTarget()
+                HStack(alignment: .top, spacing: OutboundSpacing.compact) {
+                    Text(place.name)
+                        .outboundTextStyle(.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("loop.included_place")
+                    Button(role: .destructive) {
+                        session.setVia(nil, lessClimbing: climbingDraft)
+                        trackIncludedPlaceChange("removed")
+                    } label: {
+                        Image(systemName: "xmark").outboundTapTarget()
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(String(format: String(localized: "route.planner.remove_place", defaultValue: "Remove %@"), place.name))
+                    .accessibilityIdentifier("loop.included_place.remove")
                 }
-                .buttonStyle(OutboundButtonStyle(.secondary))
-                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                .accessibilityLabel(String(format: String(localized: "route.planner.remove_place", defaultValue: "Remove %@"), place.name))
-                .accessibilityIdentifier("loop.included_place.remove")
             }
         }
     }
@@ -499,7 +540,11 @@ private struct LoopPlannerScreen: View {
         MapReader { proxy in
             Map(position: $camera) {
                 if let start = session.start { Marker(String(localized: "route.planner.start", defaultValue: "Start"), systemImage: "figure.walk", coordinate: start.locationCoordinate).tint(theme.accentColor) }
-                if let place = session.includedPlace { Marker(place.name, systemImage: "mappin", coordinate: place.coordinate.locationCoordinate).tint(theme.secondaryColor) }
+                if let place = session.includedPlace {
+                    Annotation(String(localized: "route.planner.via", defaultValue: "Waypoint"), coordinate: place.coordinate.locationCoordinate, anchor: .bottom) {
+                        waypointMarker(place)
+                    }.annotationTitles(.hidden)
+                }
                 // Draw the selection last so overlapping alternatives cannot cover it.
                 ForEach(routeDrawingOrder, id: \.self) { index in
                     let coordinates = displayPoints(session.candidates[index])
@@ -527,11 +572,51 @@ private struct LoopPlannerScreen: View {
                 if session.choosingStart {
                     session.setStart(.init(latitude: point.latitude, longitude: point.longitude)); return
                 }
+                // Annotation buttons share the map's simultaneous gesture. A
+                // waypoint tap must never also choose a nearby route.
+                if let place = session.includedPlace,
+                   let pin = proxy.convert(place.coordinate.locationCoordinate, to: .local),
+                   abs(tap.location.x - pin.x) <= waypointMarkerSize.width / 2,
+                   tap.location.y >= pin.y - waypointMarkerSize.height, tap.location.y <= pin.y { return }
+                showingWaypointName = false
                 if session.resultsCurrent, let candidate = nearestCandidate(point) {
                     selectedIndex = session.candidates.firstIndex(where: { $0.id == candidate.id }) ?? 0
                 }
             })
         }
+    }
+    private func waypointMarker(_ place: LoopPlanningPlace) -> some View {
+        Button {
+            showingWaypointName.toggle()
+            if showingWaypointName { trackIncludedPlaceChange("viewed") }
+        } label: {
+            Image(systemName: "mappin.circle.fill")
+                .font(.title)
+                .foregroundStyle(Color.primary)
+                .padding(4)
+                .background(OutboundPalette.surface, in: Circle())
+                .outboundTapTarget()
+        }
+        .buttonStyle(.plain)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { waypointMarkerSize = $0 }
+        .popover(isPresented: $showingWaypointName, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+            ScrollView {
+                Text(place.name)
+                    .outboundTextStyle(.body)
+                    .foregroundStyle(Color.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(OutboundSpacing.standard)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .presentationCompactAdaptation(.popover)
+            .environment(\.outboundTheme, theme)
+            .preferredColorScheme(colorScheme)
+            .tint(theme.accentColor)
+        }
+        .accessibilityLabel(String(format: String(localized: "route.planner.waypoint_name", defaultValue: "Waypoint: %@"), place.name))
+        .accessibilityIdentifier("loop.waypoint")
+        .allowsHitTesting(!session.choosingStart)
     }
     private func candidateSummary(_ candidate: LoopPlanningCandidate, number: Int) -> some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
