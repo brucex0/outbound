@@ -5,7 +5,6 @@ import Foundation
 @MainActor final class LoopPlanningPresentation: ObservableObject, Identifiable {
     enum Sheet: Identifiable {
         case distance, location, options, via, savedRoutes
-        case details(LoopPlanningCandidate)
         var id: String {
             switch self {
             case .distance: "distance"
@@ -13,7 +12,6 @@ import Foundation
             case .options: "options"
             case .via: "via"
             case .savedRoutes: "saved_routes"
-            case .details(let candidate): "details:" + candidate.id
             }
         }
     }
@@ -29,9 +27,6 @@ import Foundation
         }
     }
     private var started = false
-    var detail: LoopPlanningCandidate? {
-        if case .details(let candidate) = sheet { candidate } else { nil }
-    }
     init(activity: ActivityType, distanceM: Double?, units: MeasurementUnitSystem, initialSelection: PreparedRoute? = nil,
          location: (any LoopPlanningLocationProvider)? = nil, personalRoutes: @escaping (LoopPlanningRequest) async -> [LoopPlanningSavedRoute] = { _ in [] }) {
         attachedRoute = initialSelection

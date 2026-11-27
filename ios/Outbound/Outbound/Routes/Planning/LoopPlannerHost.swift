@@ -67,7 +67,6 @@ private struct LoopPlannerScreen: View {
     @State private var selectedIndex = 0
     @State private var viewportHeight = 600.0
     @State private var camera: MapCameraPosition = .automatic
-    private var detail: LoopPlanningCandidate? { presentation.detail }
     @FocusState private var placeSearchFocused: Bool
     @FocusState private var startSearchFocused: Bool
     @State private var query = ""
@@ -138,9 +137,6 @@ private struct LoopPlannerScreen: View {
                     guard let event else { return }
                     Task { await analytics?.track(.init(.featureExposed, properties: [
                         .feature: .string("loop_planner_cache"), .result: .string(event.result)])) }
-                }
-                .onChange(of: session.resultsCurrent) { _, current in
-                    if !current, detail != nil { presentation.sheet = nil }
                 }
                 .onChange(of: session.candidates.map(\.points)) { _, _ in
                     selectedIndex = 0; fitCandidates()
@@ -271,18 +267,15 @@ private struct LoopPlannerScreen: View {
                 HStack { Spacer(minLength: 0); comparisonNavigation; Spacer(minLength: 0) }
                 TabView(selection: $selectedIndex) {
                     ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
-                        Button { presentation.sheet = .details(candidate) } label: {
-                            ScrollView(.vertical) {
-                                candidateSummary(candidate, number: index + 1)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .outboundTapTarget()
-                                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
-                                        if abs((summaryHeights[candidate.id] ?? 0) - height) > 0.5 {
-                                            summaryHeights[candidate.id] = height
-                                        }
+                        ScrollView(.vertical) {
+                            candidateSummary(candidate, number: index + 1)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                                    if abs((summaryHeights[candidate.id] ?? 0) - height) > 0.5 {
+                                        summaryHeights[candidate.id] = height
                                     }
-                            }.scrollIndicators(.hidden)
-                        }.buttonStyle(.plain).disabled(!session.resultsCurrent).tag(index)
+                                }
+                        }.scrollIndicators(.hidden).tag(index)
                             .accessibilityIdentifier("loop.candidate.\(index)")
                     }
                 }.tabViewStyle(.page(indexDisplayMode: .never)).frame(height: comparisonSummaryHeight)
@@ -357,22 +350,6 @@ private struct LoopPlannerScreen: View {
                     onSavedSelection(route)
                 }.savedRoutesOnly()
             }
-        case .details(let candidate):
-            NavigationStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                        candidateSummary(candidate, number: candidateNumber(candidate), showsTitle: false, showsStartOffset: false)
-                        Text(String(format: String(localized: "route.planner.start_distance", defaultValue: "Route starts %@ from your chosen start"), session.units.distanceString(meters: startDistance(candidate), fractionDigits: 2)))
-                            .font(.subheadline).foregroundStyle(.secondary)
-                        useButton(candidate, entrySource: "details")
-                    }.padding(OutboundSpacing.screen)
-                }
-                .navigationTitle(candidateTitle(candidate, number: candidateNumber(candidate)))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "Close")) { presentation.sheet = nil } } }
-            }
-            .overlay(alignment: .top) { if let toast = session.toast { RouteToast(message: toast) } }
-            .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
         default:
             NavigationStack {
                 ScrollView { editor(sheet).padding(OutboundSpacing.screen) }
@@ -499,7 +476,7 @@ private struct LoopPlannerScreen: View {
                     MapPolyline(coordinates: displayPoints(candidate)).stroke(routeColor(index), lineWidth: index == selectedIndex ? 7 : 2)
                     if let midpoint = candidate.points.dropFirst(candidate.points.count / 2).first {
                         Annotation("\(index + 1)", coordinate: midpoint.locationCoordinate) {
-                            Button { guard session.resultsCurrent else { return }; selectedIndex = index; presentation.sheet = .details(candidate) } label: {
+                            Button { guard session.resultsCurrent else { return }; selectedIndex = index } label: {
                                 Text("\(index + 1)").font(.headline).padding(10).background(.regularMaterial, in: Circle())
                                     .overlay(Circle().stroke(routeColor(index), lineWidth: 3))
                                     .outboundTapTarget()
@@ -517,17 +494,13 @@ private struct LoopPlannerScreen: View {
                 }
                 if session.resultsCurrent, let candidate = nearestCandidate(point) {
                     selectedIndex = session.candidates.firstIndex(where: { $0.id == candidate.id }) ?? 0
-                    presentation.sheet = .details(candidate)
                 }
             })
         }
     }
-    private func candidateSummary(_ candidate: LoopPlanningCandidate, number: Int,
-                                  showsTitle: Bool = true, showsStartOffset: Bool = true) -> some View {
+    private func candidateSummary(_ candidate: LoopPlanningCandidate, number: Int) -> some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-            if showsTitle {
-                Text(candidateTitle(candidate, number: number)).font(.title3.weight(.semibold))
-            }
+            Text(candidateTitle(candidate, number: number)).font(.title3.weight(.semibold))
             HStack(alignment: .top, spacing: OutboundSpacing.standard) {
                 metric(symbol: "arrow.left.and.right", label: String(localized: "route.planner.distance", defaultValue: "Distance"),
                        value: session.units.distanceString(meters: candidate.distanceM, fractionDigits: 2))
@@ -535,7 +508,7 @@ private struct LoopPlannerScreen: View {
                        value: candidate.elevationGainM.map { session.units.elevationString(meters: $0) }
                            ?? String(localized: "route.planner.unknown_elevation", defaultValue: "Unavailable"))
             }
-            if showsStartOffset, startDistance(candidate) >= 50 {
+            if startDistance(candidate) >= 50 {
                 Text(String(format: String(localized: "route.planner.start_distance", defaultValue: "Route starts %@ from your chosen start"), session.units.distanceString(meters: startDistance(candidate), fractionDigits: 2)))
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -568,18 +541,15 @@ private struct LoopPlannerScreen: View {
             }
         }.font(.body).padding(.vertical, OutboundSpacing.compact)
     }
-    private func candidateNumber(_ candidate: LoopPlanningCandidate) -> Int {
-        (session.candidates.firstIndex(where: { $0.id == candidate.id }) ?? 0) + 1
-    }
     @ViewBuilder private var highlightedUseButton: some View {
         if session.candidates.indices.contains(selectedIndex) {
-            useButton(session.candidates[selectedIndex], entrySource: "map")
+            useButton(session.candidates[selectedIndex])
                 .accessibilityIdentifier("loop.use_route")
         }
     }
-    private func useButton(_ candidate: LoopPlanningCandidate, entrySource: String) -> some View {
+    private func useButton(_ candidate: LoopPlanningCandidate) -> some View {
         Button(String(localized: "route.detail.action.use_route", defaultValue: "Use route")) {
-            use(candidate, entrySource: entrySource)
+            use(candidate)
         }
         .buttonStyle(OutboundButtonStyle(.primary))
         .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
@@ -589,13 +559,13 @@ private struct LoopPlannerScreen: View {
     private func candidateTitle(_ candidate: LoopPlanningCandidate, number: Int) -> String {
         session.candidateTitle(candidate, number: number)
     }
-    private func use(_ candidate: LoopPlanningCandidate, entrySource: String) {
+    private func use(_ candidate: LoopPlanningCandidate) {
         guard session.current, session.resultsCurrent,
               let index = session.candidates.firstIndex(where: { $0.id == candidate.id }) else { return }
         startSearchFocused = false; placeSearchFocused = false
         let accepted = onUse(candidate, index + 1)
         Task { await analytics?.track(.init(.featureExposed, properties: [
-            .feature: .string("loop_planner_use"), .entrySource: .string(entrySource),
+            .feature: .string("loop_planner_use"), .entrySource: .string("map"),
             .result: .string(accepted ? "success" : "failure")])) }
         guard accepted else {
             session.showToast(String(localized: "route.planner.save_failed", defaultValue: "Route could not be saved on this device. Try again.")); return
