@@ -87,15 +87,15 @@ import Foundation
     }
     var canGenerate: Bool { current && supported && start != nil && distanceM != nil && !busy && !locating && !choosingStart && !locationUnavailable }
     func invalidate() { restoredRoute = nil; revision = UUID(); task?.cancel(); task = nil; resultsCurrent = false; busy = false; searched = false; generationUnavailable = false; rateLimited = false }
-    /// Starting a map/access-point choice invalidates old results and late GPS,
-    /// until the optional map adjustment is committed.
+    /// Map placement is a draft: keep the committed start and usable results.
+    /// Late GPS must not replace the point being adjusted.
     func beginChoosingPoint() {
         guard current else { return }
-        invalidate(); stopLocation(); clearSearch(); choosingStart = true
+        stopLocation(); clearSearch(); choosingStart = true
     }
     func cancelChoosingPoint() {
         guard current else { return }
-        choosingStart = false; generate(reuseExisting: true)
+        choosingStart = false
     }
     private func stopLocation() {
         requestingLocation = false; locating = false; locationRevision = UUID()

@@ -556,3 +556,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - iOS loop-planner exposure includes bounded `result=compact_comparison` for the naturally sized panel, single-row icon metrics and non-layout loading overlay. Loading retains the existing generation/location events. No rendered sizes, font choices, membership state, route names or route identifiers are collected.
 
 - iOS included-place selection/removal emits `feature_exposed` with only `feature=loop_planner_included_place` and `result=selected|removed|viewed` (`viewed` when its map marker reveals the name). No place names, coordinates, queries, route IDs or exact targets are collected.
+
+- iOS map-start adjustment emits `feature_exposed` with only `feature=loop_planner_start_placement`, `result=opened|cancelled|confirmed`. Camera movement and taps emit no events; confirmation retains the existing `confirmed_start` generation trigger. Coordinates, map regions, pin positions and place labels are excluded.

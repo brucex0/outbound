@@ -68,6 +68,10 @@ private struct LoopPlannerScreen: View {
     @State private var selectedIndex = 0
     @State private var viewportHeight = 600.0
     @State private var camera: MapCameraPosition = .automatic
+    @State private var placementCenter: CLLocationCoordinate2D?
+    @State private var cameraBeforePlacement: MapCameraPosition?
+    @State private var needsInputFit = true
+    @State private var mapSize = CGSize.zero
     @FocusState private var placeSearchFocused: Bool
     @FocusState private var startSearchFocused: Bool
     @State private var query = ""
@@ -95,7 +99,7 @@ private struct LoopPlannerScreen: View {
                 .safeAreaInset(edge: .bottom) { comparison }
                 .onGeometryChange(for: Double.self) { Double($0.size.height) } action: { viewportHeight = $0 }
                 .overlay {
-                    if session.locating || session.busy {
+                    if !session.choosingStart && (session.locating || session.busy) {
                         ProgressView(session.locating
                             ? String(localized: "route.planner.locating", defaultValue: "Finding your location…")
                             : String(localized: "route.planner.searching", defaultValue: "Finding loops…"))
@@ -122,7 +126,11 @@ private struct LoopPlannerScreen: View {
                         .preferredColorScheme(colorScheme)
                         .tint(theme.accentColor)
                 }
-                .onChange(of: session.includedPlace?.id) { _, _ in showingWaypointName = false }
+                .onChange(of: session.includedPlace?.id) { _, _ in
+                    showingWaypointName = false; needsInputFit = true; fitCandidates()
+                }
+                .onChange(of: session.start) { _, _ in needsInputFit = true; fitCandidates() }
+                .onChange(of: session.distanceM) { _, _ in needsInputFit = true }
                 .onChange(of: session.generation) { _, generation in
                     guard let generation else { return }
                     Task { await analytics?.track(.init(.activityConfigurationChanged, properties: [
@@ -150,7 +158,8 @@ private struct LoopPlannerScreen: View {
                         .feature: .string("loop_planner_cache"), .result: .string(event.result)])) }
                 }
                 .onChange(of: session.candidates.map(\.points)) { _, _ in
-                    selectedIndex = 0; fitCandidates()
+                    selectedIndex = 0
+                    if needsInputFit && !session.busy { fitCandidates() }
                 }
                 .onChange(of: startSearchFocused) { _, focused in
                     if !focused, presentation.sheet == nil { session.clearSearch() }
@@ -159,8 +168,9 @@ private struct LoopPlannerScreen: View {
                     if old == "location", new == nil { session.clearSearch() }
                 }
                 .onChange(of: session.busy) { wasBusy, busy in
-                    if wasBusy && !busy && session.candidates.isEmpty && (session.searched || session.generationUnavailable) {
-                        centerOnStart()
+                    if busy { needsInputFit = true }
+                    if wasBusy && !busy && needsInputFit && !session.choosingStart {
+                        fitCandidates(); needsInputFit = false
                     }
                 }
 #if DEBUG && targetEnvironment(simulator)
@@ -241,6 +251,17 @@ private struct LoopPlannerScreen: View {
                     HStack(spacing: OutboundSpacing.compact) { distanceButton; Spacer(minLength: 0); optionsButton }
                 }
             }
+            .disabled(session.choosingStart)
+            if !session.choosingStart {
+                HStack {
+                    Button { moveStart() } label: {
+                        Text(String(localized: "route.planner.adjust_start", defaultValue: "Move start")).outboundTapTarget()
+                    }.buttonStyle(OutboundButtonStyle(.secondary))
+                        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                        .accessibilityIdentifier("loop.move_start")
+                    Spacer(minLength: 0)
+                }
+            }
             if startSearchFocused && !startQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 ScrollView { placeResults(asVia: false) }.frame(maxHeight: 240)
             }
@@ -266,15 +287,24 @@ private struct LoopPlannerScreen: View {
     private var comparison: some View {
         VStack(alignment: .leading, spacing: 0) {
             if session.choosingStart {
-                HStack {
-                    Text(String(localized: "route.planner.tap_start", defaultValue: "Tap the map to move the start.")).font(.footnote)
-                    Button(String(localized: "Cancel")) { session.cancelChoosingPoint() }
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                    Text(String(localized: "route.planner.pan_start", defaultValue: "Move the map to place the start under the pin.")).outboundTextStyle(.supporting)
+                    HStack {
+                        Button(String(localized: "Cancel")) { cancelMoveStart() }
+                            .buttonStyle(OutboundButtonStyle(.secondary))
+                            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control)).frame(minHeight: 44)
+                        Button(String(localized: "route.planner.confirm_start", defaultValue: "Confirm start")) { confirmMoveStart() }
+                            .buttonStyle(OutboundButtonStyle(.primary))
+                            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control)).frame(minHeight: 44)
+                            .disabled(placementCenter == nil)
+                            .accessibilityIdentifier("loop.confirm_start")
+                    }
                 }
             }
-            if !session.locating && !session.busy {
+            if !session.choosingStart && !session.locating && !session.busy {
                 comparisonStatus
             }
-            if !session.candidates.isEmpty {
+            if !session.choosingStart && !session.candidates.isEmpty {
                 HStack { Spacer(minLength: 0); comparisonNavigation; Spacer(minLength: 0) }
                 TabView(selection: $selectedIndex) {
                     ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
@@ -522,24 +552,50 @@ private struct LoopPlannerScreen: View {
     }
     private func moveStart() {
         startSearchFocused = false; startQuery = ""
+        cameraBeforePlacement = camera
+        placementCenter = session.start?.locationCoordinate
+        showingWaypointName = false
         session.beginChoosingPoint(); presentation.sheet = nil; centerOnStart()
+        trackStartPlacement("opened")
+    }
+    private func cancelMoveStart() {
+        session.cancelChoosingPoint()
+        if needsInputFit { fitCandidates(); needsInputFit = false }
+        else if let previous = cameraBeforePlacement { camera = previous }
+        cameraBeforePlacement = nil
+        trackStartPlacement("cancelled")
+    }
+    private func confirmMoveStart() {
+        guard let point = placementCenter else { return }
+        cameraBeforePlacement = nil
+        session.setStart(.init(latitude: point.latitude, longitude: point.longitude))
+        trackStartPlacement("confirmed")
+    }
+    private func trackStartPlacement(_ result: String) {
+        Task { await analytics?.track(.init(.featureExposed, properties: [
+            .feature: .string("loop_planner_start_placement"), .result: .string(result)])) }
     }
     private func centerOnStart() {
         guard let start = session.start else { return }
         camera = .region(.init(center: start.locationCoordinate, latitudinalMeters: 1500, longitudinalMeters: 1500))
     }
     private func fitCandidates() {
-        let points = session.candidates.flatMap(\.points).map { MKMapPoint($0.locationCoordinate) }
+        guard !session.choosingStart else { return }
+        let geometry = session.resultsCurrent ? session.candidates.flatMap(\.points) : []
+        let points = (geometry + [session.start, session.via].compactMap { $0 }).map { MKMapPoint($0.locationCoordinate) }
         guard let first = points.first else { return }
         let rect = points.dropFirst().reduce(MKMapRect(origin: first, size: MKMapSize(width: 1, height: 1))) {
             $0.union(MKMapRect(origin: $1, size: MKMapSize(width: 1, height: 1)))
         }
-        camera = .rect(rect.insetBy(dx: -rect.width * 0.2, dy: -rect.height * 0.2))
+        // A single point still needs a useful neighborhood; map safe-area insets
+        // reserve the top controls and bottom comparison panel before fitting.
+        let minimum = MKMapPointsPerMeterAtLatitude(session.start?.latitude ?? 0) * 750
+        camera = .rect(rect.insetBy(dx: -max(rect.width * 0.2, minimum), dy: -max(rect.height * 0.2, minimum)))
     }
     private var map: some View {
         MapReader { proxy in
             Map(position: $camera) {
-                if let start = session.start { Marker(String(localized: "route.planner.start", defaultValue: "Start"), systemImage: "figure.walk", coordinate: start.locationCoordinate).tint(theme.accentColor) }
+                if !session.choosingStart, let start = session.start { Marker(String(localized: "route.planner.start", defaultValue: "Start"), systemImage: "figure.walk", coordinate: start.locationCoordinate).tint(theme.accentColor) }
                 if let place = session.includedPlace {
                     Annotation(String(localized: "route.planner.via", defaultValue: "Waypoint"), coordinate: place.coordinate.locationCoordinate, anchor: .bottom) {
                         waypointMarker(place)
@@ -565,12 +621,36 @@ private struct LoopPlannerScreen: View {
                     }
                 }
             }
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                mapSize = size
+                if session.choosingStart, size.width > 0, size.height > 0 {
+                    placementCenter = proxy.convert(CGPoint(x: size.width / 2, y: size.height / 2), from: .local)
+                }
+            }
+            .onMapCameraChange(frequency: .continuous) { _ in
+                if session.choosingStart, mapSize.width > 0, mapSize.height > 0 {
+                    // Use the actual overlay center, rather than assuming the
+                    // optical camera center matches asymmetrical safe insets.
+                    placementCenter = proxy.convert(CGPoint(x: mapSize.width / 2, y: mapSize.height / 2), from: .local)
+                }
+            }
+            .overlay {
+                if session.choosingStart {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.largeTitle).foregroundStyle(Color.primary)
+                        .padding(4).background(OutboundPalette.surface, in: Circle())
+                        .accessibilityLabel(String(localized: "route.planner.start", defaultValue: "Start"))
+                        .allowsHitTesting(false)
+                }
+            }
             .accessibilityIdentifier("loop.map")
             .startupUIStabilityDiagnostics("loop_map")
             .simultaneousGesture(SpatialTapGesture().onEnded { tap in
                 guard let point = proxy.convert(tap.location, from: .local) else { return }
                 if session.choosingStart {
-                    session.setStart(.init(latitude: point.latitude, longitude: point.longitude)); return
+                    placementCenter = point
+                    camera = .region(.init(center: point, span: camera.region?.span ?? .init(latitudeDelta: 0.015, longitudeDelta: 0.015)))
+                    return
                 }
                 // Annotation buttons share the map's simultaneous gesture. A
                 // waypoint tap must never also choose a nearby route.
