@@ -504,9 +504,9 @@ private struct LoopPlannerScreen: View {
                 ForEach(routeDrawingOrder, id: \.self) { index in
                     let coordinates = displayPoints(session.candidates[index])
                     MapPolyline(coordinates: coordinates)
-                        .stroke(OutboundPalette.routeCasing, style: StrokeStyle(lineWidth: index == selectedIndex ? 10 : 7, lineCap: .round, lineJoin: .round))
+                        .stroke(OutboundPalette.routeCasing, style: StrokeStyle(lineWidth: index == selectedIndex ? 10 : 5, lineCap: .round, lineJoin: .round))
                     MapPolyline(coordinates: coordinates)
-                        .stroke(routeColor(index), style: StrokeStyle(lineWidth: index == selectedIndex ? 7 : 4, lineCap: .round, lineJoin: .round))
+                        .stroke(routeColor(index), style: StrokeStyle(lineWidth: index == selectedIndex ? 7 : 2, lineCap: .round, lineJoin: .round))
                 }
                 ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
                     if let midpoint = candidate.points.dropFirst(candidate.points.count / 2).first {
@@ -636,7 +636,7 @@ private struct LoopPlannerScreen: View {
         return session.candidates.indices.contains(selectedIndex) ? alternatives + [selectedIndex] : alternatives
     }
     private func routeColor(_ index: Int) -> Color {
-        // Semantic map selection stays blue across app themes; numbers also identify routes.
+        // Semantic map selection stays blue/cyan across app themes; numbers also identify routes.
         index == selectedIndex ? OutboundPalette.selectedRoute : OutboundPalette.alternativeRoute
     }
 }

@@ -182,7 +182,11 @@ enum OutboundPalette {
     static let primaryText = Color.primary
     static let secondaryText = Color.secondary
     // Map routes retain semantic selection colors independently of the app theme.
-    static let selectedRoute = Color.blue
+    static let selectedRoute = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 83.0 / 255, green: 207.0 / 255, blue: 1, alpha: 1)
+            : UIColor(red: 0, green: 95.0 / 255, blue: 204.0 / 255, alpha: 1)
+    })
     static let alternativeRoute = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(red: 197.0 / 255, green: 163.0 / 255, blue: 1, alpha: 1)
