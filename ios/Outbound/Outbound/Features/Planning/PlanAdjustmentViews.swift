@@ -146,15 +146,24 @@ struct PlanAdjustmentSheet: View {
                         Button(planAdjustText("back")) { goBack() }.disabled(busy)
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) { Button(planAdjustText("cancel")) { dismiss() }.disabled(busy) }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if preview != nil {
+                        HStack(spacing: OutboundSpacing.compact) {
+                            if busy { ProgressView().accessibilityLabel(planAdjustText("saving")) }
+                            Button(planAdjustText("apply")) { Task { await apply() } }.disabled(busy)
+                        }
+                    } else {
+                        Button(planAdjustText("cancel")) { dismiss() }.disabled(busy)
+                    }
+                }
             }
             .safeAreaInset(edge: .bottom) {
-                if action != nil {
+                if action != nil && preview == nil {
                     HStack(spacing: OutboundSpacing.standard) {
                         if busy { ProgressView().accessibilityLabel(planAdjustText("saving")) }
-                        OutboundPrimaryButton(title: planAdjustText(preview == nil ? "preview" : "apply"), expands: false) {
-                            Task { if preview == nil { await createPreview() } else { await apply() } }
-                        }.disabled(busy || (preview == nil && !canPreview))
+                        OutboundPrimaryButton(title: planAdjustText("preview"), expands: false) {
+                            Task { await createPreview() }
+                        }.disabled(busy || !canPreview)
                         Spacer(minLength: 0)
                     }.padding(OutboundSpacing.standard).background(OutboundPalette.background)
                 }

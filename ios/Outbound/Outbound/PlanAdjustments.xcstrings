@@ -283,19 +283,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apply changes"
+            "value": "Apply"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aplicar cambios"
+            "value": "Aplicar"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用调整"
+            "value": "应用"
           }
         }
       }
