@@ -406,15 +406,14 @@ private struct LoopPlannerScreen: View {
                 }
                 placeResults(asVia: isVia(sheet))
                 if isVia(sheet) {
-                    if session.via != nil {
-                        Button(String(localized: "route.planner.remove_via", defaultValue: "Remove via place")) { presentation.sheet = nil; session.setVia(nil, lessClimbing: climbingDraft) }
-                    }
+                    includedPlaceControl
                     ForEach(session.recommendations) { place in
                         Button { choose(place, asVia: true) } label: { Label(place.name, systemImage: "leaf").outboundTapTarget() }
                     }
                 }
             case .options:
                 Toggle(String(localized: "route.planner.less_climbing", defaultValue: "Less climbing"), isOn: $climbingDraft).accessibilityIdentifier("loop.less_climbing")
+                includedPlaceControl
                 Button(String(localized: "route.planner.include_place", defaultValue: "Include a place")) {
                     query = ""; session.clearSearch(); presentation.sheet = .via
                 }.buttonStyle(OutboundButtonStyle(.secondary)).buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
@@ -423,6 +422,32 @@ private struct LoopPlannerScreen: View {
             default: EmptyView()
             }
         }
+    }
+    @ViewBuilder private var includedPlaceControl: some View {
+        if let place = session.includedPlace {
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                Text(String(localized: "route.planner.included_place", defaultValue: "Included place"))
+                    .outboundTextStyle(.sectionHeading)
+                Text(place.name)
+                    .outboundTextStyle(.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("loop.included_place")
+                Button(role: .destructive) {
+                    session.setVia(nil, lessClimbing: climbingDraft)
+                    trackIncludedPlaceChange("removed")
+                } label: {
+                    Text(String(localized: "Remove")).outboundTapTarget()
+                }
+                .buttonStyle(OutboundButtonStyle(.secondary))
+                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                .accessibilityLabel(String(format: String(localized: "route.planner.remove_place", defaultValue: "Remove %@"), place.name))
+                .accessibilityIdentifier("loop.included_place.remove")
+            }
+        }
+    }
+    private func trackIncludedPlaceChange(_ result: String) {
+        Task { await analytics?.track(.init(.featureExposed, properties: [
+            .feature: .string("loop_planner_included_place"), .result: .string(result)])) }
     }
     private var distancePresets: some View {
         ForEach([3,5,10], id: \.self) { value in
@@ -447,7 +472,10 @@ private struct LoopPlannerScreen: View {
     private func choose(_ place: LoopPlanningPlace, asVia: Bool) {
         startSearchFocused = false; placeSearchFocused = false
         presentation.sheet = nil; session.clearSearch(); query = ""
-        if asVia { session.setVia(place.coordinate, lessClimbing: climbingDraft) } else {
+        if asVia {
+            session.setVia(place.coordinate, name: place.name, lessClimbing: climbingDraft)
+            trackIncludedPlaceChange("selected")
+        } else {
             startQuery = ""; session.setStart(place.coordinate, label: place.name)
         }
     }
@@ -471,7 +499,7 @@ private struct LoopPlannerScreen: View {
         MapReader { proxy in
             Map(position: $camera) {
                 if let start = session.start { Marker(String(localized: "route.planner.start", defaultValue: "Start"), systemImage: "figure.walk", coordinate: start.locationCoordinate).tint(theme.accentColor) }
-                if let via = session.via { Marker(String(localized: "route.planner.via", defaultValue: "Via place"), systemImage: "mappin", coordinate: via.locationCoordinate).tint(theme.secondaryColor) }
+                if let place = session.includedPlace { Marker(place.name, systemImage: "mappin", coordinate: place.coordinate.locationCoordinate).tint(theme.secondaryColor) }
                 ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
                     MapPolyline(coordinates: displayPoints(candidate)).stroke(routeColor(index), lineWidth: index == selectedIndex ? 7 : 2)
                     if let midpoint = candidate.points.dropFirst(candidate.points.count / 2).first {

@@ -17,7 +17,8 @@ import Foundation
     @Published private(set) var lessClimbing = false { didSet { invalidate() } }
     @Published private(set) var startLabel = String(localized: "route.planner.my_location", defaultValue: "My location")
     @Published private(set) var start: LoopPlanningCoordinate?
-    @Published private(set) var via: LoopPlanningCoordinate?
+    @Published private(set) var includedPlace: LoopPlanningPlace?
+    var via: LoopPlanningCoordinate? { includedPlace?.coordinate }
     @Published private(set) var candidates: [LoopPlanningCandidate] = []
     enum PlaceSearchState: Equatable { case idle, loading, ready, empty, failed }
     @Published private(set) var placeSearchState = PlaceSearchState.idle
@@ -111,9 +112,10 @@ import Foundation
         stopLocation(); choosingStart = false; locationUnavailable = false; start = point
         loadRecommendations(); generate(trigger: trigger, reuseExisting: true)
     }
-    func setVia(_ point: LoopPlanningCoordinate?, lessClimbing: Bool? = nil) {
+    func setVia(_ point: LoopPlanningCoordinate?, name: String? = nil, lessClimbing: Bool? = nil) {
         guard current else { return }
-        invalidate(); choosingStart = false; via = point
+        invalidate(); choosingStart = false
+        includedPlace = point.map { LoopPlanningPlace(id: UUID(), name: name ?? String(localized: "route.planner.via", defaultValue: "Via place"), coordinate: $0) }
         if let lessClimbing { self.lessClimbing = lessClimbing }
         generate(trigger: .confirmedVia, reuseExisting: true)
     }
@@ -305,6 +307,6 @@ import Foundation
             guard !Task.isCancelled else { return }; self?.toast = nil
         }
     }
-    func cancel() { guard active else { return }; active = false; stopLocation(); invalidate(); candidates = []; recentResults = []; choosingStart = false; start = nil; via = nil; recommendations = []; clearSearch(); recommendationTask?.cancel(); toastTask?.cancel() }
+    func cancel() { guard active else { return }; active = false; stopLocation(); invalidate(); candidates = []; recentResults = []; choosingStart = false; start = nil; includedPlace = nil; recommendations = []; clearSearch(); recommendationTask?.cancel(); toastTask?.cancel() }
     deinit { locationTask?.cancel(); task?.cancel(); placeTask?.cancel(); recommendationTask?.cancel(); toastTask?.cancel() }
 }
