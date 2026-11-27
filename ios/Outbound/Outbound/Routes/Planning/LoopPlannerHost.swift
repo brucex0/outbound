@@ -500,8 +500,15 @@ private struct LoopPlannerScreen: View {
             Map(position: $camera) {
                 if let start = session.start { Marker(String(localized: "route.planner.start", defaultValue: "Start"), systemImage: "figure.walk", coordinate: start.locationCoordinate).tint(theme.accentColor) }
                 if let place = session.includedPlace { Marker(place.name, systemImage: "mappin", coordinate: place.coordinate.locationCoordinate).tint(theme.secondaryColor) }
+                // Draw the selection last so overlapping alternatives cannot cover it.
+                ForEach(routeDrawingOrder, id: \.self) { index in
+                    let coordinates = displayPoints(session.candidates[index])
+                    MapPolyline(coordinates: coordinates)
+                        .stroke(OutboundPalette.routeCasing, style: StrokeStyle(lineWidth: index == selectedIndex ? 10 : 7, lineCap: .round, lineJoin: .round))
+                    MapPolyline(coordinates: coordinates)
+                        .stroke(routeColor(index), style: StrokeStyle(lineWidth: index == selectedIndex ? 7 : 4, lineCap: .round, lineJoin: .round))
+                }
                 ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
-                    MapPolyline(coordinates: displayPoints(candidate)).stroke(routeColor(index), lineWidth: index == selectedIndex ? 7 : 2)
                     if let midpoint = candidate.points.dropFirst(candidate.points.count / 2).first {
                         Annotation("\(index + 1)", coordinate: midpoint.locationCoordinate) {
                             Button { guard session.resultsCurrent else { return }; selectedIndex = index } label: {
@@ -624,9 +631,13 @@ private struct LoopPlannerScreen: View {
     private func selectCandidate(_ offset: Int) {
         selectedIndex = min(max(0, selectedIndex + offset), session.candidates.count - 1)
     }
+    private var routeDrawingOrder: [Int] {
+        let alternatives = session.candidates.indices.filter { $0 != selectedIndex }
+        return session.candidates.indices.contains(selectedIndex) ? alternatives + [selectedIndex] : alternatives
+    }
     private func routeColor(_ index: Int) -> Color {
         // Semantic map selection stays blue across app themes; numbers also identify routes.
-        index == selectedIndex ? .blue : .secondary.opacity(0.55)
+        index == selectedIndex ? OutboundPalette.selectedRoute : OutboundPalette.alternativeRoute
     }
 }
 

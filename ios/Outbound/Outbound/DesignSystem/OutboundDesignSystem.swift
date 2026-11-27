@@ -181,6 +181,18 @@ enum OutboundPalette {
     static let surface = Color(uiColor: .secondarySystemBackground)
     static let primaryText = Color.primary
     static let secondaryText = Color.secondary
+    // Map routes retain semantic selection colors independently of the app theme.
+    static let selectedRoute = Color.blue
+    static let alternativeRoute = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 197.0 / 255, green: 163.0 / 255, blue: 1, alpha: 1)
+            : UIColor(red: 123.0 / 255, green: 63.0 / 255, blue: 178.0 / 255, alpha: 1)
+    })
+    static let routeCasing = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(white: 0, alpha: 0.85)
+            : UIColor(white: 1, alpha: 0.95)
+    })
     // Product maturity badge: fixed warm amber and dark ink retain contrast in every theme.
     static let betaRibbon = Color(red: 1, green: 0.75, blue: 0.25)
     static let betaRibbonText = Color(red: 0.20, green: 0.12, blue: 0.02)
