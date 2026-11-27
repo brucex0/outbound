@@ -506,7 +506,7 @@ private struct LoopPlannerScreen: View {
                     MapPolyline(coordinates: coordinates)
                         .stroke(OutboundPalette.routeCasing, style: StrokeStyle(lineWidth: index == selectedIndex ? 10 : 5, lineCap: .round, lineJoin: .round))
                     MapPolyline(coordinates: coordinates)
-                        .stroke(routeColor(index), style: StrokeStyle(lineWidth: index == selectedIndex ? 7 : 2, lineCap: .round, lineJoin: .round))
+                        .stroke(routeColor(index).opacity(index == selectedIndex ? 1 : 0.85), style: StrokeStyle(lineWidth: index == selectedIndex ? 7 : 2, lineCap: .round, lineJoin: .round))
                 }
                 ForEach(Array(session.candidates.enumerated()), id: \.element.id) { index, candidate in
                     if let midpoint = candidate.points.dropFirst(candidate.points.count / 2).first {
