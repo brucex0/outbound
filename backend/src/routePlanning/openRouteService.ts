@@ -1,7 +1,9 @@
 import { RoutingProviderError, distance, type CanonicalRoute, type GenerateLoop, type RoutingProvider } from "./domain.js";
 export class OpenRouteService implements RoutingProvider {
   constructor(private readonly key: string, private readonly base = "https://api.heigit.org/openrouteservice") {}
-  private readonly radii = new Map<number, number>();
+  private viaVariant = 0;
+  private viaCalls = 0;
+  private viaPerimeter?: number;
   private seedOffset = 0;
   private seedCalls = 0;
   private proposedLength?: number;
@@ -10,14 +12,29 @@ export class OpenRouteService implements RoutingProvider {
     const pair = (p: { latitude: number; longitude: number }) => [p.longitude, p.latitude];
     let coordinates = [pair(request.start)];
     let options: object = { round_trip: { length: this.proposedLength ?? request.targetDistanceM, points: 3, seed: ((request.variationSeed ?? 0) + this.seedOffset) % 1000000 + 1 } };
-    if (request.via) {
-      const variant = attempt % 3;
-      const angle = (variant * 120 + (request.variationSeed ?? 0) % 120) * Math.PI / 180;
-      const radius = this.radii.get(variant) ?? request.targetDistanceM / 4.5;
-      const offset = (heading: number) => ({ latitude: request.start.latitude + radius * Math.cos(heading) / 111320,
-        longitude: request.start.longitude + radius * Math.sin(heading) / (111320 * Math.max(0.1, Math.cos(request.start.latitude * Math.PI / 180))) });
-      const waypoint = offset(angle), second = offset(angle + 2 * Math.PI / 3);
-      coordinates = [pair(request.start), pair(request.via), pair(waypoint), pair(second), pair(request.start)]; options = {};
+    // A required place already beside the start needs a normal loop, not two
+    // degenerate out-and-back spokes. Canonical via validation still applies.
+    const via = request.via && distance(request.start, request.via) > 50 ? request.via : undefined;
+    if (via) {
+      // Allocate the fixed start↔via baseline before shaping the remaining
+      // length. Opposite sides give outbound and return legs distinct corridors.
+      const baseline = distance(request.start, via);
+      const proposal = this.viaPerimeter ?? request.targetDistanceM;
+      const halfBaseline = baseline / 2;
+      const height = Math.sqrt(Math.max(0, (proposal / 4) ** 2 - halfBaseline ** 2));
+      const bearing = Math.atan2(
+        (((via.longitude - request.start.longitude + 540) % 360) - 180) * Math.cos(request.start.latitude * Math.PI / 180),
+        via.latitude - request.start.latitude);
+      const skew = [0, -0.2, 0.2][this.viaVariant % 3] + ((request.variationSeed ?? 0) % 7) * 0.03;
+      const offset = (side: number) => {
+        const along = halfBaseline + side * skew * baseline;
+        const north = along * Math.cos(bearing) - side * height * Math.sin(bearing);
+        const east = along * Math.sin(bearing) + side * height * Math.cos(bearing);
+        return { latitude: request.start.latitude + north / 111320,
+          longitude: ((request.start.longitude + east / (111320 * Math.max(0.1, Math.cos(request.start.latitude * Math.PI / 180))) + 540) % 360) - 180 };
+      };
+      const reverse = ((request.variationSeed ?? 0) + this.viaVariant) % 2 === 0 ? 1 : -1;
+      coordinates = [pair(request.start), pair(offset(reverse)), pair(via), pair(offset(-reverse)), pair(request.start)]; options = {};
     }
     let response: Response;
     try {
@@ -38,7 +55,7 @@ export class OpenRouteService implements RoutingProvider {
       if (response.status === 400 || response.status === 404) {
         const body = await response.json().catch(() => null) as { error?: { code?: number } } | null;
         if (body?.error?.code === 2009 || body?.error?.code === 2010) {
-          this.advanceSeed();
+          if (via) this.advanceVia(); else this.advanceSeed();
           return null;
         }
       }
@@ -53,11 +70,18 @@ export class OpenRouteService implements RoutingProvider {
       return { longitude: p[0] as number, latitude: p[1] as number, ...(Number.isFinite(p[2]) ? { altitude: p[2] as number } : {}) };
     });
     const distanceM = points.slice(1).reduce((sum, point, i) => sum + distance(points[i], point), 0);
-    if (request.via && distanceM > 0) {
-      const radius = this.radii.get(attempt % 3) ?? request.targetDistanceM / 4.5;
-      this.radii.set(attempt % 3, Math.min(request.targetDistanceM / 2, Math.max(100, radius * request.targetDistanceM / distanceM)));
+    if (via && distanceM > 0) {
+      this.viaCalls++;
+      if (Math.abs(distanceM / request.targetDistanceM - 1) > 0.1 && this.viaCalls < 2) {
+        // Retry this shape immediately, deriving width from corrected perimeter
+        // only after allowing for the baseline that cannot shrink.
+        const baseline = 2 * distance(request.start, via);
+        const proposed = this.viaPerimeter ?? request.targetDistanceM;
+        this.viaPerimeter = Math.max(baseline, Math.min(request.targetDistanceM * 1.5,
+          proposed * request.targetDistanceM / distanceM));
+      } else this.advanceVia();
     }
-    if (!request.via) {
+    if (!via) {
       this.seedCalls++;
       if (distanceM > 0 && Math.abs(distanceM / request.targetDistanceM - 1) > 0.1 && this.seedCalls < 2) {
         // Correct the provider proposal, never the acceptance target or geometry.
@@ -67,6 +91,11 @@ export class OpenRouteService implements RoutingProvider {
     }
     const ascent = payload.features?.[0]?.properties?.ascent ?? payload.features?.[0]?.properties?.summary?.ascent;
     return { points, distanceM, attribution: payload.metadata?.attribution?.slice(0,1000) || "© openrouteservice by HeiGIT | Data from OpenStreetMap", ...(typeof ascent === "number" && Number.isFinite(ascent) && ascent >= 0 ? { elevationGainM: ascent } : {}) };
+  }
+  private advanceVia(): void {
+    this.viaVariant++;
+    this.viaCalls = 0;
+    this.viaPerimeter = undefined;
   }
   private advanceSeed(): void {
     this.seedOffset++;
